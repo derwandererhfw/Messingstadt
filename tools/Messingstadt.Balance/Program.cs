@@ -83,6 +83,115 @@ Action<World> AttackAll()
     };
 }
 
+// Wie ein bedachter Spieler: Der Trupp bleibt zusammen und schießt erst eine Wache aus, dann die nächste.
+Action<World> FocusFire()
+{
+    var rush = Rush();
+    return w =>
+    {
+        var squad = w.Units.Where(u => u.Faction == Faction.Agent && u.Alive).ToList();
+        var guards = w.Units.Where(u => u.Faction == Faction.Guard && u.Alive).ToList();
+        if (guards.Count == 0 || squad.Count == 0)
+        {
+            rush(w);
+            return;
+        }
+        var lead = squad[0];
+        var target = guards.OrderBy(g => World.Distance(lead, g)).First();
+        foreach (var a in squad.Where(a => a.TargetId < 0 || !w.Units[a.TargetId].Alive))
+        {
+            w.OrderAttack(a.Id, target.Id);
+        }
+    };
+}
+
+// Hinterhalt: Der Trupp wartet zwischen den Häusern, einer lockt die Wachen an, dann lässt man sie kommen.
+Action<World> Ambush()
+{
+    var rush = Rush();
+    int stage = 0, quiet = 0;
+    return w =>
+    {
+        var squad = w.Units.Where(u => u.Faction == Faction.Agent && u.Alive).ToList();
+        if (squad.Count == 0)
+        {
+            return;
+        }
+        var ids = squad.Select(u => u.Id).ToList();
+        switch (stage)
+        {
+            case 0:
+                w.OrderGroupMove(ids, 8, 14);
+                stage = 1;
+                return;
+            case 1:
+                if (w.Tick >= 100)
+                {
+                    w.OrderMove(ids[0], 8, 11);
+                    stage = 2;
+                }
+                return;
+            case 2:
+                if (w.Rating != MissionRating.Unseen)
+                {
+                    w.OrderMove(ids[0], 8, 14);
+                    stage = 3;
+                }
+                return;
+            case 3:
+                var guards = w.Units.Where(u => u.Faction == Faction.Guard && u.Alive).ToList();
+                bool near = guards.Any(g => squad.Any(a => World.Distance(a, g) <= 10 * World.TileUnits));
+                quiet = near ? 0 : quiet + 1;
+                foreach (var a in squad.Where(a => a.TargetId < 0 && a.Path.Count == 0))
+                {
+                    var target = guards.Where(g => w.CanSee(a, g, 7 * World.TileUnits)).OrderBy(g => World.Distance(a, g)).FirstOrDefault();
+                    if (target != null)
+                    {
+                        w.OrderAttack(a.Id, target.Id);
+                    }
+                }
+                if (quiet >= 10 || guards.Count == 0)
+                {
+                    stage = 4;
+                }
+                return;
+            default:
+                rush(w);
+                return;
+        }
+    };
+}
+
+// Wie ein Spieler, der den Trupp auf die Straße stellt und ihn kämpfen lässt: keine Angriffsbefehle.
+Action<World> HoldThenRush()
+{
+    var rush = Rush();
+    int quiet = 0;
+    bool placed = false, lured = false;
+    return w =>
+    {
+        var squad = w.Units.Where(u => u.Faction == Faction.Agent && u.Alive).ToList();
+        if (squad.Count == 0)
+        {
+            return;
+        }
+        if (!placed)
+        {
+            placed = true;
+            w.OrderGroupMove(squad.Select(u => u.Id).ToList(), 8, 11);
+            return;
+        }
+        var guards = w.Units.Where(u => u.Faction == Faction.Guard && u.Alive).ToList();
+        bool near = guards.Any(g => squad.Any(a => World.Distance(a, g) <= 10 * World.TileUnits));
+        lured |= w.Rating == MissionRating.Loud;
+        quiet = near ? 0 : quiet + 1;
+        if (lured && (quiet >= 10 || guards.Count == 0))
+        {
+            rush(w);
+        }
+    };
+}
+
 // Mit Feldern als Argument, etwa "6,9 6,8": Welche Wache schaut wann hin? Eine Spalte sind 5 Takte.
 if (args.Length > 0)
 {
@@ -109,6 +218,9 @@ if (args.Length > 0)
 
 Report("Rennen zum Buch", Rush);
 Report("Alle angreifen", AttackAll);
+Report("Feuer bündeln", FocusFire);
+Report("Hinterhalt", Ambush);
+Report("Stehen und schießen", HoldThenRush);
 
 // Schleichplan, wie ihn ein Spieler klickt: Greta allein, die anderen warten am Start.
 var plan = new (int X, int Y, string Note)[]
@@ -138,7 +250,8 @@ bool Replay(World w, List<int> times, int stages)
         w.OrderMove(0, plan[stage].X, plan[stage].Y);
         var a = w.Units[0];
         bool book = (plan[stage].X, plan[stage].Y) == (w.ItemX / World.TileUnits, w.ItemY / World.TileUnits) && !w.ItemTaken;
-        while ((a.Path.Count > 0 || (book && !w.ItemTaken)) && w.State == MissionState.Running)
+        bool last = stage == plan.Length - 1;
+        while ((a.Path.Count > 0 || (book && !w.ItemTaken) || last) && w.State == MissionState.Running)
         {
             w.Step();
             if (w.Rating != MissionRating.Unseen)

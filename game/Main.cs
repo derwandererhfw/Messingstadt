@@ -362,7 +362,7 @@ namespace Messingstadt
             var sb = new StringBuilder();
             sb.Append(_mission.Title).Append(": ");
             sb.Append(World.ItemTaken
-                ? $"{World.ItemName} gesichert. Zum Fluchtwagen im Osten!"
+                ? (World.EscapeProgress > 0 ? "Einsteigen. Stehen bleiben!" : $"{World.ItemName} gesichert. Zum Fluchtwagen im Osten!")
                 : World.ItemProgress > 0 ? $"{World.ItemName} wird gesichert. Stehen bleiben!" : _mission.Briefing);
             _status.Text = sb.ToString();
             var r = new StringBuilder();

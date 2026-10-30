@@ -57,7 +57,7 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
-        public void ReinforcementHeadsForTheShotAndIsAlert()
+        public void ReinforcementSecuresTheExitAndIsAlert()
         {
             var w = new World(OpenMap(), Mission(new() { Agent(5.5, 5.5) }, new() { Guard(10.5, 5.5) }));
             w.OrderAttack(0, 1);
@@ -66,8 +66,9 @@ namespace Messingstadt.Core.Tests
             Assert.Equal(Faction.Guard, r.Faction);
             Assert.True(r.Alerted);
             Assert.Equal(GuardState.Investigate, r.GuardState);
-            Assert.True(r.Path.Count > 0);
-            Assert.True(r.X < 28500, "Verstärkung muss zum Schuss laufen");
+            var (x, y) = r.Path[^1];
+            Assert.Equal(0, x);
+            Assert.InRange(y, 10, 11);
         }
 
         [Fact]

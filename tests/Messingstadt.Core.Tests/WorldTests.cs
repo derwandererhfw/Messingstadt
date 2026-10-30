@@ -211,7 +211,7 @@ namespace Messingstadt.Core.Tests
             // Greta allein, sieben Klicks. Zeiten und Fenster liefert tools/Messingstadt.Balance.
             var clicks = new (int Tick, int X, int Y)[]
             {
-                (200, 6, 15), (302, 6, 5), (592, 6, 3), (684, 6, 5), (812, 6, 14), (1100, 18, 18), (1264, 18, 11),
+                (200, 6, 15), (302, 6, 5), (592, 6, 3), (684, 6, 5), (812, 6, 14), (1100, 18, 18), (1576, 18, 11),
             };
             int next = 0;
             for (int i = 0; i < 20 * 120 && w.State == MissionState.Running; i++)

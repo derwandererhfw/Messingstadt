@@ -27,7 +27,7 @@ Fluchtwagen am Ostende der Querstraße.
 | Spieltakt | 20 Schritte pro Sekunde, fest |
 | Agent | 100 Lebenspunkte, 2,4 Felder/s, mit dem Kontobuch 2,0 Felder/s |
 | Wache | 60 Lebenspunkte, 1,6 Felder/s auf Rundgang, 2,2 im Alarm |
-| Pistole | Reichweite 7 Felder, alle 0,7 s, Agent 12 Schaden, Wache 10 Schaden |
+| Pistole | Reichweite 7 Felder, alle 0,7 s, Agent 16 Schaden, Wache 10 Schaden |
 | Trefferchance | 85 %, je Feld Entfernung 5 Punkte weniger, Ziel in Deckung 25 weniger, Schütze in Bewegung 15 weniger, mindestens 10 % |
 | Deckung | Ein Hindernis direkt neben dem Ziel in Richtung des Schützen |
 | Sicht ahnungslose Wache | Kegel von 90° und 5 Feldern in Blickrichtung, im Umkreis von 2 Feldern auch hinter ihr |
@@ -35,9 +35,11 @@ Fluchtwagen am Ostende der Querstraße.
 | Sicht allgemein | Gebäude verdecken, Sicht gilt immer in beide Richtungen |
 | Posten | Wachen ohne Rundgang drehen sich alle 3 s um 90° |
 | Kontobuch aufnehmen | 3 s im Stehen, wer weggeht, fängt von vorn an |
+| Einsteigen | Der Träger muss 1 s im Wagenbereich stehen |
+| Deckung der Agenten | Stehende Agenten gehen unter Feuer selbst in Deckung, höchstens 2 Felder vom befohlenen Standort, nicht beim Aufnehmen oder Einsteigen |
 | Bemerken | 0,4 s plus 0,1 s je Feld Entfernung, bereits alarmierte Wachen 0,2 s |
 | Alarm | Jeder Schuss ist im Umkreis von 8 Feldern zu hören, je Feld 0,15 s später |
-| Verstärkung | 6 s nach dem ersten Schuss und dann alle 4 s eine Wache nördlich vom Fluchtwagen, höchstens 4 |
+| Verstärkung | 6 s nach dem ersten Schuss und dann alle 4 s eine Wache nördlich vom Fluchtwagen, höchstens 3. Sie sichert den Wagen, nicht den Ort des Schusses |
 | Wertung | Unentdeckt: nie bemerkt. Leise: bemerkt, aber kein Schuss. Laut: Schüsse gefallen |
 
 Die Werte sind erste Annahmen und werden beim Spielen angepasst.
@@ -67,12 +69,15 @@ Gemessen in der Spiellogik über je 300 Zufallsfolgen mit `tools/Messingstadt.Ba
 
 | Spielweise | Siege | Niederlagen | Tote Agenten | Lebenspunkte übrig | Dauer | Wertung |
 |---|---|---|---|---|---|---|
-| Alle rennen zum Buch, dann zum Wagen | 97 % | 2 % | 1,71 | 117 von 400 | 18 s | Laut |
-| Erst alle Wachen angreifen | 62 % | 38 % | 2,33 | 88 von 400 | 36 s | Laut |
-| Greta schleicht allein, Klicks auf ±0,5 s genau | 100 % | 0 % | 0 | 400 von 400 | 66 s | Unentdeckt |
-| Greta schleicht allein, Klicks auf ±1 s genau | 90 % | 9 % | 0,09 | | 66 s | meist Unentdeckt |
+| Alle rennen zum Buch, dann zum Wagen | 82 % | 18 % | 2,15 | 79 von 400 | 19 s | Laut |
+| Jeder greift die nächste Wache an, dann Buch und Wagen | 92 % | 7 % | 1,10 | 176 von 400 | 36 s | Laut |
+| Alle schießen dieselbe Wache aus, dann Buch und Wagen | 78 % | 21 % | 1,58 | 147 von 400 | 34 s | Laut |
+| Auf die Straße stellen und kämpfen lassen, dann Buch und Wagen | 61 % | 35 % | 2,62 | 77 von 400 | 47 s | Laut |
+| Hinterhalt: einer lockt, alle warten zwischen den Häusern | 15 % | 84 % | 3,71 | 18 von 400 | 29 s | Laut |
+| Greta schleicht allein, Klicks auf ±0,5 s genau | 100 % | 0 % | 0 | 400 von 400 | 83 s | Unentdeckt |
+| Greta schleicht allein, Klicks auf ±1 s genau | 90 % | 9 % | 0,09 | | 83 s | meist Unentdeckt |
 
-Der Schleichplan, einmal im Spiel mit echten Klicks gespielt und als Test abgesichert:
+Der Schleichplan ist als Test abgesichert. Eine frühere Fassung mit Klick 7 bei 63 s und ohne Einsteigen wurde im Spiel mit echten Klicks gewonnen:
 
 | Zeit | Klick auf Feld | Zeitfenster | Zweck |
 |---|---|---|---|
@@ -82,9 +87,9 @@ Der Schleichplan, einmal im Spiel mit echten Klicks gespielt und als Test abgesi
 | 34 s | 6,5 | 1,7 s | zurück ins Versteck |
 | 41 s | 6,14 | 2,6 s | zurück über die Straße |
 | 55 s | 18,18 | 20 s | hinter der Lagerhalle nach Osten |
-| 63 s | 18,11 | 2,7 s | zum Fluchtwagen |
+| 79 s | 18,11 | 1,4 s | zum Fluchtwagen, 1 s einsteigen |
 
-Rennen gewinnt also meist, kostet aber fast die Hälfte des Trupps. Die Wertung hat noch keine Folgen
+Rennen ist also riskant und kostet mehr als die Hälfte des Trupps, wer aktiv kämpft, fährt besser. Die Wertung hat noch keine Folgen
 über den Einsatz hinaus, das kommt erst mit einer Kampagne.
 
 Gewonnen ist der Einsatz, wenn ein Agent das Kontobuch trägt und den Fluchtwagen erreicht. Verloren

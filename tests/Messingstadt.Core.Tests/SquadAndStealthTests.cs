@@ -169,6 +169,109 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void StandingAgentTakesNearbyCoverUnderFire()
+        {
+            var map = OpenMap();
+            map.Solids.Add(new SolidData { X0 = 9, Y0 = 3, X1 = 10, Y1 = 4, Opaque = false });
+            var w = new World(map, Mission(new() { Agent(8.5, 5.5) }, new() { Guard(14.5, 3.5, -1, 0) }));
+            w.Units[1].Alerted = true;
+            w.Units[1].GuardState = GuardState.Combat;
+            Run(w, 25);
+            Assert.True(w.HasCoverFrom(w.Units[0], w.Units[1]), $"Agent steht auf {w.Units[0].TileX},{w.Units[0].TileY}");
+        }
+
+        [Fact]
+        public void AgentPickingUpTheItemStaysUnderFire()
+        {
+            var map = OpenMap();
+            map.Solids.Add(new SolidData { X0 = 4, Y0 = 2, X1 = 5, Y1 = 3, Opaque = false });
+            var w = new World(map, Mission(new() { Agent(3.5, 0.5) }, new() { Guard(8.5, 3.5, -1, 0) }));
+            w.Units[1].Alerted = true;
+            w.Units[1].GuardState = GuardState.Combat;
+            w.Units[0].Hp = 10000;
+            Run(w, World.PickupTicks + 2);
+            Assert.True(w.ItemTaken);
+        }
+
+        [Fact]
+        public void CarrierBoardingStaysUnderFire()
+        {
+            var map = OpenMap();
+            map.Solids.Add(new SolidData { X0 = 27, Y0 = 9, X1 = 28, Y1 = 10, Opaque = false });
+            var w = new World(map, Mission(new() { Agent(28.5, 10.5) }, new() { Guard(23.5, 8.5, 1, 0) }));
+            w.Units[0].CarriesItem = true;
+            w.Units[0].Hp = 10000;
+            w.Units[1].Alerted = true;
+            w.Units[1].GuardState = GuardState.Combat;
+            Run(w, World.EscapeTicks + 2);
+            Assert.Equal(MissionState.Won, w.State);
+        }
+
+        [Fact]
+        public void StandingSquadDoesNotScatterUnderFire()
+        {
+            var map = new MapData { Width = 30, Height = 30 };
+            for (int y = 2; y < 28; y += 3)
+            {
+                for (int x = 2; x < 28; x += 3)
+                {
+                    map.Solids.Add(new SolidData { X0 = x, Y0 = y, X1 = x + 1, Y1 = y + 1, Opaque = false });
+                }
+            }
+            var w = new World(map, new MissionData
+            {
+                Seed = 7, Item = new[] { 0.5, 0.5 }, ItemName = "Buch", Exit = new ZoneData { X0 = 28, Y0 = 28, X1 = 30, Y1 = 30 },
+                Agents = new() { Agent(14.5, 14.5) },
+                Guards = new() { Guard(8.5, 14.5, 1, 0), Guard(20.5, 14.5, -1, 0), Guard(14.5, 8.5, 0, 1), Guard(14.5, 20.5, 0, -1) },
+            });
+            w.Units[0].Hp = 100000;
+            for (int i = 0; i < 400; i++)
+            {
+                w.Step();
+                Assert.InRange(w.Units[0].TileX, 12, 16);
+                Assert.InRange(w.Units[0].TileY, 12, 16);
+            }
+        }
+
+        [Fact]
+        public void AgentOrderedToWalkDoesNotStopForCover()
+        {
+            var map = OpenMap();
+            map.Solids.Add(new SolidData { X0 = 9, Y0 = 3, X1 = 10, Y1 = 4, Opaque = false });
+            var w = new World(map, Mission(new() { Agent(8.5, 5.5) }, new() { Guard(14.5, 3.5, -1, 0) }));
+            w.Units[1].Alerted = true;
+            w.Units[1].GuardState = GuardState.Combat;
+            w.OrderMove(0, 8, 11);
+            Run(w, 40);
+            Assert.Equal(8, w.Units[0].TileX);
+            Assert.True(w.Units[0].TileY >= 8);
+        }
+
+        [Fact]
+        public void BoardingTheCarTakesTime()
+        {
+            var w = new World(OpenMap(), Mission(new() { Agent(28.5, 10.5) }, new()));
+            w.Units[0].CarriesItem = true;
+            Run(w, World.EscapeTicks - 2);
+            Assert.Equal(MissionState.Running, w.State);
+            Assert.True(w.EscapeProgress > 0);
+            Run(w, 4);
+            Assert.Equal(MissionState.Won, w.State);
+        }
+
+        [Fact]
+        public void WalkingThroughTheExitDoesNotWin()
+        {
+            var w = new World(OpenMap(), Mission(new() { Agent(27.5, 10.5) }, new()));
+            w.Units[0].CarriesItem = true;
+            w.OrderMove(0, 25, 10);
+            w.Units[0].Path.Insert(0, (28, 10));
+            Run(w, 60);
+            Assert.Equal(MissionState.Running, w.State);
+            Assert.Equal(0, w.EscapeProgress);
+        }
+
+        [Fact]
         public void WalkingAwayResetsPickup()
         {
             var w = new World(OpenMap(), Mission(new() { Agent(3.5, 0.5) }, new()));

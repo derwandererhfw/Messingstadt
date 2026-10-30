@@ -5,7 +5,7 @@
   "itemName": "Kontobuch",
   "item": [6.5, 3.5],
   "exit": { "x0": 18, "y0": 9, "x1": 20, "y1": 12 },
-  "reinforcements": { "x": 19.5, "y": 6.5, "sprite": "Wachmann", "firstDelay": 6, "interval": 4, "count": 4 },
+  "reinforcements": { "x": 19.5, "y": 6.5, "sprite": "Wachmann", "firstDelay": 6, "interval": 4, "count": 3 },
   "agents": [
     { "name": "Greta", "sprite": "Agentin", "x": 8.5, "y": 18.5 },
     { "name": "Otto", "sprite": "Schlosser", "x": 9.5, "y": 18.5 },

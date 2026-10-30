@@ -79,6 +79,12 @@ namespace Messingstadt
                 if (u.CarriesItem)
                 {
                     DrawRect(new Rect2(p + new Vector2(-3, -53), new Vector2(6, 5)), new Color(0.9f, 0.3f, 0.3f));
+                    if (world.EscapeProgress > 0)
+                    {
+                        float f = (float)world.EscapeProgress / World.EscapeTicks;
+                        DrawRect(new Rect2(p + new Vector2(-14, 10), new Vector2(28, 4)), new Color(0, 0, 0, 0.7f));
+                        DrawRect(new Rect2(p + new Vector2(-13, 11), new Vector2(26 * f, 2)), new Color(0.4f, 1f, 0.5f));
+                    }
                 }
             }
             foreach (var s in world.Shots)

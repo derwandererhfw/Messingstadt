@@ -62,6 +62,7 @@ namespace Messingstadt.Core
         public int AlarmTick;
         public int AlarmX, AlarmY;
         public bool Sidestepping;
+        public int AnchorX, AnchorY;
 
         public bool Alive => Hp > 0;
         public int TileX => X / World.TileUnits;
@@ -84,7 +85,7 @@ namespace Messingstadt.Core
         private const int GuardAlertSpeed = 110;
         private const int WeaponRange = 7 * TileUnits;
         private const int WeaponCooldown = 14;
-        private const int AgentDamage = 12;
+        private const int AgentDamage = 16;
         private const int GuardDamage = 10;
         private const int HitChanceBase = 85;
         private const int HitChancePerTile = 5;
@@ -108,8 +109,11 @@ namespace Messingstadt.Core
         public const int GuardCloseRange = 2 * TileUnits;
         private const int LookAroundTicks = 60;
         private const int SpreadRadius = 3;
+        private const int CoverAnchorRadius = 2;
+        private const int CoverHoldTicks = 60;
 
         public const int PickupTicks = 60;
+        public const int EscapeTicks = 20;
         public const int GuardConeRange = 5 * TileUnits;
         public const int GuardConeHalfDegrees = 45;
 
@@ -125,7 +129,6 @@ namespace Messingstadt.Core
         private readonly ReinforcementData? _reinforcements;
         private int _reinforceTick;
         private int _reinforcedCount;
-        private int _lastShotX, _lastShotY;
         private bool _everNoticed;
         private bool _everShot;
 
@@ -138,6 +141,7 @@ namespace Messingstadt.Core
         public int ItemY { get; private set; }
         public bool ItemTaken { get; private set; }
         public int ItemProgress { get; private set; }
+        public int EscapeProgress { get; private set; }
         public string ItemName { get; }
         public (int X0, int Y0, int X1, int Y1) Exit => _exit;
         public MissionRating Rating => _everShot ? MissionRating.Loud : _everNoticed ? MissionRating.Quiet : MissionRating.Unseen;
@@ -182,6 +186,8 @@ namespace Messingstadt.Core
                 u.FacingX = ToUnits(d.Facing[0]);
                 u.FacingY = ToUnits(d.Facing[1]);
             }
+            u.AnchorX = u.TileX;
+            u.AnchorY = u.TileY;
             Units.Add(u);
         }
 
@@ -304,8 +310,10 @@ namespace Messingstadt.Core
                 X = _reinforcements.X, Y = _reinforcements.Y,
             }, Faction.Guard, GuardHp);
             var g = Units[^1];
-            g.LastKnownX = _lastShotX;
-            g.LastKnownY = _lastShotY;
+            // Verstärkung sichert den Fluchtweg und verteilt sich über die Tiefe der Zone. Wer rennt, läuft in sie hinein.
+            int zoneTiles = Math.Max(1, (_exit.Y1 - _exit.Y0) / TileUnits);
+            g.LastKnownX = _exit.X0 + TileUnits / 2;
+            g.LastKnownY = _exit.Y0 + TileUnits / 2 + (_reinforcedCount % zoneTiles) * TileUnits;
             StartInvestigating(g);
             _reinforceTick = _reinforcedCount < _reinforcements.Count ? Tick + _reinforcements.Interval * TickRate : 0;
         }
@@ -315,6 +323,10 @@ namespace Messingstadt.Core
             if (a.Path.Count == 0)
             {
                 a.Sidestepping = false;
+            }
+            else if (!a.Sidestepping)
+            {
+                (a.AnchorX, a.AnchorY) = a.Path[^1];
             }
             Unit? target = a.TargetId >= 0 ? Units[a.TargetId] : null;
             if (target != null && !target.Alive)
@@ -330,6 +342,8 @@ namespace Messingstadt.Core
                     if (!a.Sidestepping)
                     {
                         a.Path.Clear();
+                        a.AnchorX = a.TileX;
+                        a.AnchorY = a.TileY;
                     }
                 }
                 else if (Tick >= a.RepathTick)
@@ -342,6 +356,30 @@ namespace Messingstadt.Core
             if (a.Path.Count == 0 && TileIsTaken(a, a.TileX, a.TileY))
             {
                 StepAside(a, target);
+            }
+            if (a.Path.Count == 0 && Tick >= a.RepathTick)
+            {
+                TakeCover(a, target);
+            }
+        }
+
+        /// <summary>Wer steht und unter Feuer gerät, geht von selbst in nahe Deckung, wie die Wachen auch.</summary>
+        private void TakeCover(Unit a, Unit? target)
+        {
+            var enemy = target != null && CanSee(a, target, WeaponRange) ? target : NearestVisibleEnemy(a, WeaponRange);
+            // Wer das Buch aufnimmt oder einsteigt, bleibt stehen: Der Spieler will genau das, auch unter Feuer.
+            if (enemy == null || !enemy.Alerted || HasCoverFrom(a, enemy) || IsAtItem(a) || IsBoarding(a))
+            {
+                return;
+            }
+            a.RepathTick = Tick + RepathInterval;
+            // Nur nahe am befohlenen Standort, sonst zerstreut sich der Trupp von Deckung zu Deckung.
+            var spot = FindFiringTile(a, enemy, a.AnchorX, a.AnchorY);
+            if (spot != null && TileHasCoverFrom(spot.Value.X, spot.Value.Y, enemy.TileX, enemy.TileY))
+            {
+                WalkTo(a, spot.Value.X, spot.Value.Y);
+                a.Sidestepping = a.Path.Count > 0;
+                a.RepathTick = Tick + CoverHoldTicks;
             }
         }
 
@@ -541,7 +579,7 @@ namespace Messingstadt.Core
         }
 
         /// <summary>Sucht ein freies Feld in der Nähe mit Sicht auf das Ziel, bevorzugt in Deckung.</summary>
-        private (int X, int Y)? FindFiringTile(Unit g, Unit target)
+        private (int X, int Y)? FindFiringTile(Unit g, Unit target, int anchorX = -1, int anchorY = -1)
         {
             (int X, int Y)? best = null;
             int bestScore = int.MinValue;
@@ -551,6 +589,10 @@ namespace Messingstadt.Core
                 {
                     int x = g.TileX + dx, y = g.TileY + dy;
                     if (Map.IsBlocked(x, y) || TileIsTaken(g, x, y) || !Map.HasLineOfSight(x, y, target.TileX, target.TileY))
+                    {
+                        continue;
+                    }
+                    if (anchorX >= 0 && Math.Max(Math.Abs(x - anchorX), Math.Abs(y - anchorY)) > CoverAnchorRadius)
                     {
                         continue;
                     }
@@ -698,8 +740,6 @@ namespace Messingstadt.Core
             u.FacingX = target.X - u.X;
             u.FacingY = target.Y - u.Y;
             u.LastFiredTick = Tick;
-            _lastShotX = u.X;
-            _lastShotY = u.Y;
             if (!_everShot)
             {
                 _everShot = true;
@@ -744,6 +784,7 @@ namespace Messingstadt.Core
         private void CheckMission()
         {
             bool anyAgent = false;
+            bool boarding = false;
             Unit? picker = null;
             foreach (var u in Units)
             {
@@ -752,22 +793,25 @@ namespace Messingstadt.Core
                     continue;
                 }
                 anyAgent = true;
-                // Auf demselben Feld immer erreichbar, auch wenn das Buch in einer Feldecke liegt.
-                bool atItem = DistanceTo(u, ItemX, ItemY) <= PickupRadius
-                    || (u.TileX == ItemX / TileUnits && u.TileY == ItemY / TileUnits);
-                if (picker == null && !ItemTaken && !u.Moving && atItem)
+                if (picker == null && !u.Moving && IsAtItem(u))
                 {
                     picker = u;
                 }
-                if (u.CarriesItem && u.X >= _exit.X0 && u.X < _exit.X1 && u.Y >= _exit.Y0 && u.Y < _exit.Y1)
+                if (!u.Moving && IsBoarding(u))
                 {
-                    State = MissionState.Won;
-                    return;
+                    boarding = true;
                 }
             }
             if (!anyAgent)
             {
                 State = MissionState.Lost;
+            }
+            // Einsteigen braucht Zeit im Stand: Es reicht nicht, die Zone unter Feuer kurz zu berühren.
+            EscapeProgress = boarding ? EscapeProgress + 1 : 0;
+            if (EscapeProgress >= EscapeTicks)
+            {
+                State = MissionState.Won;
+                return;
             }
             // Das Aufnehmen braucht Zeit im Stand. Wer weggeht, fängt von vorn an.
             ItemProgress = picker != null ? ItemProgress + 1 : 0;
@@ -778,6 +822,13 @@ namespace Messingstadt.Core
                 picker.CarriesItem = true;
             }
         }
+
+        // Auf demselben Feld immer erreichbar, auch wenn das Buch in einer Feldecke liegt.
+        private bool IsAtItem(Unit u) => !ItemTaken
+            && (DistanceTo(u, ItemX, ItemY) <= PickupRadius || (u.TileX == ItemX / TileUnits && u.TileY == ItemY / TileUnits));
+
+        private bool IsBoarding(Unit u) =>
+            u.CarriesItem && u.X >= _exit.X0 && u.X < _exit.X1 && u.Y >= _exit.Y0 && u.Y < _exit.Y1;
 
         // ---------- Abfragen ----------
 
@@ -902,6 +953,7 @@ namespace Messingstadt.Core
             Mix(_rng);
             Mix((long)State);
             Mix(ItemProgress);
+            Mix(EscapeProgress);
             Mix(_reinforceTick);
             Mix(Units.Count);
             foreach (var u in Units)
