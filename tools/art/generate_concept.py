@@ -19,6 +19,7 @@ from PIL import Image, ImageDraw
 
 OUT = Path(__file__).resolve().parents[2] / "assets" / "concept"
 RNG = random.Random(1923)
+WEAR = random.Random(1931)  # eigener Zufall für die Abnutzung, damit RNG die Fenster nicht verschiebt
 HW, HH = 32, 16  # halbe Tile-Breite und -Höhe
 
 # Palette: Abenddämmerung statt Nacht, deutlich heller als die erste Fassung
@@ -41,11 +42,34 @@ C = {
     "cream": (222, 208, 176),
     # Der braune Mantel der Agenten: warm und hell genug, um nachts von den grauen Wachen abzustechen.
     "coat_d": (118, 78, 42), "coat": (176, 120, 68), "coat_l": (214, 164, 104), "felt": (92, 60, 36),
+    # Abnutzung
+    "rust_d": (74, 44, 32), "rust": (122, 68, 38), "rust_l": (156, 92, 50), "grime": (42, 38, 36),
+    "dirt": (56, 48, 42), "moss": (62, 76, 46), "puddle": (34, 40, 56), "plaster": (150, 138, 120),
 }
 
 
 def blend(c, f):
     return tuple(max(0, min(255, int(v * f))) for v in c)
+
+
+def mix(a, b, f):
+    return tuple(int(x + (y - x) * f) for x, y in zip(a, b))
+
+
+def hash01(ix, iy, seed=0):
+    h = (ix * 374761393 + iy * 668265263 + seed * 2147483647) & 0xffffffff
+    h = ((h ^ (h >> 13)) * 1274126177) & 0xffffffff
+    return ((h ^ (h >> 16)) & 0xffff) / 65535
+
+
+def noise(x, y, seed=0):
+    """Weiches Rauschen zwischen 0 und 1, für Flecken und Verfärbungen."""
+    ix, iy = int(x // 1), int(y // 1)
+    fx, fy = x - ix, y - iy
+    fx, fy = fx * fx * (3 - 2 * fx), fy * fy * (3 - 2 * fy)
+    top = hash01(ix, iy, seed) * (1 - fx) + hash01(ix + 1, iy, seed) * fx
+    bottom = hash01(ix, iy + 1, seed) * (1 - fx) + hash01(ix + 1, iy + 1, seed) * fx
+    return top * (1 - fy) + bottom * fy
 
 
 class Scene:
@@ -102,11 +126,11 @@ def text_size(t, s=1):
     return (len(t) * 4 - 1) * s, 5 * s
 
 
-def text(d, x, y, t, color, s=1):
+def text(d, x, y, t, color, s=1, worn=0.0):
     for ch in t:
         pat = FONT[ch]
         for i, bit in enumerate(pat):
-            if bit == "1":
+            if bit == "1" and WEAR.random() >= worn:
                 px, py = x + (i % 3) * s, y + (i // 3) * s
                 d.rectangle((px, py, px + s - 1, py + s - 1), fill=color)
         x += 4 * s
@@ -138,12 +162,28 @@ def wall(w, h, material):
 
 def window(d, x, y, w=11, h=17, lit=False, frame="stone_l"):
     d.rectangle((x - 1, y - 2, x + w, y + h + 1), fill=C[frame])
-    d.rectangle((x, y, x + w - 1, y + h), fill=C["gas"] if lit else C["glass_d"])
+    d.rectangle((x, y, x + w - 1, y + h), fill=C["gas_d"] if lit else C["glass_d"])
+    state = WEAR.random()
+    if not lit and state < 0.16:
+        # Mit Brettern vernagelt
+        d.rectangle((x, y, x + w - 1, y + h), fill=C["black"])
+        for v in range(y + 1, y + h, 4):
+            d.rectangle((x - 2, v, x + w + 1, v + 2), fill=C[WEAR.choice(["wood", "wood_d"])])
+        return
+    if not lit and state < 0.34:
+        # Zerbrochene Scheibe: schwarzes Loch mit gezacktem Rand
+        for v in range(y, y + h // 2 + 3):
+            d.line((x, v, x + WEAR.randint(1, w - 2), v), fill=C["black"])
     d.line((x + w // 2, y, x + w // 2, y + h), fill=C["wood_d"])
     d.line((x, y + h // 2, x + w - 1, y + h // 2), fill=C["wood_d"])
-    if not lit:
+    if lit:
+        # Vergilbte Vorhänge, nur ein Spalt Licht
+        d.rectangle((x, y, x + w // 3, y + h), fill=C["wood"])
+        d.rectangle((x + w // 3 + 1, y + h // 2 + 1, x + w - 1, y + h), fill=C["gas"])
+    else:
         d.point((x + 1, y + 1), fill=C["glass"])
-        d.point((x + 2, y + 2), fill=C["glass"])
+    for _ in range(3):
+        d.point((x + WEAR.randint(-1, w), y + h + 1), fill=C["grime"])
 
 
 def door(d, x, base, w=16, h=36, c="wood", lamp=True):
@@ -154,8 +194,15 @@ def door(d, x, base, w=16, h=36, c="wood", lamp=True):
     d.rectangle((x + w // 2 + 2, base - h + 3, x + w - 3, base - h + 11), fill=C["gas_d"])
     d.point((x + w // 2 - 2, base - h // 2), fill=C["brass_l"])
     d.point((x + w // 2 + 2, base - h // 2), fill=C["brass_l"])
+    # Abgewetzte Farbe und eine eingeschlagene Scheibe
+    for _ in range(w * h // 18):
+        u, v = WEAR.randint(x, x + w - 1), WEAR.randint(base - h, base)
+        d.line((u, v, u, v + WEAR.randint(0, 3)), fill=C[WEAR.choice(["wood_d", "grime", "plaster"])])
+    if WEAR.random() < 0.6:
+        d.rectangle((x + 2, base - h + 3, x + w // 2 - 2, base - h + 11), fill=C["black"])
     if lamp:
-        d.rectangle((x + w // 2 - 2, base - h - 9, x + w // 2 + 2, base - h - 5), fill=C["gas"])
+        lit_lamp = WEAR.random() < 0.5
+        d.rectangle((x + w // 2 - 2, base - h - 9, x + w // 2 + 2, base - h - 5), fill=C["gas_d" if lit_lamp else "soot"])
         d.line((x + w // 2 - 2, base - h - 10, x + w // 2 + 2, base - h - 10), fill=C["brass_d"])
 
 
@@ -168,9 +215,96 @@ def shop(d, x, base, w, name, awn=("awn_r", "awn_w")):
     for u in range(x, x + w, 6):
         d.rectangle((u, base - 39, u + 2, base - 31), fill=C[awn[0]])
         d.rectangle((u + 3, base - 39, u + 5, base - 31), fill=C[awn[1]])
+        # Zerrissene Markise: Fetzen hängen unterschiedlich tief
+        d.rectangle((u, base - 39 + WEAR.randint(4, 8), u + 5, base - 31), fill=C["wood_d"])
     tw, _ = text_size(name)
     d.rectangle((x + w // 2 - tw // 2 - 2, base - 48, x + w // 2 + tw // 2 + 2, base - 41), fill=C["black"])
-    text(d, x + w // 2 - tw // 2, base - 47, name, C["brass_l"])
+    text(d, x + w // 2 - tw // 2, base - 47, name, C["brass_l"], worn=0.15)
+
+
+def rust_patches(d, x0, y0, x1, y1):
+    """Rost in Flecken, mit Rostfahnen unter den Rohren."""
+    vertical = y1 - y0 > x1 - x0
+    for pos in range(y0 if vertical else x0, y1 if vertical else x1, 3):
+        if WEAR.random() < 0.45:
+            size = WEAR.randint(1, 6)
+            c = C[WEAR.choice(["rust", "rust", "rust_d", "rust_l"])]
+            if vertical:
+                d.rectangle((x0, pos, x1, pos + size), fill=c)
+            else:
+                d.rectangle((pos, y0, pos + size, y1), fill=c)
+                if WEAR.random() < 0.3:
+                    d.line((pos, y1, pos, y1 + WEAR.randint(3, 14)), fill=C["rust_d"])
+
+
+def poster(d, x, y):
+    """Abgerissenes Plakat, Reste von alten Plakaten darunter."""
+    d.rectangle((x - 2, y + 3, x + 11, y + 15), fill=C["plaster"])
+    w, h = WEAR.randint(9, 13), WEAR.randint(13, 18)
+    d.rectangle((x, y, x + w, y + h), fill=C["paper"])
+    d.rectangle((x + 2, y + 2, x + w - 2, y + 7), fill=C[WEAR.choice(["awn_r", "soot", "wine"])])
+    for v in range(y + 9, y + h - 1, 2):
+        d.line((x + 2, v, x + w - WEAR.randint(2, 4), v), fill=C["ash"])
+    for u in range(x, x + w + 1):
+        d.line((u, y + h - WEAR.randint(0, 6), u, y + h), fill=C["plaster"])
+
+
+def weather(tex):
+    """Gibt eine verschmutzte Kopie einer Fassade zurück: Ruß, Feuchte, Rostfahnen, Risse, Putzschäden."""
+    w, h = tex.size
+    if h < 24 or w < 8:
+        return tex
+    out = tex.copy()
+    pix = out.load()
+    seed = WEAR.randrange(1 << 16)
+    damp = 14 + int(noise(0.5, 0.5, seed) * 12)
+    for v in range(h):
+        for u in range(w):
+            r, g, b, a = pix[u, v]
+            if not a:
+                continue
+            f = 0.86
+            n = noise(u / 15, v / 15, seed)
+            if n > 0.55:
+                f *= 1 - (n - 0.55) * 0.95
+            if v < h * 0.22:
+                f *= 0.7 + 0.3 * v / (h * 0.22)
+            edge = h - v - noise(u / 6, 0.5, seed + 1) * 12
+            if edge < damp:
+                f *= 0.58 + 0.42 * max(0, edge) / damp
+            if hash01(u, v, seed) > 0.93:
+                f *= 0.82
+            pix[u, v] = mix(blend((r, g, b), f), C["grime"], 0.12) + (a,)
+
+    def darken(u, v, f, tint=None):
+        if 0 <= u < w and 0 <= v < h and pix[u, v][3]:
+            c = blend(pix[u, v][:3], f)
+            pix[u, v] = (mix(c, tint, 0.3) if tint else c) + (255,)
+
+    # Regenfahnen von Simsen und Dachkante
+    for _ in range(w // 5):
+        u, v = WEAR.randrange(w), WEAR.randint(0, int(h * 0.7))
+        tint = C["rust"] if WEAR.random() < 0.3 else None
+        for k in range(WEAR.randint(8, 46)):
+            darken(u, v + k, 0.82 - 0.2 * (1 - k / 46), tint)
+            if k % 9 == 8 and WEAR.random() < 0.4:
+                u += WEAR.choice((-1, 1))
+    # Risse
+    for _ in range(max(1, w * h // 5000)):
+        u, v = WEAR.randrange(w), WEAR.randrange(h)
+        for _ in range(WEAR.randint(10, 34)):
+            darken(u, v, 0.42)
+            v += 1
+            u += WEAR.choice((-1, 0, 0, 1))
+    # Abgeplatzter Putz und fehlende Steine
+    for _ in range(max(1, w * h // 3500)):
+        u0, v0 = WEAR.randrange(w), WEAR.randrange(h)
+        c = C[WEAR.choice(["plaster", "plaster", "grime", "dirt"])]
+        for v in range(v0, v0 + WEAR.randint(2, 5)):
+            for u in range(u0 + WEAR.randint(0, 1), u0 + WEAR.randint(3, 8)):
+                if 0 <= u < w and 0 <= v < h and pix[u, v][3]:
+                    pix[u, v] = mix(pix[u, v][:3], c, 0.75) + (255,)
+    return out
 
 
 def ledge(d, w, y, c="stone_l"):
@@ -184,6 +318,7 @@ def pipe_v(d, x, y0, y1, c="brass"):
     d.line((x, y0, x, y1), fill=C["brass_l"])
     for v in range(y0 + 6, y1, 18):
         d.rectangle((x - 1, v, x + 4, v + 1), fill=C["iron"])
+    rust_patches(d, x, y0, x + 3, y1)
 
 
 def pipe_h(d, x0, x1, y):
@@ -192,6 +327,7 @@ def pipe_h(d, x0, x1, y):
     d.line((x0, y + 3, x1, y + 3), fill=C["iron"])
     for u in range(x0 + 6, x1, 22):
         d.rectangle((u, y - 1, u + 1, y + 4), fill=C["iron"])
+    rust_patches(d, x0, y, x1, y + 3)
 
 
 def tenement(w, h, name=None, material=("brick",), door_at=None, lit_rate=0.45):
@@ -211,7 +347,7 @@ def tenement(w, h, name=None, material=("brick",), door_at=None, lit_rate=0.45):
     if name:
         tw, th = text_size(name, 2)
         d.rectangle((w // 2 - tw // 2 - 4, h - 44 - th, w // 2 + tw // 2 + 4, h - 42), fill=C["black"])
-        text(d, w // 2 - tw // 2, h - 43 - th + 1, name, C["brass_l"], 2)
+        text(d, w // 2 - tw // 2, h - 43 - th + 1, name, C["brass_l"], 2, worn=0.08)
     return img
 
 
@@ -413,8 +549,8 @@ def plain_tex(w, h, c, c2=None):
 
 def box(s, x0, y0, x1, y1, z0, h, left=None, right=None, top=None, base="iron"):
     wl, wr = int((x1 - x0) * HW), int((y1 - y0) * HW)
-    left = left or plain_tex(wl, int(h), base, "ash")
-    right = right or plain_tex(wr, int(h), base, "ash")
+    left = weather(left or plain_tex(wl, int(h), base, "ash"))
+    right = weather(right or plain_tex(wr, int(h), base, "ash"))
     west = s.to_screen(x0, y1, z0 + h)
     south = s.to_screen(x1, y1, z0 + h)
     shear(s, left, int(west[0]), int(west[1]), 0.5, 1.0)
@@ -424,10 +560,22 @@ def box(s, x0, y0, x1, y1, z0, h, left=None, right=None, top=None, base="iron"):
 
 def roof_color(a, b, w, d):
     edge = min(a, b, w - a, d - b) < 0.12
+    seed = int(w * 13 + d * 7)
+    n = noise(a * 3.2, b * 3.2, seed)
     if edge:
-        return C["stone_l"] if (int(a * 12) + int(b * 12)) % 2 else C["stone"]
+        c = C["stone"] if (int(a * 12) + int(b * 12)) % 2 else C["stone_d"]
+        return blend(c, 0.55 + 0.4 * n)
     seam = (a * 2) % 1 < 0.05
-    return C["tar_l"] if seam else (C["gravel"] if RNG.random() < 0.07 else C["tar"])
+    c = C["tar_l"] if seam else (C["gravel"] if RNG.random() < 0.07 else C["tar"])
+    # Geflickte Dachpappe in schiefen Rechtecken
+    if hash01(int(a * 2.5), int(b * 2.5), seed) > 0.86:
+        c = mix(c, C["soot"], 0.6)
+    fine = noise(a * 14, b * 14, seed + 1)
+    if n > 0.74 and fine > 0.3:
+        return mix(c, C["puddle"], 0.75)  # stehendes Wasser
+    if n < 0.27 and fine > 0.5:
+        return mix(c, C["moss"], 0.45)  # nur Sprenkel, keine zusammenhängenden Flächen
+    return blend(c, 0.66 + 0.34 * n)
 
 
 def building(x0, y0, w, d, h, left, right, s, things, roof_items=()):
@@ -496,7 +644,7 @@ def roof_sign(word, fy=0.92):
         for u in range(2, tw + 6, 12):
             dr.rectangle((u, th + 4, u + 1, th + 11), fill=C["iron"])
         dr.rectangle((0, th + 4, tw + 7, th + 5), fill=C["iron"])
-        text(dr, 4, 1, word, C["brass_l"], 3)
+        text(dr, 4, 1, word, C["brass"], 3, worn=0.14)
         def draw():
             west = s.to_screen(x0 + 0.3, y + 0.05, h + tex.height)
             shear(s, tex, int(west[0]), int(west[1]), 0.5, 1.0)
@@ -539,6 +687,14 @@ def boiler(x, y, s, things):
         cx, cy = s.to_screen(x + 0.9, y + 0.9, 62)
         s.rect(cx - 24, cy + 44, 48, 22, C["iron"])
         cylinder(s, cx, cy, 22, 62, ("grey_d", "steel", "ash"), rivets=True, bands=True)
+        # Rostfahnen laufen die Kesselwand hinab
+        for _ in range(26):
+            bx = WEAR.randint(-20, 20)
+            depth = (1 - (bx / 22) ** 2) ** 0.5 * 11
+            start = int(cy + depth) + WEAR.randint(1, 40)
+            c = C[WEAR.choice(["rust", "rust_d", "grime", "rust_l"])]
+            for by in range(start, min(start + WEAR.randint(4, 26), int(cy + depth + 62))):
+                s.put(cx + bx, by, c)
         # Manometer
         s.rect(cx - 12, cy + 26, 9, 9, C["brass_d"])
         s.rect(cx - 11, cy + 27, 7, 7, C["paper"])
@@ -555,7 +711,7 @@ def boiler(x, y, s, things):
 
 def overhead_pipe(x0, y0, x1, y1, z, s, things):
     def draw():
-        box(s, x0, y0, x1, y1, z, 5, base="brass_d", top=lambda a, b, w, d: C["brass_l"] if b < 0.07 or a < 0.07 else C["brass"])
+        box(s, x0, y0, x1, y1, z, 5, base="rust_d", top=lambda a, b, w, d: C["brass_d"] if noise(a * 9, b * 9, 5) > 0.62 else C["rust"])
     things.append(Thing(x0, y0, x1, y1, z, z + 5, draw))
 
 
@@ -572,10 +728,11 @@ def tram(x, y, length, s, things):
         d = ImageDraw.Draw(tex)
         d.rectangle((0, 0, w, 3), fill=C["brass_d"])
         d.rectangle((0, 30, w, h), fill=C["soot"])
-        d.rectangle((0, 28, w, 29), fill=C["brass"])
+        d.rectangle((0, 28, w, 29), fill=C["rust_l"])
         for u in range(5, w - 12, 15):
-            d.rectangle((u, 8, u + 10, 22), fill=C["gas"])
+            d.rectangle((u, 8, u + 10, 22), fill=C["gas_d"] if WEAR.random() < 0.45 else C["glass_d"])
             d.line((u + 5, 8, u + 5, 22), fill=C["wood_d"])
+        rust_patches(d, 0, 24, w - 1, 28)
         text(d, 10, 23, "LINIE ", C["brass_l"]) if False else None
         front = Image.new("RGBA", (int(0.8 * HW), h), C["wine"] + (255,))
         fd = ImageDraw.Draw(front)
@@ -597,6 +754,7 @@ def getaway_truck(x, y, s, things):
         d.rectangle((0, 25, side.width, 33), fill=C["soot"])
         d.rectangle((0, 22, side.width, 23), fill=C["brass"])
         d.rectangle((4, 6, 16, 16), fill=C["glass"])
+        rust_patches(d, 0, 18, side.width - 1, 21)
         for wx in (8, side.width - 12):
             d.ellipse((wx - 4, 25, wx + 4, 33), fill=C["black"])
             d.rectangle((wx - 1, 28, wx + 1, 30), fill=C["brass"])
@@ -662,20 +820,90 @@ def ground_color(fx, fy, solids):
         if road_x and not road_y:
             for rail in (8.42, 8.58, 9.42, 9.58):
                 if abs(fx - rail) < 0.018:
-                    return C["steel"]
+                    return C["rust_l"] if noise(fy * 4, rail, 9) > 0.45 else C["rust"]
                 if abs(fx - rail - 0.03) < 0.012:
                     return C["black"]
-        return C[c]
+        # Herausgebrochene Steine und nasser Dreck in den Rinnen
+        if hash01(cell[0], cell[1], 3) < 0.06:
+            return C["dirt"]
+        n = noise(fx * 1.6, fy * 1.6, 11)
+        gutter = road_y and not road_x and min(fy - 9, 12 - fy) < 0.3
+        return blend(C[c], (0.55 if gutter else 0.68) + 0.4 * n)
     if 6 <= fx < 12 or 7 <= fy < 14:
         kerb = fx >= 7.88 and fx < 8 or 10 <= fx < 10.12 or 8.88 <= fy < 9 or 12 <= fy < 12.12
+        n = noise(fx * 1.4, fy * 1.4, 21)
         if kerb:
-            return C["stone_l"]
-        edge = (fx * 2) % 1 < 0.05 or (fy * 2) % 1 < 0.05
-        return C["stone_d"] if edge else C["stone"]
+            return blend(C["stone"], 0.55 + 0.4 * n)
+        cx, cy = int(fx * 2), int(fy * 2)
+        ax, ay = (fx * 2) % 1, (fy * 2) % 1
+        roll = hash01(cx, cy, 7)
+        if roll < 0.05 and noise(fx * 9, fy * 9, 22) > 0.35:
+            return C["dirt"]  # Platte weggebrochen, mit unregelmäßigem Rand
+        edge = ax < 0.05 or ay < 0.05
+        tone = 0.8 + 0.2 * hash01(cx, cy, 8)
+        c = C["stone_d"] if edge else blend(C["stone"], tone)
+        # Gesprungene Platte: Der Sprung läuft schräg und krumm, nicht von Ecke zu Ecke.
+        if roll < 0.3:
+            slope = 0.35 + 1.3 * hash01(cx, cy, 9)
+            line = ay - slope * ax - (hash01(cx, cy, 10) - 0.4) + (noise(fx * 16, fy * 16, 23) - 0.5) * 0.35
+            if abs(line) < 0.022:
+                c = C["grime"]
+        return blend(c, 0.56 + 0.42 * n)
     # Hof
     cell = (int(fx * 3), int(fy * 3))
     r = random.Random(cell[0] * 31 + cell[1] * 17)
-    return C[r.choice(["tar_l", "tar", "gravel"])] if (fx * 3) % 1 > 0.05 and (fy * 3) % 1 > 0.05 else C["tar"]
+    c = C[r.choice(["tar_l", "tar", "gravel"])] if (fx * 3) % 1 > 0.05 and (fy * 3) % 1 > 0.05 else C["tar"]
+    n = noise(fx * 1.8, fy * 1.8, 31)
+    if n < 0.27 and noise(fx * 12, fy * 12, 32) > 0.5:
+        return mix(c, C["moss"], 0.45)
+    return blend(c, 0.56 + 0.45 * n)
+
+
+def scatter_dirt(s, solids):
+    """Pfützen, Ölflecken, Müll und Unkraut, nur auf den Boden gemalt und ohne Einfluss auf die Spiellogik."""
+    def free(x, y):
+        return 0 <= x < 20 and 0 <= y < 20 and not any(a <= x < c and b <= y < d for a, b, c, d in solids)
+
+    def blot(x, y, rx, ry, color, strength):
+        cx, cy = s.to_screen(x, y)
+        seed = WEAR.randrange(1 << 16)
+        for j in range(int(cy - ry), int(cy + ry) + 1):
+            for i in range(int(cx - rx), int(cx + rx) + 1):
+                d = (((i - cx) / rx) ** 2 + ((j - cy) / ry) ** 2) ** 0.5
+                if d + noise(i / 5, j / 3, seed) * 0.6 < 1 and 0 <= i < s.w and 0 <= j < s.h:
+                    s.px[i, j] = mix(s.px[i, j][:3], color, strength) + (255,)
+
+    for _ in range(34):  # Pfützen
+        x, y = WEAR.uniform(0, 20), WEAR.uniform(0, 20)
+        if free(x, y):
+            rx = WEAR.randint(10, 30)
+            blot(x, y, rx, rx * 0.5, C["puddle"], 0.8)
+    for _ in range(36):  # Ölflecken
+        x, y = WEAR.uniform(0, 20), WEAR.uniform(0, 20)
+        if free(x, y):
+            rx = WEAR.randint(5, 13)
+            blot(x, y, rx, rx * 0.5, C["black"], 0.5)
+    for _ in range(420):  # Papier, Scherben, Dreck
+        x, y = WEAR.uniform(0, 20), WEAR.uniform(0, 20)
+        if free(x, y):
+            sx, sy = s.to_screen(x, y)
+            c = C[WEAR.choice(["ash", "plaster", "wood_d", "grime", "rust", "glass_d"])]
+            s.rect(sx, sy, WEAR.randint(1, 3), WEAR.randint(1, 2), c)
+    for _ in range(70):  # Unkraut in den Fugen
+        x, y = WEAR.uniform(0, 20), WEAR.uniform(0, 20)
+        if free(x, y):
+            sx, sy = s.to_screen(x, y)
+            for k in range(WEAR.randint(2, 4)):
+                s.rect(sx + WEAR.randint(-2, 2), sy - WEAR.randint(0, 3), 1, WEAR.randint(1, 3), C["moss"])
+    # Müllhaufen an den Hauswänden
+    for a, b, c, d in solids:
+        for _ in range(int((c - a) + (d - b))):
+            x, y = (WEAR.uniform(a, c), d + WEAR.uniform(0.03, 0.3)) if WEAR.random() < 0.5 else (c + WEAR.uniform(0.03, 0.3), WEAR.uniform(b, d))
+            if free(x, y):
+                sx, sy = s.to_screen(x, y)
+                for k in range(WEAR.randint(4, 14)):
+                    s.rect(sx + WEAR.randint(-6, 6), sy + WEAR.randint(-3, 3), WEAR.randint(1, 3), WEAR.randint(1, 2),
+                           C[WEAR.choice(["wood_d", "grime", "dirt", "plaster", "soot", "rust_d"])])
 
 
 def draw_ground(s, solids, glows):
@@ -685,6 +913,7 @@ def draw_ground(s, solids, glows):
             c = ground_color(fx, fy, solids)
             if c:
                 s.put(sx, sy, c)
+    scatter_dirt(s, solids)
     # Kontaktschatten an Gebäudekanten
     for x0, y0, x1, y1 in solids:
         for sy in range(s.h):
@@ -718,6 +947,9 @@ def build_scene(with_people=True):
     shop(shop_d, 60, 127, 76, "KOHLE")
     right = tenement(160, 128, door_at=70)
     pipe_v(ImageDraw.Draw(right), 12, 4, 127)
+    poster(ImageDraw.Draw(left), 8, 96)
+    poster(ImageDraw.Draw(right), 100, 96)
+    text(ImageDraw.Draw(right), 110, 114, "STREIK", C["paper"], 1, worn=0.2)
     building(1, 1, 5, 5, 128, left, right, s, things,
              [chimney(0.2, 0.2), chimney(0.65, 0.3, 20, False), water_tank(0.35, 0.55), vent(0.8, 0.8), skylight(0.1, 0.72)])
 
@@ -731,6 +963,10 @@ def build_scene(with_people=True):
     hotel_l = tenement(160, 170, "HOTEL", door_at=72, lit_rate=0.6)
     hotel_r = tenement(160, 170, door_at=30, lit_rate=0.6)
     pipe_v(ImageDraw.Draw(hotel_r), 120, 6, 169)
+    poster(ImageDraw.Draw(hotel_l), 20, 138)
+    poster(ImageDraw.Draw(hotel_l), 110, 136)
+    poster(ImageDraw.Draw(hotel_r), 62, 138)
+    text(ImageDraw.Draw(hotel_r), 80, 142, "BRANDT RAUS", C["paper"], 1, worn=0.25)
     building(1, 12, 5, 5, 170, hotel_l, hotel_r, s, things,
              [roof_sign("HOTEL ADLER"), chimney(0.75, 0.3, 24, False), vent(0.2, 0.3), water_tank(0.5, 0.2)])
 
@@ -749,11 +985,12 @@ def build_scene(with_people=True):
     pipe_v(fd, 24, 52, 109)
     tw, th = text_size("BRANDT WERKE", 2)
     fd.rectangle((96 - tw // 2 - 4, 56, 96 + tw // 2 + 4, 58 + th), fill=C["black"])
-    text(fd, 96 - tw // 2, 57, "BRANDT WERKE", C["brass_l"], 2)
+    text(fd, 96 - tw // 2, 57, "BRANDT WERKE", C["brass_l"], 2, worn=0.08)
     fab_r, fr = wall(160, 110, ("green",))
     fr.rectangle((0, 0, 160, 3), fill=C["green_l"])
     pipe_h(fr, 0, 159, 30)
     pipe_v(fr, 40, 30, 109)
+    text(fr, 62, 74, "STREIK", C["paper"], 2, worn=0.3)
     building(12, 1, 6, 5, 110, fab_l, fab_r, s, things,
              [chimney(0.15, 0.25, 54), chimney(0.4, 0.25, 54), skylight(0.1, 0.65), skylight(0.45, 0.65), skylight(0.72, 0.65), vent(0.8, 0.2)])
 
@@ -761,12 +998,15 @@ def build_scene(with_people=True):
     lag_l, ld = wall(160, 70, ("brick",))
     ld.rectangle((0, 0, 160, 3), fill=C["stone_l"])
     door(ld, 40, 69, 34, 40, "wood", True)
-    text(ld, 90, 30, "LAGER", C["paper"], 2)
+    text(ld, 90, 30, "LAGER", C["plaster"], 2, worn=0.2)
+    poster(ld, 86, 46)
+    poster(ld, 110, 48)
     lag_r, lr = wall(192, 70, ("brick",))
     lr.rectangle((0, 0, 192, 3), fill=C["stone_l"])
     pipe_h(lr, 0, 191, 20)
     for u in range(20, 170, 40):
         window(lr, u, 30, 14, 18, lit=u % 3 == 0)
+    text(lr, 44, 56, "STREIK", C["paper"], 1, worn=0.2)
     building(12, 12, 5, 6, 70, lag_l, lag_r, s, things, [vent(0.3, 0.3), chimney(0.7, 0.6, 22)])
 
     # Maschinen im Hof vor der Fabrik
@@ -787,13 +1027,13 @@ def build_scene(with_people=True):
 
     # Figuren
     if with_people:
-        person(10.5, 8.4, "Agentin", "e", 0, s, things)
-        person(10.2, 8.9, "Schlosser", "e", 1, s, things)
-        person(10.9, 8.9, "Buchhalter", "s", 0, s, things)
+        person(10.5, 8.4, "Agent", "e", 0, s, things)
+        person(10.2, 8.9, "Agent", "e", 1, s, things)
+        person(10.9, 8.9, "Agent", "s", 0, s, things)
         person(10.6, 9.5, "Wachmann", "s", 1, s, things)
         person(7.2, 6.2, "Wachmann", "n", 0, s, things)
-        person(6.7, 9.8, "Buchhalter", "e", 3, s, things)
-        person(11.2, 6.1, "Schlosser", "s", 3, s, things)
+        person(6.7, 9.8, "Agent", "e", 3, s, things)
+        person(11.2, 6.1, "Agent", "s", 3, s, things)
 
     draw_ground(s, solids, glows)
     return s, sort_things(things)
