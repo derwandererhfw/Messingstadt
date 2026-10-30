@@ -89,6 +89,17 @@ Lohnkasse (300). Beute zählt nur, wenn der Trupp entkommt. Papiere fälschen is
 Der Stand wird im Benutzerordner des Spiels gespeichert (`kampagne.json`). Es gibt bisher nur eine
 Mission, „Nächster Einsatz“ spielt sie erneut.
 
+### Umgebung
+
+Die Stadt bewegt sich auch ohne Zutun: Rauch aus Schornsteinen und Kesseln, Dampf aus Gullys, Nieselregen
+mit Ringen in den Pfützen, flackernde Laternen (eine mit Wackelkontakt), flackernde Kesselfeuer und
+Papierfetzen in Windböen. Das ist reine Darstellung mit eigenem Zufall in `game/Ambience.cs` und
+`game/RainLayer.cs`. Die Spiellogik bleibt deterministisch, und die Animation läuft auch in der Pause weiter.
+
+### Schüsse
+
+Nach einem Schuss hält die Figur die Waffe kurz aufs Ziel, auch im Weitergehen, mit kurzem Rückstoß. Dazu kommen Mündungsfeuer, das die Umgebung erhellt, Leuchtspur sowie Blut bei Treffern und Staub bei Fehlschüssen. Alles ist reine Darstellung, nur die Schussrichtung merkt sich die Logik.
+
 ### Stand der Spielweisen
 
 Gemessen in der Spiellogik über je 300 Zufallsfolgen mit `tools/Messingstadt.Balance`:

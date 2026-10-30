@@ -20,6 +20,7 @@ from PIL import Image, ImageDraw
 OUT = Path(__file__).resolve().parents[2] / "assets" / "concept"
 RNG = random.Random(1923)
 WEAR = random.Random(1931)  # eigener Zufall für die Abnutzung, damit RNG die Fenster nicht verschiebt
+AMBIENT = {"smoke": [], "steam": [], "fires": [], "puddles": []}  # Bildpositionen für die Animationen im Spiel
 HW, HH = 32, 16  # halbe Tile-Breite und -Höhe
 
 # Palette: Abenddämmerung statt Nacht, deutlich heller als die erste Fassung
@@ -361,8 +362,8 @@ SPECS = {
 }
 
 
-def figure(s, ox, oy, spec, direction, step=0):
-    """Figur 22 × 40. ox, oy = linke obere Ecke. step: 0 Stand, 1–3 Gehphasen."""
+def figure(s, ox, oy, spec, direction, step=0, aim=False):
+    """Figur 22 × 40. ox, oy = linke obere Ecke. step: 0 Stand, 1–3 Gehphasen. aim: Schießhaltung."""
     co_d, co, co_l = spec["coat"]
     legs, hem, belt = spec["legs"], spec["hem"], spec["belt"]
     R = lambda x, y, w, h, c: s.rect(ox + x, oy + y, w, h, C[c])  # noqa: E731
@@ -376,9 +377,10 @@ def figure(s, ox, oy, spec, direction, step=0):
         R(12, 38 - lift_r, 4, 2, "black")
         # Arme hängen eng am Körper, gegengleich zu den Beinen
         R(4, 12, 2, 12 - lift_r, co)
-        R(16, 12, 2, 12 - lift_l, co_d)
         R(4, 24 - lift_r, 2, 2, "skin_d")
-        R(16, 24 - lift_l, 2, 2, "skin_d")
+        if not aim:
+            R(16, 12, 2, 12 - lift_l, co_d)
+            R(16, 24 - lift_l, 2, 2, "skin_d")
         # Rumpf mit hängenden Schultern, der Mantel fällt nach unten leicht weiter
         R(7, 10, 8, 1, co)
         R(6, 11, 10, hem - 11, co)
@@ -402,8 +404,19 @@ def figure(s, ox, oy, spec, direction, step=0):
             R(12, 5, 1, 1, "black")
         else:
             R(9, 4, 4, 5, spec["hair"])
+        if aim and direction == "s":
+            # Der Arm zeigt auf den Betrachter: verkürzt, die Waffe vor der Brust
+            R(16, 12, 2, 3, co_d)
+            R(11, 13, 6, 2, co_d)
+            R(9, 13, 2, 2, "skin_d")
+            R(9, 12, 2, 1, "black")
+            R(10, 11, 1, 1, "iron")
+        elif aim:
+            # Von hinten sieht man nur den angehobenen Ellbogen
+            R(16, 11, 2, 3, co_d)
+            R(17, 10, 2, 2, co_d)
     else:
-        spread = {0: 1, 1: 3, 2: 0, 3: 3}[step]
+        spread = 2 if aim else {0: 1, 1: 3, 2: 0, 3: 3}[step]
         near = 1 if step != 3 else -1
         # hinteres Bein dunkler, beide sichtbar
         R(10 - spread * near, hem, 3, 38 - hem, "black")
@@ -419,14 +432,22 @@ def figure(s, ox, oy, spec, direction, step=0):
         R(8, belt, 6, 1, co_d if spec["hat"] == "fedora" else "black")
         R(13, 10, 1, 3, spec["shirt"])
         swing = {0: 0, 1: 2, 2: 0, 3: -2}[step]
-        R(10 + swing, 12, 2, 12, co_d)
-        R(10 + swing, 24, 2, 2, "skin_d")
+        if not aim:
+            R(10 + swing, 12, 2, 12, co_d)
+            R(10 + swing, 24, 2, 2, "skin_d")
         R(10, 8, 3, 2, "skin_d")
         R(10, 4, 4, 5, "skin")
         R(10, 4, 1, 5, spec["hair"])
         R(10, 4, 4, 2, "skin_d")
         R(13, 5, 1, 1, "black")
         R(14, 6, 1, 1, "skin_d")
+        if aim:
+            # Ausgestreckter Arm mit Pistole auf Schulterhöhe
+            R(12, 11, 7, 2, co_d)
+            R(12, 11, 7, 1, co)
+            R(19, 11, 1, 2, "skin_d")
+            R(20, 11, 2, 1, "black")
+            R(20, 12, 1, 1, "iron")
     # Kopfbedeckung
     hat, c = spec["hat"], spec["hat_c"]
     side = direction == "e"
@@ -570,17 +591,15 @@ def building(x0, y0, w, d, h, left, right, s, things, roof_items=()):
 def chimney(fx, fy, hc=26, smoke=True):
     def add(x0, y0, w, d, h, s, things):
         x, y = x0 + fx * w, y0 + fy * d
+        if smoke:
+            cx, cy = s.to_screen(x + 0.16, y + 0.16, h + hc)
+            AMBIENT["smoke"].append([int(cx), int(cy) - 2])
         def draw():
             tl, _ = wall(10, hc, ("brick",))
             tr, _ = wall(10, hc, ("brick",))
             ImageDraw.Draw(tl).rectangle((0, 0, 10, 3), fill=C["stone_l"])
             ImageDraw.Draw(tr).rectangle((0, 0, 10, 3), fill=C["stone_l"])
             box(s, x, y, x + 0.32, y + 0.32, h, hc, tl, tr, lambda a, b, w2, d2: C["black"])
-            if smoke:
-                cx, cy = s.to_screen(x + 0.16, y + 0.16, h + hc)
-                puff(s, cx, cy - 8, 7)
-                puff(s, cx + 3, cy - 20, 10)
-                puff(s, cx + 8, cy - 36, 13)
         things.append(Thing(x, y, x + 0.32, y + 0.32, h, h + hc, draw))
     return add
 
@@ -664,8 +683,12 @@ def puff(s, cx, cy, r):
 
 
 def boiler(x, y, s, things):
+    top = s.to_screen(x + 0.9, y + 0.9, 62)
+    AMBIENT["smoke"].append([int(top[0]), int(top[1]) - 4])
+    AMBIENT["fires"].append([int(top[0]) + 8, int(top[1]) + 46])
+
     def draw():
-        cx, cy = s.to_screen(x + 0.9, y + 0.9, 62)
+        cx, cy = top
         s.rect(cx - 24, cy + 44, 48, 22, C["iron"])
         cylinder(s, cx, cy, 22, 62, ("grey_d", "steel", "ash"), rivets=True, bands=True)
         # Rostfahnen laufen die Kesselwand hinab
@@ -685,8 +708,6 @@ def boiler(x, y, s, things):
         s.rect(cx + 2, cy + 40, 13, 13, C["black"])
         s.rect(cx + 4, cy + 42, 9, 9, C["gas_d"])
         s.rect(cx + 6, cy + 44, 5, 5, C["gas"])
-        puff(s, cx + 2, cy - 18, 12)
-        puff(s, cx - 6, cy - 34, 16)
     things.append(Thing(x, y, x + 1.8, y + 1.8, 0, 90, draw, solid=True, opaque=True))
 
 
@@ -859,6 +880,8 @@ def scatter_dirt(s, solids):
         if free(x, y):
             rx = WEAR.randint(10, 30)
             blot(x, y, rx, rx * 0.5, C["puddle"], 0.8)
+            px, py = s.to_screen(x, y)
+            AMBIENT["puddles"].append([int(px), int(py), rx])
     for _ in range(36):  # Ölflecken
         x, y = WEAR.uniform(0, 20), WEAR.uniform(0, 20)
         if free(x, y):
@@ -920,6 +943,8 @@ def draw_ground(s, solids, glows):
 def build_scene(with_people=True):
     s = Scene(20)
     things, glows = [], []
+    for points in AMBIENT.values():
+        points.clear()
     solids = [(1, 1, 6, 6), (0, 7, 6, 9), (1, 12, 6, 17), (12, 1, 18, 6), (12, 12, 17, 18)]
 
     # Links: Mietshaus mit Laden, Bank aus Stein, Hotel mit Dachschild
@@ -1017,6 +1042,15 @@ def build_scene(with_people=True):
         person(11.2, 6.1, "Agent", "s", 3, s, things)
 
     draw_ground(s, solids, glows)
+    # Gullydeckel, aus denen im Spiel Dampf aufsteigt
+    for mx, my in ((9.0, 6.4), (4.0, 10.6), (14.6, 10.7)):
+        cx, cy = s.to_screen(mx, my)
+        for j in range(-5, 6):
+            for i in range(-10, 11):
+                d = (i / 10) ** 2 + (j / 5) ** 2
+                if d < 1:
+                    s.put(int(cx) + i, int(cy) + j, C["iron"] if d > 0.6 else (C["black"] if (i + j) % 3 else C["soot"]))
+        AMBIENT["steam"].append([int(cx), int(cy)])
     return s, sort_things(things)
 
 
@@ -1040,7 +1074,7 @@ def export_game():
         manifest.append({"file": name, "px": bbox[0], "py": bbox[1], "x0": t.x0, "y0": t.y0, "x1": t.x1, "y1": t.y1})
         if t.solid:
             solids.append({"x0": t.x0, "y0": t.y0, "x1": t.x1, "y1": t.y1, "opaque": t.opaque})
-    (assets / "manifest.json").write_text(json.dumps({"ox": s.ox, "oy": s.oy, "things": manifest}), encoding="utf-8")
+    (assets / "manifest.json").write_text(json.dumps({"ox": s.ox, "oy": s.oy, "things": manifest, **AMBIENT}), encoding="utf-8")
     (root / "data" / "map_01.json").write_text(json.dumps({"width": 20, "height": 20, "solids": solids}, indent=1), encoding="utf-8")
 
     export_figures(assets)
@@ -1057,22 +1091,23 @@ def export_game():
 
 
 def export_figures(assets):
-    """Figurenblatt: je Figur eine Zeile, Spalten s0–s3, e0–e3, n0–n3. Feld 24 × 42."""
+    """Figurenblatt: je Figur eine Zeile, Spalten s0–s3, e0–e3, n0–n3, dann Schießhaltung s, e, n. Feld 24 × 42."""
     names = list(SPECS)
     sheet = Scene(1)
-    sheet.w, sheet.h = 24 * 12, 42 * len(names)
+    sheet.w, sheet.h = 24 * 15, 42 * len(names)
     sheet.img = Image.new("RGBA", (sheet.w, sheet.h), (0, 0, 0, 0))
     sheet.px = sheet.img.load()
+    frames = [(d_i * 4 + step, d, step, False) for d_i, d in enumerate(("s", "e", "n")) for step in range(4)]
+    frames += [(12 + d_i, d, 0, True) for d_i, d in enumerate(("s", "e", "n"))]
     for row, name in enumerate(names):
-        for d_i, d in enumerate(("s", "e", "n")):
-            for step in range(4):
-                cell_x, cell_y = (d_i * 4 + step) * 24, row * 42
-                # Weicher Schatten am Boden, damit die Figur im Bild steht und nicht schwebt
-                for j in range(38, 42):
-                    half = {38: 6, 39: 9, 40: 9, 41: 6}[j]
-                    for i in range(12 - half, 12 + half):
-                        sheet.px[cell_x + i, cell_y + j] = (0, 0, 0, 120)
-                figure(sheet, 1 + cell_x, 1 + cell_y, SPECS[name], d, step)
+        for column, d, step, aim in frames:
+            cell_x, cell_y = column * 24, row * 42
+            # Weicher Schatten am Boden, damit die Figur im Bild steht und nicht schwebt
+            for j in range(38, 42):
+                half = {38: 6, 39: 9, 40: 9, 41: 6}[j]
+                for i in range(12 - half, 12 + half):
+                    sheet.px[cell_x + i, cell_y + j] = (0, 0, 0, 120)
+            figure(sheet, 1 + cell_x, 1 + cell_y, SPECS[name], d, step, aim)
     sheet.img.save(assets / "figures.png")
     (assets / "figures.json").write_text(json.dumps({"names": names, "w": 24, "h": 42}), encoding="utf-8")
 

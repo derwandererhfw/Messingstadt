@@ -121,9 +121,7 @@ namespace Messingstadt
                 {
                     continue;
                 }
-                var a = Game.ToScreen(s.FromX, s.FromY) + new Vector2(0, -22);
-                var b = Game.ToScreen(s.ToX, s.ToY) + new Vector2(0, -20);
-                DrawLine(a, b, s.Hit ? new Color(1f, 0.9f, 0.5f) : new Color(0.7f, 0.7f, 0.7f, 0.6f), 1f);
+                DrawShot(s, age);
             }
         }
 
@@ -180,6 +178,44 @@ namespace Messingstadt
                         DrawRect(new Rect2(p + new Vector2(-14, 4), new Vector2(28, 4)), new Color(0, 0, 0, 0.7f));
                         DrawRect(new Rect2(p + new Vector2(-13, 5), new Vector2(26 * f, 2)), new Color(0.95f, 0.75f, 0.25f));
                     }
+                }
+            }
+        }
+
+        /// <summary>Mündungsfeuer an der Waffe, Leuchtspur und Einschlag: Blut bei Treffern, Staub bei Fehlschüssen.</summary>
+        private void DrawShot(ShotEvent s, int age)
+        {
+            var from = Game.ToScreen(s.FromX, s.FromY) + new Vector2(0, -28);
+            var dir = (Game.ToScreen(s.ToX, s.ToY) - Game.ToScreen(s.FromX, s.FromY)).Normalized();
+            var muzzle = from + dir * 10f;
+            int hash = (s.Tick * 31 + s.ToX + s.FromY) & 0xffff;
+            float missX = (hash % 21 - 10) * 1.2f, missY = hash / 7 % 13 - 2;
+            var impact = Game.ToScreen(s.ToX, s.ToY) + (s.Hit ? new Vector2(0, -22) : new Vector2(missX, missY));
+            if (age <= 1)
+            {
+                var normal = new Vector2(-dir.Y, dir.X);
+                DrawLine(muzzle, muzzle + dir * 9f, new Color(1f, 0.85f, 0.45f), 2f);
+                DrawLine(muzzle - normal * 3.5f, muzzle + normal * 3.5f, new Color(1f, 0.7f, 0.25f, 0.9f), 1f);
+                DrawCircle(muzzle, 3.5f, new Color(1f, 0.72f, 0.25f, 0.85f));
+                DrawCircle(muzzle, 1.5f, Colors.White);
+                DrawLine(muzzle, impact, new Color(1f, 0.92f, 0.65f, 0.75f), 1f);
+            }
+            else
+            {
+                DrawLine(muzzle, impact, new Color(0.7f, 0.7f, 0.7f, 0.25f), 1f);
+            }
+            for (int i = 0; i < 5; i++)
+            {
+                int bit = (hash >> i) * (i + 3);
+                var spray = new Vector2(bit % 9 - 4, bit / 3 % 7 - 4) * (0.5f + age * 0.5f);
+                if (s.Hit)
+                {
+                    spray += dir * age * 1.5f;
+                    DrawRect(new Rect2(impact + spray, new Vector2(1.5f, 1.5f)), new Color(0.62f, 0.07f, 0.06f));
+                }
+                else
+                {
+                    DrawRect(new Rect2(impact + new Vector2(spray.X, -Mathf.Abs(spray.Y)), new Vector2(1.5f, 1.5f)), new Color(0.6f, 0.58f, 0.54f, 0.85f));
                 }
             }
         }

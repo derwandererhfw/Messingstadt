@@ -248,6 +248,22 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void ShooterRemembersAimWhileWalkingAway()
+        {
+            var w = new World(OpenMap(), Mission(new() { Agent(5.5, 5.5) }, new() { Guard(10.5, 5.5, -1, 0) }));
+            w.Units[0].Hp = 100000;
+            w.Units[1].Hp = 100000;
+            w.OrderAttack(0, 1);
+            Run(w, 2);
+            Assert.Equal(w.Tick - 1, w.Units[0].LastFiredTick);
+            Assert.True(w.Units[0].AimX > 0);
+            w.OrderMove(0, 0, 5);
+            Run(w, 3);
+            Assert.True(w.Units[0].FacingX < 0, "Geht nach links");
+            Assert.True(w.Units[0].AimX > 0, "Die Waffe zeigt weiter auf die Wache");
+        }
+
+        [Fact]
         public void BoardingTheCarTakesTime()
         {
             var w = new World(OpenMap(), Mission(new() { Agent(28.5, 10.5) }, new()));

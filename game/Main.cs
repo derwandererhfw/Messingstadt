@@ -16,6 +16,10 @@ namespace Messingstadt
         private const float ScrollSpeed = 300f;
         private const float MarkerSeconds = 0.8f;
         private static readonly Color Night = new(0.34f, 0.37f, 0.55f);
+        private const float LampEnergy = 1.15f;
+        private const int AimTicksStanding = 12;
+        private const int AimTicksWalking = 5;
+        private const int AimColumn = 12;
 
         /// <summary>Farbe für Ring und Nummer. Alle Agenten tragen dasselbe, nur die Nummer unterscheidet sie.</summary>
         public static readonly Color AgentColor = new(1f, 0.8f, 0.45f);
@@ -25,6 +29,8 @@ namespace Messingstadt
         private readonly List<ThingInfo> _things = new();
         private readonly List<Sprite2D> _thingSprites = new();
         private readonly List<Image> _thingImages = new();
+        private readonly List<PointLight2D> _lampLights = new();
+        private readonly Ambience _ambience = new();
         private readonly List<Sprite2D> _unitSprites = new();
         private readonly Dictionary<string, int> _figureRows = new();
         private Sprite2D _book = null!;
@@ -45,6 +51,8 @@ namespace Messingstadt
         private bool _paused;
 
         // Automatischer Prüflauf: --shot=<datei> --frames=<n> --auto
+        // Mit --shot-on-fire=<n> entsteht das Bild im Moment des ersten Schusses ab Takt n.
+        private int _shotOnFireTick = -1;
         private string? _shotPath;
         private int _shotFrame = -1;
         private bool _auto;
@@ -95,17 +103,27 @@ namespace Messingstadt
             };
             foreach (var lamp in _mission.Lamps)
             {
-                AddChild(new PointLight2D
+                var light = new PointLight2D
                 {
                     Texture = glow,
                     TextureScale = 1.1f,
                     Color = new Color(1f, 0.74f, 0.42f),
-                    Energy = 1.15f,
+                    Energy = LampEnergy,
                     RangeZMin = -1,
                     RangeZMax = 4096,
                     Position = new Vector2(_ox + (float)(lamp[0] - lamp[1]) * 32f, _oy + (float)(lamp[0] + lamp[1]) * 16f),
-                });
+                };
+                AddChild(light);
+                _lampLights.Add(light);
             }
+            _ambience.Game = this;
+            _ambience.Glow = glow;
+            _ambience.Lamps = _lampLights;
+            _ambience.LampEnergy = LampEnergy;
+            float halfW = _map.Width * 32f;
+            _ambience.Area = new Rect2(_ox - halfW, _oy, 2 * halfW, _map.Height * 32f);
+            AddChild(_ambience);
+            AddChild(new RainLayer { ZIndex = 3900 });
         }
 
         private void ParseArgs()
@@ -119,6 +137,10 @@ namespace Messingstadt
                 else if (a.StartsWith("--frames="))
                 {
                     _shotFrame = int.Parse(a["--frames=".Length..]);
+                }
+                else if (a.StartsWith("--shot-on-fire="))
+                {
+                    _shotOnFireTick = int.Parse(a["--shot-on-fire=".Length..]);
                 }
                 else if (a == "--auto")
                 {
@@ -157,6 +179,13 @@ namespace Messingstadt
                 _thingSprites.Add(sprite);
                 index++;
             }
+            _ambience.Smoke = ReadPoints(manifest.RootElement, "smoke");
+            _ambience.Steam = ReadPoints(manifest.RootElement, "steam");
+            _ambience.Fires = ReadPoints(manifest.RootElement, "fires");
+            foreach (var p in manifest.RootElement.GetProperty("puddles").EnumerateArray())
+            {
+                _ambience.Puddles.Add((new Vector2(p[0].GetInt32(), p[1].GetInt32()), p[2].GetInt32()));
+            }
             using var figures = JsonDocument.Parse(File.ReadAllText(ProjectSettings.GlobalizePath("res://assets/figures.json")));
             _cellW = figures.RootElement.GetProperty("w").GetInt32();
             _cellH = figures.RootElement.GetProperty("h").GetInt32();
@@ -168,6 +197,16 @@ namespace Messingstadt
             _figures = LoadTexture("res://assets/figures.png");
             _book = new Sprite2D { Texture = LoadTexture("res://assets/book.png") };
             AddChild(_book);
+        }
+
+        private static List<Vector2> ReadPoints(JsonElement root, string name)
+        {
+            var points = new List<Vector2>();
+            foreach (var p in root.GetProperty(name).EnumerateArray())
+            {
+                points.Add(new Vector2(p[0].GetInt32(), p[1].GetInt32()));
+            }
+            return points;
         }
 
         private static int ThingZ(int index) => (index + 1) * 32;
@@ -365,6 +404,12 @@ namespace Messingstadt
             UpdateUnits();
             UpdateUi();
             _frame++;
+            if (_shotOnFireTick >= 0 && World.Tick >= _shotOnFireTick && World.Shots.Count > 0 && World.Shots[^1].Tick == World.Tick)
+            {
+                // Erst im nächsten Bild ist der Schuss gezeichnet.
+                _shotFrame = _frame + 1;
+                _shotOnFireTick = -1;
+            }
             if (_shotPath != null && _frame == _shotFrame)
             {
                 GetViewport().GetTexture().GetImage().SavePng(_shotPath);
@@ -416,7 +461,11 @@ namespace Messingstadt
                 var s = _unitSprites[u.Id];
                 var foot = ToScreen(u.X, u.Y);
                 int row = _figureRows.GetValueOrDefault(u.Sprite, 0);
-                float sx = u.FacingX - u.FacingY, sy = (u.FacingX + u.FacingY) / 2f;
+                // Nach einem Schuss hält die Figur die Waffe kurz aufs Ziel, auch wenn sie dabei weitergeht.
+                int sinceShot = World.Tick - u.LastFiredTick;
+                bool aiming = u.Alive && sinceShot <= (u.Moving ? AimTicksWalking : AimTicksStanding);
+                int lookX = aiming ? u.AimX : u.FacingX, lookY = aiming ? u.AimY : u.FacingY;
+                float sx = lookX - lookY, sy = (lookX + lookY) / 2f;
                 int dir;
                 bool flip = false;
                 if (Math.Abs(sx) > Math.Abs(sy) * 1.2f)
@@ -434,13 +483,19 @@ namespace Messingstadt
                     int[] seq = { 1, 2, 3, 2 };
                     step = seq[u.WalkTick / 3 % 4];
                 }
-                s.RegionRect = new Rect2((dir * 4 + step) * _cellW, row * _cellH, _cellW, _cellH);
+                int column = aiming ? AimColumn + dir : dir * 4 + step;
+                s.RegionRect = new Rect2(column * _cellW, row * _cellH, _cellW, _cellH);
                 s.FlipH = flip;
                 if (u.Alive)
                 {
                     s.RotationDegrees = 0;
                     s.Modulate = Colors.White;
                     s.Position = foot - new Vector2(12, 41);
+                    if (aiming && sinceShot <= 1)
+                    {
+                        // Rückstoß: ein kurzer Ruck gegen die Schussrichtung
+                        s.Position -= new Vector2(sx, sy).Normalized() * 1.5f;
+                    }
                     s.ZIndex = ThingZ(InsertIndex(u) - 1) + rank + 1;
                 }
                 else

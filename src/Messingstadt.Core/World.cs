@@ -80,6 +80,9 @@ namespace Messingstadt.Core
         public int BribeTarget = -1;
         public bool Bribed;
 
+        /// <summary>Richtung des letzten Schusses. Nur für die Darstellung, Gehen ändert sie nicht.</summary>
+        public int AimX, AimY;
+
         public bool Alive => Hp > 0;
         public int TileX => X / World.TileUnits;
         public int TileY => Y / World.TileUnits;
@@ -954,6 +957,8 @@ namespace Messingstadt.Core
             u.Cooldown = WeaponCooldown;
             u.FacingX = target.X - u.X;
             u.FacingY = target.Y - u.Y;
+            u.AimX = u.FacingX;
+            u.AimY = u.FacingY;
             u.LastFiredTick = Tick;
             if (!_everShot)
             {
