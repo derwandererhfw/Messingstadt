@@ -16,6 +16,14 @@ namespace Messingstadt.Core
         Lost,
     }
 
+    /// <summary>Wie leise der Einsatz bisher lief: nie bemerkt, bemerkt ohne Schuss, Schüsse gefallen.</summary>
+    public enum MissionRating
+    {
+        Unseen,
+        Quiet,
+        Loud,
+    }
+
     /// <summary>Verhalten einer Wache: Rundgang, bemerken, kämpfen, nachsehen, absuchen.</summary>
     public enum GuardState
     {
@@ -96,8 +104,8 @@ namespace Messingstadt.Core
         private const int CoverScore = 30;
         private const int PickupRadius = 700;
         private const int RepathInterval = 20;
-        private const int CarrierSpeed = 90;
-        private const int CloseNoticeRange = 2 * TileUnits;
+        private const int CarrierSpeed = 100;
+        public const int GuardCloseRange = 2 * TileUnits;
         private const int LookAroundTicks = 60;
         private const int SpreadRadius = 3;
 
@@ -114,6 +122,12 @@ namespace Messingstadt.Core
 
         private uint _rng;
         private readonly (int X0, int Y0, int X1, int Y1) _exit;
+        private readonly ReinforcementData? _reinforcements;
+        private int _reinforceTick;
+        private int _reinforcedCount;
+        private int _lastShotX, _lastShotY;
+        private bool _everNoticed;
+        private bool _everShot;
 
         public GameMap Map { get; }
         public List<Unit> Units { get; } = new();
@@ -126,12 +140,17 @@ namespace Messingstadt.Core
         public int ItemProgress { get; private set; }
         public string ItemName { get; }
         public (int X0, int Y0, int X1, int Y1) Exit => _exit;
+        public MissionRating Rating => _everShot ? MissionRating.Loud : _everNoticed ? MissionRating.Quiet : MissionRating.Unseen;
+
+        /// <summary>Takte bis zur nächsten Verstärkung, -1 wenn keine unterwegs ist.</summary>
+        public int TicksUntilReinforcement => _reinforceTick > 0 ? _reinforceTick - Tick : -1;
 
         public World(MapData mapData, MissionData mission)
         {
             Map = mapData.Build();
             _rng = (uint)mission.Seed | 1u;
             ItemName = mission.ItemName;
+            _reinforcements = mission.Reinforcements;
             ItemX = ToUnits(mission.Item[0]);
             ItemY = ToUnits(mission.Item[1]);
             _exit = (ToUnits(mission.Exit.X0), ToUnits(mission.Exit.Y0), ToUnits(mission.Exit.X1), ToUnits(mission.Exit.Y1));
@@ -268,7 +287,27 @@ namespace Messingstadt.Core
                 Move(u);
                 Fight(u);
             }
+            SpawnReinforcement();
             CheckMission();
+        }
+
+        private void SpawnReinforcement()
+        {
+            if (_reinforcements == null || _reinforceTick == 0 || Tick < _reinforceTick)
+            {
+                return;
+            }
+            _reinforcedCount++;
+            AddUnit(new UnitData
+            {
+                Name = $"Verstärkung {_reinforcedCount}", Sprite = _reinforcements.Sprite,
+                X = _reinforcements.X, Y = _reinforcements.Y,
+            }, Faction.Guard, GuardHp);
+            var g = Units[^1];
+            g.LastKnownX = _lastShotX;
+            g.LastKnownY = _lastShotY;
+            StartInvestigating(g);
+            _reinforceTick = _reinforcedCount < _reinforcements.Count ? Tick + _reinforcements.Interval * TickRate : 0;
         }
 
         private void ThinkAgent(Unit a)
@@ -445,8 +484,9 @@ namespace Messingstadt.Core
             }
         }
 
-        private static void StartNoticing(Unit g, Unit seen, int ticks)
+        private void StartNoticing(Unit g, Unit seen, int ticks)
         {
+            _everNoticed = true;
             g.GuardState = GuardState.Noticing;
             g.NoticeTicks = ticks;
             g.Path.Clear();
@@ -585,25 +625,32 @@ namespace Messingstadt.Core
             int speed = u.Faction == Faction.Agent
                 ? (u.CarriesItem ? CarrierSpeed : AgentSpeed)
                 : (u.Alerted ? GuardAlertSpeed : GuardPatrolSpeed);
-            var (tx, ty) = u.Path[0];
-            int wx = tx * TileUnits + TileUnits / 2, wy = ty * TileUnits + TileUnits / 2;
-            int dx = wx - u.X, dy = wy - u.Y;
-            int dist = (int)Math.Sqrt((double)dx * dx + (double)dy * dy);
-            if (dist <= speed)
+            // Der Rest des Schritts zählt beim nächsten Feld weiter, sonst liefe jeder langsamer als sein Tempo.
+            int remaining = speed;
+            while (remaining > 0 && u.Path.Count > 0)
             {
-                u.X = wx;
-                u.Y = wy;
-                u.Path.RemoveAt(0);
-            }
-            else
-            {
-                u.X += dx * speed / dist;
-                u.Y += dy * speed / dist;
-            }
-            if (dx != 0 || dy != 0)
-            {
-                u.FacingX = dx;
-                u.FacingY = dy;
+                var (tx, ty) = u.Path[0];
+                int wx = tx * TileUnits + TileUnits / 2, wy = ty * TileUnits + TileUnits / 2;
+                int dx = wx - u.X, dy = wy - u.Y;
+                int dist = (int)Math.Sqrt((double)dx * dx + (double)dy * dy);
+                if (dist <= remaining)
+                {
+                    u.X = wx;
+                    u.Y = wy;
+                    u.Path.RemoveAt(0);
+                    remaining -= dist;
+                }
+                else
+                {
+                    u.X += dx * remaining / dist;
+                    u.Y += dy * remaining / dist;
+                    remaining = 0;
+                }
+                if (dx != 0 || dy != 0)
+                {
+                    u.FacingX = dx;
+                    u.FacingY = dy;
+                }
             }
             u.Moving = true;
             u.WalkTick++;
@@ -651,6 +698,16 @@ namespace Messingstadt.Core
             u.FacingX = target.X - u.X;
             u.FacingY = target.Y - u.Y;
             u.LastFiredTick = Tick;
+            _lastShotX = u.X;
+            _lastShotY = u.Y;
+            if (!_everShot)
+            {
+                _everShot = true;
+                if (_reinforcements != null)
+                {
+                    _reinforceTick = Tick + _reinforcements.FirstDelay * TickRate;
+                }
+            }
             bool hit = NextRandom() % 100 < (uint)HitChance(u, target);
             Shots.Add(new ShotEvent(u.X, u.Y, target.X, target.Y, hit, Tick));
             if (Shots.Count > 64)
@@ -797,7 +854,7 @@ namespace Messingstadt.Core
             foreach (var o in Units)
             {
                 if (o.Alive && o.Faction != g.Faction && Distance(g, o) < bestDist && CanSee(g, o, GuardConeRange)
-                    && (Distance(g, o) <= CloseNoticeRange || InCone(g, o)))
+                    && (Distance(g, o) <= GuardCloseRange || InCone(g, o)))
                 {
                     best = o;
                     bestDist = Distance(g, o);
@@ -806,12 +863,30 @@ namespace Messingstadt.Core
             return best;
         }
 
-        private static bool InCone(Unit g, Unit o)
+        private static bool InCone(Unit g, Unit o) => InCone(g, o.X, o.Y);
+
+        private static bool InCone(Unit g, int x, int y)
         {
             // Halber Öffnungswinkel 45 Grad: Skalarprodukt >= Wurzel(0,5) * |Blick| * |Abstand|.
-            long fx = g.FacingX, fy = g.FacingY, dx = o.X - g.X, dy = o.Y - g.Y;
+            long fx = g.FacingX, fy = g.FacingY, dx = x - g.X, dy = y - g.Y;
             long dot = fx * dx + fy * dy;
             return dot > 0 && 2 * dot * dot >= (fx * fx + fy * fy) * (dx * dx + dy * dy);
+        }
+
+        /// <summary>Die erste Wache, die einen Agenten auf diesem Feld bemerken würde. Für das Messwerkzeug.</summary>
+        public Unit? WatcherOf(int tileX, int tileY)
+        {
+            int x = tileX * TileUnits + TileUnits / 2, y = tileY * TileUnits + TileUnits / 2;
+            foreach (var g in Units)
+            {
+                if (g.Alive && g.Faction == Faction.Guard && DistanceTo(g, x, y) <= GuardConeRange
+                    && Map.HasLineOfSight(g.TileX, g.TileY, tileX, tileY)
+                    && (DistanceTo(g, x, y) <= GuardCloseRange || InCone(g, x, y)))
+                {
+                    return g;
+                }
+            }
+            return null;
         }
 
         /// <summary>Prüfsumme des Zustands für Determinismus-Tests.</summary>
@@ -827,6 +902,8 @@ namespace Messingstadt.Core
             Mix(_rng);
             Mix((long)State);
             Mix(ItemProgress);
+            Mix(_reinforceTick);
+            Mix(Units.Count);
             foreach (var u in Units)
             {
                 Mix(u.X);

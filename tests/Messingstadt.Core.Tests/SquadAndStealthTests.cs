@@ -181,6 +181,15 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void UnitsKeepTheirSpeedAcrossTiles()
+        {
+            var w = new World(OpenMap(), Mission(new() { Agent(0.5, 8.5) }, new()));
+            w.OrderMove(0, 25, 8);
+            Run(w, 100);
+            Assert.Equal(500 + 100 * 120, w.Units[0].X);
+        }
+
+        [Fact]
         public void CarrierIsSlowerThanAlertedGuard()
         {
             int Distance(bool carrying)

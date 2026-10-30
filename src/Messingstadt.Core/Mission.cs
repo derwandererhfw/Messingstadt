@@ -54,6 +54,17 @@ namespace Messingstadt.Core
         public double Y1 { get; set; }
     }
 
+    /// <summary>Wachen, die nach dem ersten Schuss in Wellen anrücken. Zeiten in Sekunden.</summary>
+    public sealed class ReinforcementData
+    {
+        public double X { get; set; }
+        public double Y { get; set; }
+        public string Sprite { get; set; } = "";
+        public int FirstDelay { get; set; }
+        public int Interval { get; set; }
+        public int Count { get; set; }
+    }
+
     public sealed class MissionData
     {
         public string Title { get; set; } = "";
@@ -64,6 +75,7 @@ namespace Messingstadt.Core
         public double[] Item { get; set; } = new double[2];
         public string ItemName { get; set; } = "";
         public ZoneData Exit { get; set; } = new();
+        public ReinforcementData? Reinforcements { get; set; }
     }
 
     public static class Loader

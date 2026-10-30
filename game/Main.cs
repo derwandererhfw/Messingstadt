@@ -251,6 +251,13 @@ namespace Messingstadt
 
         private void UpdateUnits()
         {
+            // Verstärkung kommt erst im Einsatz dazu und braucht dann ein eigenes Bild.
+            while (_unitSprites.Count < World.Units.Count)
+            {
+                var added = new Sprite2D { Texture = _figures, RegionEnabled = true, Centered = false };
+                AddChild(added);
+                _unitSprites.Add(added);
+            }
             var order = World.Units.OrderBy(u => u.X + u.Y).ToList();
             for (int rank = 0; rank < order.Count; rank++)
             {
@@ -371,12 +378,23 @@ namespace Messingstadt
             int guards = World.Units.Count(u => u.Faction == Faction.Guard && u.Alive);
             _banner.Text = World.State switch
             {
-                MissionState.Won => "EINSATZ GEGLÜCKT  (R: nochmal)",
+                MissionState.Won => $"EINSATZ GEGLÜCKT: {RatingText()}  (R: nochmal)",
                 MissionState.Lost => "TRUPP VERLOREN  (R: nochmal)",
                 _ => _paused ? "PAUSE" : "",
             };
-            _status.Text += $"   Wachen: {guards}";
+            _status.Text += $"   Wachen: {guards}   Zeit: {World.Tick / World.TickRate} s";
+            if (World.TicksUntilReinforcement >= 0)
+            {
+                _status.Text += $"   ALARM: Verstärkung in {World.TicksUntilReinforcement / World.TickRate + 1} s";
+            }
         }
+
+        private string RatingText() => World.Rating switch
+        {
+            MissionRating.Unseen => "UNENTDECKT",
+            MissionRating.Quiet => "LEISE",
+            _ => "LAUT",
+        };
 
         public override void _UnhandledInput(InputEvent e)
         {

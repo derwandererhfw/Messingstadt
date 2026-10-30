@@ -30,6 +30,14 @@ Nach Änderungen am Code neu bauen:
 & "C:\Users\user\.tools\godot\Godot_v4.7.2-stable_mono_win64\Godot_v4.7.2-stable_mono_win64_console.exe" --path game --build-solutions --headless --quit
 ```
 
+Falls das hängen bleibt: `dotnet build game/Messingstadt.csproj`
+
+Spielweisen messen, optional mit Feldern als Argument, etwa `-- 6,9 6,8`, für die Anzeige, welche Wache wann hinschaut:
+
+```powershell
+dotnet run -c Release --project tools/Messingstadt.Balance
+```
+
 Grafik neu erzeugen: `python tools/art/generate_concept.py`
 
 ## Steuerung
@@ -53,4 +61,5 @@ Grafik neu erzeugen: `python tools/art/generate_concept.py`
 | `data/` | Missions- und Kartendaten als JSON |
 | `game/` | Godot-Projekt: Darstellung und Eingabe |
 | `tools/art/` | Grafikerzeugung |
+| `tools/Messingstadt.Balance` | misst die Spielweisen einer Mission |
 | `docs/` | Konzept und Architektur |

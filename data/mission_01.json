@@ -5,6 +5,7 @@
   "itemName": "Kontobuch",
   "item": [6.5, 3.5],
   "exit": { "x0": 18, "y0": 9, "x1": 20, "y1": 12 },
+  "reinforcements": { "x": 19.5, "y": 6.5, "sprite": "Wachmann", "firstDelay": 6, "interval": 4, "count": 4 },
   "agents": [
     { "name": "Greta", "sprite": "Agentin", "x": 8.5, "y": 18.5 },
     { "name": "Otto", "sprite": "Schlosser", "x": 9.5, "y": 18.5 },
@@ -12,12 +13,12 @@
     { "name": "Hanna", "sprite": "Agentin", "x": 11.5, "y": 18.5 }
   ],
   "guards": [
-    { "name": "Wache 1", "sprite": "Wachmann", "x": 11.5, "y": 9.5, "patrol": [[12, 9], [8, 9], [8, 10], [12, 10]] },
-    { "name": "Wache 2", "sprite": "Wachmann", "x": 1.5, "y": 10.5, "patrol": [[0, 10], [4, 10], [4, 11], [0, 11]] },
+    { "name": "Wache 1", "sprite": "Wachmann", "x": 12.5, "y": 9.5, "patrol": [[14, 9], [9, 9]] },
+    { "name": "Wache 2", "sprite": "Wachmann", "x": 0.5, "y": 9.5, "patrol": [[0, 9], [3, 9], [3, 11], [0, 11]] },
     { "name": "Wache 3", "sprite": "Wachmann", "x": 9.5, "y": 0.5, "patrol": [[9, 0], [11, 0], [11, 1], [9, 1]] },
     { "name": "Wache 4", "sprite": "Wachmann", "x": 10.5, "y": 5.5, "patrol": [[10, 6], [11, 2], [10, 1]] },
     { "name": "Wache 5", "sprite": "Wachmann", "x": 11.5, "y": 8.5, "patrol": [[11, 8], [11, 10], [16, 10], [16, 11]] },
     { "name": "Posten Buch", "sprite": "Wachmann", "x": 7.5, "y": 0.5, "facing": [0, 1] },
-    { "name": "Posten Wagen", "sprite": "Wachmann", "x": 17.5, "y": 12.5, "facing": [-1, 0] }
+    { "name": "Posten Wagen", "sprite": "Wachmann", "x": 18.5, "y": 7.5, "facing": [0, 1] }
   ]
 }

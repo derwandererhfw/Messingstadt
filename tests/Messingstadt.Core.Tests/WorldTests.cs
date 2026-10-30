@@ -203,25 +203,65 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
-        public void RealMissionBookCanBeReachedUnseen()
+        public void RealMissionCanBeWonUnseen()
         {
             var w = new World(
                 Loader.ParseMap(File.ReadAllText(DataPath("map_01.json"))),
                 Loader.ParseMission(File.ReadAllText(DataPath("mission_01.json"))));
-            // Greta allein, ein Klick im Zeitfenster: Die Wachen drehen ihr dann den Rücken zu.
-            for (int i = 0; i < 1500 && !w.ItemTaken; i++)
+            // Greta allein, sieben Klicks. Zeiten und Fenster liefert tools/Messingstadt.Balance.
+            var clicks = new (int Tick, int X, int Y)[]
             {
-                if (w.Tick == 23)
+                (200, 6, 15), (302, 6, 5), (592, 6, 3), (684, 6, 5), (812, 6, 14), (1100, 18, 18), (1264, 18, 11),
+            };
+            int next = 0;
+            for (int i = 0; i < 20 * 120 && w.State == MissionState.Running; i++)
+            {
+                if (next < clicks.Length && w.Tick >= clicks[next].Tick)
                 {
-                    w.OrderMove(0, w.ItemX / World.TileUnits, w.ItemY / World.TileUnits);
+                    Assert.True(w.OrderMove(0, clicks[next].X, clicks[next].Y));
+                    next++;
                 }
                 w.Step();
-                foreach (var u in w.Units)
-                {
-                    Assert.True(u.Faction == Faction.Agent || u.GuardState == GuardState.Patrol, $"{u.Name} hat Greta bemerkt");
-                }
+                Assert.Equal(MissionRating.Unseen, w.Rating);
             }
-            Assert.True(w.ItemTaken);
+            Assert.Equal(MissionState.Won, w.State);
+        }
+
+        [Fact]
+        public void RealMissionRushUsuallyWinsButCostsAgents()
+        {
+            int wins = 0, dead = 0;
+            const int Runs = 40;
+            for (int seed = 1; seed <= Runs; seed++)
+            {
+                var mission = Loader.ParseMission(File.ReadAllText(DataPath("mission_01.json")));
+                mission.Seed = seed * 7919;
+                var w = new World(Loader.ParseMap(File.ReadAllText(DataPath("map_01.json"))), mission);
+                var squad = new List<int> { 0, 1, 2, 3 };
+                bool wasTaken = false;
+                w.OrderGroupMove(squad, w.ItemX / World.TileUnits, w.ItemY / World.TileUnits);
+                for (int i = 0; i < 20 * 300 && w.State == MissionState.Running; i++)
+                {
+                    // Bei jedem Wechsel neu befehlen: Fällt der Träger, muss das Buch erneut geholt werden.
+                    if (w.ItemTaken != wasTaken)
+                    {
+                        wasTaken = w.ItemTaken;
+                        if (w.ItemTaken)
+                        {
+                            w.OrderGroupMove(squad, 18, 11);
+                        }
+                        else
+                        {
+                            w.OrderGroupMove(squad, w.ItemX / World.TileUnits, w.ItemY / World.TileUnits);
+                        }
+                    }
+                    w.Step();
+                }
+                wins += w.State == MissionState.Won ? 1 : 0;
+                dead += w.Units.FindAll(u => u.Faction == Faction.Agent && !u.Alive).Count;
+            }
+            Assert.True(wins >= Runs * 3 / 4, $"Nur {wins} von {Runs} Rennen gewonnen");
+            Assert.True(dead >= Runs, $"Rennen kostet zu wenig: {dead} Tote in {Runs} Läufen");
         }
 
         [Fact]
@@ -253,7 +293,7 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
-        public void RealMissionIsWinnableAndLoads()
+        public void RealMissionLoadsAndNobodySeesTheStart()
         {
             var map = Loader.ParseMap(File.ReadAllText(DataPath("map_01.json")));
             var mission = Loader.ParseMission(File.ReadAllText(DataPath("mission_01.json")));
@@ -279,29 +319,6 @@ namespace Messingstadt.Core.Tests
             {
                 Assert.False(u.Alerted, $"{u.Name} ist direkt nach dem Start alarmiert");
             }
-
-            // Ablauf: alle Agenten zum Buch, dann zum Ausgang. Der Einsatz muss gewinnbar sein.
-            var squad = new List<int> { 0, 1, 2, 3 };
-            bool wasTaken = false;
-            w.OrderGroupMove(squad, ix, iy);
-            for (int i = 0; i < 20 * 300 && w.State == MissionState.Running; i++)
-            {
-                // Bei jedem Wechsel neu befehlen: Fällt der Träger, muss das Buch erneut geholt werden.
-                if (w.ItemTaken != wasTaken)
-                {
-                    wasTaken = w.ItemTaken;
-                    if (w.ItemTaken)
-                    {
-                        w.OrderGroupMove(squad, 18, 11);
-                    }
-                    else
-                    {
-                        w.OrderGroupMove(squad, w.ItemX / World.TileUnits, w.ItemY / World.TileUnits);
-                    }
-                }
-                w.Step();
-            }
-            Assert.Equal(MissionState.Won, w.State);
         }
     }
 }
