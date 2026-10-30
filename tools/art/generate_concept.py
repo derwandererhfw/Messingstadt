@@ -34,14 +34,16 @@ C = {
     "brass_d": (132, 90, 36), "brass": (200, 150, 62), "brass_l": (244, 208, 118),
     "gas": (255, 232, 160), "gas_d": (226, 170, 90), "glass": (120, 160, 170), "glass_d": (66, 92, 106),
     "wood_d": (72, 50, 40), "wood": (112, 78, 54), "awn_r": (160, 56, 50), "awn_w": (214, 202, 172),
-    "skin": (226, 176, 138), "skin_d": (180, 126, 100), "hair": (58, 40, 34),
+    "skin": (178, 146, 122), "skin_d": (122, 94, 80), "hair": (44, 34, 30),
     "navy_d": (40, 50, 80), "navy": (58, 72, 112), "navy_l": (84, 102, 146),
     "olive_d": (66, 72, 44), "olive": (94, 102, 62), "olive_l": (124, 132, 84),
     "wine_d": (92, 32, 46), "wine": (136, 50, 62), "wine_l": (176, 78, 84),
     "grey_d": (64, 68, 80), "grey": (92, 98, 112), "grey_l": (124, 130, 142),
     "cream": (222, 208, 176),
-    # Der braune Mantel der Agenten: warm und hell genug, um nachts von den grauen Wachen abzustechen.
-    "coat_d": (118, 78, 42), "coat": (176, 120, 68), "coat_l": (214, 164, 104), "felt": (92, 60, 36),
+    # Der braune Mantel der Agenten: gedeckt, aber warm genug, um nachts von den grauen Wachen abzustechen.
+    "coat_d": (82, 58, 40), "coat": (126, 90, 60), "coat_l": (158, 120, 84), "felt": (66, 46, 32),
+    # Dienstkleidung der Wachen: schmutziges Feldgrau statt Bläulichgrau
+    "uni_d": (50, 54, 56), "uni": (78, 84, 84), "uni_l": (106, 112, 108),
     # Abnutzung
     "rust_d": (74, 44, 32), "rust": (122, 68, 38), "rust_l": (156, 92, 50), "grime": (42, 38, 36),
     "dirt": (56, 48, 42), "moss": (62, 76, 46), "puddle": (34, 40, 56), "plaster": (150, 138, 120),
@@ -352,117 +354,96 @@ def tenement(w, h, name=None, material=("brick",), door_at=None, lit_rate=0.45):
 
 
 # ---------- Figuren, 22 × 40 Pixel ----------
+# Realistische Proportionen: Der Kopf ist rund ein Siebtel der Körperhöhe. hem = Unterkante der Jacke oder des Mantels.
 SPECS = {
-    "Agent": dict(coat=("coat_d", "coat", "coat_l"), legs="soot", hat="fedora", hat_c="felt", shirt="cream", hair="hair", belt=True),
-    "Wachmann": dict(coat=("grey_d", "grey", "grey_l"), legs="soot", hat="peak", hat_c="brass_d", shirt="cream", hair="hair"),
+    "Agent": dict(coat=("coat_d", "coat", "coat_l"), legs="soot", hat="fedora", hat_c="felt", shirt="ash", hair="hair", hem=31, belt=21),
+    "Wachmann": dict(coat=("uni_d", "uni", "uni_l"), legs="uni_d", hat="peak", hat_c="soot", shirt="uni_d", hair="hair", hem=26, belt=19),
 }
 
 
 def figure(s, ox, oy, spec, direction, step=0):
     """Figur 22 × 40. ox, oy = linke obere Ecke. step: 0 Stand, 1–3 Gehphasen."""
     co_d, co, co_l = spec["coat"]
-    legs = spec["legs"]
+    legs, hem, belt = spec["legs"], spec["hem"], spec["belt"]
     R = lambda x, y, w, h, c: s.rect(ox + x, oy + y, w, h, C[c])  # noqa: E731
     if direction in ("s", "n"):
         lift_l, lift_r = {0: (0, 0), 1: (2, 0), 2: (0, 0), 3: (0, 2)}[step]
-        R(6, 27, 4, 11 - lift_l, legs)
-        R(12, 27, 4, 11 - lift_r, legs)
-        R(9, 27, 1, 11 - lift_l, "black")
-        R(15, 27, 1, 11 - lift_r, "black")
-        R(5, 38 - lift_l, 5, 2, "black")
-        R(12, 38 - lift_r, 5, 2, "black")
-        # Mantel
-        R(5, 13, 12, 13, co)
-        R(4, 24, 14, 4, co)
-        R(5, 13, 2, 13, co_l)
-        R(15, 13, 2, 13, co_d)
-        R(16, 24, 2, 4, co_d)
-        swing_l, swing_r = {0: (0, 0), 1: (2, 0), 2: (0, 0), 3: (0, 2)}[step]
-        R(2, 14, 3, 11 - swing_r, co)
-        R(2, 14, 1, 11 - swing_r, co_l)
-        R(17, 14, 3, 11 - swing_l, co_d)
-        R(2, 25 - swing_r, 3, 2, "skin")
-        R(17, 25 - swing_l, 3, 2, "skin_d")
+        R(7, hem, 3, 38 - hem - lift_l, legs)
+        R(12, hem, 3, 38 - hem - lift_r, legs)
+        R(9, hem, 1, 38 - hem - lift_l, "black")
+        R(14, hem, 1, 38 - hem - lift_r, "black")
+        R(6, 38 - lift_l, 4, 2, "black")
+        R(12, 38 - lift_r, 4, 2, "black")
+        # Arme hängen eng am Körper, gegengleich zu den Beinen
+        R(4, 12, 2, 12 - lift_r, co)
+        R(16, 12, 2, 12 - lift_l, co_d)
+        R(4, 24 - lift_r, 2, 2, "skin_d")
+        R(16, 24 - lift_l, 2, 2, "skin_d")
+        # Rumpf mit hängenden Schultern, der Mantel fällt nach unten leicht weiter
+        R(7, 10, 8, 1, co)
+        R(6, 11, 10, hem - 11, co)
+        R(5, hem - 6, 12, 6, co)
+        R(6, 11, 1, hem - 11, co_l)
+        R(13, 11, 3, hem - 11, co_d)
+        R(15, hem - 6, 2, 6, co_d)
+        R(6, belt, 10, 1, co_d if spec["hat"] == "fedora" else "black")
+        R(11, 13, 1, hem - 13, co_d)
         if direction == "s":
-            R(9, 13, 4, 5, spec["shirt"])
-            R(10, 14, 2, 7, "black" if spec["shirt"] != "ash" else "soot")
-            R(8, 13, 1, 7, co_l)
-            R(13, 13, 1, 7, co_d)
-            R(13, 21, 1, 1, "brass_l")
-            R(13, 24, 1, 1, "brass_l")
-        else:
-            R(10, 15, 1, 12, co_d)
-        R(8, 11, 6, 3, "skin_d" if direction == "s" else spec["hair"])
+            R(10, 10, 2, 3, spec["shirt"])
+            R(9, 10, 1, 3, co_l)
+            R(12, 10, 1, 3, co_d)
+        R(10, 8, 2, 2, "skin_d" if direction == "s" else spec["hair"])
         if direction == "s":
-            R(7, 4, 8, 8, "skin")
-            R(14, 4, 1, 8, "skin_d")
-            R(9, 7, 1, 2, "black")
-            R(12, 7, 1, 2, "black")
-            R(10, 10, 2, 1, "skin_d")
+            R(9, 4, 4, 5, "skin")
+            R(12, 4, 1, 5, "skin_d")
+            # Die Krempe wirft Schatten über die Augen
+            R(9, 4, 4, 2, "skin_d")
+            R(9, 5, 1, 1, "black")
+            R(12, 5, 1, 1, "black")
         else:
-            R(7, 4, 8, 8, spec["hair"])
+            R(9, 4, 4, 5, spec["hair"])
     else:
-        spread = {0: 2, 1: 5, 2: 1, 3: 5}[step]
+        spread = {0: 1, 1: 3, 2: 0, 3: 3}[step]
         near = 1 if step != 3 else -1
         # hinteres Bein dunkler, beide sichtbar
-        R(10 - spread * near, 27, 4, 11, "black")
-        R(9 - spread * near, 38, 6, 2, "black")
-        R(10 + spread * near, 27, 4, 11, legs)
-        R(13 + spread * near, 27, 1, 11, "black")
-        R(10 + spread * near, 38, 6, 2, "black")
-        R(7, 13, 10, 13, co)
-        R(6, 24, 12, 4, co)
-        R(7, 13, 2, 13, co_d)
-        R(15, 13, 2, 13, co_l)
-        R(15, 13, 2, 5, spec["shirt"])
-        swing = {0: 0, 1: 4, 2: 0, 3: -4}[step]
-        R(10 + swing, 14, 4, 11, co_l)
-        R(10 + swing, 14, 1, 11, co_d)
-        R(10 + swing, 25, 4, 2, "skin")
-        R(10, 11, 5, 3, "skin_d")
-        R(8, 4, 8, 8, "skin")
-        R(8, 4, 3, 8, spec["hair"])
-        R(14, 7, 1, 2, "black")
-        R(16, 8, 1, 2, "skin")
-        R(13, 10, 2, 1, "skin_d")
-    # Gürtel des Trenchcoats
-    if spec.get("belt"):
-        if direction in ("s", "n"):
-            R(5, 20, 12, 1, co_d)
-        else:
-            R(7, 20, 10, 1, co_d)
+        R(10 - spread * near, hem, 3, 38 - hem, "black")
+        R(10 - spread * near, 38, 4, 2, "black")
+        R(10 + spread * near, hem, 3, 38 - hem, legs)
+        R(12 + spread * near, hem, 1, 38 - hem, "black")
+        R(10 + spread * near, 38, 4, 2, "black")
+        R(9, 10, 5, 1, co)
+        R(8, 11, 6, hem - 11, co)
+        R(7, hem - 6, 8, 6, co)
+        R(8, 11, 1, hem - 11, co_d)
+        R(13, 11, 1, hem - 11, co_l)
+        R(8, belt, 6, 1, co_d if spec["hat"] == "fedora" else "black")
+        R(13, 10, 1, 3, spec["shirt"])
+        swing = {0: 0, 1: 2, 2: 0, 3: -2}[step]
+        R(10 + swing, 12, 2, 12, co_d)
+        R(10 + swing, 24, 2, 2, "skin_d")
+        R(10, 8, 3, 2, "skin_d")
+        R(10, 4, 4, 5, "skin")
+        R(10, 4, 1, 5, spec["hair"])
+        R(10, 4, 4, 2, "skin_d")
+        R(13, 5, 1, 1, "black")
+        R(14, 6, 1, 1, "skin_d")
     # Kopfbedeckung
     hat, c = spec["hat"], spec["hat_c"]
-    front = direction == "e"
-    if hat == "cap":
-        R(6, 1, 10, 4, c)
-        R(5, 3, 12, 2, c)
-        R(8, 1, 4, 1, "iron")
-        if front:
-            R(15, 4, 5, 1, "black")
-        elif direction == "s":
-            R(6, 5, 10, 1, "black")
-    elif hat == "bowler":
-        R(7, 0, 8, 4, c)
-        R(5, 4, 12, 1, c)
-        R(7, 3, 8, 1, "wine_d")
-    elif hat == "cloche":
-        R(6, 1, 10, 5, c)
-        R(5, 5, 3, 4, c)
-        R(14, 5, 3, 4, c)
-        R(6, 5, 10, 1, "brass")
-        R(14, 2, 1, 2, "brass_l")
-    elif hat == "fedora":
-        R(7, 0, 8, 4, c)
-        R(4, 4, 14, 1, c)
-        R(7, 3, 8, 1, "black")
+    side = direction == "e"
+    if hat == "fedora":
+        R(8, 0, 6, 3, c)
+        R(8, 2, 6, 1, "black")
+        R(6, 3, 10, 1, c)
+        if side:
+            R(15, 4, 1, 1, c)
     elif hat == "peak":
-        R(6, 0, 10, 4, c)
-        R(5, 1, 12, 2, c)
-        R(10, 1, 2, 2, "brass_l")
-        R(6, 4, 10, 1, "black")
-        if front:
-            R(15, 4, 4, 1, "black")
+        R(8, 0, 6, 4, c)
+        R(7, 1, 8, 1, c)
+        R(10, 1, 2, 1, "ash")
+        if side:
+            R(14, 3, 2, 1, "black")
+        elif direction == "s":
+            R(8, 3, 6, 1, "black")
 
 
 def figures_sheet():
@@ -1085,7 +1066,13 @@ def export_figures(assets):
     for row, name in enumerate(names):
         for d_i, d in enumerate(("s", "e", "n")):
             for step in range(4):
-                figure(sheet, 1 + (d_i * 4 + step) * 24, 1 + row * 42, SPECS[name], d, step)
+                cell_x, cell_y = (d_i * 4 + step) * 24, row * 42
+                # Weicher Schatten am Boden, damit die Figur im Bild steht und nicht schwebt
+                for j in range(38, 42):
+                    half = {38: 6, 39: 9, 40: 9, 41: 6}[j]
+                    for i in range(12 - half, 12 + half):
+                        sheet.px[cell_x + i, cell_y + j] = (0, 0, 0, 120)
+                figure(sheet, 1 + cell_x, 1 + cell_y, SPECS[name], d, step)
     sheet.img.save(assets / "figures.png")
     (assets / "figures.json").write_text(json.dumps({"names": names, "w": 24, "h": 42}), encoding="utf-8")
 
