@@ -1,0 +1,6 @@
+bin/
+obj/
+.godot/
+work/
+*.import
+__pycache__/

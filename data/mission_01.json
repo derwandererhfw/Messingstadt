@@ -1,0 +1,21 @@
+{
+  "title": "Das Kontobuch",
+  "briefing": "Die Brandt-Werke zahlen den Streikbrechern Schwarzgeld. Ein Kurier hat das Kontobuch am Mietshaus abgelegt. Holt es und erreicht den Fluchtwagen am Ostende der Querstraße.",
+  "seed": 1927,
+  "itemName": "Kontobuch",
+  "item": [6.5, 3.5],
+  "exit": { "x0": 18, "y0": 9, "x1": 20, "y1": 12 },
+  "agents": [
+    { "name": "Greta", "sprite": "Agentin", "x": 10.5, "y": 18.5 },
+    { "name": "Otto", "sprite": "Schlosser", "x": 11.5, "y": 18.5 },
+    { "name": "Emil", "sprite": "Buchhalter", "x": 10.5, "y": 19.5 },
+    { "name": "Hanna", "sprite": "Agentin", "x": 11.5, "y": 19.5 }
+  ],
+  "guards": [
+    { "name": "Wache 1", "sprite": "Wachmann", "x": 10.5, "y": 9.5, "patrol": [[10, 9], [7, 9], [7, 10], [10, 10]] },
+    { "name": "Wache 2", "sprite": "Wachmann", "x": 6.5, "y": 10.5, "patrol": [[6, 10], [3, 10], [3, 11], [6, 11]] },
+    { "name": "Wache 3", "sprite": "Wachmann", "x": 7.5, "y": 6.5, "patrol": [[7, 6], [7, 2], [6, 0], [7, 6]] },
+    { "name": "Wache 4", "sprite": "Wachmann", "x": 10.5, "y": 5.5, "patrol": [[10, 6], [11, 2], [10, 1]] },
+    { "name": "Wache 5", "sprite": "Wachmann", "x": 11.5, "y": 8.5, "patrol": [[11, 8], [11, 10], [16, 10], [16, 11]] }
+  ]
+}
