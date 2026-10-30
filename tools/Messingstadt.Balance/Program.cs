@@ -46,7 +46,11 @@ void Report(string name, Func<Action<World>> make)
     Console.WriteLine($"{name,-18} Sieg {100 * wins / Runs,3}%  verloren {100 * lost / Runs,3}%  tote Agenten {(double)dead / Runs:0.00}  LP {hp / Runs,3}/400  Dauer {ticks / Runs / 20,3}s  laut {100 * loud / Runs,3}%");
 }
 
-Action<World> Rush()
+Action<World> Rush() => RushWith(false);
+
+Action<World> RushSprint() => RushWith(true);
+
+Action<World> RushWith(bool sprint)
 {
     string stage = "";
     return w =>
@@ -60,7 +64,7 @@ Action<World> Rush()
         {
             stage = now;
             var (x, y) = w.ItemTaken ? ExitTile(w) : book;
-            w.OrderGroupMove(squad, x, y);
+            w.OrderGroupMove(squad, x, y, sprint);
         }
     };
 }
@@ -216,7 +220,8 @@ if (args.Length > 0)
     return;
 }
 
-Report("Rennen zum Buch", Rush);
+Report("Zum Buch gehen", Rush);
+Report("Zum Buch sprinten", RushSprint);
 Report("Alle angreifen", AttackAll);
 Report("Feuer bündeln", FocusFire);
 Report("Hinterhalt", Ambush);

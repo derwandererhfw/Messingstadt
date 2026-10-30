@@ -8,7 +8,7 @@ keine Daten, Grafiken oder Zahlenwerte aus der Syndicate-Analyse im Nachbarordne
 
 ## Stand
 
-Spielbarer Prototyp: eine Karte, vier Agenten, Wachen, ein Missionsziel.
+Spielbarer Prototyp: eine Karte, vier Agenten mit eigenen Stärken, Wachen, ein Missionsziel, Geld und Ausbau zwischen den Einsätzen.
 
 ## Starten
 
@@ -46,7 +46,9 @@ Grafik neu erzeugen: `python tools/art/generate_concept.py`
 |---|---|
 | Linksklick auf Agent | auswählen, mit Umschalt zur Auswahl hinzufügen |
 | Linksklick auf Boden | Auswahl dorthin schicken |
-| Rechtsklick auf Wache | angreifen, die Auswahl rückt bis in Reichweite vor |
+| Doppelklick auf Boden | Auswahl rennt dorthin, kostet Puste, dabei kein Feuer |
+| Rechtsklick auf Wache | angreifen, die Auswahl rückt bis in Reichweite vor. Nur Emil gewählt: bestechen |
+| Rechtsklick auf Türmarke | Otto öffnet die Tür |
 | `1`–`4`, Leertaste | Agent wählen, alle wählen |
 | Pfeiltasten, WASD | Kamera |
 | `F` | Kamera auf die Auswahl |

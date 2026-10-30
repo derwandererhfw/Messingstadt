@@ -12,6 +12,7 @@ Aufruf (aus dem Projektordner):
 """
 import json
 import random
+import sys
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -38,6 +39,8 @@ C = {
     "wine_d": (92, 32, 46), "wine": (136, 50, 62), "wine_l": (176, 78, 84),
     "grey_d": (64, 68, 80), "grey": (92, 98, 112), "grey_l": (124, 130, 142),
     "cream": (222, 208, 176),
+    # Der braune Mantel der Agenten: warm und hell genug, um nachts von den grauen Wachen abzustechen.
+    "coat_d": (118, 78, 42), "coat": (176, 120, 68), "coat_l": (214, 164, 104), "felt": (92, 60, 36),
 }
 
 
@@ -214,9 +217,7 @@ def tenement(w, h, name=None, material=("brick",), door_at=None, lit_rate=0.45):
 
 # ---------- Figuren, 22 × 40 Pixel ----------
 SPECS = {
-    "Agentin": dict(coat=("wine_d", "wine", "wine_l"), legs="soot", hat="cloche", hat_c="black", shirt="cream", hair="black"),
-    "Schlosser": dict(coat=("navy_d", "navy", "navy_l"), legs="iron", hat="cap", hat_c="soot", shirt="ash", hair="hair"),
-    "Buchhalter": dict(coat=("olive_d", "olive", "olive_l"), legs="soot", hat="bowler", hat_c="black", shirt="paper", hair="hair"),
+    "Agent": dict(coat=("coat_d", "coat", "coat_l"), legs="soot", hat="fedora", hat_c="felt", shirt="cream", hair="hair", belt=True),
     "Wachmann": dict(coat=("grey_d", "grey", "grey_l"), legs="soot", hat="peak", hat_c="brass_d", shirt="cream", hair="hair"),
 }
 
@@ -288,6 +289,12 @@ def figure(s, ox, oy, spec, direction, step=0):
         R(14, 7, 1, 2, "black")
         R(16, 8, 1, 2, "skin")
         R(13, 10, 2, 1, "skin_d")
+    # Gürtel des Trenchcoats
+    if spec.get("belt"):
+        if direction in ("s", "n"):
+            R(5, 20, 12, 1, co_d)
+        else:
+            R(7, 20, 10, 1, co_d)
     # Kopfbedeckung
     hat, c = spec["hat"], spec["hat_c"]
     front = direction == "e"
@@ -309,6 +316,10 @@ def figure(s, ox, oy, spec, direction, step=0):
         R(14, 5, 3, 4, c)
         R(6, 5, 10, 1, "brass")
         R(14, 2, 1, 2, "brass_l")
+    elif hat == "fedora":
+        R(7, 0, 8, 4, c)
+        R(4, 4, 14, 1, c)
+        R(7, 3, 8, 1, "black")
     elif hat == "peak":
         R(6, 0, 10, 4, c)
         R(5, 1, 12, 2, c)
@@ -321,7 +332,7 @@ def figure(s, ox, oy, spec, direction, step=0):
 def figures_sheet():
     frames = [("s", 0), ("e", 0), ("n", 0), ("e", 1), ("e", 2), ("e", 3), ("s", 1), ("s", 3)]
     s = Scene(1)
-    s.w, s.h = 28 * len(frames) + 8, 46 * 4 + 4
+    s.w, s.h = 28 * len(frames) + 8, 46 * len(SPECS) + 4
     s.img = Image.new("RGBA", (s.w, s.h), C["stone"] + (255,))
     s.px = s.img.load()
     for row, spec in enumerate(SPECS.values()):
@@ -811,18 +822,7 @@ def export_game():
     (assets / "manifest.json").write_text(json.dumps({"ox": s.ox, "oy": s.oy, "things": manifest}), encoding="utf-8")
     (root / "data" / "map_01.json").write_text(json.dumps({"width": 20, "height": 20, "solids": solids}, indent=1), encoding="utf-8")
 
-    # Figurenblatt: je Figur eine Zeile, Spalten s0–s3, e0–e3, n0–n3. Feld 24 × 42.
-    names = list(SPECS)
-    sheet = Scene(1)
-    sheet.w, sheet.h = 24 * 12, 42 * len(names)
-    sheet.img = Image.new("RGBA", (sheet.w, sheet.h), (0, 0, 0, 0))
-    sheet.px = sheet.img.load()
-    for row, name in enumerate(names):
-        for d_i, d in enumerate(("s", "e", "n")):
-            for step in range(4):
-                figure(sheet, 1 + (d_i * 4 + step) * 24, 1 + row * 42, SPECS[name], d, step)
-    sheet.img.save(assets / "figures.png")
-    (assets / "figures.json").write_text(json.dumps({"names": names, "w": 24, "h": 42}), encoding="utf-8")
+    export_figures(assets)
 
     # Kontobuch
     book = Image.new("RGBA", (14, 10), (0, 0, 0, 0))
@@ -835,7 +835,26 @@ def export_game():
     print(f"{len(manifest)} Objekte, {len(solids)} Blockaden exportiert nach {assets}")
 
 
+def export_figures(assets):
+    """Figurenblatt: je Figur eine Zeile, Spalten s0–s3, e0–e3, n0–n3. Feld 24 × 42."""
+    names = list(SPECS)
+    sheet = Scene(1)
+    sheet.w, sheet.h = 24 * 12, 42 * len(names)
+    sheet.img = Image.new("RGBA", (sheet.w, sheet.h), (0, 0, 0, 0))
+    sheet.px = sheet.img.load()
+    for row, name in enumerate(names):
+        for d_i, d in enumerate(("s", "e", "n")):
+            for step in range(4):
+                figure(sheet, 1 + (d_i * 4 + step) * 24, 1 + row * 42, SPECS[name], d, step)
+    sheet.img.save(assets / "figures.png")
+    (assets / "figures.json").write_text(json.dumps({"names": names, "w": 24, "h": 42}), encoding="utf-8")
+
+
 def main():
+    if "--figures" in sys.argv:
+        export_figures(Path(__file__).resolve().parents[2] / "game" / "assets")
+        print("Nur das Figurenblatt neu erzeugt")
+        return
     OUT.mkdir(parents=True, exist_ok=True)
     fig = figures_sheet()
     fig.resize((fig.width * 4, fig.height * 4), Image.NEAREST).save(OUT / "figuren_v3_x4.png")

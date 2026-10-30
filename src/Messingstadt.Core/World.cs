@@ -16,6 +16,15 @@ namespace Messingstadt.Core
         Lost,
     }
 
+    /// <summary>Eine Tür im Spiel, geöffnet oder noch verschlossen.</summary>
+    public sealed class Door
+    {
+        public string Name = "";
+        public readonly List<(int X, int Y)> Tiles = new();
+        public bool Open;
+        public int Progress;
+    }
+
     /// <summary>Wie leise der Einsatz bisher lief: nie bemerkt, bemerkt ohne Schuss, Schüsse gefallen.</summary>
     public enum MissionRating
     {
@@ -63,6 +72,13 @@ namespace Messingstadt.Core
         public int AlarmX, AlarmY;
         public bool Sidestepping;
         public int AnchorX, AnchorY;
+        public int Legs = 1, Heart = 1;
+        public int Stamina;
+        public bool Sprinting;
+        public string Skill = "";
+        public int DoorTarget = -1;
+        public int BribeTarget = -1;
+        public bool Bribed;
 
         public bool Alive => Hp > 0;
         public int TileX => X / World.TileUnits;
@@ -110,14 +126,26 @@ namespace Messingstadt.Core
         private const int LookAroundTicks = 60;
         private const int SpreadRadius = 3;
         private const int CoverAnchorRadius = 2;
+        private const int SprintSpeedPerLeg = 25;
+        private const int StaminaBase = 40;
+        private const int StaminaPerHeart = 40;
+        private const int MinSprintStamina = 20;
+        private const int SprintHeardRange = 4 * TileUnits;
         private const int CoverHoldTicks = 60;
 
         public const int PickupTicks = 60;
         public const int EscapeTicks = 20;
+        public const int DoorTicks = 40;
+        public const int BribeCost = 200;
+        public const int BribeRange = 2 * TileUnits;
+        public const string SkillLocksmith = "schlosser";
+        public const string SkillBookkeeper = "buchhalter";
         public const int GuardConeRange = 5 * TileUnits;
         public const int GuardConeHalfDegrees = 45;
 
         // Erst eine Linie quer zur Blickrichtung, damit keine Figur im Bild hinter einer anderen steht.
+        private static readonly (int X, int Y)[] Neighbours = { (1, 0), (-1, 0), (0, 1), (0, -1) };
+
         private static readonly (int X, int Y)[] Formation =
         {
             (0, 0), (1, -1), (-1, 1), (2, -2), (-2, 2), (1, 0), (0, 1), (-1, 0), (0, -1),
@@ -144,6 +172,14 @@ namespace Messingstadt.Core
         public int EscapeProgress { get; private set; }
         public string ItemName { get; }
         public (int X0, int Y0, int X1, int Y1) Exit => _exit;
+        public List<Door> Doors { get; } = new();
+        public int Money { get; private set; }
+        public bool HasLoot { get; }
+        public string LootName { get; } = "";
+        public int LootX { get; }
+        public int LootY { get; }
+        public int LootValue { get; }
+        public bool LootTaken { get; private set; }
         public MissionRating Rating => _everShot ? MissionRating.Loud : _everNoticed ? MissionRating.Quiet : MissionRating.Unseen;
 
         /// <summary>Takte bis zur nächsten Verstärkung, -1 wenn keine unterwegs ist.</summary>
@@ -155,6 +191,25 @@ namespace Messingstadt.Core
             _rng = (uint)mission.Seed | 1u;
             ItemName = mission.ItemName;
             _reinforcements = mission.Reinforcements;
+            Money = mission.Money;
+            foreach (var d in mission.Doors)
+            {
+                var door = new Door { Name = d.Name };
+                foreach (var t in d.Tiles)
+                {
+                    door.Tiles.Add(((int)t[0], (int)t[1]));
+                    Map.Block((int)t[0], (int)t[1], true);
+                }
+                Doors.Add(door);
+            }
+            if (mission.Loot != null)
+            {
+                HasLoot = true;
+                LootName = mission.Loot.Name;
+                LootX = ToUnits(mission.Loot.X);
+                LootY = ToUnits(mission.Loot.Y);
+                LootValue = mission.Loot.Value;
+            }
             ItemX = ToUnits(mission.Item[0]);
             ItemY = ToUnits(mission.Item[1]);
             _exit = (ToUnits(mission.Exit.X0), ToUnits(mission.Exit.Y0), ToUnits(mission.Exit.X1), ToUnits(mission.Exit.Y1));
@@ -186,6 +241,10 @@ namespace Messingstadt.Core
                 u.FacingX = ToUnits(d.Facing[0]);
                 u.FacingY = ToUnits(d.Facing[1]);
             }
+            u.Skill = d.Skill;
+            u.Legs = Math.Clamp(d.Legs, 1, 3);
+            u.Heart = Math.Clamp(d.Heart, 1, 3);
+            u.Stamina = MaxStamina(u);
             u.AnchorX = u.TileX;
             u.AnchorY = u.TileY;
             Units.Add(u);
@@ -203,7 +262,7 @@ namespace Messingstadt.Core
         // ---------- Befehle ----------
 
         /// <summary>Schickt eine Einheit zu einem Feld. Zielauswahl und Feuer bleiben automatisch.</summary>
-        public bool OrderMove(int unitId, int tileX, int tileY)
+        public bool OrderMove(int unitId, int tileX, int tileY, bool sprint = false)
         {
             var u = Units[unitId];
             if (!u.Alive || State != MissionState.Running)
@@ -218,11 +277,71 @@ namespace Messingstadt.Core
             u.Path.Clear();
             u.Path.AddRange(path);
             u.TargetId = -1;
+            u.DoorTarget = -1;
+            u.BribeTarget = -1;
+            u.Sprinting = sprint && u.Stamina >= MinSprintStamina && path.Count > 0;
+            return true;
+        }
+
+        /// <summary>Schickt einen Schlosser zur Tür und lässt ihn sie öffnen.</summary>
+        public bool OrderOpenDoor(int unitId, int doorId)
+        {
+            var u = Units[unitId];
+            var door = Doors[doorId];
+            if (!u.Alive || u.Skill != SkillLocksmith || door.Open || State != MissionState.Running)
+            {
+                return false;
+            }
+            List<(int X, int Y)>? best = null;
+            foreach (var (tx, ty) in door.Tiles)
+            {
+                foreach (var (dx, dy) in Neighbours)
+                {
+                    int x = tx + dx, y = ty + dy;
+                    if (Map.IsBlocked(x, y))
+                    {
+                        continue;
+                    }
+                    var path = Map.FindPath(u.TileX, u.TileY, x, y);
+                    if (path != null && (best == null || path.Count < best.Count))
+                    {
+                        best = path;
+                    }
+                }
+            }
+            if (best == null)
+            {
+                return false;
+            }
+            u.Path.Clear();
+            u.Path.AddRange(best);
+            u.TargetId = -1;
+            u.BribeTarget = -1;
+            u.Sprinting = false;
+            u.DoorTarget = doorId;
+            return true;
+        }
+
+        /// <summary>Schickt einen Buchhalter zu einer Wache, die noch nicht kämpft, um sie zu bestechen.</summary>
+        public bool OrderBribe(int unitId, int guardId)
+        {
+            var u = Units[unitId];
+            var g = Units[guardId];
+            if (!u.Alive || u.Skill != SkillBookkeeper || !g.Alive || g.Faction != Faction.Guard || g.Bribed
+                || g.GuardState == GuardState.Combat || Money < BribeCost || State != MissionState.Running)
+            {
+                return false;
+            }
+            u.TargetId = -1;
+            u.DoorTarget = -1;
+            u.Sprinting = false;
+            u.BribeTarget = guardId;
+            u.RepathTick = 0;
             return true;
         }
 
         /// <summary>Schickt mehrere Agenten zum Zielfeld und verteilt sie auf freie Felder in einer Linie.</summary>
-        public bool OrderGroupMove(IEnumerable<int> unitIds, int tileX, int tileY)
+        public bool OrderGroupMove(IEnumerable<int> unitIds, int tileX, int tileY, bool sprint = false)
         {
             if (Map.IsBlocked(tileX, tileY) || State != MissionState.Running)
             {
@@ -245,7 +364,7 @@ namespace Messingstadt.Core
                 foreach (var (ox, oy) in Formation)
                 {
                     int x = tileX + ox, y = tileY + oy;
-                    if (!taken.Contains((x, y)) && !Map.IsBlocked(x, y) && OrderMove(id, x, y))
+                    if (!taken.Contains((x, y)) && !Map.IsBlocked(x, y) && OrderMove(id, x, y, sprint))
                     {
                         taken.Add((x, y));
                         any = true;
@@ -263,6 +382,9 @@ namespace Messingstadt.Core
             if (u.Alive && Units[targetId].Alive && State == MissionState.Running)
             {
                 u.TargetId = targetId;
+                u.DoorTarget = -1;
+                u.BribeTarget = -1;
+                u.Sprinting = false;
                 u.RepathTick = 0;
             }
         }
@@ -318,8 +440,62 @@ namespace Messingstadt.Core
             _reinforceTick = _reinforcedCount < _reinforcements.Count ? Tick + _reinforcements.Interval * TickRate : 0;
         }
 
+        private void WorkOnDoor(Unit a)
+        {
+            var door = Doors[a.DoorTarget];
+            if (door.Open)
+            {
+                a.DoorTarget = -1;
+            }
+            else if (a.Path.Count == 0)
+            {
+                door.Progress++;
+                if (door.Progress >= DoorTicks)
+                {
+                    door.Open = true;
+                    foreach (var (x, y) in door.Tiles)
+                    {
+                        Map.Unblock(x, y);
+                    }
+                    a.DoorTarget = -1;
+                }
+            }
+        }
+
+        private void WorkOnBribe(Unit a)
+        {
+            var g = Units[a.BribeTarget];
+            if (!g.Alive || g.Bribed || g.GuardState == GuardState.Combat || Money < BribeCost)
+            {
+                a.BribeTarget = -1;
+                a.Path.Clear();
+            }
+            else if (CanSee(a, g, BribeRange))
+            {
+                Money -= BribeCost;
+                g.Bribed = true;
+                a.BribeTarget = -1;
+                a.Path.Clear();
+            }
+            else if (Tick >= a.RepathTick)
+            {
+                a.RepathTick = Tick + RepathInterval;
+                WalkTo(a, g.TileX, g.TileY);
+            }
+        }
+
         private void ThinkAgent(Unit a)
         {
+            if (a.DoorTarget >= 0)
+            {
+                WorkOnDoor(a);
+                return;
+            }
+            if (a.BribeTarget >= 0)
+            {
+                WorkOnBribe(a);
+                return;
+            }
             if (a.Path.Count == 0)
             {
                 a.Sidestepping = false;
@@ -414,6 +590,14 @@ namespace Messingstadt.Core
 
         private void ThinkGuard(Unit g)
         {
+            if (g.Bribed)
+            {
+                g.GuardState = GuardState.Patrol;
+                g.Alerted = false;
+                g.AlarmTick = 0;
+                WalkPatrol(g);
+                return;
+            }
             // Nur wer ahnungslos ist, hat einen Sichtkegel. Alarmierte Wachen achten auf alle Seiten.
             Unit? seen = g.GuardState == GuardState.Patrol ? NearestNoticedEnemy(g) : NearestVisibleEnemy(g, SightRange);
             if (seen != null)
@@ -643,7 +827,7 @@ namespace Messingstadt.Core
         {
             foreach (var u in Units)
             {
-                if (!u.Alive || u.Faction != Faction.Guard || u.GuardState == GuardState.Combat || u.AlarmTick > 0)
+                if (!u.Alive || u.Faction != Faction.Guard || u.Bribed || u.GuardState == GuardState.Combat || u.AlarmTick > 0)
                 {
                     continue;
                 }
@@ -657,16 +841,41 @@ namespace Messingstadt.Core
             }
         }
 
+        /// <summary>Puste in Takten Rennen. Hängt nur vom Herz ab.</summary>
+        public static int MaxStamina(Unit u) => StaminaBase + StaminaPerHeart * u.Heart;
+
+        private void Breathe(Unit u)
+        {
+            if (u.Sprinting)
+            {
+                u.Stamina--;
+                if (u.Stamina <= 0 || u.Path.Count == 0)
+                {
+                    u.Sprinting = false;
+                }
+            }
+            else if (u.Stamina < MaxStamina(u) && Tick % (4 - u.Heart) == 0)
+            {
+                // Herz 3 erholt sich jeden Takt, Herz 1 nur jeden dritten.
+                u.Stamina++;
+            }
+        }
+
         private void Move(Unit u)
         {
             u.Moving = false;
             if (u.Path.Count == 0)
             {
+                Breathe(u);
                 return;
             }
             int speed = u.Faction == Faction.Agent
                 ? (u.CarriesItem ? CarrierSpeed : AgentSpeed)
                 : (u.Alerted ? GuardAlertSpeed : GuardPatrolSpeed);
+            if (u.Sprinting)
+            {
+                speed += SprintSpeedPerLeg * u.Legs;
+            }
             // Der Rest des Schritts zählt beim nächsten Feld weiter, sonst liefe jeder langsamer als sein Tempo.
             int remaining = speed;
             while (remaining > 0 && u.Path.Count > 0)
@@ -694,6 +903,7 @@ namespace Messingstadt.Core
                     u.FacingY = dy;
                 }
             }
+            Breathe(u);
             u.Moving = true;
             u.WalkTick++;
         }
@@ -703,6 +913,11 @@ namespace Messingstadt.Core
             if (u.Cooldown > 0)
             {
                 u.Cooldown--;
+                return;
+            }
+            // Wer rennt, schießt nicht: Das ist der Preis für das Tempo.
+            if (u.Sprinting)
+            {
                 return;
             }
             Unit? target = u.TargetId >= 0 ? Units[u.TargetId] : null;
@@ -756,6 +971,8 @@ namespace Messingstadt.Core
             }
             if (target.Faction == Faction.Guard && target.GuardState != GuardState.Combat)
             {
+                // Wer auf einen bestochenen Wachmann schießt, hat den Handel gebrochen.
+                target.Bribed = false;
                 // Wer beschossen wird, reagiert sofort und kennt die Richtung.
                 target.LastKnownX = u.X;
                 target.LastKnownY = u.Y;
@@ -793,6 +1010,11 @@ namespace Messingstadt.Core
                     continue;
                 }
                 anyAgent = true;
+                if (HasLoot && !LootTaken && DistanceTo(u, LootX, LootY) <= PickupRadius)
+                {
+                    LootTaken = true;
+                    Money += LootValue;
+                }
                 if (picker == null && !u.Moving && IsAtItem(u))
                 {
                     picker = u;
@@ -888,7 +1110,7 @@ namespace Messingstadt.Core
             int bestDist = int.MaxValue;
             foreach (var o in Units)
             {
-                if (o.Alive && o.Faction != u.Faction && Distance(u, o) < bestDist && CanSee(u, o, range))
+                if (o.Alive && o.Faction != u.Faction && !o.Bribed && Distance(u, o) < bestDist && CanSee(u, o, range))
                 {
                     best = o;
                     bestDist = Distance(u, o);
@@ -905,7 +1127,7 @@ namespace Messingstadt.Core
             foreach (var o in Units)
             {
                 if (o.Alive && o.Faction != g.Faction && Distance(g, o) < bestDist && CanSee(g, o, GuardConeRange)
-                    && (Distance(g, o) <= GuardCloseRange || InCone(g, o)))
+                    && (Distance(g, o) <= (o.Sprinting ? SprintHeardRange : GuardCloseRange) || InCone(g, o)))
                 {
                     best = o;
                     bestDist = Distance(g, o);
@@ -930,7 +1152,7 @@ namespace Messingstadt.Core
             int x = tileX * TileUnits + TileUnits / 2, y = tileY * TileUnits + TileUnits / 2;
             foreach (var g in Units)
             {
-                if (g.Alive && g.Faction == Faction.Guard && DistanceTo(g, x, y) <= GuardConeRange
+                if (g.Alive && g.Faction == Faction.Guard && !g.Bribed && DistanceTo(g, x, y) <= GuardConeRange
                     && Map.HasLineOfSight(g.TileX, g.TileY, tileX, tileY)
                     && (DistanceTo(g, x, y) <= GuardCloseRange || InCone(g, x, y)))
                 {
@@ -954,6 +1176,7 @@ namespace Messingstadt.Core
             Mix((long)State);
             Mix(ItemProgress);
             Mix(EscapeProgress);
+            Mix(Money);
             Mix(_reinforceTick);
             Mix(Units.Count);
             foreach (var u in Units)
@@ -962,6 +1185,7 @@ namespace Messingstadt.Core
                 Mix(u.Y);
                 Mix(u.Hp);
                 Mix(u.Cooldown);
+                Mix(u.Stamina);
                 Mix(u.Path.Count);
                 Mix((long)u.GuardState);
                 Mix(u.NoticeTicks);

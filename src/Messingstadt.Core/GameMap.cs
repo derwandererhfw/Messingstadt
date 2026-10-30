@@ -36,6 +36,15 @@ namespace Messingstadt.Core
             _opaque[y * Width + x] |= opaque;
         }
 
+        /// <summary>Macht ein Feld begehbar. Die Sichtsperre bleibt: Eine offene Tür zeigt nicht das ganze Haus.</summary>
+        public void Unblock(int x, int y)
+        {
+            if (InBounds(x, y))
+            {
+                _blocked[y * Width + x] = false;
+            }
+        }
+
         /// <summary>Sichtlinie zwischen zwei Feldern (Bresenham). Start und Ziel zählen nicht.</summary>
         public bool HasLineOfSight(int x0, int y0, int x1, int y1)
         {

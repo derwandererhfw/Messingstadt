@@ -36,6 +36,9 @@ Fluchtwagen am Ostende der Querstraße.
 | Posten | Wachen ohne Rundgang drehen sich alle 3 s um 90° |
 | Kontobuch aufnehmen | 3 s im Stehen, wer weggeht, fängt von vorn an |
 | Einsteigen | Der Träger muss 1 s im Wagenbereich stehen |
+| Rennen | Doppelklick. Tempo plus 1,25 Felder/s je Stufe Beine. Wer rennt, schießt nicht und ist auf 4 statt 2 Felder zu hören |
+| Puste | 4 s plus 2 s je Stufe Herz. Erholung alle 3, 2 oder 1 Takte je nach Herz. Neustart ab 1 s Puste |
+| Startwerte der Agenten | Greta Beine 2, Herz 2. Otto Beine 1, Herz 3. Emil Beine 1, Herz 1. Hanna Beine 3, Herz 1 |
 | Deckung der Agenten | Stehende Agenten gehen unter Feuer selbst in Deckung, höchstens 2 Felder vom befohlenen Standort, nicht beim Aufnehmen oder Einsteigen |
 | Bemerken | 0,4 s plus 0,1 s je Feld Entfernung, bereits alarmierte Wachen 0,2 s |
 | Alarm | Jeder Schuss ist im Umkreis von 8 Feldern zu hören, je Feld 0,15 s später |
@@ -63,6 +66,29 @@ zeigen ihren Sichtkegel. Agenten sehen 10 Felder weit, der Spieler kann also vor
 Eine Gruppe verteilt sich beim Gehen auf eine Linie quer zur Blickrichtung, damit keine Figur im Bild
 hinter einer anderen steht. Der Träger des Kontobuchs bekommt dabei genau das angeklickte Feld.
 
+### Fähigkeiten
+
+| Agent | Fähigkeit | Regel |
+|---|---|---|
+| Otto, Schlosser | Tür öffnen | Rechtsklick auf die Türmarke, 2 s neben der Tür stehen. Danach kann jeder hindurch. Die Sicht bleibt gesperrt |
+| Emil, Buchhalter | Bestechen | Rechtsklick auf eine Wache, wenn nur Emil gewählt ist. 200 aus der Kasse, wirkt ab 2 Feldern Abstand, nur solange die Wache nicht kämpft. Sie ignoriert danach Agenten und Alarm, bis jemand auf sie schießt |
+
+In der ersten Mission führt die Hintertür der Lagerhalle zu einem Durchgang zur Querstraße und zur
+Lohnkasse (300). Beute zählt nur, wenn der Trupp entkommt. Papiere fälschen ist noch nicht gebaut.
+
+### Kampagne
+
+| Regel | Wert |
+|---|---|
+| Startgeld | 300 |
+| Lohn pro Sieg | 300, bei Leise 450, bei Unentdeckt 600 |
+| Ausbau | 150 von Stufe 1 auf 2, 300 von Stufe 2 auf 3 |
+| Niederlage | Kein Lohn, Beute verloren, ausgegebenes Geld bleibt ausgegeben |
+| Gefallene Agenten | Kommen zurück, Beine und Herz fallen auf Stufe 1 |
+
+Der Stand wird im Benutzerordner des Spiels gespeichert (`kampagne.json`). Es gibt bisher nur eine
+Mission, „Nächster Einsatz“ spielt sie erneut.
+
 ### Stand der Spielweisen
 
 Gemessen in der Spiellogik über je 300 Zufallsfolgen mit `tools/Messingstadt.Balance`:
@@ -72,6 +98,7 @@ Gemessen in der Spiellogik über je 300 Zufallsfolgen mit `tools/Messingstadt.Ba
 | Alle rennen zum Buch, dann zum Wagen | 82 % | 18 % | 2,15 | 79 von 400 | 19 s | Laut |
 | Jeder greift die nächste Wache an, dann Buch und Wagen | 92 % | 7 % | 1,10 | 176 von 400 | 36 s | Laut |
 | Alle schießen dieselbe Wache aus, dann Buch und Wagen | 78 % | 21 % | 1,58 | 147 von 400 | 34 s | Laut |
+| Alle sprinten den ganzen Weg zum Buch und zum Wagen | 29 % | 70 % | 3,43 | 14 von 400 | 15 s | Laut |
 | Auf die Straße stellen und kämpfen lassen, dann Buch und Wagen | 61 % | 35 % | 2,62 | 77 von 400 | 47 s | Laut |
 | Hinterhalt: einer lockt, alle warten zwischen den Häusern | 15 % | 84 % | 3,71 | 18 von 400 | 29 s | Laut |
 | Greta schleicht allein, Klicks auf ±0,5 s genau | 100 % | 0 % | 0 | 400 von 400 | 83 s | Unentdeckt |

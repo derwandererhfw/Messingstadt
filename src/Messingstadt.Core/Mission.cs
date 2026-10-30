@@ -44,6 +44,15 @@ namespace Messingstadt.Core
         public double Y { get; set; }
         public List<double[]> Patrol { get; set; } = new();
         public double[]? Facing { get; set; }
+
+        /// <summary>Besondere Fähigkeit: "schlosser" oder "buchhalter".</summary>
+        public string Skill { get; set; } = "";
+
+        /// <summary>Ausbaustufe 1 bis 3: bestimmt das Tempo beim Rennen.</summary>
+        public int Legs { get; set; } = 1;
+
+        /// <summary>Ausbaustufe 1 bis 3: bestimmt, wie lange die Puste reicht und wie schnell sie zurückkommt.</summary>
+        public int Heart { get; set; } = 1;
     }
 
     public sealed class ZoneData
@@ -65,6 +74,22 @@ namespace Messingstadt.Core
         public int Count { get; set; }
     }
 
+    /// <summary>Verschlossener Durchgang: Die Felder sind gesperrt, bis ein Schlosser die Tür öffnet.</summary>
+    public sealed class DoorData
+    {
+        public string Name { get; set; } = "";
+        public List<double[]> Tiles { get; set; } = new();
+    }
+
+    /// <summary>Beute, die Geld bringt, wenn ein Agent sie erreicht und der Trupp entkommt.</summary>
+    public sealed class LootData
+    {
+        public string Name { get; set; } = "";
+        public double X { get; set; }
+        public double Y { get; set; }
+        public int Value { get; set; }
+    }
+
     public sealed class MissionData
     {
         public string Title { get; set; } = "";
@@ -76,6 +101,14 @@ namespace Messingstadt.Core
         public string ItemName { get; set; } = "";
         public ZoneData Exit { get; set; } = new();
         public ReinforcementData? Reinforcements { get; set; }
+        public List<DoorData> Doors { get; set; } = new();
+        public LootData? Loot { get; set; }
+
+        /// <summary>Geld zum Einsatzbeginn. Kommt von der Kampagne.</summary>
+        public int Money { get; set; }
+
+        /// <summary>Standorte der Straßenlaternen in Feldern. Nur für die Darstellung.</summary>
+        public List<double[]> Lamps { get; set; } = new();
     }
 
     public static class Loader

@@ -6,11 +6,16 @@
   "item": [6.5, 3.5],
   "exit": { "x0": 18, "y0": 9, "x1": 20, "y1": 12 },
   "reinforcements": { "x": 19.5, "y": 6.5, "sprite": "Wachmann", "firstDelay": 6, "interval": 4, "count": 3 },
+  "doors": [
+    { "name": "Hintertür der Lagerhalle", "tiles": [[14, 17], [14, 16], [14, 15], [14, 14], [14, 13], [14, 12]] }
+  ],
+  "loot": { "name": "Lohnkasse", "x": 14.5, "y": 14.5, "value": 300 },
+  "lamps": [[7.5, 2], [7.5, 5.5], [10.5, 3.5], [10.5, 6.9], [5.6, 10.5], [12.6, 10.5], [7.5, 13.5], [10.5, 13.5]],
   "agents": [
-    { "name": "Greta", "sprite": "Agentin", "x": 8.5, "y": 18.5 },
-    { "name": "Otto", "sprite": "Schlosser", "x": 9.5, "y": 18.5 },
-    { "name": "Emil", "sprite": "Buchhalter", "x": 10.5, "y": 18.5 },
-    { "name": "Hanna", "sprite": "Agentin", "x": 11.5, "y": 18.5 }
+    { "name": "Greta", "sprite": "Agent", "x": 8.5, "y": 18.5, "legs": 2, "heart": 2 },
+    { "name": "Otto", "sprite": "Agent", "x": 9.5, "y": 18.5, "legs": 1, "heart": 3, "skill": "schlosser" },
+    { "name": "Emil", "sprite": "Agent", "x": 10.5, "y": 18.5, "legs": 1, "heart": 1, "skill": "buchhalter" },
+    { "name": "Hanna", "sprite": "Agent", "x": 11.5, "y": 18.5, "legs": 3, "heart": 1 }
   ],
   "guards": [
     { "name": "Wache 1", "sprite": "Wachmann", "x": 12.5, "y": 9.5, "patrol": [[14, 9], [9, 9]] },

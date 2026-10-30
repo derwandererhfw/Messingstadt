@@ -15,6 +15,10 @@ namespace Messingstadt
         private const float TickSeconds = 1f / World.TickRate;
         private const float ScrollSpeed = 300f;
         private const float MarkerSeconds = 0.8f;
+        private static readonly Color Night = new(0.34f, 0.37f, 0.55f);
+
+        /// <summary>Farbe für Ring und Nummer. Alle Agenten tragen dasselbe, nur die Nummer unterscheidet sie.</summary>
+        public static readonly Color AgentColor = new(1f, 0.8f, 0.45f);
 
         private sealed record ThingInfo(float X0, float Y0, float X1, float Y1);
 
@@ -26,8 +30,13 @@ namespace Messingstadt
         private Sprite2D _book = null!;
         private Camera2D _camera = null!;
         private Label _status = null!;
-        private Label _roster = null!;
+        private RichTextLabel _roster = null!;
         private Label _banner = null!;
+        private PanelContainer _panel = null!;
+        private VBoxContainer _panelBody = null!;
+        private Campaign _campaign = new();
+        private bool _finished;
+        private int _lastReward;
         private MissionData _mission = null!;
         private MapData _map = null!;
         private Texture2D _figures = null!;
@@ -50,19 +59,53 @@ namespace Messingstadt
         {
             ParseArgs();
             // Gleiche Farbe wie der Himmel in ground.png, damit außerhalb der Karte kein Streifen sichtbar ist.
-            RenderingServer.SetDefaultClearColor(new Color(52 / 255f, 56 / 255f, 78 / 255f));
+            RenderingServer.SetDefaultClearColor(new Color(52 / 255f, 56 / 255f, 78 / 255f) * Night);
+            AddChild(new CanvasModulate { Color = Night });
             string root = ProjectSettings.GlobalizePath("res://");
             string data = Path.GetFullPath(Path.Combine(root, "..", "data"));
             _map = Loader.ParseMap(File.ReadAllText(Path.Combine(data, "map_01.json")));
             _mission = Loader.ParseMission(File.ReadAllText(Path.Combine(data, "mission_01.json")));
 
+            LoadCampaign();
             LoadStatics();
             _camera = new Camera2D { Zoom = new Vector2(2, 2) };
             AddChild(_camera);
             _camera.MakeCurrent();
-            AddChild(new Overlay { Game = this, ZIndex = 4000 });
+            AddLamps();
+            // Eigene Ebene, die der Kamera folgt: Ringe und Balken bleiben auch in der Nacht gut lesbar.
+            var overlayLayer = new CanvasLayer { Layer = 1, FollowViewportEnabled = true };
+            AddChild(overlayLayer);
+            overlayLayer.AddChild(new Overlay { Game = this });
             BuildUi();
             StartMission();
+        }
+
+        /// <summary>Setzt an jede Straßenlaterne ein warmes Licht, das die Nacht aufhellt.</summary>
+        private void AddLamps()
+        {
+            var gradient = new Gradient
+            {
+                Offsets = new[] { 0f, 0.35f, 1f },
+                Colors = new[] { Colors.White, new Color(0.55f, 0.55f, 0.55f), Colors.Black },
+            };
+            var glow = new GradientTexture2D
+            {
+                Gradient = gradient, Width = 256, Height = 256, Fill = GradientTexture2D.FillEnum.Radial,
+                FillFrom = new Vector2(0.5f, 0.5f), FillTo = new Vector2(1f, 0.5f),
+            };
+            foreach (var lamp in _mission.Lamps)
+            {
+                AddChild(new PointLight2D
+                {
+                    Texture = glow,
+                    TextureScale = 1.1f,
+                    Color = new Color(1f, 0.74f, 0.42f),
+                    Energy = 1.15f,
+                    RangeZMin = -1,
+                    RangeZMax = 4096,
+                    Position = new Vector2(_ox + (float)(lamp[0] - lamp[1]) * 32f, _oy + (float)(lamp[0] + lamp[1]) * 16f),
+                });
+            }
         }
 
         private void ParseArgs()
@@ -131,20 +174,24 @@ namespace Messingstadt
 
         private void BuildUi()
         {
-            var layer = new CanvasLayer();
+            var layer = new CanvasLayer { Layer = 2 };
             AddChild(layer);
             var font = 16;
             _status = new Label { Position = new Vector2(12, 8), Size = new Vector2(1250, 60), AutowrapMode = TextServer.AutowrapMode.WordSmart };
             _status.AddThemeFontSizeOverride("font_size", font);
             _status.AddThemeColorOverride("font_shadow_color", Colors.Black);
             layer.AddChild(_status);
-            _roster = new Label { Position = new Vector2(12, 660) };
-            _roster.AddThemeFontSizeOverride("font_size", font);
+            _roster = new RichTextLabel
+            {
+                Position = new Vector2(12, 660), Size = new Vector2(760, 110), BbcodeEnabled = true,
+                ScrollActive = false, MouseFilter = Control.MouseFilterEnum.Ignore,
+            };
+            _roster.AddThemeFontSizeOverride("normal_font_size", font);
             _roster.AddThemeColorOverride("font_shadow_color", Colors.Black);
             layer.AddChild(_roster);
             var help = new Label
             {
-                Text = "Links: wählen / gehen   Rechts auf Wache: angreifen   1–4 / Leertaste: Auswahl   Pfeile/WASD: Kamera   F: zur Auswahl   P: Pause   R: Neustart",
+                Text = "Links: wählen/gehen   Doppelklick: rennen   Rechts: Wache angreifen, Emil allein: bestechen, Otto: Tür öffnen   1–4, Leertaste   WASD   F: Kamera   P   R",
                 Position = new Vector2(12, 772),
             };
             help.AddThemeFontSizeOverride("font_size", 13);
@@ -155,6 +202,99 @@ namespace Messingstadt
             _banner.AddThemeColorOverride("font_color", new Color(1f, 0.85f, 0.4f));
             _banner.AddThemeColorOverride("font_shadow_color", Colors.Black);
             layer.AddChild(_banner);
+            _panel = new PanelContainer { Position = new Vector2(340, 130), CustomMinimumSize = new Vector2(600, 0), Visible = false };
+            _panelBody = new VBoxContainer();
+            _panelBody.AddThemeConstantOverride("separation", 10);
+            _panel.AddChild(_panelBody);
+            layer.AddChild(_panel);
+        }
+
+        private static string SavePath => ProjectSettings.GlobalizePath("user://kampagne.json");
+
+        private void LoadCampaign()
+        {
+            _campaign = File.Exists(SavePath) ? Campaign.FromJson(File.ReadAllText(SavePath)) : new Campaign();
+        }
+
+        private void SaveCampaign() => File.WriteAllText(SavePath, _campaign.ToJson());
+
+        private void FinishMission()
+        {
+            _finished = true;
+            _lastReward = World.State == MissionState.Won ? Campaign.Reward(World.Rating) : 0;
+            _campaign.Finish(World);
+            SaveCampaign();
+            RefreshPanel();
+            _panel.Visible = true;
+        }
+
+        private static Label PanelLabel(string text, int size = 16)
+        {
+            var label = new Label { Text = text };
+            label.AddThemeFontSizeOverride("font_size", size);
+            return label;
+        }
+
+        /// <summary>Baut den Bildschirm zwischen den Einsätzen neu auf: Ergebnis, Kasse und Ausbau.</summary>
+        private void RefreshPanel()
+        {
+            foreach (var child in _panelBody.GetChildren())
+            {
+                child.QueueFree();
+            }
+            bool won = World.State == MissionState.Won;
+            _panelBody.AddChild(PanelLabel(won ? $"EINSATZ GEGLÜCKT: {RatingText()}" : "TRUPP VERLOREN", 26));
+            if (won)
+            {
+                string loot = World.LootTaken ? $", dazu {World.LootName} {World.LootValue}" : "";
+                _panelBody.AddChild(PanelLabel($"Lohn: {_lastReward}{loot}"));
+            }
+            _panelBody.AddChild(PanelLabel($"Kasse: {_campaign.Money}    Einsätze: {_campaign.Missions}", 18));
+            foreach (var u in World.Units.Where(u => u.Faction == Faction.Agent))
+            {
+                var record = _campaign.Agent(u.Name);
+                var row = new HBoxContainer();
+                row.AddThemeConstantOverride("separation", 12);
+                var name = PanelLabel($"{u.Name}: Beine {record.Legs}, Herz {record.Heart}{(u.Alive ? "" : "  (gefallen)")}");
+                name.CustomMinimumSize = new Vector2(280, 0);
+                row.AddChild(name);
+                row.AddChild(UpgradeButton("Beine", record.Name, record.Legs, true));
+                row.AddChild(UpgradeButton("Herz", record.Name, record.Heart, false));
+                _panelBody.AddChild(row);
+            }
+            var next = new Button { Text = won ? "Nächster Einsatz" : "Nochmal" };
+            next.Pressed += StartMission;
+            _panelBody.AddChild(next);
+            var reset = new Button { Text = "Neue Kampagne" };
+            reset.Pressed += () =>
+            {
+                _campaign = new Campaign();
+                SaveCampaign();
+                _mission = Loader.ParseMission(File.ReadAllText(Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data", "mission_01.json"))));
+                StartMission();
+            };
+            _panelBody.AddChild(reset);
+        }
+
+        private Button UpgradeButton(string label, string agent, int level, bool legs)
+        {
+            bool full = level >= Campaign.MaxLevel;
+            int cost = Campaign.UpgradeCost(level);
+            var button = new Button
+            {
+                Text = full ? $"{label} voll" : $"{label} + ({cost})",
+                Disabled = full || _campaign.Money < cost,
+                CustomMinimumSize = new Vector2(130, 0),
+            };
+            button.Pressed += () =>
+            {
+                if (_campaign.TryUpgrade(agent, legs))
+                {
+                    SaveCampaign();
+                    RefreshPanel();
+                }
+            };
+            return button;
         }
 
         private void StartMission()
@@ -164,6 +304,10 @@ namespace Messingstadt
                 s.QueueFree();
             }
             _unitSprites.Clear();
+            _campaign.Prepare(_mission);
+            SaveCampaign();
+            _finished = false;
+            _panel.Visible = false;
             World = new World(_map, _mission);
             foreach (var u in World.Units)
             {
@@ -213,6 +357,10 @@ namespace Messingstadt
             if (_auto)
             {
                 CenterOnSelection();
+            }
+            if (!_finished && World.State != MissionState.Running)
+            {
+                FinishMission();
             }
             UpdateUnits();
             UpdateUi();
@@ -319,7 +467,16 @@ namespace Messingstadt
                 bool covers = false;
                 foreach (var u in World.Units)
                 {
-                    if (u.Faction != Faction.Agent || !u.Alive || !IsInFront(_things[i], u))
+                    if (u.Faction != Faction.Agent || !u.Alive)
+                    {
+                        continue;
+                    }
+                    if (IsInside(_things[i], u))
+                    {
+                        covers = true;
+                        break;
+                    }
+                    if (!IsInFront(_things[i], u))
                     {
                         continue;
                     }
@@ -354,6 +511,12 @@ namespace Messingstadt
             var p = screen - _thingSprites[thing].Position;
             return p.X >= 0 && p.Y >= 0 && p.X < image.GetWidth() && p.Y < image.GetHeight()
                 && image.GetPixel((int)p.X, (int)p.Y).A > 0.5f;
+        }
+
+        private static bool IsInside(ThingInfo t, Unit u)
+        {
+            float x = u.X / (float)World.TileUnits, y = u.Y / (float)World.TileUnits;
+            return x >= t.X0 && x <= t.X1 && y >= t.Y0 && y <= t.Y1;
         }
 
         private static bool IsInFront(ThingInfo t, Unit u)
@@ -398,17 +561,17 @@ namespace Messingstadt
                 string mark = Selected.Contains(u.Id) ? "> " : "  ";
                 string state = u.Alive ? $"{u.Hp}/{u.MaxHp}" : "ausgeschaltet";
                 string item = u.CarriesItem ? " [Kontobuch]" : "";
-                r.Append(mark).Append(n++).Append(' ').Append(u.Name).Append("  ").Append(state).Append(item).Append('\n');
+                string skill = u.Skill == World.SkillLocksmith ? "  Schlosser" : u.Skill == World.SkillBookkeeper ? "  Buchhalter" : "";
+                string body = u.Alive ? $"  Beine {u.Legs} Herz {u.Heart}{skill}{(u.Sprinting ? "  rennt" : "")}" : "";
+                r.Append(mark).Append(n++).Append(' ').Append(u.Name).Append("  ").Append(state).Append(body).Append(item).Append('\n');
             }
             _roster.Text = r.ToString();
             int guards = World.Units.Count(u => u.Faction == Faction.Guard && u.Alive);
             _banner.Text = World.State switch
             {
-                MissionState.Won => $"EINSATZ GEGLÜCKT: {RatingText()}  (R: nochmal)",
-                MissionState.Lost => "TRUPP VERLOREN  (R: nochmal)",
                 _ => _paused ? "PAUSE" : "",
             };
-            _status.Text += $"   Wachen: {guards}   Zeit: {World.Tick / World.TickRate} s";
+            _status.Text += $"   Wachen: {guards}   Zeit: {World.Tick / World.TickRate} s   Kasse: {World.Money}";
             if (World.TicksUntilReinforcement >= 0)
             {
                 _status.Text += $"   ALARM: Verstärkung in {World.TicksUntilReinforcement / World.TickRate + 1} s";
@@ -458,7 +621,7 @@ namespace Messingstadt
                     else
                     {
                         var m = ScreenToMap(worldPos);
-                        if (MoveSelected((int)Mathf.Floor(m.X), (int)Mathf.Floor(m.Y)))
+                        if (MoveSelected((int)Mathf.Floor(m.X), (int)Mathf.Floor(m.Y), mouse.DoubleClick))
                         {
                             MarkerPos = worldPos;
                             MarkerTime = MarkerSeconds;
@@ -470,7 +633,20 @@ namespace Messingstadt
                     var guard = UnitUnderCursor(worldPos, Faction.Guard);
                     if (guard != null)
                     {
-                        foreach (int id in Selected) World.OrderAttack(id, guard.Id);
+                        // Wer nur den Buchhalter gewählt hat, will verhandeln statt schießen.
+                        bool bribed = Selected.Count == 1 && World.OrderBribe(Selected.First(), guard.Id);
+                        if (!bribed)
+                        {
+                            foreach (int id in Selected) World.OrderAttack(id, guard.Id);
+                        }
+                    }
+                    else
+                    {
+                        int door = DoorUnderCursor(worldPos);
+                        if (door >= 0)
+                        {
+                            foreach (int id in Selected) World.OrderOpenDoor(id, door);
+                        }
                     }
                 }
             }
@@ -482,6 +658,29 @@ namespace Messingstadt
             if (!add) Selected.Clear();
             Selected.Add(index);
         }
+
+        private int DoorUnderCursor(Vector2 p)
+        {
+            for (int d = 0; d < World.Doors.Count; d++)
+            {
+                var tiles = World.Doors[d].Tiles;
+                if (World.Doors[d].Open || tiles.Count == 0)
+                {
+                    continue;
+                }
+                foreach (var (x, y) in new[] { tiles[0], tiles[^1] })
+                {
+                    if (TileCenter(x, y).DistanceTo(p) < 22f)
+                    {
+                        return d;
+                    }
+                }
+            }
+            return -1;
+        }
+
+        public Vector2 TileCenter(int tileX, int tileY) =>
+            ToScreen(tileX * World.TileUnits + World.TileUnits / 2, tileY * World.TileUnits + World.TileUnits / 2);
 
         private Unit? UnitUnderCursor(Vector2 p, Faction faction)
         {
@@ -502,9 +701,9 @@ namespace Messingstadt
         }
 
         /// <summary>Schickt die Auswahl los. Die Verteilung auf freie Felder regelt die Spiellogik.</summary>
-        private bool MoveSelected(int tx, int ty)
+        private bool MoveSelected(int tx, int ty, bool sprint = false)
         {
-            return World.OrderGroupMove(Selected, tx, ty);
+            return World.OrderGroupMove(Selected, tx, ty, sprint);
         }
     }
 }

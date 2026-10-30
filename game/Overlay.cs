@@ -27,9 +27,14 @@ namespace Messingstadt
                     DrawRect(new Rect2(item + new Vector2(-13, 11), new Vector2(26 * f, 2)), new Color(1f, 0.85f, 0.3f));
                 }
             }
+            DrawDoors(world);
+            if (world.HasLoot && !world.LootTaken && world.Doors.TrueForAll(d => d.Open))
+            {
+                DrawIsoRing(Game.ToScreen(world.LootX, world.LootY), new Color(0.4f, 1f, 0.5f));
+            }
             foreach (var u in world.Units)
             {
-                if (u.Alive && u.Faction == Faction.Guard && u.GuardState == GuardState.Patrol && world.IsSpottedByAgents(u))
+                if (u.Alive && u.Faction == Faction.Guard && !u.Bribed && u.GuardState == GuardState.Patrol && world.IsSpottedByAgents(u))
                 {
                     DrawSightCone(world, u);
                 }
@@ -52,16 +57,37 @@ namespace Messingstadt
                     continue;
                 }
                 var p = Game.ToScreen(u.X, u.Y);
-                if (Game.Selected.Contains(u.Id))
+                if (u.Faction == Faction.Agent)
                 {
-                    DrawIsoRing(p, new Color(1f, 0.85f, 0.35f));
+                    // Der innere Ring gehört immer zum Agenten, der äußere weiße Ring zeigt die Auswahl.
+                    DrawIsoRing(p, Main.AgentColor, 11f);
+                    if (Game.Selected.Contains(u.Id))
+                    {
+                        DrawIsoRing(p, Colors.White, 14f);
+                    }
+                    // Der Schatten hält die Nummer auch im Laternenlicht lesbar.
+                    string number = (u.Id + 1).ToString();
+                    DrawString(ThemeDB.FallbackFont, p + new Vector2(-2, -49), number, HorizontalAlignment.Left, -1, 10, Colors.Black);
+                    DrawString(ThemeDB.FallbackFont, p + new Vector2(-3, -50), number, HorizontalAlignment.Left, -1, 10, Main.AgentColor);
                 }
                 // Wachen ohne Sichtkontakt verraten ihre Position nicht über den Lebensbalken.
                 // Steht eine Wache im Bild hinter einem Haus, soll der Balken nicht auf dem Dach schweben.
                 if (u.Faction == Faction.Agent || (world.IsSpottedByAgents(u) && !Game.IsHiddenByThing(u)))
                 {
                     DrawBar(p + new Vector2(-10, -46), u);
-                    if (u.Faction == Faction.Guard && u.GuardState != GuardState.Patrol)
+                    if (u.Faction == Faction.Agent)
+                    {
+                        // Blau: Puste zum Rennen. Heller, solange der Agent gerade rennt.
+                        float breath = (float)u.Stamina / World.MaxStamina(u);
+                        var color = u.Sprinting ? new Color(0.6f, 0.9f, 1f) : new Color(0.35f, 0.6f, 0.95f);
+                        DrawRect(new Rect2(p + new Vector2(-10, -43), new Vector2(20, 2)), new Color(0, 0, 0, 0.7f));
+                        DrawRect(new Rect2(p + new Vector2(-9, -43), new Vector2(18 * breath, 1)), color);
+                    }
+                    if (u.Bribed)
+                    {
+                        DrawRect(new Rect2(p + new Vector2(-2, -54), new Vector2(4, 6)), new Color(0.35f, 0.95f, 0.45f));
+                    }
+                    else if (u.Faction == Faction.Guard && u.GuardState != GuardState.Patrol)
                     {
                         // Gelb: bemerkt etwas. Rot: kämpft. Orange: sucht.
                         var mark = u.GuardState switch
@@ -134,6 +160,30 @@ namespace Messingstadt
             }
         }
 
+        /// <summary>Markiert beide Enden verschlossener Türen und zeigt den Fortschritt beim Öffnen.</summary>
+        private void DrawDoors(World w)
+        {
+            foreach (var door in w.Doors)
+            {
+                if (door.Open || door.Tiles.Count == 0)
+                {
+                    continue;
+                }
+                foreach (var (x, y) in new[] { door.Tiles[0], door.Tiles[^1] })
+                {
+                    var p = Game.TileCenter(x, y);
+                    DrawRect(new Rect2(p + new Vector2(-4, -6), new Vector2(8, 7)), new Color(0.95f, 0.75f, 0.25f));
+                    DrawRect(new Rect2(p + new Vector2(-1, -4), new Vector2(2, 3)), new Color(0.15f, 0.1f, 0.05f));
+                    if (door.Progress > 0)
+                    {
+                        float f = (float)door.Progress / World.DoorTicks;
+                        DrawRect(new Rect2(p + new Vector2(-14, 4), new Vector2(28, 4)), new Color(0, 0, 0, 0.7f));
+                        DrawRect(new Rect2(p + new Vector2(-13, 5), new Vector2(26 * f, 2)), new Color(0.95f, 0.75f, 0.25f));
+                    }
+                }
+            }
+        }
+
         private void DrawExit(World w)
         {
             var (x0, y0, x1, y1) = w.Exit;
@@ -141,13 +191,13 @@ namespace Messingstadt
             DrawPolyline(pts, new Color(0.4f, 1f, 0.5f, w.ItemTaken ? 1f : 0.35f), 1f);
         }
 
-        private void DrawIsoRing(Vector2 p, Color c)
+        private void DrawIsoRing(Vector2 p, Color c, float radius = 13f)
         {
             var pts = new Vector2[17];
             for (int i = 0; i <= 16; i++)
             {
                 float a = i / 16f * Mathf.Tau;
-                pts[i] = p + new Vector2(Mathf.Cos(a) * 13, Mathf.Sin(a) * 6.5f);
+                pts[i] = p + new Vector2(Mathf.Cos(a) * radius, Mathf.Sin(a) * radius / 2f);
             }
             DrawPolyline(pts, c, 1f);
         }
