@@ -16,6 +16,16 @@ namespace Messingstadt.Core
         Lost,
     }
 
+    /// <summary>Verhalten einer Wache: Rundgang, bemerken, kämpfen, nachsehen, absuchen.</summary>
+    public enum GuardState
+    {
+        Patrol,
+        Noticing,
+        Combat,
+        Investigate,
+        Search,
+    }
+
     public sealed class Unit
     {
         public int Id;
@@ -36,6 +46,14 @@ namespace Messingstadt.Core
         public readonly List<(int X, int Y)> Patrol = new();
         public int PatrolIndex;
         public int RepathTick;
+        public GuardState GuardState;
+        public int NoticeTicks;
+        public int LastKnownX, LastKnownY;
+        public int LastSeenTick;
+        public int SearchUntilTick;
+        public int AlarmTick;
+        public int AlarmX, AlarmY;
+        public bool Sidestepping;
 
         public bool Alive => Hp > 0;
         public int TileX => X / World.TileUnits;
@@ -58,15 +76,41 @@ namespace Messingstadt.Core
         private const int GuardAlertSpeed = 110;
         private const int WeaponRange = 7 * TileUnits;
         private const int WeaponCooldown = 14;
-        private const int AgentDamage = 16;
-        private const int GuardDamage = 8;
+        private const int AgentDamage = 12;
+        private const int GuardDamage = 10;
         private const int HitChanceBase = 85;
         private const int HitChancePerTile = 5;
         private const int SightRange = 7 * TileUnits;
         private const int AgentSightRange = 10 * TileUnits;
         private const int AlertRadius = 8 * TileUnits;
+        private const int AlarmDelayPerTile = 3;
+        private const int NoticeBase = 8;
+        private const int NoticePerTile = 2;
+        private const int NoticeWhenAlert = 4;
+        private const int LostSightTicks = 40;
+        private const int SearchTicks = 100;
+        private const int CoverPenalty = 25;
+        private const int MovingPenalty = 15;
+        private const int MinHitChance = 10;
+        private const int FiringSearchRadius = 3;
+        private const int CoverScore = 30;
         private const int PickupRadius = 700;
         private const int RepathInterval = 20;
+        private const int CarrierSpeed = 90;
+        private const int CloseNoticeRange = 2 * TileUnits;
+        private const int LookAroundTicks = 60;
+        private const int SpreadRadius = 3;
+
+        public const int PickupTicks = 60;
+        public const int GuardConeRange = 5 * TileUnits;
+        public const int GuardConeHalfDegrees = 45;
+
+        // Erst eine Linie quer zur Blickrichtung, damit keine Figur im Bild hinter einer anderen steht.
+        private static readonly (int X, int Y)[] Formation =
+        {
+            (0, 0), (1, -1), (-1, 1), (2, -2), (-2, 2), (1, 0), (0, 1), (-1, 0), (0, -1),
+            (2, -1), (-1, 2), (1, -2), (-2, 1), (1, 1), (-1, -1), (2, 0), (0, 2),
+        };
 
         private uint _rng;
         private readonly (int X0, int Y0, int X1, int Y1) _exit;
@@ -79,6 +123,7 @@ namespace Messingstadt.Core
         public int ItemX { get; private set; }
         public int ItemY { get; private set; }
         public bool ItemTaken { get; private set; }
+        public int ItemProgress { get; private set; }
         public string ItemName { get; }
         public (int X0, int Y0, int X1, int Y1) Exit => _exit;
 
@@ -113,6 +158,11 @@ namespace Messingstadt.Core
             {
                 u.Patrol.Add(((int)p[0], (int)p[1]));
             }
+            if (d.Facing is { Length: 2 })
+            {
+                u.FacingX = ToUnits(d.Facing[0]);
+                u.FacingY = ToUnits(d.Facing[1]);
+            }
             Units.Add(u);
         }
 
@@ -144,6 +194,41 @@ namespace Messingstadt.Core
             u.Path.AddRange(path);
             u.TargetId = -1;
             return true;
+        }
+
+        /// <summary>Schickt mehrere Agenten zum Zielfeld und verteilt sie auf freie Felder in einer Linie.</summary>
+        public bool OrderGroupMove(IEnumerable<int> unitIds, int tileX, int tileY)
+        {
+            if (Map.IsBlocked(tileX, tileY) || State != MissionState.Running)
+            {
+                return false;
+            }
+            var ids = new List<int>(unitIds);
+            // Der Träger zuerst: Er bekommt genau das angeklickte Feld, etwa in der Fluchtzone.
+            ids.Sort((a, b) => Units[a].CarriesItem != Units[b].CarriesItem ? (Units[a].CarriesItem ? -1 : 1) : a.CompareTo(b));
+            var taken = new HashSet<(int, int)>();
+            foreach (var o in Units)
+            {
+                if (o.Alive && o.Faction == Faction.Agent && !ids.Contains(o.Id))
+                {
+                    taken.Add(o.Path.Count > 0 ? o.Path[^1] : (o.TileX, o.TileY));
+                }
+            }
+            bool any = false;
+            foreach (int id in ids)
+            {
+                foreach (var (ox, oy) in Formation)
+                {
+                    int x = tileX + ox, y = tileY + oy;
+                    if (!taken.Contains((x, y)) && !Map.IsBlocked(x, y) && OrderMove(id, x, y))
+                    {
+                        taken.Add((x, y));
+                        any = true;
+                        break;
+                    }
+                }
+            }
+            return any;
         }
 
         /// <summary>Befiehlt den Angriff. Die Einheit geht auf das Ziel zu, bis sie es treffen kann.</summary>
@@ -188,81 +273,304 @@ namespace Messingstadt.Core
 
         private void ThinkAgent(Unit a)
         {
-            if (a.TargetId < 0)
+            if (a.Path.Count == 0)
             {
-                return;
+                a.Sidestepping = false;
             }
-            var target = Units[a.TargetId];
-            if (!target.Alive)
+            Unit? target = a.TargetId >= 0 ? Units[a.TargetId] : null;
+            if (target != null && !target.Alive)
             {
                 a.TargetId = -1;
                 a.Path.Clear();
-                return;
+                target = null;
             }
-            if (CanSee(a, target, WeaponRange))
+            if (target != null)
             {
-                a.Path.Clear();
-            }
-            else if (Tick >= a.RepathTick)
-            {
-                a.RepathTick = Tick + RepathInterval;
-                var path = Map.FindPath(a.TileX, a.TileY, target.TileX, target.TileY);
-                a.Path.Clear();
-                if (path != null)
+                if (CanSee(a, target, WeaponRange))
                 {
-                    a.Path.AddRange(path);
+                    if (!a.Sidestepping)
+                    {
+                        a.Path.Clear();
+                    }
+                }
+                else if (Tick >= a.RepathTick)
+                {
+                    a.RepathTick = Tick + RepathInterval;
+                    a.Sidestepping = false;
+                    WalkTo(a, target.TileX, target.TileY);
+                }
+            }
+            if (a.Path.Count == 0 && TileIsTaken(a, a.TileX, a.TileY))
+            {
+                StepAside(a, target);
+            }
+        }
+
+        /// <summary>Geht zum nächsten freien Feld. Mit Ziel nur auf Felder, von denen aus es sichtbar bleibt.</summary>
+        private void StepAside(Unit a, Unit? target)
+        {
+            for (int r = 1; r <= SpreadRadius; r++)
+            {
+                for (int dy = -r; dy <= r; dy++)
+                {
+                    for (int dx = -r; dx <= r; dx++)
+                    {
+                        int x = a.TileX + dx, y = a.TileY + dy;
+                        if (Math.Max(Math.Abs(dx), Math.Abs(dy)) != r || Map.IsBlocked(x, y) || TileIsTaken(a, x, y))
+                        {
+                            continue;
+                        }
+                        if (target != null && !Map.HasLineOfSight(x, y, target.TileX, target.TileY))
+                        {
+                            continue;
+                        }
+                        WalkTo(a, x, y);
+                        if (a.Path.Count > 0)
+                        {
+                            a.Sidestepping = true;
+                            return;
+                        }
+                    }
                 }
             }
         }
 
         private void ThinkGuard(Unit g)
         {
-            Unit? seen = NearestVisibleEnemy(g, SightRange);
-            if (seen != null && !g.Alerted)
+            // Nur wer ahnungslos ist, hat einen Sichtkegel. Alarmierte Wachen achten auf alle Seiten.
+            Unit? seen = g.GuardState == GuardState.Patrol ? NearestNoticedEnemy(g) : NearestVisibleEnemy(g, SightRange);
+            if (seen != null)
             {
-                Alert(g);
+                g.LastKnownX = seen.X;
+                g.LastKnownY = seen.Y;
+                g.LastSeenTick = Tick;
             }
-            if (g.Alerted)
+            if (g.AlarmTick > 0 && Tick >= g.AlarmTick)
             {
-                if (seen == null || Distance(g, seen) > WeaponRange - TileUnits)
-                {
-                    Unit? chase = seen ?? NearestLivingEnemy(g);
-                    if (chase != null && Tick >= g.RepathTick)
+                g.AlarmTick = 0;
+                HearAlarm(g, seen);
+            }
+            switch (g.GuardState)
+            {
+                case GuardState.Patrol:
+                    if (seen != null)
                     {
-                        g.RepathTick = Tick + RepathInterval;
-                        var path = Map.FindPath(g.TileX, g.TileY, chase.TileX, chase.TileY);
-                        g.Path.Clear();
-                        if (path != null)
-                        {
-                            g.Path.AddRange(path);
-                        }
+                        StartNoticing(g, seen, NoticeBase + NoticePerTile * Distance(g, seen) / TileUnits);
                     }
-                }
-                else
-                {
-                    g.Path.Clear();
-                }
-                return;
-            }
-            if (g.Path.Count == 0 && g.Patrol.Count > 0)
-            {
-                g.PatrolIndex = (g.PatrolIndex + 1) % g.Patrol.Count;
-                var (px, py) = g.Patrol[g.PatrolIndex];
-                var path = Map.FindPath(g.TileX, g.TileY, px, py);
-                if (path != null)
-                {
-                    g.Path.AddRange(path);
-                }
+                    else
+                    {
+                        WalkPatrol(g);
+                    }
+                    break;
+                case GuardState.Noticing:
+                    if (seen == null)
+                    {
+                        StartInvestigating(g);
+                    }
+                    else if (--g.NoticeTicks <= 0)
+                    {
+                        StartCombat(g);
+                    }
+                    break;
+                case GuardState.Combat:
+                    ThinkCombat(g, seen);
+                    break;
+                case GuardState.Investigate:
+                    if (seen != null)
+                    {
+                        StartNoticing(g, seen, NoticeWhenAlert);
+                    }
+                    else if (g.Path.Count == 0)
+                    {
+                        g.GuardState = GuardState.Search;
+                        g.SearchUntilTick = Tick + SearchTicks;
+                    }
+                    break;
+                case GuardState.Search:
+                    if (seen != null)
+                    {
+                        StartNoticing(g, seen, NoticeWhenAlert);
+                    }
+                    else if (Tick >= g.SearchUntilTick)
+                    {
+                        g.GuardState = GuardState.Patrol;
+                        g.Alerted = false;
+                    }
+                    break;
             }
         }
 
-        private void Alert(Unit source)
+        private void HearAlarm(Unit g, Unit? seen)
+        {
+            if (g.GuardState == GuardState.Combat)
+            {
+                return;
+            }
+            if (g.GuardState == GuardState.Noticing && seen != null)
+            {
+                g.NoticeTicks = Math.Min(g.NoticeTicks, NoticeWhenAlert);
+                return;
+            }
+            g.LastKnownX = g.AlarmX;
+            g.LastKnownY = g.AlarmY;
+            StartInvestigating(g);
+        }
+
+        private void WalkPatrol(Unit g)
+        {
+            if (g.Patrol.Count == 0)
+            {
+                // Posten bleiben stehen und schauen reihum in alle vier Richtungen.
+                if (Tick % LookAroundTicks == 0)
+                {
+                    (g.FacingX, g.FacingY) = (-g.FacingY, g.FacingX);
+                }
+                return;
+            }
+            if (g.Path.Count == 0)
+            {
+                g.PatrolIndex = (g.PatrolIndex + 1) % g.Patrol.Count;
+                var (px, py) = g.Patrol[g.PatrolIndex];
+                WalkTo(g, px, py);
+            }
+        }
+
+        private void WalkTo(Unit g, int tileX, int tileY)
+        {
+            g.Path.Clear();
+            var path = Map.FindPath(g.TileX, g.TileY, tileX, tileY);
+            if (path != null)
+            {
+                g.Path.AddRange(path);
+            }
+        }
+
+        private static void StartNoticing(Unit g, Unit seen, int ticks)
+        {
+            g.GuardState = GuardState.Noticing;
+            g.NoticeTicks = ticks;
+            g.Path.Clear();
+            g.FacingX = seen.X - g.X;
+            g.FacingY = seen.Y - g.Y;
+        }
+
+        private void StartCombat(Unit g)
+        {
+            g.GuardState = GuardState.Combat;
+            g.Alerted = true;
+            g.LastSeenTick = Tick;
+            g.RepathTick = 0;
+        }
+
+        private void StartInvestigating(Unit g)
+        {
+            g.GuardState = GuardState.Investigate;
+            g.Alerted = true;
+            WalkTo(g, g.LastKnownX / TileUnits, g.LastKnownY / TileUnits);
+        }
+
+        private void ThinkCombat(Unit g, Unit? seen)
+        {
+            if (seen == null)
+            {
+                if (Tick - g.LastSeenTick > LostSightTicks)
+                {
+                    StartInvestigating(g);
+                }
+                return;
+            }
+            if (g.Path.Count > 0 || Tick < g.RepathTick)
+            {
+                return;
+            }
+            g.RepathTick = Tick + RepathInterval;
+            bool inRange = Distance(g, seen) <= WeaponRange - TileUnits;
+            if (inRange && !TileIsTaken(g, g.TileX, g.TileY) && HasCoverFrom(g, seen))
+            {
+                return;
+            }
+            var spot = FindFiringTile(g, seen);
+            if (spot != null)
+            {
+                WalkTo(g, spot.Value.X, spot.Value.Y);
+            }
+            else if (!inRange)
+            {
+                WalkTo(g, seen.TileX, seen.TileY);
+            }
+        }
+
+        /// <summary>Sucht ein freies Feld in der Nähe mit Sicht auf das Ziel, bevorzugt in Deckung.</summary>
+        private (int X, int Y)? FindFiringTile(Unit g, Unit target)
+        {
+            (int X, int Y)? best = null;
+            int bestScore = int.MinValue;
+            for (int dy = -FiringSearchRadius; dy <= FiringSearchRadius; dy++)
+            {
+                for (int dx = -FiringSearchRadius; dx <= FiringSearchRadius; dx++)
+                {
+                    int x = g.TileX + dx, y = g.TileY + dy;
+                    if (Map.IsBlocked(x, y) || TileIsTaken(g, x, y) || !Map.HasLineOfSight(x, y, target.TileX, target.TileY))
+                    {
+                        continue;
+                    }
+                    int tx = target.TileX - x, ty = target.TileY - y;
+                    int distSq = tx * tx + ty * ty;
+                    if (distSq > 36 || distSq < 4)
+                    {
+                        continue;
+                    }
+                    int score = -4 * (Math.Abs(dx) + Math.Abs(dy));
+                    if (TileHasCoverFrom(x, y, target.TileX, target.TileY))
+                    {
+                        score += CoverScore;
+                    }
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        best = (x, y);
+                    }
+                }
+            }
+            return best;
+        }
+
+        /// <summary>True, wenn jemand von der eigenen Seite dort steht oder dorthin unterwegs ist. Auf dem eigenen Feld weicht die höhere Id.</summary>
+        private bool TileIsTaken(Unit g, int x, int y)
+        {
+            bool ownTile = x == g.TileX && y == g.TileY;
+            foreach (var o in Units)
+            {
+                if (o.Id == g.Id || !o.Alive || o.Faction != g.Faction)
+                {
+                    continue;
+                }
+                bool standing = o.Path.Count == 0 && o.TileX == x && o.TileY == y && (!ownTile || o.Id < g.Id);
+                // Wer auf seinem Feld steht, wartet: Der Ankommende weicht aus, sonst wäre das Ziel nie erreichbar.
+                bool heading = !ownTile && o.Path.Count > 0 && o.Path[^1] == (x, y);
+                if (standing || heading)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>Löst Alarm aus. Nahe Wachen reagieren früher, ferne später oder gar nicht.</summary>
+        public void RaiseAlarm(int x, int y)
         {
             foreach (var u in Units)
             {
-                if (u.Alive && u.Faction == Faction.Guard && DistanceTo(u, source.X, source.Y) <= AlertRadius)
+                if (!u.Alive || u.Faction != Faction.Guard || u.GuardState == GuardState.Combat || u.AlarmTick > 0)
                 {
-                    u.Alerted = true;
+                    continue;
+                }
+                int dist = DistanceTo(u, x, y);
+                if (dist <= AlertRadius)
+                {
+                    u.AlarmTick = Tick + 1 + AlarmDelayPerTile * dist / TileUnits;
+                    u.AlarmX = x;
+                    u.AlarmY = y;
                 }
             }
         }
@@ -274,7 +582,9 @@ namespace Messingstadt.Core
             {
                 return;
             }
-            int speed = u.Faction == Faction.Agent ? AgentSpeed : (u.Alerted ? GuardAlertSpeed : GuardPatrolSpeed);
+            int speed = u.Faction == Faction.Agent
+                ? (u.CarriesItem ? CarrierSpeed : AgentSpeed)
+                : (u.Alerted ? GuardAlertSpeed : GuardPatrolSpeed);
             var (tx, ty) = u.Path[0];
             int wx = tx * TileUnits + TileUnits / 2, wy = ty * TileUnits + TileUnits / 2;
             int dx = wx - u.X, dy = wy - u.Y;
@@ -324,7 +634,7 @@ namespace Messingstadt.Core
             }
             target ??= NearestVisibleEnemy(u, WeaponRange);
             // Agenten bleiben ruhig, bis die Wachen alarmiert sind oder der Spieler ein Ziel vorgibt.
-            if (target == null || (u.Faction == Faction.Guard && !u.Alerted))
+            if (target == null || (u.Faction == Faction.Guard && u.GuardState != GuardState.Combat))
             {
                 return;
             }
@@ -341,22 +651,24 @@ namespace Messingstadt.Core
             u.FacingX = target.X - u.X;
             u.FacingY = target.Y - u.Y;
             u.LastFiredTick = Tick;
-            int chance = HitChanceBase - HitChancePerTile * Distance(u, target) / TileUnits;
-            bool hit = NextRandom() % 100 < (uint)Math.Max(chance, 10);
+            bool hit = NextRandom() % 100 < (uint)HitChance(u, target);
             Shots.Add(new ShotEvent(u.X, u.Y, target.X, target.Y, hit, Tick));
             if (Shots.Count > 64)
             {
                 Shots.RemoveAt(0);
             }
-            Alert(u);
+            if (target.Faction == Faction.Guard && target.GuardState != GuardState.Combat)
+            {
+                // Wer beschossen wird, reagiert sofort und kennt die Richtung.
+                target.LastKnownX = u.X;
+                target.LastKnownY = u.Y;
+                target.Path.Clear();
+                StartCombat(target);
+            }
+            RaiseAlarm(u.X, u.Y);
             if (hit)
             {
                 target.Hp = Math.Max(0, target.Hp - (u.Faction == Faction.Agent ? AgentDamage : GuardDamage));
-                if (target.Faction == Faction.Guard)
-                {
-                    target.Alerted = true;
-                    Alert(target);
-                }
                 if (!target.Alive)
                 {
                     target.Path.Clear();
@@ -375,6 +687,7 @@ namespace Messingstadt.Core
         private void CheckMission()
         {
             bool anyAgent = false;
+            Unit? picker = null;
             foreach (var u in Units)
             {
                 if (u.Faction != Faction.Agent || !u.Alive)
@@ -382,10 +695,12 @@ namespace Messingstadt.Core
                     continue;
                 }
                 anyAgent = true;
-                if (!ItemTaken && DistanceTo(u, ItemX, ItemY) <= PickupRadius)
+                // Auf demselben Feld immer erreichbar, auch wenn das Buch in einer Feldecke liegt.
+                bool atItem = DistanceTo(u, ItemX, ItemY) <= PickupRadius
+                    || (u.TileX == ItemX / TileUnits && u.TileY == ItemY / TileUnits);
+                if (picker == null && !ItemTaken && !u.Moving && atItem)
                 {
-                    ItemTaken = true;
-                    u.CarriesItem = true;
+                    picker = u;
                 }
                 if (u.CarriesItem && u.X >= _exit.X0 && u.X < _exit.X1 && u.Y >= _exit.Y0 && u.Y < _exit.Y1)
                 {
@@ -396,6 +711,14 @@ namespace Messingstadt.Core
             if (!anyAgent)
             {
                 State = MissionState.Lost;
+            }
+            // Das Aufnehmen braucht Zeit im Stand. Wer weggeht, fängt von vorn an.
+            ItemProgress = picker != null ? ItemProgress + 1 : 0;
+            if (picker != null && ItemProgress >= PickupTicks)
+            {
+                ItemTaken = true;
+                ItemProgress = 0;
+                picker.CarriesItem = true;
             }
         }
 
@@ -411,6 +734,32 @@ namespace Messingstadt.Core
 
         public bool CanSee(Unit a, Unit b, int range) =>
             Distance(a, b) <= range && Map.HasLineOfSight(a.TileX, a.TileY, b.TileX, b.TileY);
+
+        /// <summary>Trefferchance in Prozent: Entfernung, Deckung des Ziels, Bewegung des Schützen.</summary>
+        public int HitChance(Unit shooter, Unit target)
+        {
+            int chance = HitChanceBase - HitChancePerTile * Distance(shooter, target) / TileUnits;
+            if (HasCoverFrom(target, shooter))
+            {
+                chance -= CoverPenalty;
+            }
+            if (shooter.Moving)
+            {
+                chance -= MovingPenalty;
+            }
+            return Math.Max(chance, MinHitChance);
+        }
+
+        /// <summary>True, wenn direkt neben der Einheit in Richtung des Gegners ein Hindernis steht.</summary>
+        public bool HasCoverFrom(Unit u, Unit enemy) => TileHasCoverFrom(u.TileX, u.TileY, enemy.TileX, enemy.TileY);
+
+        private bool TileHasCoverFrom(int x, int y, int enemyX, int enemyY)
+        {
+            int dx = Math.Sign(enemyX - x), dy = Math.Sign(enemyY - y);
+            return (dx != 0 && Map.IsBlocked(x + dx, y))
+                || (dy != 0 && Map.IsBlocked(x, y + dy))
+                || (dx != 0 && dy != 0 && Map.IsBlocked(x + dx, y + dy));
+        }
 
         /// <summary>True, wenn ein lebender Agent diese Einheit gerade sehen kann.</summary>
         public bool IsSpottedByAgents(Unit target)
@@ -440,19 +789,29 @@ namespace Messingstadt.Core
             return best;
         }
 
-        private Unit? NearestLivingEnemy(Unit u)
+        /// <summary>Was eine ahnungslose Wache bemerkt: im Sichtkegel oder ganz nah, auch hinter ihr.</summary>
+        private Unit? NearestNoticedEnemy(Unit g)
         {
             Unit? best = null;
             int bestDist = int.MaxValue;
             foreach (var o in Units)
             {
-                if (o.Alive && o.Faction != u.Faction && Distance(u, o) < bestDist)
+                if (o.Alive && o.Faction != g.Faction && Distance(g, o) < bestDist && CanSee(g, o, GuardConeRange)
+                    && (Distance(g, o) <= CloseNoticeRange || InCone(g, o)))
                 {
                     best = o;
-                    bestDist = Distance(u, o);
+                    bestDist = Distance(g, o);
                 }
             }
             return best;
+        }
+
+        private static bool InCone(Unit g, Unit o)
+        {
+            // Halber Öffnungswinkel 45 Grad: Skalarprodukt >= Wurzel(0,5) * |Blick| * |Abstand|.
+            long fx = g.FacingX, fy = g.FacingY, dx = o.X - g.X, dy = o.Y - g.Y;
+            long dot = fx * dx + fy * dy;
+            return dot > 0 && 2 * dot * dot >= (fx * fx + fy * fy) * (dx * dx + dy * dy);
         }
 
         /// <summary>Prüfsumme des Zustands für Determinismus-Tests.</summary>
@@ -467,6 +826,7 @@ namespace Messingstadt.Core
             Mix(Tick);
             Mix(_rng);
             Mix((long)State);
+            Mix(ItemProgress);
             foreach (var u in Units)
             {
                 Mix(u.X);
@@ -474,6 +834,9 @@ namespace Messingstadt.Core
                 Mix(u.Hp);
                 Mix(u.Cooldown);
                 Mix(u.Path.Count);
+                Mix((long)u.GuardState);
+                Mix(u.NoticeTicks);
+                Mix(u.AlarmTick);
             }
             return h;
         }

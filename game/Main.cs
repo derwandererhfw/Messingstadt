@@ -207,6 +207,10 @@ namespace Messingstadt
                     World.Step();
                 }
             }
+            if (_auto)
+            {
+                CenterOnSelection();
+            }
             UpdateUnits();
             UpdateUi();
             _frame++;
@@ -350,7 +354,9 @@ namespace Messingstadt
         {
             var sb = new StringBuilder();
             sb.Append(_mission.Title).Append(": ");
-            sb.Append(World.ItemTaken ? $"{World.ItemName} gesichert. Zum Fluchtwagen im Osten!" : _mission.Briefing);
+            sb.Append(World.ItemTaken
+                ? $"{World.ItemName} gesichert. Zum Fluchtwagen im Osten!"
+                : World.ItemProgress > 0 ? $"{World.ItemName} wird gesichert. Stehen bleiben!" : _mission.Briefing);
             _status.Text = sb.ToString();
             var r = new StringBuilder();
             int n = 1;
@@ -451,30 +457,10 @@ namespace Messingstadt
             return best;
         }
 
-        /// <summary>Verteilt die Auswahl auf das Zielfeld und freie Nachbarfelder.</summary>
+        /// <summary>Schickt die Auswahl los. Die Verteilung auf freie Felder regelt die Spiellogik.</summary>
         private bool MoveSelected(int tx, int ty)
         {
-            if (World.Map.IsBlocked(tx, ty))
-            {
-                return false;
-            }
-            (int, int)[] offsets = { (0, 0), (1, 0), (0, 1), (1, 1), (-1, 0), (0, -1), (-1, 1), (1, -1), (-1, -1), (2, 0), (0, 2) };
-            int slot = 0;
-            bool any = false;
-            foreach (int id in Selected.OrderBy(i => i))
-            {
-                if (!World.Units[id].Alive) continue;
-                while (slot < offsets.Length)
-                {
-                    var (ox, oy) = offsets[slot++];
-                    if (World.OrderMove(id, tx + ox, ty + oy))
-                    {
-                        any = true;
-                        break;
-                    }
-                }
-            }
-            return any;
+            return World.OrderGroupMove(Selected, tx, ty);
         }
     }
 }

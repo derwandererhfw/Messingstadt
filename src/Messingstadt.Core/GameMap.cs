@@ -39,6 +39,11 @@ namespace Messingstadt.Core
         /// <summary>Sichtlinie zwischen zwei Feldern (Bresenham). Start und Ziel zählen nicht.</summary>
         public bool HasLineOfSight(int x0, int y0, int x1, int y1)
         {
+            // Immer vom selben Endpunkt aus ziehen: Wer gesehen wird, muss auch selbst sehen können.
+            if (x0 > x1 || (x0 == x1 && y0 > y1))
+            {
+                (x0, y0, x1, y1) = (x1, y1, x0, y0);
+            }
             int dx = Math.Abs(x1 - x0), dy = Math.Abs(y1 - y0);
             int sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
             int err = dx - dy, x = x0, y = y0;

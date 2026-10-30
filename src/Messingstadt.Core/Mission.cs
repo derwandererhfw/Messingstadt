@@ -43,6 +43,7 @@ namespace Messingstadt.Core
         public double X { get; set; }
         public double Y { get; set; }
         public List<double[]> Patrol { get; set; } = new();
+        public double[]? Facing { get; set; }
     }
 
     public sealed class ZoneData

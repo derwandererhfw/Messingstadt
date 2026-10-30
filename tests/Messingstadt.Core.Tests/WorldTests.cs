@@ -53,7 +53,7 @@ namespace Messingstadt.Core.Tests
 
         private static UnitData Agent(double x, double y) => new() { Name = "A", Sprite = "Agentin", X = x, Y = y };
 
-        private static UnitData Guard(double x, double y) => new() { Name = "W", Sprite = "Wachmann", X = x, Y = y };
+        private static UnitData Guard(double x, double y) => new() { Name = "W", Sprite = "Wachmann", X = x, Y = y, Facing = new[] { -1.0, 0.0 } };
 
         private static MissionData Mission(List<UnitData> agents, List<UnitData> guards) => new()
         {
@@ -89,7 +89,7 @@ namespace Messingstadt.Core.Tests
         {
             var w = new World(OpenMap(), Mission(new() { Agent(0.5, 0.5) }, new()));
             w.OrderMove(0, 3, 0);
-            for (int i = 0; i < 60; i++)
+            for (int i = 0; i < 120; i++)
             {
                 w.Step();
             }
@@ -203,6 +203,56 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void RealMissionBookCanBeReachedUnseen()
+        {
+            var w = new World(
+                Loader.ParseMap(File.ReadAllText(DataPath("map_01.json"))),
+                Loader.ParseMission(File.ReadAllText(DataPath("mission_01.json"))));
+            // Greta allein, ein Klick im Zeitfenster: Die Wachen drehen ihr dann den Rücken zu.
+            for (int i = 0; i < 1500 && !w.ItemTaken; i++)
+            {
+                if (w.Tick == 23)
+                {
+                    w.OrderMove(0, w.ItemX / World.TileUnits, w.ItemY / World.TileUnits);
+                }
+                w.Step();
+                foreach (var u in w.Units)
+                {
+                    Assert.True(u.Faction == Faction.Agent || u.GuardState == GuardState.Patrol, $"{u.Name} hat Greta bemerkt");
+                }
+            }
+            Assert.True(w.ItemTaken);
+        }
+
+        [Fact]
+        public void RealMissionGuardsCalmDownAndResumePatrol()
+        {
+            var w = new World(
+                Loader.ParseMap(File.ReadAllText(DataPath("map_01.json"))),
+                Loader.ParseMission(File.ReadAllText(DataPath("mission_01.json"))));
+            // Ein Alarm auf der Straße, der Trupp bleibt in Deckung: Die Wachen suchen und beruhigen sich wieder.
+            w.RaiseAlarm(9500, 10500);
+            bool searched = false;
+            for (int i = 0; i < 20 * 60; i++)
+            {
+                w.Step();
+                searched |= w.Units.Exists(u => u.GuardState == GuardState.Search);
+            }
+            Assert.True(searched);
+            var walking = 0;
+            foreach (var u in w.Units)
+            {
+                if (u.Faction == Faction.Guard)
+                {
+                    Assert.Equal(GuardState.Patrol, u.GuardState);
+                    Assert.False(u.Alerted);
+                    walking += u.Patrol.Count > 0 && u.Path.Count > 0 ? 1 : 0;
+                }
+            }
+            Assert.True(walking > 0, "Keine Wache läuft ihren Rundgang weiter");
+        }
+
+        [Fact]
         public void RealMissionIsWinnableAndLoads()
         {
             var map = Loader.ParseMap(File.ReadAllText(DataPath("map_01.json")));
@@ -231,22 +281,22 @@ namespace Messingstadt.Core.Tests
             }
 
             // Ablauf: alle Agenten zum Buch, dann zum Ausgang. Der Einsatz muss gewinnbar sein.
-            for (int a = 0; a < 4; a++)
-            {
-                w.OrderMove(a, ix, iy);
-            }
-            bool toExit = false;
+            var squad = new List<int> { 0, 1, 2, 3 };
+            bool wasTaken = false;
+            w.OrderGroupMove(squad, ix, iy);
             for (int i = 0; i < 20 * 300 && w.State == MissionState.Running; i++)
             {
-                if (w.ItemTaken && !toExit)
+                // Bei jedem Wechsel neu befehlen: Fällt der Träger, muss das Buch erneut geholt werden.
+                if (w.ItemTaken != wasTaken)
                 {
-                    toExit = true;
-                    foreach (var u in w.Units)
+                    wasTaken = w.ItemTaken;
+                    if (w.ItemTaken)
                     {
-                        if (u.Faction == Faction.Agent && u.Alive)
-                        {
-                            w.OrderMove(u.Id, 18, 11);
-                        }
+                        w.OrderGroupMove(squad, 18, 11);
+                    }
+                    else
+                    {
+                        w.OrderGroupMove(squad, w.ItemX / World.TileUnits, w.ItemY / World.TileUnits);
                     }
                 }
                 w.Step();

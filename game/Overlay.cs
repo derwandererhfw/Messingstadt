@@ -20,6 +20,19 @@ namespace Messingstadt
                 var item = Game.ToScreen(world.ItemX, world.ItemY);
                 float pulse = 0.5f + 0.5f * Mathf.Sin(Time.GetTicksMsec() / 200f);
                 DrawIsoRing(item, new Color(1f, 0.85f, 0.3f, 0.4f + 0.6f * pulse));
+                if (world.ItemProgress > 0)
+                {
+                    float f = (float)world.ItemProgress / World.PickupTicks;
+                    DrawRect(new Rect2(item + new Vector2(-14, 10), new Vector2(28, 4)), new Color(0, 0, 0, 0.7f));
+                    DrawRect(new Rect2(item + new Vector2(-13, 11), new Vector2(26 * f, 2)), new Color(1f, 0.85f, 0.3f));
+                }
+            }
+            foreach (var u in world.Units)
+            {
+                if (u.Alive && u.Faction == Faction.Guard && u.GuardState == GuardState.Patrol && world.IsSpottedByAgents(u))
+                {
+                    DrawSightCone(world, u);
+                }
             }
             if (Game.MarkerTime > 0)
             {
@@ -47,6 +60,17 @@ namespace Messingstadt
                 if (u.Faction == Faction.Agent || world.IsSpottedByAgents(u))
                 {
                     DrawBar(p + new Vector2(-10, -46), u);
+                    if (u.Faction == Faction.Guard && u.GuardState != GuardState.Patrol)
+                    {
+                        // Gelb: bemerkt etwas. Rot: kämpft. Orange: sucht.
+                        var mark = u.GuardState switch
+                        {
+                            GuardState.Noticing => new Color(1f, 0.9f, 0.3f),
+                            GuardState.Combat => new Color(0.95f, 0.25f, 0.2f),
+                            _ => new Color(1f, 0.6f, 0.2f),
+                        };
+                        DrawRect(new Rect2(p + new Vector2(-2, -54), new Vector2(4, 6)), mark);
+                    }
                 }
                 if (u.TargetId >= 0 && u.Faction == Faction.Agent && Game.Selected.Contains(u.Id))
                 {
@@ -67,6 +91,39 @@ namespace Messingstadt
                 var a = Game.ToScreen(s.FromX, s.FromY) + new Vector2(0, -22);
                 var b = Game.ToScreen(s.ToX, s.ToY) + new Vector2(0, -20);
                 DrawLine(a, b, s.Hit ? new Color(1f, 0.9f, 0.5f) : new Color(0.7f, 0.7f, 0.7f, 0.6f), 1f);
+            }
+        }
+
+        /// <summary>Zeichnet den Sichtkegel als Fächer. Jeder Strahl endet am ersten Gebäude, das die Sicht sperrt.</summary>
+        private void DrawSightCone(World w, Unit g)
+        {
+            const int Rays = 12;
+            const int StepUnits = 200;
+            var color = new Color(1f, 0.95f, 0.5f, 0.13f);
+            float center = Mathf.Atan2(g.FacingY, g.FacingX);
+            float half = Mathf.DegToRad(World.GuardConeHalfDegrees);
+            var origin = Game.ToScreen(g.X, g.Y);
+            Vector2 previous = default;
+            for (int i = 0; i <= Rays; i++)
+            {
+                float a = center - half + 2 * half * i / Rays;
+                float cos = Mathf.Cos(a), sin = Mathf.Sin(a);
+                int reach = 0;
+                while (reach < World.GuardConeRange)
+                {
+                    int next = reach + StepUnits;
+                    if (w.Map.IsOpaque((int)Mathf.Floor((g.X + cos * next) / World.TileUnits), (int)Mathf.Floor((g.Y + sin * next) / World.TileUnits)))
+                    {
+                        break;
+                    }
+                    reach = next;
+                }
+                var end = Game.ToScreen(g.X + (int)(cos * reach), g.Y + (int)(sin * reach));
+                if (i > 0 && (end != origin || previous != origin))
+                {
+                    DrawColoredPolygon(new[] { origin, previous, end }, color);
+                }
+                previous = end;
             }
         }
 
