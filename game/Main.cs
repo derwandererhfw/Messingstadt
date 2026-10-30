@@ -20,6 +20,7 @@ namespace Messingstadt
 
         private readonly List<ThingInfo> _things = new();
         private readonly List<Sprite2D> _thingSprites = new();
+        private readonly List<Image> _thingImages = new();
         private readonly List<Sprite2D> _unitSprites = new();
         private readonly Dictionary<string, int> _figureRows = new();
         private Sprite2D _book = null!;
@@ -100,9 +101,11 @@ namespace Messingstadt
             {
                 _things.Add(new ThingInfo(t.GetProperty("x0").GetSingle(), t.GetProperty("y0").GetSingle(),
                     t.GetProperty("x1").GetSingle(), t.GetProperty("y1").GetSingle()));
+                var image = Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/things/" + t.GetProperty("file").GetString()));
+                _thingImages.Add(image);
                 var sprite = new Sprite2D
                 {
-                    Texture = LoadTexture("res://assets/things/" + t.GetProperty("file").GetString()),
+                    Texture = ImageTexture.CreateFromImage(image),
                     Centered = false,
                     Position = new Vector2(t.GetProperty("px").GetInt32(), t.GetProperty("py").GetInt32()),
                     ZIndex = ThingZ(index),
@@ -328,6 +331,29 @@ namespace Messingstadt
                 }
                 sprite.Modulate = new Color(1, 1, 1, covers ? 0.45f : 1f);
             }
+        }
+
+        /// <summary>True, wenn ein undurchsichtiges Objekt Kopf und Körper der Figur im Bild verdeckt.</summary>
+        public bool IsHiddenByThing(Unit u)
+        {
+            var foot = ToScreen(u.X, u.Y);
+            for (int i = 0; i < _things.Count; i++)
+            {
+                if (_thingSprites[i].Modulate.A >= 1f && IsInFront(_things[i], u)
+                    && IsOpaqueAt(i, foot + new Vector2(0, -40)) && IsOpaqueAt(i, foot + new Vector2(0, -20)))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private bool IsOpaqueAt(int thing, Vector2 screen)
+        {
+            var image = _thingImages[thing];
+            var p = screen - _thingSprites[thing].Position;
+            return p.X >= 0 && p.Y >= 0 && p.X < image.GetWidth() && p.Y < image.GetHeight()
+                && image.GetPixel((int)p.X, (int)p.Y).A > 0.5f;
         }
 
         private static bool IsInFront(ThingInfo t, Unit u)

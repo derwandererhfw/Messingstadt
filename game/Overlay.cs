@@ -57,7 +57,8 @@ namespace Messingstadt
                     DrawIsoRing(p, new Color(1f, 0.85f, 0.35f));
                 }
                 // Wachen ohne Sichtkontakt verraten ihre Position nicht über den Lebensbalken.
-                if (u.Faction == Faction.Agent || world.IsSpottedByAgents(u))
+                // Steht eine Wache im Bild hinter einem Haus, soll der Balken nicht auf dem Dach schweben.
+                if (u.Faction == Faction.Agent || (world.IsSpottedByAgents(u) && !Game.IsHiddenByThing(u)))
                 {
                     DrawBar(p + new Vector2(-10, -46), u);
                     if (u.Faction == Faction.Guard && u.GuardState != GuardState.Patrol)
