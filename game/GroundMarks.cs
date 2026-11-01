@@ -114,17 +114,20 @@ namespace Messingstadt
                 float a = center - half + 2 * half * i / ConeRays;
                 float cos = Mathf.Cos(a), sin = Mathf.Sin(a);
                 int reach = 0;
-                while (reach < World.GuardConeRange)
+                while (reach < World.MaxNoticeRange)
                 {
                     int next = reach + ConeStepUnits;
-                    if (w.Map.IsOpaque(Mathf.FloorToInt((g.X + cos * next) / World.TileUnits), Mathf.FloorToInt((g.Y + sin * next) / World.TileUnits)))
+                    int px = g.X + (int)(cos * next), py = g.Y + (int)(sin * next);
+                    // Der Fächer endet, wo die Wache in diesem Licht niemanden mehr bemerkt: kurz im Dunkeln, lang unter Laternen.
+                    if (w.Map.IsOpaque(Mathf.FloorToInt(px / (float)World.TileUnits), Mathf.FloorToInt(py / (float)World.TileUnits))
+                        || next > w.NoticeRangeAt(px, py))
                     {
                         break;
                     }
                     reach = next;
                 }
                 var end = Game.ToScreen(g.X + (int)(cos * reach), g.Y + (int)(sin * reach));
-                float distance = (float)reach / World.GuardConeRange;
+                float distance = (float)reach / World.MaxNoticeRange;
                 var color = near.Lerp(far, Mathf.Sqrt(distance));
                 if (i > 0 && (end != origin || previous != origin))
                 {

@@ -21,18 +21,33 @@ namespace Messingstadt
         private const int FontSize = 9;
         private const int MaxShown = 4;
 
+        // Sätze mit Spielhinweis sind gegen Karte und Regeln geprüft. Beim Ändern der Mission mitprüfen.
         private static readonly string[] GuardTalk =
         {
             "Noch drei Stunden Schicht.", "Sauwetter. Und das für den Lohn.", "Hast du was gehört? Nein? Gut.",
-            "Der Alte will das Buch heute Nacht zurück.", "Der Posten am Wagen dreht sich alle paar Sekunden.",
-            "Meine Stiefel sind durch.", "Wenn die Streikenden kommen, bin ich weg.", "In der Gasse brennt keine Lampe. Geh du.",
-            "Sag dem Brandt, er soll selbst Wache schieben.", "Die Hintertür vom Lager klemmt schon wieder.",
+            "Der Alte will das Buch heute Nacht zurück.", "Meine Stiefel sind durch.", "Wenn die Streikenden kommen, bin ich weg.",
+            "Sag dem Brandt, er soll selbst Wache schieben.", "Mir ist kalt bis in die Knochen.", "Drei Kinder, und der Lohn kommt zu spät.",
+            "Das Luftschiff sieht auch nicht mehr als wir.", "Hörst du den Donner? Das wird noch schlimmer.", "Wer hat schon wieder die Zigaretten?",
+            "Die Ratten werden auch immer dreister.", "Bei dem Regen kommt doch keiner.", "Ich hätte zur Bahn gehen sollen.",
+            "Mein Schwager streikt auch. Reden wir nicht drüber.", "Der Kaffee war wieder nur heißes Wasser.", "Noch ein Winter hier, und ich hau ab.",
+            // Stimmt: Posten am Wagen und am Buch drehen sich alle 3 Sekunden.
+            "Der Posten am Wagen dreht sich alle paar Sekunden.", "Der am Buch schaut reihum, wie ein Uhrzeiger.",
+            // Stimmt: Die Tür des Lagers ist verschlossen, dahinter liegt die Lohnkasse.
+            "Die Hintertür vom Lager bleibt zu. Da liegt die Lohnkasse.",
+            // Stimmt: Hinter dem Lager gibt es keinen Rundgang, der Lageplan zeigt das Feld grün.
+            "Hinter dem Lager läuft sowieso keiner Streife.",
+            // Stimmt: So wirkt die Lichtregel beim Bemerken.
+            "Unter den Laternen erkenn ich dich sofort.", "Im Dunkeln siehst du die Hand vor Augen nicht.", "Halt dich ans Licht, im Schatten sieht man nichts.",
         };
 
         private static readonly string[] WorkerTalk =
         {
             "Drei Wochen ohne Lohn.", "Die sollen ruhig frieren da oben.", "Halt das Feuer klein, die Wache schaut.",
             "Mein Junge fragt schon nach Brot.", "Solidarität, Kollegen.", "Das Luftschiff kostet mehr als unsere ganze Straße.",
+            "Brandt zahlt die Streikbrecher doppelt, sagt man.", "Wenn wir nur das Buch hätten.", "Gib mal das Feuer rüber.",
+            "Meine Frau näht jetzt für die Bank.", "Heute Nacht bleibt keiner allein.", "Sechzehn Stunden am Kessel, und wofür?",
+            "Im Hotel brennt Licht, für die reicht es immer.", "Hörst du? Das Schichthorn. Ohne uns.", "Noch hält die Kasse vom Hammer.",
+            "Mach die Augen auf, die Wache ist nervös.", "Einer hat den Roten Hammer in der Gasse gesehen.", "Gestern haben sie wieder einen abgeholt.",
         };
 
         private static readonly string[] Noticed = { "Moment. War da was?", "He! Wer da?", "Hab ich was gesehen?" };

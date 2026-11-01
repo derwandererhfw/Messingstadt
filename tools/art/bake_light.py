@@ -290,6 +290,9 @@ def main():
     grid[inside] = 0
     filled = fill_empty(np.concatenate([tone(grid[..., :3]), grid[..., 3:]], axis=-1), ~inside)
     Image.fromarray(encode(filled), "RGBA").save(OUT / "grid.png")
+    # Für die Spielregeln: Helligkeit in Prozent, im Stand von Figuren gemessen.
+    levels = (filled[..., :3].mean(axis=-1) * 100).round().astype(int).ravel().tolist()
+    (ROOT / "data" / "light_01.json").write_text(json.dumps({"cells": GRID_RES, "size": size, "levels": levels}), encoding="utf-8")
     fog_noise()
     print(f"Lichtkarten in {OUT}")
 

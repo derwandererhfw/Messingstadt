@@ -93,6 +93,17 @@ namespace Messingstadt.Core
         public int Value { get; set; }
     }
 
+    /// <summary>Wie hell es auf der Karte ist, je Zelle in Prozent. Stammt aus dem Pathtracer, siehe tools/art/bake_light.py.</summary>
+    public sealed class LightData
+    {
+        /// <summary>Zellen je Feld.</summary>
+        public int Cells { get; set; } = 1;
+
+        /// <summary>Kantenlänge des Gitters in Zellen.</summary>
+        public int Size { get; set; }
+        public int[] Levels { get; set; } = System.Array.Empty<int>();
+    }
+
     public sealed class MissionData
     {
         public string Title { get; set; } = "";
@@ -106,6 +117,9 @@ namespace Messingstadt.Core
         public ReinforcementData? Reinforcements { get; set; }
         public List<DoorData> Doors { get; set; } = new();
         public LootData? Loot { get; set; }
+
+        /// <summary>Helligkeit der Karte. Ohne Angabe gilt überall dieselbe Reichweite beim Bemerken.</summary>
+        public LightData? Light { get; set; }
 
         /// <summary>Geld zum Einsatzbeginn. Kommt von der Kampagne.</summary>
         public int Money { get; set; }
@@ -121,5 +135,7 @@ namespace Messingstadt.Core
         public static MapData ParseMap(string json) => JsonSerializer.Deserialize<MapData>(json, Options)!;
 
         public static MissionData ParseMission(string json) => JsonSerializer.Deserialize<MissionData>(json, Options)!;
+
+        public static LightData ParseLight(string json) => JsonSerializer.Deserialize<LightData>(json, Options)!;
     }
 }

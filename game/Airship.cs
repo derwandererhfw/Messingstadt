@@ -18,8 +18,8 @@ namespace Messingstadt
         private const float MinPause = 45f;
         private const float MaxPause = 110f;
         private const float SweepTiles = 3.2f;
-        private const float BeamAlpha = 0.13f;
-        private const float PoolEnergy = 0.75f;
+        private const float BeamAlpha = 0.07f;
+        private const float PoolEnergy = 0.3f;
         private const int FlyZ = 3600;
         private const int BeamZ = 3450;
         private static readonly Vector2 GondolaOffset = new(0, 40);
@@ -53,7 +53,7 @@ namespace Messingstadt
             _shade = new Sprite2D { Texture = Glow, ZIndex = BeamZ - 1, Material = multiply, Scale = new Vector2(1.1f, 0.5f), Modulate = new Color(0.1f, 0.1f, 0.1f) };
             AddChild(_shade);
             var white = new Color(0.9f / Night.R, 0.95f / Night.G, 1f / Night.B);
-            _pool = new Sprite2D { Texture = Glow, ZIndex = BeamZ, Material = additive, Scale = new Vector2(0.5f, 0.25f), Modulate = new Color(white, PoolEnergy) };
+            _pool = new Sprite2D { Texture = Glow, ZIndex = BeamZ, Material = additive, Scale = new Vector2(0.85f, 0.42f), Modulate = new Color(white, PoolEnergy) };
             AddChild(_pool);
             _beam = new Polygon2D
             {

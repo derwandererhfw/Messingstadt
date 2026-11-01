@@ -131,6 +131,7 @@ void fragment() {
         private Label _banner = null!;
         private bool _introRunning;
         private bool _showIntro = true;
+        private LightData _lightData = null!;
         private float _trauma;
         private float _focusLeft;
         private Vector2 _focusAt;
@@ -199,7 +200,8 @@ void fragment() {
             string root = ProjectSettings.GlobalizePath("res://");
             string data = Path.GetFullPath(Path.Combine(root, "..", "data"));
             _map = Loader.ParseMap(File.ReadAllText(Path.Combine(data, "map_01.json")));
-            _mission = Loader.ParseMission(File.ReadAllText(Path.Combine(data, "mission_01.json")));
+            _lightData = Loader.ParseLight(File.ReadAllText(Path.Combine(data, "light_01.json")));
+            _mission = LoadMission();
             Watch = WatchMap.Measure(_map, _mission);
 
             LoadCampaign();
@@ -230,6 +232,21 @@ void fragment() {
             MaybeStartIntro();
         }
 
+        private MissionData LoadMission()
+        {
+            string path = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data", "mission_01.json"));
+            var mission = Loader.ParseMission(File.ReadAllText(path));
+            mission.Light = _lightData;
+            return mission;
+        }
+
+        /// <summary>Kurzes Wort für die Akte: Steht der Agent im Dunkeln oder im Licht?</summary>
+        public string LightWord(Unit u)
+        {
+            int level = World.LightLevelAt(u.X, u.Y);
+            return level <= World.DarkLevel ? "im Dunkeln" : level >= World.BrightLevel ? "im Licht" : "";
+        }
+
         /// <summary>Der Einstieg läuft einmal beim Programmstart. Prüfläufe überspringen ihn, außer mit --intro.</summary>
         private void MaybeStartIntro()
         {
@@ -247,6 +264,7 @@ void fragment() {
             AddChild(new Intro
             {
                 Game = this, Briefing = _mission.Briefing, MissionTitle = _mission.Title,
+                Short = File.Exists(IntroSeenPath) && !_forceIntro,
                 CameraFrom = new Vector2(_ox, _oy + _map.Height * 12f), CameraTo = target,
             });
         }
@@ -258,9 +276,15 @@ void fragment() {
             _camera.Zoom = new Vector2(zoom, zoom);
         }
 
+        private static string IntroSeenPath => ProjectSettings.GlobalizePath("user://einstieg_gesehen");
+
         public void EndIntro()
         {
             _introRunning = false;
+            if (_shotPath == null)
+            {
+                File.WriteAllText(IntroSeenPath, "");
+            }
             _paper.Visible = true;
             _camera.Zoom = new Vector2(_baseZoom, _baseZoom);
             _camera.PositionSmoothingEnabled = true;
@@ -584,7 +608,7 @@ void fragment() {
             layer.AddChild(_paper);
             _planBand = new ColorRect
             {
-                Position = new Vector2(10, 62), Size = new Vector2(1252, 46), Visible = false,
+                AnchorRight = 1f, OffsetLeft = 10f, OffsetTop = 62f, OffsetRight = -18f, OffsetBottom = 108f, Visible = false,
                 Color = PaperUi.PaperDark, MouseFilter = Control.MouseFilterEnum.Ignore,
             };
             layer.AddChild(_planBand);
@@ -596,17 +620,27 @@ void fragment() {
             _planLegend.Visible = false;
             layer.AddChild(_planLegend);
             var help = PaperUi.Text(
-                "Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen, Otto: Tür   Q halten: Lageplan   1-4 Leertaste   WASD F P M   R: abbrechen",
+                "Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen, Otto: Tür   Q halten: Lageplan   1-4 Leertaste   WASD F P M   F11: Vollbild   R: abbrechen",
                 12, new Color(0.75f, 0.72f, 0.65f, 0.75f), PaperUi.Typewriter);
-            help.Position = new Vector2(12, 777);
+            help.AnchorTop = 1f;
+            help.AnchorBottom = 1f;
+            help.OffsetLeft = 12f;
+            help.OffsetTop = -23f;
             layer.AddChild(help);
             _banner = PaperUi.Text("", 34, new Color(1f, 0.85f, 0.4f), PaperUi.Serif);
-            _banner.Position = new Vector2(0, 340);
-            _banner.Size = new Vector2(1280, 80);
+            _banner.AnchorRight = 1f;
+            _banner.AnchorTop = 0.45f;
+            _banner.AnchorBottom = 0.45f;
             _banner.HorizontalAlignment = HorizontalAlignment.Center;
             _banner.AddThemeColorOverride("font_shadow_color", Colors.Black);
             layer.AddChild(_banner);
-            _panel = new PanelContainer { Position = new Vector2(300, 90), CustomMinimumSize = new Vector2(680, 0), Visible = false };
+            _panel = new PanelContainer
+            {
+                CustomMinimumSize = new Vector2(680, 0), Visible = false,
+                AnchorLeft = 0.5f, AnchorRight = 0.5f, AnchorTop = 0.5f, AnchorBottom = 0.5f,
+                OffsetLeft = -340f, OffsetRight = 340f,
+                GrowHorizontal = Control.GrowDirection.Both, GrowVertical = Control.GrowDirection.Both,
+            };
             _panel.AddThemeStyleboxOverride("panel", PaperUi.PaperBox(PaperUi.PaperColor));
             _panelBody = new VBoxContainer();
             _panelBody.AddThemeConstantOverride("separation", 8);
@@ -736,7 +770,7 @@ void fragment() {
             {
                 _campaign = new Campaign();
                 SaveCampaign();
-                _mission = Loader.ParseMission(File.ReadAllText(Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data", "mission_01.json"))));
+                _mission = LoadMission();
                 StartMission();
             };
             _panelBody.AddChild(reset);
@@ -1309,6 +1343,7 @@ void fragment() {
                     case Key.F: CenterOnSelection(); break;
                     case Key.P: _paused = !_paused; break;
                     case Key.M: _sound.ToggleMute(); break;
+                    case Key.F11: ToggleFullscreen(); break;
                     case Key.R: PressRestart(); break;
                 }
             }
@@ -1359,6 +1394,12 @@ void fragment() {
                     }
                 }
             }
+        }
+
+        private static void ToggleFullscreen()
+        {
+            bool full = DisplayServer.WindowGetMode() == DisplayServer.WindowMode.Fullscreen;
+            DisplayServer.WindowSetMode(full ? DisplayServer.WindowMode.Windowed : DisplayServer.WindowMode.Fullscreen);
         }
 
         public void SelectAgent(int index, bool add)

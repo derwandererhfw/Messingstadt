@@ -22,18 +22,20 @@ void fragment() {
     c *= 1.0 - smoothstep(0.5, 1.05, d) * 0.62;
     // Korn wechselt zwölfmal in der Sekunde, im Dunkeln sichtbarer
     float t = floor(TIME * 12.0);
-    float n = grain(floor(SCREEN_UV * vec2(640.0, 400.0)) + t) - 0.5;
+    float n = grain(floor(FRAGCOORD.xy / 2.0) + t) - 0.5;
     c += n * mix(0.05, 0.02, lum);
     COLOR = vec4(c, 1.0);
 }";
 
         public override void _Ready()
         {
-            AddChild(new ColorRect
+            var screen = new ColorRect
             {
-                Size = new Vector2(1280, 800), MouseFilter = Control.MouseFilterEnum.Ignore,
+                MouseFilter = Control.MouseFilterEnum.Ignore,
                 Material = new ShaderMaterial { Shader = new Shader { Code = Code } },
-            });
+            };
+            AddChild(screen);
+            screen.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         }
     }
 }

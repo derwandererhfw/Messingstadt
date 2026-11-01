@@ -55,6 +55,7 @@ Grafik neu erzeugen: `python tools/art/generate_concept.py`
 | `Q` halten | Lageplan: bewachte Felder, Wege der Wachen, Wegvorschau. Ein Klick wartet, bis der Weg frei ist |
 | `P` | Pause |
 | `M` | Ton an und aus |
+| `F11` | Vollbild an und aus. Das Fenster lässt sich auch frei ziehen, Oberfläche und Bild passen sich an |
 | `R` | Einsatz abbrechen. Nach dem ersten Schuss zweimal drücken, dann gilt der Trupp als gefallen |
 
 ## Grafik und Licht neu berechnen

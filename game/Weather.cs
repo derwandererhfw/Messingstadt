@@ -10,6 +10,7 @@ namespace Messingstadt
     /// </summary>
     public partial class Weather : Node2D
     {
+        private const float VisibleBoltShare = 0.65f;
         private const float MinStormPause = 35f;
         private const float MaxStormPause = 95f;
         private const float FirstStormSeconds = 18f;
@@ -63,6 +64,8 @@ void fragment() {
         private readonly Random _rng = new();
         private readonly List<Cone> _cones = new();
         private ShaderMaterial _fog = null!;
+        private LightningBolt _bolt = null!;
+        private bool _boltShown;
         private float _nextStorm = FirstStormSeconds;
         private float _nextRumble = 7f;
         private float _nextCity = 12f;
@@ -96,6 +99,10 @@ void fragment() {
             _fog.SetShaderParameter("size", GroundSize);
             // Die Nebelfläche hat die Maße des Bodens und liegt direkt darauf, unter den Gebäuden.
             AddChild(new Sprite2D { Texture = GroundLight, Centered = false, ZIndex = 0, Material = _fog });
+            var boltLayer = new CanvasLayer { Layer = 1 };
+            AddChild(boltLayer);
+            _bolt = new LightningBolt { Material = new CanvasItemMaterial { BlendMode = CanvasItemMaterial.BlendModeEnum.Add } };
+            boltLayer.AddChild(_bolt);
         }
 
         /// <summary>Erst aufrufen, wenn die Tiefe der Objekte feststeht.</summary>
@@ -163,10 +170,26 @@ void fragment() {
                 {
                     _flash = Mathf.Max(_flash, Rand(0.7f, 1.25f));
                     _strokes.RemoveAt(i);
+                    // Etwa jeder dritte Schlag bleibt im Wolkenband verborgen und erhellt nur die Stadt.
+                    if (_rng.NextDouble() < VisibleBoltShare)
+                    {
+                        _bolt.Strike();
+                        _boltShown = true;
+                    }
                 }
             }
             _flash = HeldFlash >= 0f ? HeldFlash : Mathf.Max(0f, _flash - _flash * FlashFadePerSecond * dt - 0.2f * dt);
             Game.SetLightning(_flash);
+            if (HeldFlash >= 0f && !_boltShown)
+            {
+                _bolt.Strike();
+                _boltShown = true;
+            }
+            _bolt.SetStrength(_boltShown ? Mathf.Clamp(_flash * 1.3f - 0.2f, 0f, 1f) : 0f);
+            if (_flash < 0.05f)
+            {
+                _boltShown = false;
+            }
             _fog.SetShaderParameter("lightning", _flash);
             if (_thunderAt >= 0f && _time >= _thunderAt)
             {

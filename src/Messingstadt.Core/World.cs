@@ -147,6 +147,16 @@ namespace Messingstadt.Core
         public const string SkillLocksmith = "schlosser";
         public const string SkillBookkeeper = "buchhalter";
         public const int GuardConeRange = 5 * TileUnits;
+
+        // Licht beim Schleichen: Im Dunkeln wird man später bemerkt, unter der Laterne schneller.
+        // Die Reichweite wächst bewusst nicht über die 5 Felder hinaus: Mit 6 waren die hellen Verstecke in der Gasse
+        // dauerhaft einsehbar und das Schleichen unmöglich.
+        public const int DarkLevel = 30;
+        public const int BrightLevel = 110;
+        public const int DarkNoticeRange = 3500;
+        public const int MaxNoticeRange = GuardConeRange;
+        private const int DarkNoticePercent = 160;
+        private const int BrightNoticePercent = 80;
         public const int GuardConeHalfDegrees = 45;
 
         // Erst eine Linie quer zur Blickrichtung, damit keine Figur im Bild hinter einer anderen steht.
@@ -166,6 +176,7 @@ namespace Messingstadt.Core
         private bool _everNoticed;
         private bool _everShot;
         private readonly bool _hasAgents;
+        private readonly LightData? _light;
 
         public GameMap Map { get; }
         public List<Unit> Units { get; } = new();
@@ -196,6 +207,7 @@ namespace Messingstadt.Core
         {
             Map = mapData.Build();
             _hasAgents = mission.Agents.Count > 0;
+            _light = mission.Light;
             _rng = (uint)mission.Seed | 1u;
             ItemName = mission.ItemName;
             _reinforcements = mission.Reinforcements;
@@ -634,7 +646,8 @@ namespace Messingstadt.Core
                 case GuardState.Patrol:
                     if (seen != null)
                     {
-                        StartNoticing(g, seen, NoticeBase + NoticePerTile * Distance(g, seen) / TileUnits);
+                        int ticks = NoticeBase + NoticePerTile * Distance(g, seen) / TileUnits;
+                        StartNoticing(g, seen, Math.Max(1, ticks * NoticePercentAt(seen.X, seen.Y) / 100));
                     }
                     else
                     {
@@ -1128,6 +1141,34 @@ namespace Messingstadt.Core
             return false;
         }
 
+        /// <summary>Helligkeit an einer Stelle in Prozent, -1 ohne Lichtdaten.</summary>
+        public int LightLevelAt(int x, int y)
+        {
+            if (_light == null)
+            {
+                return -1;
+            }
+            int cx = Math.Clamp(x * _light.Cells / TileUnits, 0, _light.Size - 1);
+            int cy = Math.Clamp(y * _light.Cells / TileUnits, 0, _light.Size - 1);
+            return _light.Levels[cy * _light.Size + cx];
+        }
+
+        private int LightShare(int level, int low, int high) =>
+            low + (high - low) * (Math.Clamp(level, DarkLevel, BrightLevel) - DarkLevel) / (BrightLevel - DarkLevel);
+
+        /// <summary>Bis zu welcher Entfernung eine ahnungslose Wache jemanden an dieser Stelle im Blick bemerkt.</summary>
+        public int NoticeRangeAt(int x, int y)
+        {
+            int level = LightLevelAt(x, y);
+            return level < 0 ? GuardConeRange : LightShare(level, DarkNoticeRange, MaxNoticeRange);
+        }
+
+        private int NoticePercentAt(int x, int y)
+        {
+            int level = LightLevelAt(x, y);
+            return level < 0 ? 100 : LightShare(level, DarkNoticePercent, BrightNoticePercent);
+        }
+
         private Unit? NearestVisibleEnemy(Unit u, int range)
         {
             Unit? best = null;
@@ -1150,8 +1191,10 @@ namespace Messingstadt.Core
             int bestDist = int.MaxValue;
             foreach (var o in Units)
             {
-                if (o.Alive && o.Faction != g.Faction && Distance(g, o) < bestDist && CanSee(g, o, GuardConeRange)
-                    && (Distance(g, o) <= (o.Sprinting ? SprintHeardRange : GuardCloseRange) || InCone(g, o)))
+                if (o.Alive && o.Faction != g.Faction && Distance(g, o) < bestDist
+                    && CanSee(g, o, Math.Max(NoticeRangeAt(o.X, o.Y), o.Sprinting ? SprintHeardRange : GuardCloseRange))
+                    && (Distance(g, o) <= (o.Sprinting ? SprintHeardRange : GuardCloseRange)
+                        || (InCone(g, o) && Distance(g, o) <= NoticeRangeAt(o.X, o.Y))))
                 {
                     best = o;
                     bestDist = Distance(g, o);
@@ -1176,7 +1219,7 @@ namespace Messingstadt.Core
             int x = tileX * TileUnits + TileUnits / 2, y = tileY * TileUnits + TileUnits / 2;
             foreach (var g in Units)
             {
-                if (g.Alive && g.Faction == Faction.Guard && !g.Bribed && DistanceTo(g, x, y) <= GuardConeRange
+                if (g.Alive && g.Faction == Faction.Guard && !g.Bribed && DistanceTo(g, x, y) <= NoticeRangeAt(x, y)
                     && Map.HasLineOfSight(g.TileX, g.TileY, tileX, tileY)
                     && (DistanceTo(g, x, y) <= GuardCloseRange || InCone(g, x, y)))
                 {

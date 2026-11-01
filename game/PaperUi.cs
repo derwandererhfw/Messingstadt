@@ -20,6 +20,7 @@ namespace Messingstadt
         private const int CardHeight = 92;
         private const int CardGap = 6;
         private const int LevelDots = 3;
+        private const int CardsFromBottom = 120;
 
         public static readonly SystemFont Typewriter = new()
         {
@@ -35,7 +36,9 @@ namespace Messingstadt
         {
             public ColorRect Edge = null!;
             public Label Name = null!;
-            public Label Levels = null!;
+            public Control Alive = null!;
+            public readonly List<ColorRect> LegsPips = new();
+            public readonly List<ColorRect> HeartPips = new();
             public ColorRect Health = null!;
             public ColorRect Breath = null!;
             public Label Status = null!;
@@ -45,6 +48,7 @@ namespace Messingstadt
         private readonly List<Card> _cards = new();
         private Label _telegram = null!;
         private Label _info = null!;
+        private Control _cardRow = null!;
 
         public Main Game = null!;
 
@@ -82,10 +86,10 @@ namespace Messingstadt
 
         public override void _Ready()
         {
-            Size = new Vector2(1280, 800);
+            SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
             MouseFilter = MouseFilterEnum.Ignore;
-            AddChild(new ColorRect { Position = new Vector2(14, 12), Size = new Vector2(1252, 52), Color = new Color(0, 0, 0, 0.5f), MouseFilter = MouseFilterEnum.Ignore });
-            AddChild(new ColorRect { Position = new Vector2(10, 8), Size = new Vector2(1252, 52), Color = PaperColor, MouseFilter = MouseFilterEnum.Ignore });
+            AddChild(Strip(14, 12, new Color(0, 0, 0, 0.5f)));
+            AddChild(Strip(10, 8, PaperColor));
             var head = Text("TELEGRAMM", 13, StampRed, Serif);
             head.Position = new Vector2(20, 12);
             AddChild(head);
@@ -95,15 +99,29 @@ namespace Messingstadt
             _info = Text("", 13, Ink, Typewriter);
             _info.Position = new Vector2(122, 35);
             AddChild(_info);
+            // Die Akten bleiben unten links, egal wie groß das Fenster ist.
+            _cardRow = new Control
+            {
+                AnchorTop = 1f, AnchorBottom = 1f, OffsetTop = -CardsFromBottom, OffsetBottom = -CardsFromBottom + CardHeight,
+                MouseFilter = MouseFilterEnum.Ignore,
+            };
+            AddChild(_cardRow);
             for (int i = 0; i < 4; i++)
             {
                 AddCard(i);
             }
         }
 
+        /// <summary>Papierstreifen für das Telegramm: läuft über die ganze Breite des Bildes.</summary>
+        private static ColorRect Strip(int left, int top, Color color) => new()
+        {
+            AnchorRight = 1f, OffsetLeft = left, OffsetTop = top, OffsetRight = -28 + left, OffsetBottom = top + 52,
+            Color = color, MouseFilter = MouseFilterEnum.Ignore,
+        };
+
         private void AddCard(int index)
         {
-            int x = 12 + index * (CardWidth + CardGap), y = 680;
+            int x = 12 + index * (CardWidth + CardGap), y = 0;
             var root = new Control { Position = new Vector2(x, y), Size = new Vector2(CardWidth, CardHeight), MouseFilter = MouseFilterEnum.Stop };
             root.GuiInput += e =>
             {
@@ -112,7 +130,7 @@ namespace Messingstadt
                     Game.SelectAgent(index, click.ShiftPressed);
                 }
             };
-            AddChild(root);
+            _cardRow.AddChild(root);
             var card = new Card();
             card.Edge = new ColorRect { Position = new Vector2(-2, -2), Size = new Vector2(CardWidth + 4, CardHeight + 4), MouseFilter = MouseFilterEnum.Ignore };
             root.AddChild(card.Edge);
@@ -125,31 +143,44 @@ namespace Messingstadt
             card.Status = Text("", 11, new Color(Ink, 0.75f), Typewriter);
             card.Status.Position = new Vector2(6, 19);
             root.AddChild(card.Status);
-            card.Levels = Text("", 12, Ink, Typewriter);
-            card.Levels.Position = new Vector2(6, 34);
-            root.AddChild(card.Levels);
-            root.AddChild(new ColorRect { Position = new Vector2(6, 66), Size = new Vector2(CardWidth - 12, 8), Color = PaperDark, MouseFilter = MouseFilterEnum.Ignore });
+            // Was nur Lebende brauchen. Bei Gefallenen steht dort der Stempel, sonst würde er etwas überdecken.
+            card.Alive = new Control { Size = new Vector2(CardWidth, CardHeight), MouseFilter = MouseFilterEnum.Ignore };
+            root.AddChild(card.Alive);
+            AddLevelRow(card.Alive, card.LegsPips, "Beine", 34);
+            AddLevelRow(card.Alive, card.HeartPips, "Herz", 49);
+            card.Alive.AddChild(new ColorRect { Position = new Vector2(6, 66), Size = new Vector2(CardWidth - 12, 8), Color = PaperDark, MouseFilter = MouseFilterEnum.Ignore });
             card.Health = new ColorRect { Position = new Vector2(7, 67), Size = new Vector2(CardWidth - 14, 6), Color = new Color(0.4f, 0.12f, 0.08f), MouseFilter = MouseFilterEnum.Ignore };
-            root.AddChild(card.Health);
-            root.AddChild(new ColorRect { Position = new Vector2(6, 77), Size = new Vector2(CardWidth - 12, 6), Color = PaperDark, MouseFilter = MouseFilterEnum.Ignore });
+            card.Alive.AddChild(card.Health);
+            card.Alive.AddChild(new ColorRect { Position = new Vector2(6, 77), Size = new Vector2(CardWidth - 12, 6), Color = PaperDark, MouseFilter = MouseFilterEnum.Ignore });
             card.Breath = new ColorRect { Position = new Vector2(7, 78), Size = new Vector2(CardWidth - 14, 4), Color = new Color(0.15f, 0.22f, 0.32f), MouseFilter = MouseFilterEnum.Ignore };
-            root.AddChild(card.Breath);
+            card.Alive.AddChild(card.Breath);
             card.Stamp = Text("GEFALLEN", 21, StampRed, Serif);
-            card.Stamp.Position = new Vector2(16, 38);
-            card.Stamp.RotationDegrees = -14f;
+            card.Stamp.Position = new Vector2(14, 50);
+            card.Stamp.RotationDegrees = -11f;
             card.Stamp.Visible = false;
             root.AddChild(card.Stamp);
             _cards.Add(card);
         }
 
-        private static string Dots(int level)
+        private static void AddLevelRow(Control parent, List<ColorRect> pips, string label, int y)
         {
-            var text = "";
-            for (int i = 1; i <= LevelDots; i++)
+            var text = Text(label, 12, Ink, Typewriter);
+            text.Position = new Vector2(6, y - 3);
+            parent.AddChild(text);
+            for (int i = 0; i < LevelDots; i++)
             {
-                text += i <= level ? "*" : ".";
+                var pip = new ColorRect { Position = new Vector2(56 + i * 14, y + 1), Size = new Vector2(10, 9), MouseFilter = MouseFilterEnum.Ignore };
+                parent.AddChild(pip);
+                pips.Add(pip);
             }
-            return text;
+        }
+
+        private static void ShowLevel(List<ColorRect> pips, int level)
+        {
+            for (int i = 0; i < pips.Count; i++)
+            {
+                pips[i].Color = i < level ? Ink : PaperDark;
+            }
         }
 
         public void Refresh(World world, HashSet<int> selected, string telegram, string info)
@@ -162,8 +193,12 @@ namespace Messingstadt
                 var card = _cards[i];
                 card.Name.Text = $"{i + 1} {u.Name.ToUpperInvariant()}";
                 string skill = u.Skill == World.SkillLocksmith ? "Schlosser" : u.Skill == World.SkillBookkeeper ? "Buchhalter" : "Agent";
-                card.Status.Text = u.CarriesItem ? "trägt das Buch" : u.Sprinting ? "rennt" : skill;
-                card.Levels.Text = $"Beine {Dots(u.Legs)}\nHerz  {Dots(u.Heart)}";
+                string doing = u.CarriesItem ? "trägt das Buch" : u.Sprinting ? "rennt" : skill;
+                string light = Game.LightWord(u);
+                card.Status.Text = !u.Alive ? skill : light.Length > 0 ? $"{doing}, {light}" : doing;
+                ShowLevel(card.LegsPips, u.Legs);
+                ShowLevel(card.HeartPips, u.Heart);
+                card.Alive.Visible = u.Alive;
                 float width = CardWidth - 14;
                 card.Health.Size = new Vector2(width * u.Hp / u.MaxHp, 6);
                 card.Breath.Size = new Vector2(width * u.Stamina / World.MaxStamina(u), 4);

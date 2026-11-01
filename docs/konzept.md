@@ -30,7 +30,8 @@ Fluchtwagen am Ostende der Querstraße.
 | Pistole | Reichweite 7 Felder, alle 0,7 s, Agent 16 Schaden, Wache 10 Schaden |
 | Trefferchance | 85 %, je Feld Entfernung 5 Punkte weniger, Ziel in Deckung 25 weniger, Schütze in Bewegung 15 weniger, mindestens 10 % |
 | Deckung | Ein Hindernis direkt neben dem Ziel in Richtung des Schützen |
-| Sicht ahnungslose Wache | Kegel von 90° und 5 Feldern in Blickrichtung, im Umkreis von 2 Feldern auch hinter ihr |
+| Sicht ahnungslose Wache | Kegel von 90° in Blickrichtung, im Umkreis von 2 Feldern auch hinter ihr. Die Reichweite hängt vom Licht beim Ziel ab: 3,5 Felder im Dunkeln, bis 5 Felder im Hellen |
+| Licht beim Schleichen | Helligkeit aus dem Pathtracer (`data/light_01.json`). Im Dunkeln dauert das Bemerken 60 % länger, im hellen Licht 20 % kürzer. Lageplan und Sichtkegel rechnen damit, die Akte zeigt „im Dunkeln“ oder „im Licht“ |
 | Sicht alarmierte Wache | 7 Felder rundum |
 | Sicht allgemein | Gebäude verdecken, Sicht gilt immer in beide Richtungen |
 | Posten | Wachen ohne Rundgang drehen sich alle 3 s um 90° |
@@ -107,7 +108,7 @@ Was den Spieler in die Welt ziehen soll, alles reine Darstellung:
 
 | Was | Wie |
 |---|---|
-| Einstieg | Titel auf Schwarz, die Kamera sinkt auf den Trupp, eine Schreibmaschine tippt den Auftrag. Jede Taste springt weiter (`game/Intro.cs`) |
+| Einstieg | Titel auf Schwarz, die Kamera sinkt auf den Trupp, eine Schreibmaschine tippt den Auftrag. Jede Taste beendet ihn, wer ihn kennt, sieht nur eine kurze Aufblende (`game/Intro.cs`) |
 | Oberfläche | Oben ein Telegramm, unten vergilbte Personalakten mit Stempel. Ein Klick auf eine Akte wählt den Agenten (`game/PaperUi.cs`) |
 | Filmlook | Dunkle Bildränder, feines Filmkorn, leichte Farbstimmung (`game/FilmLook.cs`) |
 | Gespräche | Wachen und Arbeiter reden kurze Sätze, Wachen rufen im Alarm. Manche Sätze verraten etwas über die Rundgänge (`game/Chatter.cs`) |
@@ -131,7 +132,7 @@ Reine Darstellung mit eigenem Zufall, ohne Einfluss auf die Spiellogik:
 | Hotelschild | Leuchtet rot, ein Buchstabe hat einen Wackelkontakt, manchmal fällt das ganze Schild kurz aus |
 | Ratten | Huschen an Hauswänden entlang, fliehen vor Menschen und Schüssen in den nächsten Gully (`game/Critters.cs`) |
 | Tauben | Sitzen auf Dachkanten und picken, fliegen bei Schüssen oder nahen Menschen auf und kommen später zurück |
-| Gewitter | Alle 35 bis 95 Sekunden Blitze mit vorberechneten Schatten, Figuren im Hausschatten bleiben dunkel. Der Donner kommt je nach Entfernung später und leiser. Dazwischen alle 18 bis 50 Sekunden fernes Grollen ohne Blitz (`game/Weather.cs`) |
+| Gewitter | Alle 35 bis 95 Sekunden Blitze: gezackte, verästelte Strahlen (`game/LightningBolt.cs`) mit vorberechneten Schatten, Figuren im Hausschatten bleiben dunkel. Der Donner kommt je nach Entfernung später und leiser. Dazwischen alle 18 bis 50 Sekunden fernes Grollen ohne Blitz (`game/Weather.cs`) |
 | Bodennebel | Schwaden ziehen über den Boden und leuchten dort, wo Licht fällt, weil der Nebel die Lichtkarte des Bodens liest |
 | Lichtkegel | Unter den Laternen steht ein Lichtkegel, in dem der Regen aufleuchtet |
 | Luftschiff | Zieht in Abständen über die Stadt, sein Suchscheinwerfer streift durch die Straßen. Bisher ohne Einfluss auf die Wachen (`game/Airship.cs`) |
@@ -168,7 +169,7 @@ Berechnet wird vorab, nicht in jedem Bild: Godot hat im 2D kein Pathtracing, und
 | Flackern | Die Anteile von Laternen und Feuer stehen in einer zweiten Karte. Nur das direkte Licht flackert, das Umwegelicht bleibt gleich |
 | Mündungsfeuer | Weiter ein einfaches 2D-Licht ohne Schatten |
 
-Nach Änderungen an der Stadt erst `generate_concept.py`, dann `bake_light.py` laufen lassen.
+Nach Änderungen an der Stadt erst `generate_concept.py`, dann `bake_light.py` laufen lassen. Das ändert auch `data/light_01.json` und damit die Spielregeln.
 
 ### Lesbarkeit
 
@@ -184,23 +185,23 @@ Gemessen in der Spiellogik über je 300 Zufallsfolgen mit `tools/Messingstadt.Ba
 
 | Spielweise | Siege | Niederlagen | Tote Agenten | Lebenspunkte übrig | Dauer | Wertung |
 |---|---|---|---|---|---|---|
-| Alle rennen zum Buch, dann zum Wagen | 82 % | 18 % | 2,15 | 79 von 400 | 19 s | Laut |
+| Alle rennen zum Buch, dann zum Wagen | 70 % | 29 % | 2,40 | 71 von 400 | 19 s | Laut |
 | Jeder greift die nächste Wache an, dann Buch und Wagen | 92 % | 7 % | 1,10 | 176 von 400 | 36 s | Laut |
 | Alle schießen dieselbe Wache aus, dann Buch und Wagen | 78 % | 21 % | 1,58 | 147 von 400 | 34 s | Laut |
-| Alle sprinten den ganzen Weg zum Buch und zum Wagen | 29 % | 70 % | 3,43 | 14 von 400 | 15 s | Laut |
-| Auf die Straße stellen und kämpfen lassen, dann Buch und Wagen | 61 % | 35 % | 2,62 | 77 von 400 | 47 s | Laut |
-| Hinterhalt: einer lockt, alle warten zwischen den Häusern | 15 % | 84 % | 3,71 | 18 von 400 | 29 s | Laut |
-| Greta schleicht allein, Klicks auf ±0,5 s genau | 100 % | 0 % | 0 | 400 von 400 | 83 s | Unentdeckt |
-| Greta schleicht allein, Klicks auf ±1 s genau | 90 % | 9 % | 0,09 | | 83 s | meist Unentdeckt |
+| Alle sprinten den ganzen Weg zum Buch und zum Wagen | 37 % | 62 % | 3,34 | 15 von 400 | 15 s | Laut |
+| Auf die Straße stellen und kämpfen lassen, dann Buch und Wagen | 57 % | 39 % | 2,67 | 75 von 400 | 42 s | Laut |
+| Hinterhalt: einer lockt, alle warten zwischen den Häusern | 14 % | 85 % | 3,73 | 15 von 400 | 29 s | Laut |
+| Greta schleicht allein, Klicks auf ±0,5 s genau | 100 % | 0 % | 0 | 400 von 400 | 67 s | Unentdeckt |
+| Greta schleicht allein, Klicks auf ±1 s genau | 90 % | 9 % | 0,09 | | 67 s | meist Unentdeckt |
 
 Mit dem Lageplan ist kein vorab berechneter Zeitplan mehr nötig. Greta geht dabei von Versteck zu Versteck und startet, wenn die Vorschau den Weg frei zeigt (`--lageplan`, je 100 Läufe):
 
 | Start | Unentdeckt | Dauer |
 |---|---|---|
-| Klick im Lageplan, Start genau bei frei | 95 % | 58 s |
-| Eigener Klick, bis 0,25 s zu spät | 70 % | 122 s |
-| Eigener Klick, bis 0,5 s zu spät | 62 % | 142 s |
-| Eigener Klick, bis 1 s zu spät | 58 % | 145 s |
+| Klick im Lageplan, Start genau bei frei | 92 % | 61 s |
+| Eigener Klick, bis 0,25 s zu spät | 71 % | 112 s |
+| Eigener Klick, bis 0,5 s zu spät | 68 % | 122 s |
+| Eigener Klick, bis 1 s zu spät | 54 % | 154 s |
 
 Der Schleichplan ist als Test abgesichert. Eine frühere Fassung mit Klick 7 bei 63 s und ohne Einsteigen wurde im Spiel mit echten Klicks gewonnen:
 
@@ -212,7 +213,7 @@ Der Schleichplan ist als Test abgesichert. Eine frühere Fassung mit Klick 7 bei
 | 34 s | 6,5 | 1,7 s | zurück ins Versteck |
 | 41 s | 6,14 | 2,6 s | zurück über die Straße |
 | 55 s | 18,18 | 20 s | hinter der Lagerhalle nach Osten |
-| 79 s | 18,11 | 1,4 s | zum Fluchtwagen, 1 s einsteigen |
+| 63 s | 18,11 | 2,7 s | zum Fluchtwagen, 1 s einsteigen |
 
 Rennen ist also riskant und kostet mehr als die Hälfte des Trupps, wer aktiv kämpft, fährt besser. Die Wertung hat noch keine Folgen
 über den Einsatz hinaus, das kommt erst mit einer Kampagne.

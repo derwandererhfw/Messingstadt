@@ -11,10 +11,18 @@ const int MinWindowTicks = 30;
 string dataDir = FindDataDir();
 string mapJson = File.ReadAllText(Path.Combine(dataDir, "map_01.json"));
 string missionJson = File.ReadAllText(Path.Combine(dataDir, "mission_01.json"));
+string lightJson = File.ReadAllText(Path.Combine(dataDir, "light_01.json"));
+
+MissionData LitMission()
+{
+    var mission = Loader.ParseMission(missionJson);
+    mission.Light = Loader.ParseLight(lightJson);
+    return mission;
+}
 
 World NewWorld(int seed)
 {
-    var mission = Loader.ParseMission(missionJson);
+    var mission = LitMission();
     mission.Seed = seed;
     return new World(Loader.ParseMap(mapJson), mission);
 }
@@ -201,7 +209,7 @@ Action<World> HoldThenRush()
 void Sneak((int X, int Y)[] stops, int runs, int lag)
 {
     var rng = new Random(1927);
-    var watch = WatchMap.Measure(Loader.ParseMap(mapJson), Loader.ParseMission(missionJson));
+    var watch = WatchMap.Measure(Loader.ParseMap(mapJson), LitMission());
     int won = 0, unseen = 0, ticks = 0;
     for (int seed = 1; seed <= runs; seed++)
     {
@@ -239,7 +247,7 @@ void Sneak((int X, int Y)[] stops, int runs, int lag)
 // Lageplan als Text: . nie bewacht, 1-9 Anteil in Zehnteln, # gesperrt, ein großes W auf dem Weg einer Wache.
 if (args.Length > 0 && args[0] == "--lageplan")
 {
-    var mission = Loader.ParseMission(missionJson);
+    var mission = LitMission();
     var watch = WatchMap.Measure(Loader.ParseMap(mapJson), mission);
     var blocked = NewWorld(1927).Map;
     Console.WriteLine("    " + string.Concat(Enumerable.Range(0, watch.Width).Select(x => (x % 10).ToString())));

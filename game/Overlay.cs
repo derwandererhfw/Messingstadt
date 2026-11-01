@@ -190,18 +190,21 @@ namespace Messingstadt
             int hash = (s.Tick * 31 + s.ToX + s.FromY) & 0xffff;
             float missX = (hash % 21 - 10) * 1.2f, missY = hash / 7 % 13 - 2;
             var impact = Game.ToScreen(s.ToX, s.ToY) + (s.Hit ? new Vector2(0, -22) : new Vector2(missX, missY));
-            if (age <= 1)
+            if (age == 0)
             {
-                var normal = new Vector2(-dir.Y, dir.X);
-                DrawLine(muzzle, muzzle + dir * 9f, new Color(1f, 0.85f, 0.45f), 2f);
-                DrawLine(muzzle - normal * 3.5f, muzzle + normal * 3.5f, new Color(1f, 0.7f, 0.25f, 0.9f), 1f);
-                DrawCircle(muzzle, 3.5f, new Color(1f, 0.72f, 0.25f, 0.85f));
-                DrawCircle(muzzle, 1.5f, Colors.White);
-                DrawLine(muzzle, impact, new Color(1f, 0.92f, 0.65f, 0.75f), 1f);
+                DrawMuzzleFlame(muzzle, dir, hash);
             }
-            else
+            else if (age == 1)
             {
-                DrawLine(muzzle, impact, new Color(0.7f, 0.7f, 0.7f, 0.25f), 1f);
+                // Nur noch die Glut der ausgestoßenen Gase, kleiner und dunkler
+                DrawMuzzleFlame(muzzle, dir, hash + 1, 0.55f, 0.55f);
+            }
+            // Der Weg der Kugel als kurzer Strich, der sich zum Ziel bewegt, statt einer Linie über die ganze Strecke.
+            float from0 = age / 3f, from1 = Mathf.Min(1f, from0 + 0.3f);
+            DrawLine(muzzle.Lerp(impact, from0), muzzle.Lerp(impact, from1), new Color(1f, 0.9f, 0.65f, 0.5f * (1f - from0)), 1f);
+            if (age >= 1)
+            {
+                DrawRect(new Rect2(muzzle + dir * age * 2f + new Vector2(-1, -1 - age), new Vector2(2 + age, 2)), new Color(0.72f, 0.72f, 0.72f, 0.3f));
             }
             for (int i = 0; i < 5; i++)
             {
@@ -217,6 +220,35 @@ namespace Messingstadt
                     DrawRect(new Rect2(impact + new Vector2(spray.X, -Mathf.Abs(spray.Y)), new Vector2(1.5f, 1.5f)), new Color(0.6f, 0.58f, 0.54f, 0.85f));
                 }
             }
+        }
+
+        /// <summary>Flamme aus der Mündung: ein schmaler, gezackter Stoß nach vorn mit kleinen Seitenzungen, jedes Mal etwas anders.</summary>
+        private void DrawMuzzleFlame(Vector2 at, Vector2 dir, int hash, float size = 1f, float brightness = 1f)
+        {
+            var side = new Vector2(-dir.Y, dir.X);
+            float length = (9f + hash % 5) * size;
+            float width = (2f + hash / 5 % 2) * size;
+            float bend = ((hash / 3 % 5) - 2) * 0.5f * size;
+            var outer = new[]
+            {
+                at + side * width * 0.7f,
+                at + dir * length * 0.35f + side * width * 1.1f,
+                at + dir * length * 0.5f + side * width * 0.3f,
+                at + dir * length + side * bend,
+                at + dir * length * 0.55f - side * width * 0.4f,
+                at + dir * length * 0.3f - side * width * 1.2f,
+                at - side * width * 0.7f,
+            };
+            DrawColoredPolygon(outer, new Color(1f, 0.55f, 0.15f, 0.85f * brightness));
+            DrawColoredPolygon(new[]
+            {
+                at + side * width * 0.4f, at + dir * length * 0.65f + side * bend * 0.5f, at - side * width * 0.4f,
+            }, new Color(1f, 0.9f, 0.55f, brightness));
+            DrawLine(at, at + dir * length * 0.4f, new Color(1f, 1f, 0.92f, brightness), 1f);
+            // Seitenzungen quer zur Mündung
+            float tongue = (3f + hash / 7 % 3) * size;
+            DrawLine(at + dir, at + dir * 2f + side * tongue, new Color(1f, 0.65f, 0.25f, 0.8f * brightness), 1f);
+            DrawLine(at + dir, at + dir * 2f - side * tongue, new Color(1f, 0.65f, 0.25f, 0.8f * brightness), 1f);
         }
 
         private void DrawExit(World w)

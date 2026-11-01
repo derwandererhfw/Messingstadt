@@ -4,7 +4,8 @@ namespace Messingstadt
 {
     /// <summary>
     /// Filmischer Einstieg: Titel auf Schwarz, die Kamera sinkt durch den Regen auf den Trupp, dann tippt
-    /// eine Schreibmaschine den Auftrag. Das Spiel steht so lange still. Jede Taste oder ein Klick springt weiter.
+    /// eine Schreibmaschine den Auftrag. Das Spiel steht so lange still. Jede Taste oder ein Klick beendet ihn.
+    /// Wer ihn schon kennt, sieht nur noch eine kurze Aufblende.
     /// </summary>
     public partial class Intro : CanvasLayer
     {
@@ -14,6 +15,7 @@ namespace Messingstadt
         private const float StartZoom = 1.05f;
         private const float EndZoom = 2f;
         private const float LettersPerSecond = 38f;
+        private const float ShortFadeSeconds = 1.4f;
 
         private ColorRect _black = null!;
         private Label _title = null!;
@@ -31,22 +33,34 @@ namespace Messingstadt
         public Vector2 CameraFrom;
         public Vector2 CameraTo;
 
+        /// <summary>Kurze Fassung: nur Aufblenden, ohne Titel und Auftrag.</summary>
+        public bool Short;
+
         public override void _Ready()
         {
             Layer = 10;
-            _black = new ColorRect { Size = new Vector2(1280, 800), Color = Colors.Black, MouseFilter = Control.MouseFilterEnum.Ignore };
+            _black = new ColorRect { Color = Colors.Black, MouseFilter = Control.MouseFilterEnum.Ignore };
             AddChild(_black);
+            _black.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
             _title = PaperUi.Text("MESSINGSTADT", 64, new Color(0.82f, 0.68f, 0.38f), PaperUi.Serif);
-            _title.Position = new Vector2(0, 320);
-            _title.Size = new Vector2(1280, 90);
+            _title.AnchorRight = 1f;
+            _title.AnchorTop = 0.4f;
+            _title.AnchorBottom = 0.4f;
             _title.HorizontalAlignment = HorizontalAlignment.Center;
             AddChild(_title);
             _subtitle = PaperUi.Text("1927. Die Stadt gehört den Brandt-Werken. Noch.", 20, new Color(0.65f, 0.62f, 0.55f), PaperUi.Typewriter);
-            _subtitle.Position = new Vector2(0, 408);
-            _subtitle.Size = new Vector2(1280, 40);
+            _subtitle.AnchorRight = 1f;
+            _subtitle.AnchorTop = 0.4f;
+            _subtitle.AnchorBottom = 0.4f;
+            _subtitle.OffsetTop = 88f;
             _subtitle.HorizontalAlignment = HorizontalAlignment.Center;
             AddChild(_subtitle);
-            _paper = new PanelContainer { Position = new Vector2(300, 190), CustomMinimumSize = new Vector2(680, 300), Visible = false };
+            _paper = new PanelContainer
+            {
+                CustomMinimumSize = new Vector2(680, 300), Visible = false,
+                AnchorLeft = 0.5f, AnchorRight = 0.5f, AnchorTop = 0.5f, AnchorBottom = 0.5f,
+                OffsetLeft = -340f, OffsetRight = 340f, OffsetTop = -180f, OffsetBottom = 120f,
+            };
             _paper.AddThemeStyleboxOverride("panel", PaperUi.PaperBox(PaperUi.PaperColor));
             AddChild(_paper);
             var body = new VBoxContainer();
@@ -62,11 +76,26 @@ namespace Messingstadt
             _hint.Visible = false;
             body.AddChild(_hint);
             Game.Sound.PlayEverywhere("thunder_1", -12f);
+            if (Short)
+            {
+                _title.Visible = false;
+                _subtitle.Visible = false;
+                Game.SetIntroCamera(CameraTo, EndZoom);
+            }
         }
 
         public override void _Process(double delta)
         {
             _time += (float)delta;
+            if (Short)
+            {
+                _black.Color = new Color(0f, 0f, 0f, 1f - _time / ShortFadeSeconds);
+                if (_time >= ShortFadeSeconds)
+                {
+                    Finish();
+                }
+                return;
+            }
             if (_typing >= 0f)
             {
                 UpdateTyping((float)delta);
@@ -119,19 +148,14 @@ namespace Messingstadt
                 return;
             }
             GetViewport().SetInputAsHandled();
-            if (_typing < 0f)
-            {
-                StartTyping();
-            }
-            else if (_shownLetters < Briefing.Length)
-            {
-                _typing = Briefing.Length / LettersPerSecond;
-            }
-            else
-            {
-                Game.EndIntro();
-                QueueFree();
-            }
+            Finish();
+        }
+
+        private void Finish()
+        {
+            Game.SetIntroCamera(CameraTo, EndZoom);
+            Game.EndIntro();
+            QueueFree();
         }
     }
 }
