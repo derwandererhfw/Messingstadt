@@ -105,6 +105,23 @@ namespace Messingstadt
             AddChild(player);
         }
 
+        /// <summary>Ein Dauergeräusch, das mit etwas mitfliegt. Der Aufrufer startet es und setzt die Lage selbst.</summary>
+        public AudioStreamPlayer2D AddMovingLoop(string name, float volume, float reach)
+        {
+            var player = new AudioStreamPlayer2D { Stream = Looping(name), VolumeDb = volume, MaxDistance = reach, Attenuation = 1.2f };
+            AddChild(player);
+            return player;
+        }
+
+        /// <summary>Überall gleich laut, etwa Donner.</summary>
+        public void PlayEverywhere(string name, float volume)
+        {
+            var player = new AudioStreamPlayer { Stream = _sounds[name], VolumeDb = volume, Autoplay = true };
+            player.Finished += player.QueueFree;
+            AddChild(player);
+            PlayCount++;
+        }
+
         /// <summary>Spielt ein kurzes Geräusch an einer Stelle der Welt.</summary>
         public void Play(string name, Vector2 position, float volume = 0f, float reach = EventReach, float pitchSpread = 0.06f)
         {

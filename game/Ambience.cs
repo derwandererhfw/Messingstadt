@@ -15,6 +15,8 @@ namespace Messingstadt
         private const float RipplesPerSecond = 2.2f;
         private const float RippleSeconds = 0.8f;
         private const int FlashLights = 6;
+        private const float MinValveSeconds = 16f;
+        private const float MaxValveSeconds = 45f;
 
         private sealed class Ripple
         {
@@ -38,11 +40,15 @@ namespace Messingstadt
         private float _gustUntil;
         private float _nextGust = 2f;
         private float _rippleDebt;
+        private float _nextValve = 9f;
 
         public List<Vector2> Smoke = new();
         public List<Vector2> Steam = new();
         public List<Vector2> Fires = new();
         public List<(Vector2 Pos, float Radius)> Puddles = new();
+
+        /// <summary>Überdruckventile auf den Kesseln.</summary>
+        public List<Vector2> Valves = new();
         public Main Game = null!;
         public Texture2D Glow = null!;
         public Rect2 Area;
@@ -123,10 +129,35 @@ namespace Messingstadt
             float dt = (float)delta;
             _time += dt;
             FlickerLights(dt);
+            UpdateValves();
             UpdateFlashes();
             UpdateRipples(dt);
             UpdatePapers(dt);
             QueueRedraw();
+        }
+
+        /// <summary>Ab und zu bläst ein Kessel zischend Dampf ab.</summary>
+        private void UpdateValves()
+        {
+            if (_time < _nextValve || Valves.Count == 0)
+            {
+                return;
+            }
+            _nextValve = _time + Rand(MinValveSeconds, MaxValveSeconds);
+            var at = Valves[_rng.Next(Valves.Count)];
+            var burst = new CpuParticles2D
+            {
+                Position = at, ZIndex = HighZ, Amount = 40, Lifetime = 1.6f, OneShot = true, Explosiveness = 0.45f,
+                Direction = new Vector2(0.3f, -1f), Spread = 16f, Gravity = new Vector2(8f, 12f),
+                InitialVelocityMin = 45f, InitialVelocityMax = 85f, ScaleAmountMin = 2f, ScaleAmountMax = 5f,
+                Texture = Glow, TextureFilter = TextureFilterEnum.Linear,
+                Color = new Color(2.4f, 2.4f, 2.5f, 0.09f),
+            };
+            burst.Scale = new Vector2(0.08f, 0.08f);
+            AddChild(burst);
+            burst.Emitting = true;
+            burst.Finished += burst.QueueFree;
+            Game.Sound.Play("steam_burst", at, -11f, 900f, 0.08f);
         }
 
         /// <summary>Jeder Schuss erhellt für einen Augenblick die Umgebung des Schützen.</summary>

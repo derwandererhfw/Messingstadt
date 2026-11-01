@@ -45,6 +45,10 @@ SCREEN_WINDOWS = 3  # Fenster mit flimmerndem Bildfunk, ihr Licht kommt im Spiel
 SPEC_STRENGTH = 1.6
 PUDDLE_SPEC = 7.0
 STUTTER_LAMP = (5.6, 10.5)
+FLASH_DIRECTION = (0.72, -0.28, 0.62)  # Blitz: von der Seite und hoch, damit Schatten quer über die Straßen fallen
+FLASH_AMBIENT = 0.2
+VOID_FLASH = 0.3
+FOG_SIZE = 256
 EMISSIVE = ((255, 232, 160), (226, 170, 90))
 EMISSIVE_REACH = 45
 EMISSIVE_LIGHT = 1.05
@@ -167,6 +171,7 @@ def main():
     for turn in range(SCREEN_WINDOWS):
         screens.add(picker.choice([w for w in by_house[houses[turn % len(houses)]] if w not in screens]))
     panes_out = []
+    welding_placed = False
     type_names = list(WINDOW_TYPES)
     weights = [WINDOW_TYPES[name]["weight"] for name in type_names]
     for sprite, rgba in zip(sprites, images):
@@ -188,6 +193,9 @@ def main():
             switching = kind == "window" and not pane["type"] and picker.random() < SWITCHING_SHARE
             if switching:
                 kind = "toggle"
+            if pane["type"] and type_name != "dunkel" and not welding_placed:
+                kind = "weld"
+                welding_placed = True
         source = (picker.uniform(0.25, 0.75), picker.uniform(0.1, 0.55))
         for y, x in pixels:
             sprite["ids"][y, x] = pane_id
@@ -230,6 +238,7 @@ def main():
         "lampColor": LAMP_COLOR, "fireColor": FIRE_COLOR,
         "windowTypes": [{"color": t["color"], "power": t["power"]} for t in WINDOW_TYPES.values()],
         "specStrength": SPEC_STRENGTH, "puddleSpec": PUDDLE_SPEC,
+        "flashDirection": FLASH_DIRECTION, "flashAmbient": FLASH_AMBIENT,
         "boxes": boxes, "lights": lights, "puddles": manifest["puddles"],
         "sprites": [{k: s[k] for k in ("box", "left", "top", "w", "h")} for s in sprites],
         "gridRes": GRID_RES, "gridZ": GRID_Z,
@@ -242,20 +251,21 @@ def main():
     at = 0
     for sprite, rgba in zip(sprites, images):
         h, w = sprite["h"], sprite["w"]
-        block = data[at:at + w * h * 9].reshape(h, w, 9)
-        at += w * h * 9
+        block = data[at:at + w * h * 10].reshape(h, w, 10)
+        at += w * h * 10
         void = block[..., 0] < 0
         block[void] = 0
         mask = half_mask(rgba, np.zeros(rgba.shape[:2], np.uint8)) > 0
         light = tone(block[..., :3] + blur(block[..., 3:6], mask))
         light[void] = VOID_LIGHT
-        deltas = np.stack([block[..., 6], block[..., 7], block[..., 8]], axis=-1)
+        deltas = np.stack([block[..., 6], block[..., 7], block[..., 8], block[..., 9]], axis=-1)
+        deltas[void, 3] = VOID_FLASH
         # Rand auffüllen, damit beim Hochrechnen keine dunkle Kante aus leeren Punkten entsteht.
         light = fill_empty(light, mask)
         deltas = fill_empty(deltas, mask)
         size = (rgba.shape[1], rgba.shape[0])
         a = np.array(Image.fromarray(encode(light)).resize(size, Image.BILINEAR))
-        b = np.array(Image.fromarray(encode(deltas)).resize(size, Image.BILINEAR))
+        b = np.array(Image.fromarray(encode(deltas), "RGBA").resize(size, Image.BILINEAR))
         glow = (is_emissive(rgba) if sprite["box"] >= 0 else np.zeros(rgba.shape[:2], bool)) | (sprite["ids"] > 0)
         a[glow] = encode(np.array([EMISSIVE_LIGHT] * 3))
         panes = sprite["ids"] > 0
@@ -275,12 +285,25 @@ def main():
             Image.fromarray(sprite["ids"]).convert("RGB").save(OUT / f"{sprite['name']}_w.png")
 
     size = 20 * GRID_RES
-    grid = np.fromfile(WORK / "grid.bin", dtype="<f4").reshape(size, size, 3)
+    grid = np.fromfile(WORK / "grid.bin", dtype="<f4").reshape(size, size, 4)
     inside = grid[..., 0] < 0
     grid[inside] = 0
-    grid = fill_empty(tone(grid), ~inside)
-    Image.fromarray(encode(grid)).save(OUT / "grid.png")
+    filled = fill_empty(np.concatenate([tone(grid[..., :3]), grid[..., 3:]], axis=-1), ~inside)
+    Image.fromarray(encode(filled), "RGBA").save(OUT / "grid.png")
+    fog_noise()
     print(f"Lichtkarten in {OUT}")
+
+
+def fog_noise():
+    """Weiches, kachelbares Rauschen für den Bodennebel. Im Frequenzraum gefiltert, deshalb ohne Nahtstellen."""
+    rng = np.random.default_rng(1927)
+    spectrum = np.fft.rfft2(rng.standard_normal((FOG_SIZE, FOG_SIZE)))
+    fy = np.fft.fftfreq(FOG_SIZE)[:, None]
+    fx = np.fft.rfftfreq(FOG_SIZE)[None, :]
+    shaped = spectrum * np.exp(-((fx ** 2 + fy ** 2) ** 0.5) / 0.018)
+    field = np.fft.irfft2(shaped, (FOG_SIZE, FOG_SIZE))
+    field = (field - field.min()) / (field.max() - field.min())
+    Image.fromarray((field * 255).astype(np.uint8)).convert("RGB").save(OUT / "fog.png")
 
 
 def fill_empty(values, mask):

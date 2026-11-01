@@ -34,6 +34,7 @@ namespace Messingstadt
         {
             Window,
             Toggle,
+            Weld,
             Dark,
             Candle,
             Screen,
@@ -52,6 +53,8 @@ namespace Messingstadt
             public Color PictureTarget;
             public float NextCut;
             public PointLight2D? Light;
+            public CpuParticles2D? Sparks;
+            public bool Crackling;
         }
 
         private readonly Random _rng = new();
@@ -90,6 +93,7 @@ namespace Messingstadt
 
         public Texture2D Glow = null!;
         public Node2D LightParent = null!;
+        public SoundScape? Sound;
 
         public WindowLife()
         {
@@ -112,6 +116,7 @@ namespace Messingstadt
                     "dark" => PaneKind.Dark,
                     "candle" => PaneKind.Candle,
                     "toggle" => PaneKind.Toggle,
+                    "weld" => PaneKind.Weld,
                     _ => PaneKind.Window,
                 },
                 On = _rng.NextDouble() < SomeoneHomeShare,
@@ -136,6 +141,23 @@ namespace Messingstadt
                         RangeZMin = -1, RangeZMax = 4096, Position = pane.Center + new Vector2(0, 8),
                     };
                     LightParent.AddChild(pane.Light);
+                }
+                else if (pane.Kind == PaneKind.Weld)
+                {
+                    pane.Light = new PointLight2D
+                    {
+                        Texture = Glow, TextureScale = 0.5f, Color = new Color(0.55f, 0.75f, 1f), Energy = 0f,
+                        RangeZMin = -1, RangeZMax = 4096, Position = pane.Center + new Vector2(0, 12),
+                    };
+                    LightParent.AddChild(pane.Light);
+                    pane.Sparks = new CpuParticles2D
+                    {
+                        Position = pane.Center + new Vector2(0, 12), ZIndex = 3000, Emitting = false, Amount = 24, Lifetime = 0.7f,
+                        Direction = new Vector2(0.2f, 1f), Spread = 35f, Gravity = new Vector2(0f, 240f),
+                        InitialVelocityMin = 20f, InitialVelocityMax = 70f, ScaleAmountMin = 1f, ScaleAmountMax = 1f,
+                        Color = new Color(4f, 3f, 1.6f),
+                    };
+                    LightParent.AddChild(pane.Sparks);
                 }
                 else if (pane.Kind == PaneKind.Letter)
                 {
@@ -166,6 +188,7 @@ namespace Messingstadt
                 {
                     PaneKind.Screen => UpdateScreen(pane, dt),
                     PaneKind.Dark => DarkPane,
+                    PaneKind.Weld => UpdateWeld(pane),
                     PaneKind.Candle => UpdateCandle(pane),
                     PaneKind.Letter => pane == _brokenLetter && _time < _stutterUntil && _rng.NextDouble() < 0.5 || _time < _dropoutUntil ? DeadLetter : NeonColor,
                     _ => UpdateWindow(pane, dt),
@@ -190,6 +213,34 @@ namespace Messingstadt
                 pane.PasserUntil = _time + Rand(0.8f, 2.2f);
             }
             return _time < pane.PasserUntil ? PasserPane : Unchanged;
+        }
+
+        /// <summary>Hinter den Hallenfenstern wird geschweißt: Serien grellblauer Blitze, dazwischen lange Pausen.</summary>
+        private Color UpdateWeld(Pane pane)
+        {
+            if (pane.Sparks == null || pane.Light == null)
+            {
+                return Unchanged;
+            }
+            if (_time > pane.NextCut)
+            {
+                bool start = _time > pane.PasserUntil;
+                pane.NextCut = start ? _time + Rand(1.2f, 3.5f) : _time + Rand(7f, 22f);
+                pane.PasserUntil = start ? pane.NextCut : 0f;
+            }
+            bool welding = _time < pane.PasserUntil;
+            bool arc = welding && _rng.NextDouble() < 0.55;
+            pane.Sparks.Emitting = welding;
+            pane.Light.Energy = arc ? Rand(0.5f, 1.1f) : 0f;
+            if (Sound != null && welding != pane.Crackling)
+            {
+                pane.Crackling = welding;
+                if (welding)
+                {
+                    Sound.Play("weld", pane.Center, -17f, 500f, 0.05f);
+                }
+            }
+            return arc ? new Color(0.72f, 0.86f, 1f, 1f) : Unchanged;
         }
 
         /// <summary>Kerzenlicht: unruhig, aber langsam, und nie ganz aus.</summary>

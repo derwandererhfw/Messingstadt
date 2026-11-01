@@ -387,6 +387,45 @@ def save_music(name, x, peak):
         f.writeframes(data.tobytes())
 
 
+def thunder():
+    """Fernes Grollen: mehrere Wellen tiefen Rauschens, die sich überlagern und lange ausrollen."""
+    for i, (seconds, waves) in enumerate(((7.0, 5), (8.5, 7), (6.0, 4))):
+        t = time(seconds)
+        body = np.zeros_like(t)
+        for k in range(waves):
+            start = RNG.uniform(0, seconds * 0.45)
+            env = np.maximum(t - start, 0)
+            body += lowpass(noise(seconds), RNG.uniform(70, 170)) * np.minimum(env * 6, 1) * decay(env, RNG.uniform(0.7, 1.8)) * (t >= start)
+        save(f"thunder_{i}", fade(body, 0.05, 0.4), 0.9)
+
+
+def airship():
+    """Motoren in der Höhe: tiefes Dröhnen mit langsamer Schwebung, ohne hohe Töne."""
+    t = 8.5
+    tt = time(t)
+    x = np.sin(2 * np.pi * 41 * tt) + 0.7 * np.sin(2 * np.pi * 43.5 * tt) + 0.35 * np.sin(2 * np.pi * 82 * tt)
+    x = x * (0.8 + 0.2 * np.sin(2 * np.pi * 7.5 * tt)) + 0.5 * lowpass(noise(t), 180)
+    save("airship", loopable(x), 0.7)
+
+
+def steam_burst():
+    t = time(2.4)
+    hiss = highpass(lowpass(noise(2.4), 7000), 1400) * np.minimum(t * 25, 1) * decay(t, 0.8)
+    rumble = lowpass(noise(2.4), 200) * decay(t, 0.5)
+    save("steam_burst", fade(hiss + 0.5 * rumble, 0.002, 0.2), 0.7)
+
+
+def weld():
+    """Elektrisches Knistern der Schweißnaht, weich gefiltert."""
+    t = 3.5
+    x = 0.15 * lowpass(noise(t), 2600)
+    for _ in range(170):
+        at = RNG.integers(0, int((t - 0.05) * RATE))
+        d = time(0.015)
+        x[at:at + len(d)] += lowpass(noise(0.015), 3800)[:len(d)] * decay(d, 0.004) * RNG.uniform(0.3, 1.6)
+    save("weld", loopable(x, 0.2), 0.5)
+
+
 def stingers():
     """Kurze, dunkle Abschlüsse statt Fanfaren: Blechakkord und Pauke."""
     t = time(3.0)
@@ -399,7 +438,7 @@ def stingers():
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music):
+    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld):
         make()
     files = list(OUT.glob("*.wav"))
     print(f"{len(files)} Geräusche, {sum(f.stat().st_size for f in files) // 1024} KiB")

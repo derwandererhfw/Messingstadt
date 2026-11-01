@@ -1140,6 +1140,7 @@ def export_game():
 
     export_critters(assets)
     subprocess.run([sys.executable, str(Path(__file__).with_name("figures3d.py"))], check=True)
+    subprocess.run([sys.executable, str(Path(__file__).with_name("props.py"))], check=True)
 
     # Kontobuch
     book = Image.new("RGBA", (14, 10), (0, 0, 0, 0))

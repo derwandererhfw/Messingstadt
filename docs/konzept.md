@@ -116,6 +116,12 @@ Reine Darstellung mit eigenem Zufall, ohne Einfluss auf die Spiellogik:
 | Hotelschild | Leuchtet rot, ein Buchstabe hat einen Wackelkontakt, manchmal fällt das ganze Schild kurz aus |
 | Ratten | Huschen an Hauswänden entlang, fliehen vor Menschen und Schüssen in den nächsten Gully (`game/Critters.cs`) |
 | Tauben | Sitzen auf Dachkanten und picken, fliegen bei Schüssen oder nahen Menschen auf und kommen später zurück |
+| Gewitter | Alle 35 bis 95 Sekunden Blitze mit vorberechneten Schatten, Figuren im Hausschatten bleiben dunkel. Der Donner kommt je nach Entfernung später und leiser (`game/Weather.cs`) |
+| Bodennebel | Schwaden ziehen über den Boden und leuchten dort, wo Licht fällt, weil der Nebel die Lichtkarte des Bodens liest |
+| Lichtkegel | Unter den Laternen steht ein Lichtkegel, in dem der Regen aufleuchtet |
+| Luftschiff | Zieht in Abständen über die Stadt, sein Suchscheinwerfer streift durch die Straßen. Bisher ohne Einfluss auf die Wachen (`game/Airship.cs`) |
+| Streikposten | Drei Arbeiter wärmen sich an einer Feuertonne vor dem Lager, das Feuer wirft zuckende Schatten. Bei Schüssen laufen sie weg (`game/Strikers.cs`) |
+| Fabrik | Hinter einem Hallenfenster wird geschweißt, mit Funken und blauem Licht. Die Kessel blasen zischend Dampf ab |
 | Arbeiter | Raucht vor der Seitentür des Hotels, geht bei Schüssen oder nahen Menschen hinein und kommt später wieder |
 
 ### Ton
@@ -129,6 +135,7 @@ Alle Geräusche werden per Synthese erzeugt (`tools/art/generate_audio.py`), es 
 | Figuren | Schritte, leiser bei Agenten, schwerer bei Wachen, laut beim Rennen. Schüsse mit Echo, Treffer, Querschläger, Fallen |
 | Einsatz | Trillerpfeife, wenn eine Wache in den Kampf geht, Alarmglocke beim Anrücken der Verstärkung, Dietrich und Tür, Blättern im Kontobuch, Münzen, Abschlussakkord |
 | Tiere | Tauben flattern auf, Ratten quieken |
+| Wetter und Stadt | Donner, Motoren des Luftschiffs, Dampfstöße, Schweißen, Feuertonne |
 
 Dazu kommt leise Musik: langsame dunkle Flächen in d-Moll mit einem sparsamen Thema, eine eigene Komposition in der Stimmung des Originals. Solange Wachen alarmiert sind, blendet sich eine treibende Bassfigur ein.
 

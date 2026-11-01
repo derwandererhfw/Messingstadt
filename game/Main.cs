@@ -31,11 +31,13 @@ uniform vec3 fire_color;
 uniform float stutter = 1.0;
 uniform float unrest = 1.0;
 uniform float fire = 1.0;
+uniform float lightning = 0.0;
 void fragment() {
     vec3 a = texture(light_a, UV).rgb;
-    vec3 b = texture(light_b, UV).rgb;
+    vec4 b = texture(light_b, UV);
     vec3 l = 4.0 * a * a + 4.0 * b.r * b.r * (stutter - 1.0) * lamp_color
-        + 4.0 * b.b * b.b * (unrest - 1.0) * lamp_color + 4.0 * b.g * b.g * (fire - 1.0) * fire_color;
+        + 4.0 * b.b * b.b * (unrest - 1.0) * lamp_color + 4.0 * b.g * b.g * (fire - 1.0) * fire_color
+        + 4.0 * b.a * b.a * lightning * vec3(0.72, 0.82, 1.0);
     float shade = dot(COLOR.rgb, vec3(0.34));
     COLOR.rgb *= max(l, vec3(0.0)) / night;
     float pane = texture(pane_ids, UV).r;
@@ -96,11 +98,13 @@ void fragment() {
         private readonly List<ShaderMaterial> _litMaterials = new();
         private readonly WindowLife _windowLife = new();
         private readonly SoundScape _sound = new();
+        private float _lightning;
         private Texture2D _noPanes = null!;
         private Texture2D _critterGlow = null!;
 
         // Der Arbeiter raucht vor der Seitentür des Hotels.
         private static readonly Vector2 WorkerTile = new(6.35f, 15.35f);
+        private static readonly Vector2 StutterLamp = new(5.6f, 10.5f);
         private static readonly Vector2 WorkerDoorTile = new(6.04f, 15.8f);
         private Shader _litShader = null!;
         private Image _lightGrid = null!;
@@ -136,6 +140,9 @@ void fragment() {
         // Automatischer Prüflauf: --shot=<datei> --frames=<n> --auto
         // Mit --shot-on-fire=<n> entsteht das Bild im Moment des ersten Schusses ab Takt n.
         // --plan zeigt den Lageplan, --look=<x>,<y> hält die Kamera auf einem Feld.
+        // --flash=<stärke> hält einen Blitz an, --ship=<x>,<y> stellt das Luftschiff über dieses Feld.
+        private float _testFlash = -1f;
+        private Vector2? _testShip;
         private bool _forcePlan;
         private Vector2? _look;
         private int _shotOnFireTick = -1;
@@ -149,6 +156,7 @@ void fragment() {
         public Vector2 MarkerPos { get; private set; }
         public float MarkerTime { get; private set; }
         public bool Finished => _finished;
+        public SoundScape Sound => _sound;
         public List<double[]> LampSpots => _mission.Lamps;
         public Color NightColor => Night;
 
@@ -192,12 +200,35 @@ void fragment() {
             _sound.Game = this;
             AddChild(_sound);
             AddAmbientSounds();
+            AddWeatherAndLife();
             AddChild(new Critters
             {
                 Game = this, Sound = _sound, Sheet = LoadTexture("res://assets/critters.png"), Glow = _critterGlow,
                 Gullies = _ambience.Steam.ConvertAll(ScreenToMap),
                 WorkerSpot = WorkerTile, WorkerDoor = WorkerDoorTile,
             });
+        }
+
+        /// <summary>Wetter, Luftschiff und Streikposten. Sie brauchen die fertige Tiefe der Objekte.</summary>
+        private void AddWeatherAndLife()
+        {
+            var weather = new Weather
+            {
+                Game = this, Night = Night, LampColor = LampColor, HeldFlash = _testFlash,
+                GroundLight = LoadTexture("res://assets/light/ground_a.png"), FogNoise = LoadTexture("res://assets/light/fog.png"),
+                GroundSize = LoadTexture("res://assets/ground.png").GetSize(), GroundOrigin = new Vector2(_ox, _oy),
+            };
+            AddChild(weather);
+            weather.AddLampCones(_mission.Lamps, StutterLamp);
+            AddChild(new Airship { Game = this, Glow = _critterGlow, Night = Night, ShipTexture = LoadTexture("res://assets/airship.png"), HeldAt = _testShip });
+            AddChild(new Strikers
+            {
+                Game = this, Glow = _critterGlow, BarrelTexture = LoadTexture("res://assets/barrel.png"), BannerTexture = LoadTexture("res://assets/banner.png"),
+            });
+            foreach (var p in _ambience.Fires)
+            {
+                _ambience.Valves.Add(p - new Vector2(8, 46));
+            }
         }
 
         /// <summary>Dauergeräusche an festen Orten: Sie sind nur zu hören, wenn die Kamera in der Nähe ist.</summary>
@@ -253,6 +284,7 @@ void fragment() {
             AddChild(_ambience);
             _windowLife.Glow = glow;
             _windowLife.LightParent = this;
+            _windowLife.Sound = _sound;
             AddChild(_windowLife);
             _critterGlow = glow;
             AddChild(new RainLayer { ZIndex = 3900 });
@@ -273,6 +305,15 @@ void fragment() {
                 else if (a.StartsWith("--shot-on-fire="))
                 {
                     _shotOnFireTick = int.Parse(a["--shot-on-fire=".Length..]);
+                }
+                else if (a.StartsWith("--flash="))
+                {
+                    _testFlash = float.Parse(a["--flash=".Length..], System.Globalization.CultureInfo.InvariantCulture);
+                }
+                else if (a.StartsWith("--ship="))
+                {
+                    var ship = a["--ship=".Length..].Split(',');
+                    _testShip = new Vector2(float.Parse(ship[0], System.Globalization.CultureInfo.InvariantCulture), float.Parse(ship[1], System.Globalization.CultureInfo.InvariantCulture));
                 }
                 else if (a == "--plan")
                 {
@@ -311,9 +352,31 @@ void fragment() {
             return material;
         }
 
+        /// <summary>Helligkeit der Laternen gerade jetzt, für die Lichtkegel.</summary>
+        public float UnrestLevel { get; private set; } = 1f;
+        public float StutterLevel { get; private set; } = 1f;
+
+        /// <summary>Blitzlicht: blendet den vorberechneten Blitzanteil ein und hellt kurz den Himmel auf.</summary>
+        public void SetLightning(float strength)
+        {
+            if (strength == _lightning)
+            {
+                return;
+            }
+            _lightning = strength;
+            foreach (var material in _litMaterials)
+            {
+                material.SetShaderParameter("lightning", strength);
+            }
+            var sky = new Color(52 / 255f, 56 / 255f, 78 / 255f) * Night;
+            RenderingServer.SetDefaultClearColor(sky.Lerp(new Color(0.55f, 0.6f, 0.72f), Mathf.Min(1f, strength * 0.7f)));
+        }
+
         /// <summary>Flackern von Laternen und Feuer. Die Anteile dafür stehen in den Lichtkarten.</summary>
         public void SetFlicker(float stutter, float unrest, float fire)
         {
+            UnrestLevel = unrest;
+            StutterLevel = stutter;
             foreach (var material in _litMaterials)
             {
                 material.SetShaderParameter("stutter", stutter);
@@ -329,7 +392,7 @@ void fragment() {
             blank.Fill(Colors.Black);
             _noPanes = ImageTexture.CreateFromImage(blank);
             _lightGrid = Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/light/grid.png"));
-            AddChild(new Sprite2D { Texture = LoadTexture("res://assets/ground.png"), Centered = false, ZIndex = -1, Material = LitMaterial("ground") });
+            AddChild(new Sprite2D { Texture = LoadTexture("res://assets/ground.png"), Centered = false, ZIndex = -1, LightMask = 3, Material = LitMaterial("ground") });
             using var manifest = JsonDocument.Parse(File.ReadAllText(ProjectSettings.GlobalizePath("res://assets/manifest.json")));
             _ox = manifest.RootElement.GetProperty("ox").GetInt32();
             _oy = manifest.RootElement.GetProperty("oy").GetInt32();
@@ -346,6 +409,7 @@ void fragment() {
                     Centered = false,
                     Position = new Vector2(t.GetProperty("px").GetInt32(), t.GetProperty("py").GetInt32()),
                     ZIndex = ThingZ(index),
+                    LightMask = 3,
                     Material = LitMaterial(Path.GetFileNameWithoutExtension(t.GetProperty("file").GetString()!)),
                 };
                 AddChild(sprite);
@@ -853,7 +917,9 @@ void fragment() {
         private Color GridLight(int x, int y)
         {
             var c = _lightGrid.GetPixel(Mathf.Clamp(x, 0, _lightGrid.GetWidth() - 1), Mathf.Clamp(y, 0, _lightGrid.GetHeight() - 1));
-            return new Color(c.R * c.R * LightMax, c.G * c.G * LightMax, c.B * c.B * LightMax);
+            // Im vierten Kanal steht der Blitzanteil: Wer im Schatten eines Hauses steht, bleibt auch beim Blitz dunkel.
+            float flash = c.A * c.A * LightMax * _lightning;
+            return new Color(c.R * c.R * LightMax + flash * 0.72f, c.G * c.G * LightMax + flash * 0.82f, c.B * c.B * LightMax + flash);
         }
 
         /// <summary>Licht aus dem vorberechneten Gitter an einer Stelle der Karte.</summary>
@@ -983,7 +1049,8 @@ void fragment() {
             float minLight = !u.Alive ? FallenMinLight : u.Faction == Faction.Agent ? AgentMinLight
                 : World.IsSpottedByAgents(u) ? SpottedGuardMinLight : HiddenGuardMinLight;
             var target = LightFor(LightAt(u.X, u.Y), minLight);
-            float weight = Mathf.Min(1f, GlowFadePerSecond * (float)GetProcessDeltaTime());
+            // Beim Blitz sofort, sonst käme das Licht auf der Figur zu spät.
+            float weight = _lightning > 0.02f ? 1f : Mathf.Min(1f, GlowFadePerSecond * (float)GetProcessDeltaTime());
             var g = _unitGlow[u.Id].Lerp(target, weight);
             _unitGlow[u.Id] = g;
             return g;

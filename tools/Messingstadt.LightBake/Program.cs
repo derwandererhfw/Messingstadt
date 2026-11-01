@@ -14,6 +14,7 @@ const float Eps = 0.004f;
 const float LampRadius = 0.09f;
 const float WindowRange = 7f;
 const float WindowCell = 0.75f;
+const int Channels = 10;
 
 string workDir = args[0];
 using var sceneDoc = JsonDocument.Parse(File.ReadAllText(Path.Combine(workDir, "scene.json")));
@@ -32,6 +33,8 @@ foreach (var t in root.GetProperty("windowTypes").EnumerateArray())
     windowTypes.Add((Vec(t.GetProperty("color")), t.GetProperty("power").GetSingle()));
 }
 float specStrength = root.GetProperty("specStrength").GetSingle();
+Vector3 flashDir = Vector3.Normalize(Vec(root.GetProperty("flashDirection")));
+float flashAmbient = root.GetProperty("flashAmbient").GetSingle();
 float puddleSpec = root.GetProperty("puddleSpec").GetSingle();
 Vector3 viewDir = Vector3.Normalize(new Vector3(1f / 32f, 1f / 32f, 1f / zScale));
 
@@ -290,6 +293,25 @@ Vector3 Windows(Vector3 p, Vector3 n, int ignore)
     return sum;
 }
 
+// Blitz: starkes Licht von weit oben aus einer Richtung, mit harten Schatten, dazu ein wenig Streulicht.
+float Flash(Vector3 p, Vector3 n, int ignore, ref uint rng)
+{
+    const int FlashSamples = 12;
+    const float FlashSpread = 0.05f;
+    const float FarAway = 60f;
+    float sum = 0f;
+    for (int i = 0; i < FlashSamples; i++)
+    {
+        var dir = Vector3.Normalize(flashDir + RandomOnSphere(ref rng) * FlashSpread);
+        float cos = n == Vector3.Zero ? 0.7f : Vector3.Dot(n, dir);
+        if (cos > 0f && !Occluded(p, p + dir * FarAway, ignore))
+        {
+            sum += cos;
+        }
+    }
+    return sum / FlashSamples + flashAmbient;
+}
+
 // ---------- Beleuchten ----------
 
 float[] Shade(Surface s, ref uint rng, float px, float py)
@@ -345,14 +367,14 @@ float[] Shade(Surface s, ref uint rng, float px, float py)
         indirect += Incoming(s.Pos, dir, s.Box, ref rng);
     }
     indirect /= IndirectSamples;
-    return new[] { direct.X, direct.Y, direct.Z, indirect.X, indirect.Y, indirect.Z, stutter, fire, others };
+    return new[] { direct.X, direct.Y, direct.Z, indirect.X, indirect.Y, indirect.Z, stutter, fire, others, Flash(s.Pos, s.Normal, s.Box, ref rng) };
 }
 
 var started = DateTime.Now;
 using var output = new BinaryWriter(File.Create(Path.Combine(workDir, "light.bin")));
 foreach (var s in sprites)
 {
-    var result = new float[s.W * s.H * 9];
+    var result = new float[s.W * s.H * Channels];
     Parallel.For(0, s.H, iy =>
     {
         for (int ix = 0; ix < s.W; ix++)
@@ -365,12 +387,12 @@ foreach (var s in sprites)
             var surface = Unproject(s, ix, iy);
             if (s.Box < 0 && (surface.Pos.X < 0 || surface.Pos.Y < 0 || surface.Pos.X > mapSize || surface.Pos.Y > mapSize))
             {
-                result[(iy * s.W + ix) * 9] = -1f;
+                result[(iy * s.W + ix) * Channels] = -1f;
                 continue;
             }
             float px = s.Left + (ix + 0.5f) * stride, py = s.Top + (iy + 0.5f) * stride;
             var shaded = Shade(surface, ref rng, px, py);
-            Array.Copy(shaded, 0, result, (iy * s.W + ix) * 9, 9);
+            Array.Copy(shaded, 0, result, (iy * s.W + ix) * Channels, Channels);
         }
     });
     foreach (float v in result)
@@ -385,13 +407,13 @@ Console.WriteLine($"Lichtkarten fertig nach {(DateTime.Now - started).TotalSecon
 int gridRes = root.GetProperty("gridRes").GetInt32();
 float gridZ = root.GetProperty("gridZ").GetSingle() / zScale;
 int gridSize = mapSize * gridRes;
-var grid = new float[gridSize * gridSize * 3];
+var grid = new float[gridSize * gridSize * 4];
 Parallel.For(0, gridSize, gy =>
 {
     for (int gx = 0; gx < gridSize; gx++)
     {
         var p = new Vector3((gx + 0.5f) / gridRes, (gy + 0.5f) / gridRes, gridZ);
-        int at = (gy * gridSize + gx) * 3;
+        int at = (gy * gridSize + gx) * 4;
         if (Array.Exists(boxArray, b => b.Contains(p)))
         {
             grid[at] = -1f;
@@ -411,6 +433,7 @@ Parallel.For(0, gridSize, gy =>
         grid[at] = sum.X;
         grid[at + 1] = sum.Y;
         grid[at + 2] = sum.Z;
+        grid[at + 3] = Flash(p, Vector3.Zero, -2, ref rng);
     }
 });
 using (var gridOut = new BinaryWriter(File.Create(Path.Combine(workDir, "grid.bin"))))
