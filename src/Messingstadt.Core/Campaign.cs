@@ -62,20 +62,44 @@ namespace Messingstadt.Core
             {
                 Money = world.Money + Reward(world.Rating);
                 Missions++;
-                foreach (var u in world.Units)
-                {
-                    if (u.Faction == Faction.Agent && !u.Alive)
-                    {
-                        var record = Agent(u.Name);
-                        record.Legs = 1;
-                        record.Heart = 1;
-                    }
-                }
             }
             else
             {
                 Money = world.Money - (world.LootTaken ? world.LootValue : 0);
             }
+            foreach (var u in world.Units)
+            {
+                if (u.Faction == Faction.Agent && !u.Alive)
+                {
+                    LoseUpgrades(u.Name);
+                }
+            }
+        }
+
+        /// <summary>Kostet der Abbruch den Trupp? Vor dem ersten Schuss kann niemand gefallen sein, der Rückzug ist frei.</summary>
+        public static bool AbandonCostsSquad(World world) => world.Rating == MissionRating.Loud;
+
+        /// <summary>Verbucht einen abgebrochenen Einsatz. Nach dem ersten Schuss zählt das wie eine Niederlage mit Verlust aller Agenten, sonst ließe sich jeder Tod durch rechtzeitiges Abbrechen vermeiden.</summary>
+        public void Abandon(World world)
+        {
+            Money = world.Money - (world.LootTaken ? world.LootValue : 0);
+            if (AbandonCostsSquad(world))
+            {
+                foreach (var u in world.Units)
+                {
+                    if (u.Faction == Faction.Agent)
+                    {
+                        LoseUpgrades(u.Name);
+                    }
+                }
+            }
+        }
+
+        private void LoseUpgrades(string name)
+        {
+            var record = Agent(name);
+            record.Legs = 1;
+            record.Heart = 1;
         }
 
         public bool TryUpgrade(string name, bool legs)

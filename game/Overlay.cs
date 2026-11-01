@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Godot;
 using Messingstadt.Core;
 
@@ -6,6 +7,9 @@ namespace Messingstadt
     /// <summary>Zeichnet Auswahlringe, Lebensbalken, Schüsse und die Ausgangszone über die Welt.</summary>
     public partial class Overlay : Node2D
     {
+        private const float LabelWidth = 11f;
+        private const float LabelHeight = 14f;
+
         public Main Game = null!;
 
         public override void _Process(double delta) => QueueRedraw();
@@ -28,16 +32,9 @@ namespace Messingstadt
                 }
             }
             DrawDoors(world);
-            if (world.HasLoot && !world.LootTaken && world.Doors.TrueForAll(d => d.Open))
+            if (Game.PlanHeld)
             {
-                DrawIsoRing(Game.ToScreen(world.LootX, world.LootY), new Color(0.4f, 1f, 0.5f));
-            }
-            foreach (var u in world.Units)
-            {
-                if (u.Alive && u.Faction == Faction.Guard && !u.Bribed && u.GuardState == GuardState.Patrol && world.IsSpottedByAgents(u))
-                {
-                    DrawSightCone(world, u);
-                }
+                DrawPreview();
             }
             if (Game.MarkerTime > 0)
             {
@@ -50,6 +47,8 @@ namespace Messingstadt
                     Game.MarkerPos + new Vector2(0, -size / 2),
                 }, c, 1f);
             }
+            // Stehen Agenten eng beieinander, rücken Nummer und Balken zur Seite, damit jede Nummer lesbar bleibt.
+            var labels = new List<Vector2>();
             foreach (var u in world.Units)
             {
                 if (!u.Alive)
@@ -64,6 +63,15 @@ namespace Messingstadt
                     if (Game.Selected.Contains(u.Id))
                     {
                         DrawIsoRing(p, Colors.White, 14f);
+                    }
+                    while (labels.Exists(l => Mathf.Abs(l.X - p.X) < LabelWidth && Mathf.Abs(l.Y - p.Y) < LabelHeight))
+                    {
+                        p.X += LabelWidth;
+                    }
+                    labels.Add(p);
+                    if (Game.WaitingIds.Contains(u.Id))
+                    {
+                        DrawString(ThemeDB.FallbackFont, p + new Vector2(-14, -58), $"wartet {Game.WaitSeconds} s", HorizontalAlignment.Left, -1, 8, Colors.White);
                     }
                     // Der Schatten hält die Nummer auch im Laternenlicht lesbar.
                     string number = (u.Id + 1).ToString();
@@ -117,7 +125,8 @@ namespace Messingstadt
             foreach (var s in world.Shots)
             {
                 int age = world.Tick - s.Tick;
-                if (age > 3)
+                // Nach dem Einsatz steht die Zeit still, sonst bliebe der letzte Schuss stehen.
+                if (age > 3 || Game.Finished)
                 {
                     continue;
                 }
@@ -125,59 +134,49 @@ namespace Messingstadt
             }
         }
 
-        /// <summary>Zeichnet den Sichtkegel als Fächer. Jeder Strahl endet am ersten Gebäude, das die Sicht sperrt.</summary>
-        private void DrawSightCone(World w, Unit g)
+        /// <summary>Zeigt im Lageplan den Weg zum Mauszeiger: grün bis zum ersten Feld, auf dem man bemerkt würde.</summary>
+        private void DrawPreview()
         {
-            const int Rays = 12;
-            const int StepUnits = 200;
-            var color = new Color(1f, 0.95f, 0.5f, 0.13f);
-            float center = Mathf.Atan2(g.FacingY, g.FacingX);
-            float half = Mathf.DegToRad(World.GuardConeHalfDegrees);
-            var origin = Game.ToScreen(g.X, g.Y);
-            Vector2 previous = default;
-            for (int i = 0; i <= Rays; i++)
+            var path = Game.PreviewPath;
+            for (int i = 0; i < path.Count; i++)
             {
-                float a = center - half + 2 * half * i / Rays;
-                float cos = Mathf.Cos(a), sin = Mathf.Sin(a);
-                int reach = 0;
-                while (reach < World.GuardConeRange)
-                {
-                    int next = reach + StepUnits;
-                    if (w.Map.IsOpaque((int)Mathf.Floor((g.X + cos * next) / World.TileUnits), (int)Mathf.Floor((g.Y + sin * next) / World.TileUnits)))
-                    {
-                        break;
-                    }
-                    reach = next;
-                }
-                var end = Game.ToScreen(g.X + (int)(cos * reach), g.Y + (int)(sin * reach));
-                if (i > 0 && (end != origin || previous != origin))
-                {
-                    DrawColoredPolygon(new[] { origin, previous, end }, color);
-                }
-                previous = end;
+                bool risky = Game.PreviewRisk >= 0 && i >= Game.PreviewRisk;
+                DrawCircle(Game.TileCenter(path[i].X, path[i].Y), 2f, risky ? new Color(0.95f, 0.3f, 0.25f) : new Color(0.45f, 1f, 0.55f));
+            }
+            if (Game.PreviewText.Length > 0)
+            {
+                var at = GetGlobalMousePosition() + new Vector2(10, -6);
+                DrawString(ThemeDB.FallbackFont, at + new Vector2(1, 1), Game.PreviewText, HorizontalAlignment.Left, -1, 9, Colors.Black);
+                DrawString(ThemeDB.FallbackFont, at, Game.PreviewText, HorizontalAlignment.Left, -1, 9, Colors.White);
             }
         }
 
-        /// <summary>Markiert beide Enden verschlossener Türen und zeigt den Fortschritt beim Öffnen.</summary>
+        /// <summary>Das Schloss sitzt auf der gemalten Tür. Das andere Ende des Durchgangs liegt hinter dem Haus.</summary>
         private void DrawDoors(World w)
         {
+            var green = new Color(0.4f, 1f, 0.5f);
+            var brass = new Color(0.95f, 0.75f, 0.25f);
             foreach (var door in w.Doors)
             {
-                if (door.Open || door.Tiles.Count == 0)
+                var p = Game.DoorMark(door);
+                if (door.Open)
                 {
+                    DrawRect(new Rect2(p + new Vector2(-3, -3), new Vector2(6, 5)), green);
+                    DrawArc(p + new Vector2(3, -3), 2.5f, Mathf.Pi, Mathf.Tau, 6, green, 1f);
+                    if (w.HasLoot && !w.LootTaken)
+                    {
+                        DrawString(ThemeDB.FallbackFont, p + new Vector2(-16, -8), $"{w.LootName} drinnen", HorizontalAlignment.Left, -1, 8, green);
+                    }
                     continue;
                 }
-                foreach (var (x, y) in new[] { door.Tiles[0], door.Tiles[^1] })
+                DrawRect(new Rect2(p + new Vector2(-4, -3), new Vector2(8, 7)), brass);
+                DrawArc(p + new Vector2(0, -3), 2.5f, Mathf.Pi, Mathf.Tau, 6, brass, 1f);
+                DrawRect(new Rect2(p + new Vector2(-1, -1), new Vector2(2, 3)), new Color(0.15f, 0.1f, 0.05f));
+                if (door.Progress > 0)
                 {
-                    var p = Game.TileCenter(x, y);
-                    DrawRect(new Rect2(p + new Vector2(-4, -6), new Vector2(8, 7)), new Color(0.95f, 0.75f, 0.25f));
-                    DrawRect(new Rect2(p + new Vector2(-1, -4), new Vector2(2, 3)), new Color(0.15f, 0.1f, 0.05f));
-                    if (door.Progress > 0)
-                    {
-                        float f = (float)door.Progress / World.DoorTicks;
-                        DrawRect(new Rect2(p + new Vector2(-14, 4), new Vector2(28, 4)), new Color(0, 0, 0, 0.7f));
-                        DrawRect(new Rect2(p + new Vector2(-13, 5), new Vector2(26 * f, 2)), new Color(0.95f, 0.75f, 0.25f));
-                    }
+                    float f = (float)door.Progress / World.DoorTicks;
+                    DrawRect(new Rect2(p + new Vector2(-14, 7), new Vector2(28, 4)), new Color(0, 0, 0, 0.7f));
+                    DrawRect(new Rect2(p + new Vector2(-13, 8), new Vector2(26 * f, 2)), brass);
                 }
             }
         }

@@ -79,6 +79,9 @@ namespace Messingstadt.Core
     {
         public string Name { get; set; } = "";
         public List<double[]> Tiles { get; set; } = new();
+
+        /// <summary>Wo die Tür im Bild zu sehen ist, in Feldern. Ohne Angabe das erste Feld.</summary>
+        public double[]? Mark { get; set; }
     }
 
     /// <summary>Beute, die Geld bringt, wenn ein Agent sie erreicht und der Trupp entkommt.</summary>

@@ -35,14 +35,14 @@ C = {
     "brass_d": (132, 90, 36), "brass": (200, 150, 62), "brass_l": (244, 208, 118),
     "gas": (255, 232, 160), "gas_d": (226, 170, 90), "glass": (120, 160, 170), "glass_d": (66, 92, 106),
     "wood_d": (72, 50, 40), "wood": (112, 78, 54), "awn_r": (160, 56, 50), "awn_w": (214, 202, 172),
-    "skin": (178, 146, 122), "skin_d": (122, 94, 80), "hair": (44, 34, 30),
+    "skin": (178, 146, 122), "skin_d": (122, 94, 80), "hair": (84, 64, 52),
     "navy_d": (40, 50, 80), "navy": (58, 72, 112), "navy_l": (84, 102, 146),
     "olive_d": (66, 72, 44), "olive": (94, 102, 62), "olive_l": (124, 132, 84),
     "wine_d": (92, 32, 46), "wine": (136, 50, 62), "wine_l": (176, 78, 84),
     "grey_d": (64, 68, 80), "grey": (92, 98, 112), "grey_l": (124, 130, 142),
     "cream": (222, 208, 176),
     # Der braune Mantel der Agenten: gedeckt, aber warm genug, um nachts von den grauen Wachen abzustechen.
-    "coat_d": (82, 58, 40), "coat": (126, 90, 60), "coat_l": (158, 120, 84), "felt": (66, 46, 32),
+    "coat_d": (82, 58, 40), "coat": (126, 90, 60), "coat_l": (158, 120, 84), "felt": (100, 72, 50),
     # Dienstkleidung der Wachen: schmutziges Feldgrau statt Bläulichgrau
     "uni_d": (50, 54, 56), "uni": (78, 84, 84), "uni_l": (106, 112, 108),
     # Abnutzung
@@ -357,8 +357,8 @@ def tenement(w, h, name=None, material=("brick",), door_at=None, lit_rate=0.45):
 # ---------- Figuren, 22 × 40 Pixel ----------
 # Realistische Proportionen: Der Kopf ist rund ein Siebtel der Körperhöhe. hem = Unterkante der Jacke oder des Mantels.
 SPECS = {
-    "Agent": dict(coat=("coat_d", "coat", "coat_l"), legs="soot", hat="fedora", hat_c="felt", shirt="ash", hair="hair", hem=31, belt=21),
-    "Wachmann": dict(coat=("uni_d", "uni", "uni_l"), legs="uni_d", hat="peak", hat_c="soot", shirt="uni_d", hair="hair", hem=26, belt=19),
+    "Agent": dict(coat=("coat_d", "coat", "coat_l"), legs="iron", hat="fedora", hat_c="felt", shirt="ash", hair="hair", hem=31, belt=21),
+    "Wachmann": dict(coat=("uni_d", "uni", "uni_l"), legs="uni", hat="peak", hat_c="soot", shirt="uni_d", hair="hair", hem=26, belt=19),
 }
 
 
@@ -404,6 +404,9 @@ def figure(s, ox, oy, spec, direction, step=0, aim=False):
             R(12, 5, 1, 1, "black")
         else:
             R(9, 4, 4, 5, spec["hair"])
+            # Hochgeschlagener Kragen und helle Schulterkante: Auch von hinten bleibt es ein Mensch.
+            R(8, 9, 6, 2, co_l)
+            R(13, 11, 1, 8, co)
         if aim and direction == "s":
             # Der Arm zeigt auf den Betrachter: verkürzt, die Waffe vor der Brust
             R(16, 12, 2, 3, co_d)
@@ -930,14 +933,7 @@ def draw_ground(s, solids, glows):
                 dist = (dx * dx + dy * dy) ** 0.5
                 if 0 < dist < 0.5:
                     s.shade(sx, sy, 0.62 + 0.38 * dist / 0.5)
-    # Lichtschein
-    for gx, gy in glows:
-        cx, cy = s.to_screen(gx, gy)
-        for y in range(int(cy - 48), int(cy + 48)):
-            for x in range(int(cx - 96), int(cx + 96)):
-                d = (((x - cx) / 96) ** 2 + ((y - cy) / 48) ** 2) ** 0.5
-                if d < 1 and (x + y) % 2 == 0 and RNG.random() > d * 0.8:
-                    s.add(x, y, 44, 34, 12)
+    # Der Lichtschein der Laternen entsteht im Spiel, hier würde er nur als Punktmuster stören.
 
 
 def build_scene(with_people=True):
@@ -1003,10 +999,11 @@ def build_scene(with_people=True):
     # Lager unten rechts
     lag_l, ld = wall(160, 70, ("brick",))
     ld.rectangle((0, 0, 160, 3), fill=C["stone_l"])
-    door(ld, 40, 69, 34, 40, "wood", True)
-    text(ld, 90, 30, "LAGER", C["plaster"], 2, worn=0.2)
-    poster(ld, 86, 46)
-    poster(ld, 110, 48)
+    # Die Tür sitzt genau vor dem Durchgang in Spalte 14 der Karte.
+    door(ld, 66, 69, 28, 40, "wood", True)
+    text(ld, 104, 30, "LAGER", C["plaster"], 2, worn=0.2)
+    poster(ld, 14, 46)
+    poster(ld, 38, 48)
     lag_r, lr = wall(192, 70, ("brick",))
     lr.rectangle((0, 0, 192, 3), fill=C["stone_l"])
     pipe_h(lr, 0, 191, 20)
@@ -1090,11 +1087,32 @@ def export_game():
     print(f"{len(manifest)} Objekte, {len(solids)} Blockaden exportiert nach {assets}")
 
 
+def fallen(sheet, cx, cy, spec):
+    """Liegende Figur in einer Blutlache: Kopf links, ein Arm abgespreizt, die Mütze daneben."""
+    co_d, co, co_l = spec["coat"]
+    d = ImageDraw.Draw(sheet.img)
+    P = lambda pts: [(cx + x, cy + y) for x, y in pts]  # noqa: E731
+    d.ellipse(P([(0, 31), (19, 41)]), fill=(70, 10, 10, 235))
+    d.ellipse(P([(4, 34), (13, 40)]), fill=(96, 14, 12, 235))
+    d.polygon(P([(16, 33), (23, 34), (23, 37), (16, 37)]), fill=C[spec["legs"]])
+    d.line(P([(16, 37), (23, 37)]), fill=C["black"])
+    d.rectangle(P([(22, 33), (23, 35)]), fill=C["black"])
+    d.polygon(P([(10, 28), (13, 28), (13, 32), (10, 32)]), fill=C[co_d])
+    d.rectangle(P([(10, 26), (12, 27)]), fill=C["skin_d"])
+    d.polygon(P([(6, 31), (17, 30), (18, 37), (8, 38)]), fill=C[co])
+    d.line(P([(6, 31), (17, 30)]), fill=C[co_l])
+    d.line(P([(8, 38), (18, 37)]), fill=C[co_d])
+    d.line(P([(12, 31), (13, 37)]), fill=C[co_d])
+    d.ellipse(P([(1, 31), (6, 36)]), fill=C["skin_d"])
+    d.line(P([(2, 31), (6, 31)]), fill=C[spec["hair"]])
+    d.ellipse(P([(17, 27), (22, 30)]), fill=C[spec["hat_c"]])
+
+
 def export_figures(assets):
-    """Figurenblatt: je Figur eine Zeile, Spalten s0–s3, e0–e3, n0–n3, dann Schießhaltung s, e, n. Feld 24 × 42."""
+    """Figurenblatt: je Figur eine Zeile, Spalten s0–s3, e0–e3, n0–n3, Schießhaltung s, e, n, zuletzt gefallen. Feld 24 × 42."""
     names = list(SPECS)
     sheet = Scene(1)
-    sheet.w, sheet.h = 24 * 15, 42 * len(names)
+    sheet.w, sheet.h = 24 * 16, 42 * len(names)
     sheet.img = Image.new("RGBA", (sheet.w, sheet.h), (0, 0, 0, 0))
     sheet.px = sheet.img.load()
     frames = [(d_i * 4 + step, d, step, False) for d_i, d in enumerate(("s", "e", "n")) for step in range(4)]
@@ -1108,6 +1126,7 @@ def export_figures(assets):
                 for i in range(12 - half, 12 + half):
                     sheet.px[cell_x + i, cell_y + j] = (0, 0, 0, 120)
             figure(sheet, 1 + cell_x, 1 + cell_y, SPECS[name], d, step, aim)
+        fallen(sheet, 15 * 24, row * 42, SPECS[name])
     sheet.img.save(assets / "figures.png")
     (assets / "figures.json").write_text(json.dumps({"names": names, "w": 24, "h": 42}), encoding="utf-8")
 

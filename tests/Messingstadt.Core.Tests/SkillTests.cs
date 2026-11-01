@@ -314,6 +314,74 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void DefeatTakesTheUpgradesOfTheFallen()
+        {
+            var c = new Campaign();
+            var m = Mission();
+            c.Prepare(m);
+            var w = new World(new MapData { Width = 30, Height = 12 }, m);
+            w.Units[0].Hp = 0;
+            w.Units[1].Hp = 0;
+            w.Step();
+            Assert.Equal(MissionState.Lost, w.State);
+            c.Finish(w);
+            Assert.Equal(1, c.Agent("Greta").Legs);
+            Assert.Equal(1, c.Agent("Greta").Heart);
+        }
+
+        [Fact]
+        public void AbandoningBeforeTheFirstShotCostsNoUpgrades()
+        {
+            var c = new Campaign();
+            var m = Mission();
+            c.Prepare(m);
+            var w = new World(new MapData { Width = 30, Height = 12 }, m);
+            w.Step();
+            Assert.False(Campaign.AbandonCostsSquad(w));
+            c.Abandon(w);
+            Assert.Equal(2, c.Agent("Greta").Legs);
+            Assert.Equal(0, c.Missions);
+        }
+
+        [Fact]
+        public void AbandoningAfterAShotCountsAsLosingTheSquad()
+        {
+            var c = new Campaign();
+            var m = Mission();
+            m.Guards = new() { new UnitData { Name = "W", Sprite = "Wachmann", X = 3.5, Y = 0.5 } };
+            c.Prepare(m);
+            var w = new World(new MapData { Width = 30, Height = 12 }, m);
+            w.OrderAttack(0, 2);
+            for (int i = 0; i < 20 && w.Rating != MissionRating.Loud; i++)
+            {
+                w.Step();
+            }
+            Assert.True(Campaign.AbandonCostsSquad(w));
+            Assert.True(w.Units[0].Alive);
+            c.Abandon(w);
+            Assert.Equal(1, c.Agent("Greta").Legs);
+            Assert.Equal(1, c.Agent("Greta").Heart);
+            Assert.Equal(0, c.Missions);
+        }
+
+        [Fact]
+        public void SpentMoneyStaysSpentWhenAbandoning()
+        {
+            var c = new Campaign { Money = 500 };
+            var m = Mission();
+            m.Agents[1].Skill = World.SkillBookkeeper;
+            m.Guards = new() { new UnitData { Name = "W", Sprite = "Wachmann", X = 2.5, Y = 2.5, Facing = new[] { 1.0, 1.0 } } };
+            c.Prepare(m);
+            var w = new World(new MapData { Width = 30, Height = 12 }, m);
+            Assert.True(w.OrderBribe(1, 2));
+            w.Step();
+            w.Step();
+            Assert.True(w.Units[2].Bribed);
+            c.Abandon(w);
+            Assert.Equal(500 - World.BribeCost, c.Money);
+        }
+
+        [Fact]
         public void SavingAndLoadingKeepsEverything()
         {
             var c = new Campaign { Money = 777, Missions = 3 };

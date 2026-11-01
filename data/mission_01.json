@@ -7,7 +7,7 @@
   "exit": { "x0": 18, "y0": 9, "x1": 20, "y1": 12 },
   "reinforcements": { "x": 19.5, "y": 6.5, "sprite": "Wachmann", "firstDelay": 6, "interval": 4, "count": 3 },
   "doors": [
-    { "name": "Hintertür der Lagerhalle", "tiles": [[14, 17], [14, 16], [14, 15], [14, 14], [14, 13], [14, 12]] }
+    { "name": "Hintertür der Lagerhalle", "tiles": [[14, 17], [14, 16], [14, 15], [14, 14], [14, 13], [14, 12]], "mark": [14.5, 18] }
   ],
   "loot": { "name": "Lohnkasse", "x": 14.5, "y": 14.5, "value": 300 },
   "lamps": [[7.5, 2], [7.5, 5.5], [10.5, 3.5], [10.5, 6.9], [5.6, 10.5], [12.6, 10.5], [7.5, 13.5], [10.5, 13.5]],

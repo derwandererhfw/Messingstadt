@@ -21,6 +21,9 @@ namespace Messingstadt.Core
     {
         public string Name = "";
         public readonly List<(int X, int Y)> Tiles = new();
+
+        /// <summary>Wo die Tür im Bild zu sehen ist, in Einheiten. Die gesperrten Felder liegen meist unter dem Dach.</summary>
+        public int MarkX, MarkY;
         public bool Open;
         public int Progress;
     }
@@ -162,6 +165,7 @@ namespace Messingstadt.Core
         private int _reinforcedCount;
         private bool _everNoticed;
         private bool _everShot;
+        private readonly bool _hasAgents;
 
         public GameMap Map { get; }
         public List<Unit> Units { get; } = new();
@@ -191,6 +195,7 @@ namespace Messingstadt.Core
         public World(MapData mapData, MissionData mission)
         {
             Map = mapData.Build();
+            _hasAgents = mission.Agents.Count > 0;
             _rng = (uint)mission.Seed | 1u;
             ItemName = mission.ItemName;
             _reinforcements = mission.Reinforcements;
@@ -202,6 +207,16 @@ namespace Messingstadt.Core
                 {
                     door.Tiles.Add(((int)t[0], (int)t[1]));
                     Map.Block((int)t[0], (int)t[1], true);
+                }
+                if (d.Mark is { Length: 2 })
+                {
+                    door.MarkX = ToUnits(d.Mark[0]);
+                    door.MarkY = ToUnits(d.Mark[1]);
+                }
+                else if (door.Tiles.Count > 0)
+                {
+                    door.MarkX = door.Tiles[0].X * TileUnits + TileUnits / 2;
+                    door.MarkY = door.Tiles[0].Y * TileUnits + TileUnits / 2;
                 }
                 Doors.Add(door);
             }
@@ -864,6 +879,11 @@ namespace Messingstadt.Core
             }
         }
 
+        /// <summary>Tempo beim Gehen in Einheiten pro Takt.</summary>
+        public static int WalkSpeed(Unit u) => u.Faction == Faction.Agent
+            ? (u.CarriesItem ? CarrierSpeed : AgentSpeed)
+            : (u.Alerted ? GuardAlertSpeed : GuardPatrolSpeed);
+
         private void Move(Unit u)
         {
             u.Moving = false;
@@ -872,9 +892,7 @@ namespace Messingstadt.Core
                 Breathe(u);
                 return;
             }
-            int speed = u.Faction == Faction.Agent
-                ? (u.CarriesItem ? CarrierSpeed : AgentSpeed)
-                : (u.Alerted ? GuardAlertSpeed : GuardPatrolSpeed);
+            int speed = WalkSpeed(u);
             if (u.Sprinting)
             {
                 speed += SprintSpeedPerLeg * u.Legs;
@@ -1029,7 +1047,8 @@ namespace Messingstadt.Core
                     boarding = true;
                 }
             }
-            if (!anyAgent)
+            // Ohne Agenten von Anfang an läuft nur eine Probe der Rundgänge, siehe WatchMap.
+            if (!anyAgent && _hasAgents)
             {
                 State = MissionState.Lost;
             }

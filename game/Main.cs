@@ -17,6 +17,25 @@ namespace Messingstadt
         private const float MarkerSeconds = 0.8f;
         private static readonly Color Night = new(0.34f, 0.37f, 0.55f);
         private const float LampEnergy = 1.15f;
+
+        // Figuren sollen überall lesbar sein und der Mantel braun bleiben. Deshalb gleicht ihre Einfärbung
+        // das Licht an ihrem Standort aus, Nachtblau wie Laternengelb. Unter der Laterne dürfen sie etwas heller sein.
+        private const float AgentBrightness = 0.72f;
+        private const float SpottedGuardBrightness = 0.75f;
+        private const float HiddenGuardBrightness = 0.48f;
+        private const float BrightnessNearLamp = 1.2f;
+        private const float MaxFigureGain = 2.6f;
+        private const float LampTextureScale = 1.1f;
+        private const float LampRadius = 128f * LampTextureScale;
+        private static readonly Color LampColor = new(1f, 0.74f, 0.42f);
+        private const float GlowFadePerSecond = 4f;
+        private const float FallenShade = 0.8f;
+        private const int FallenColumn = 15;
+
+        // Im Lageplan: So lange bleibt eine Figur am Ziel stehen, das muss noch unbemerkt gehen.
+        private const int ArrivalHoldTicks = 40;
+        private const int MaxPlanWaitTicks = 60 * World.TickRate;
+        private const float AbandonWarningSeconds = 4f;
         private const int AimTicksStanding = 12;
         private const int AimTicksWalking = 5;
         private const int AimColumn = 12;
@@ -30,6 +49,7 @@ namespace Messingstadt
         private readonly List<Sprite2D> _thingSprites = new();
         private readonly List<Image> _thingImages = new();
         private readonly List<PointLight2D> _lampLights = new();
+        private readonly List<Color> _unitGlow = new();
         private readonly Ambience _ambience = new();
         private readonly List<Sprite2D> _unitSprites = new();
         private readonly Dictionary<string, int> _figureRows = new();
@@ -42,6 +62,11 @@ namespace Messingstadt
         private VBoxContainer _panelBody = null!;
         private Campaign _campaign = new();
         private bool _finished;
+        private bool _abandoned;
+        private float _abandonWarning;
+        private Label _planLegend = null!;
+        private ColorRect _planBand = null!;
+        private int _queuedX, _queuedY, _queuedTick;
         private int _lastReward;
         private MissionData _mission = null!;
         private MapData _map = null!;
@@ -52,6 +77,9 @@ namespace Messingstadt
 
         // Automatischer Prüflauf: --shot=<datei> --frames=<n> --auto
         // Mit --shot-on-fire=<n> entsteht das Bild im Moment des ersten Schusses ab Takt n.
+        // --plan zeigt den Lageplan, --look=<x>,<y> hält die Kamera auf einem Feld.
+        private bool _forcePlan;
+        private Vector2? _look;
         private int _shotOnFireTick = -1;
         private string? _shotPath;
         private int _shotFrame = -1;
@@ -62,6 +90,21 @@ namespace Messingstadt
         public HashSet<int> Selected { get; } = new();
         public Vector2 MarkerPos { get; private set; }
         public float MarkerTime { get; private set; }
+        public bool Finished => _finished;
+        public Color NightColor => Night;
+
+        /// <summary>Wann die Wachen welches Feld im Blick haben. Grundlage für Lageplan und Wegvorschau.</summary>
+        public WatchMap Watch { get; private set; } = null!;
+
+        /// <summary>Q gehalten: Lageplan und Wegvorschau anzeigen.</summary>
+        public bool PlanHeld => _forcePlan || Input.IsPhysicalKeyPressed(Key.Q);
+        public List<(int X, int Y)> PreviewPath { get; } = new();
+        public int PreviewRisk { get; private set; } = -1;
+        public string PreviewText { get; private set; } = "";
+
+        /// <summary>Agenten, die auf den freien Weg warten, und die Sekunden bis dahin.</summary>
+        public HashSet<int> WaitingIds { get; } = new();
+        public int WaitSeconds => Mathf.CeilToInt((_queuedTick - World.Tick) / (float)World.TickRate);
 
         public override void _Ready()
         {
@@ -73,6 +116,7 @@ namespace Messingstadt
             string data = Path.GetFullPath(Path.Combine(root, "..", "data"));
             _map = Loader.ParseMap(File.ReadAllText(Path.Combine(data, "map_01.json")));
             _mission = Loader.ParseMission(File.ReadAllText(Path.Combine(data, "mission_01.json")));
+            Watch = WatchMap.Measure(_map, _mission);
 
             LoadCampaign();
             LoadStatics();
@@ -106,8 +150,8 @@ namespace Messingstadt
                 var light = new PointLight2D
                 {
                     Texture = glow,
-                    TextureScale = 1.1f,
-                    Color = new Color(1f, 0.74f, 0.42f),
+                    TextureScale = LampTextureScale,
+                    Color = LampColor,
                     Energy = LampEnergy,
                     RangeZMin = -1,
                     RangeZMax = 4096,
@@ -116,6 +160,8 @@ namespace Messingstadt
                 AddChild(light);
                 _lampLights.Add(light);
             }
+            // Unter den Gebäuden gezeichnet: Was hinter einem Haus liegt, bleibt auch im Bild verdeckt.
+            AddChild(new GroundMarks { Game = this, ZIndex = 0 });
             _ambience.Game = this;
             _ambience.Glow = glow;
             _ambience.Lamps = _lampLights;
@@ -141,6 +187,15 @@ namespace Messingstadt
                 else if (a.StartsWith("--shot-on-fire="))
                 {
                     _shotOnFireTick = int.Parse(a["--shot-on-fire=".Length..]);
+                }
+                else if (a == "--plan")
+                {
+                    _forcePlan = true;
+                }
+                else if (a.StartsWith("--look="))
+                {
+                    var look = a["--look=".Length..].Split(',');
+                    _look = new Vector2(float.Parse(look[0], System.Globalization.CultureInfo.InvariantCulture), float.Parse(look[1], System.Globalization.CultureInfo.InvariantCulture));
                 }
                 else if (a == "--auto")
                 {
@@ -216,6 +271,15 @@ namespace Messingstadt
             var layer = new CanvasLayer { Layer = 2 };
             AddChild(layer);
             var font = 16;
+            // Dunkle Bänder hinter den Texten, damit sie auch auf hellem Boden lesbar sind.
+            foreach (var band in new[] { new Rect2(0, 0, 1280, 62), new Rect2(0, 658, 420, 112), new Rect2(0, 770, 1280, 30) })
+            {
+                layer.AddChild(new ColorRect
+                {
+                    Position = band.Position, Size = band.Size,
+                    Color = new Color(0.03f, 0.03f, 0.05f, 0.6f), MouseFilter = Control.MouseFilterEnum.Ignore,
+                });
+            }
             _status = new Label { Position = new Vector2(12, 8), Size = new Vector2(1250, 60), AutowrapMode = TextServer.AutowrapMode.WordSmart };
             _status.AddThemeFontSizeOverride("font_size", font);
             _status.AddThemeColorOverride("font_shadow_color", Colors.Black);
@@ -228,9 +292,23 @@ namespace Messingstadt
             _roster.AddThemeFontSizeOverride("normal_font_size", font);
             _roster.AddThemeColorOverride("font_shadow_color", Colors.Black);
             layer.AddChild(_roster);
+            _planBand = new ColorRect
+            {
+                Position = new Vector2(0, 62), Size = new Vector2(1280, 46), Visible = false,
+                Color = new Color(0.03f, 0.03f, 0.05f, 0.75f), MouseFilter = Control.MouseFilterEnum.Ignore,
+            };
+            layer.AddChild(_planBand);
+            _planLegend = new Label
+            {
+                Text = "LAGEPLAN  Grün: nie bewacht. Gelb bis Rot: immer öfter im Blick. Punkte: Wege der Wachen. Klick: losgehen, sobald der Weg frei ist.\n"
+                    + "Zum Buch führt der Weg über die Straße in die Gasse am Mietshaus, zum Wagen hinten um das Lager.",
+                Position = new Vector2(12, 65), Visible = false,
+            };
+            _planLegend.AddThemeFontSizeOverride("font_size", 15);
+            layer.AddChild(_planLegend);
             var help = new Label
             {
-                Text = "Links: wählen/gehen   Doppelklick: rennen   Rechts: Wache angreifen, Emil allein: bestechen, Otto: Tür öffnen   1–4, Leertaste   WASD   F: Kamera   P   R",
+                Text = "Links: wählen/gehen   Doppelklick: rennen   Rechts: Wache angreifen, Emil allein: bestechen, Otto: Tür öffnen   Q halten: Lageplan   1–4, Leertaste   WASD   F   P   R: abbrechen",
                 Position = new Vector2(12, 772),
             };
             help.AddThemeFontSizeOverride("font_size", 13);
@@ -255,7 +333,54 @@ namespace Messingstadt
             _campaign = File.Exists(SavePath) ? Campaign.FromJson(File.ReadAllText(SavePath)) : new Campaign();
         }
 
-        private void SaveCampaign() => File.WriteAllText(SavePath, _campaign.ToJson());
+        private void SaveCampaign()
+        {
+            // Prüfläufe dürfen den echten Spielstand nicht verändern.
+            if (_shotPath == null)
+            {
+                File.WriteAllText(SavePath, _campaign.ToJson());
+            }
+        }
+
+        public override void _Notification(int what)
+        {
+            // Fenster schließen ist derselbe Abbruch wie R, sonst wäre es der Ausweg vor dem Tod eines Agenten.
+            if (what == NotificationWMCloseRequest && World != null && !_finished && Campaign.AbandonCostsSquad(World))
+            {
+                _campaign.Abandon(World);
+                SaveCampaign();
+            }
+        }
+
+        /// <summary>R: Vor dem ersten Schuss ist der Rückzug frei, danach kostet er nach einer Warnung den Trupp.</summary>
+        private void PressRestart()
+        {
+            if (_finished)
+            {
+                StartMission();
+            }
+            else if (!Campaign.AbandonCostsSquad(World))
+            {
+                _campaign.Abandon(World);
+                SaveCampaign();
+                StartMission();
+            }
+            else if (_abandonWarning <= 0f)
+            {
+                _abandonWarning = AbandonWarningSeconds;
+            }
+            else
+            {
+                _campaign.Abandon(World);
+                SaveCampaign();
+                _finished = true;
+                _abandoned = true;
+                _abandonWarning = 0f;
+                _lastReward = 0;
+                RefreshPanel();
+                _panel.Visible = true;
+            }
+        }
 
         private void FinishMission()
         {
@@ -282,11 +407,15 @@ namespace Messingstadt
                 child.QueueFree();
             }
             bool won = World.State == MissionState.Won;
-            _panelBody.AddChild(PanelLabel(won ? $"EINSATZ GEGLÜCKT: {RatingText()}" : "TRUPP VERLOREN", 26));
+            _panelBody.AddChild(PanelLabel(won ? $"EINSATZ GEGLÜCKT: {RatingText()}" : _abandoned ? "EINSATZ AUFGEGEBEN" : "TRUPP VERLOREN", 26));
             if (won)
             {
                 string loot = World.LootTaken ? $", dazu {World.LootName} {World.LootValue}" : "";
                 _panelBody.AddChild(PanelLabel($"Lohn: {_lastReward}{loot}"));
+            }
+            if (World.Units.Any(u => u.Faction == Faction.Agent && (!u.Alive || _abandoned)))
+            {
+                _panelBody.AddChild(PanelLabel("Gefallene kommen zurück, aber Beine und Herz fallen auf Stufe 1."));
             }
             _panelBody.AddChild(PanelLabel($"Kasse: {_campaign.Money}    Einsätze: {_campaign.Missions}", 18));
             foreach (var u in World.Units.Where(u => u.Faction == Faction.Agent))
@@ -294,7 +423,7 @@ namespace Messingstadt
                 var record = _campaign.Agent(u.Name);
                 var row = new HBoxContainer();
                 row.AddThemeConstantOverride("separation", 12);
-                var name = PanelLabel($"{u.Name}: Beine {record.Legs}, Herz {record.Heart}{(u.Alive ? "" : "  (gefallen)")}");
+                var name = PanelLabel($"{u.Name}: Beine {record.Legs}, Herz {record.Heart}{(u.Alive && !_abandoned ? "" : "  (gefallen)")}");
                 name.CustomMinimumSize = new Vector2(280, 0);
                 row.AddChild(name);
                 row.AddChild(UpgradeButton("Beine", record.Name, record.Legs, true));
@@ -343,9 +472,13 @@ namespace Messingstadt
                 s.QueueFree();
             }
             _unitSprites.Clear();
+            _unitGlow.Clear();
             _campaign.Prepare(_mission);
             SaveCampaign();
             _finished = false;
+            _abandoned = false;
+            _abandonWarning = 0f;
+            WaitingIds.Clear();
             _panel.Visible = false;
             World = new World(_map, _mission);
             foreach (var u in World.Units)
@@ -383,17 +516,24 @@ namespace Messingstadt
         {
             HandleCamera((float)delta);
             MarkerTime = Mathf.Max(0f, MarkerTime - (float)delta);
+            _abandonWarning = Mathf.Max(0f, _abandonWarning - (float)delta);
             Selected.RemoveWhere(id => !World.Units[id].Alive);
-            if (!_paused)
+            if (!_paused && !_finished)
             {
                 _accumulator += (float)delta;
                 while (_accumulator >= TickSeconds)
                 {
                     _accumulator -= TickSeconds;
                     World.Step();
+                    StartQueuedMove();
                 }
             }
-            if (_auto)
+            UpdatePlan();
+            if (_look is { } tile)
+            {
+                _camera.Position = ToScreen((int)(tile.X * World.TileUnits), (int)(tile.Y * World.TileUnits));
+            }
+            else if (_auto)
             {
                 CenterOnSelection();
             }
@@ -414,6 +554,101 @@ namespace Messingstadt
             {
                 GetViewport().GetTexture().GetImage().SavePng(_shotPath);
                 GetTree().Quit();
+            }
+        }
+
+        /// <summary>Hält im Lageplan den Weg zum Mauszeiger aktuell.</summary>
+        private void UpdatePlan()
+        {
+            bool held = PlanHeld && !_finished;
+            _planLegend.Visible = held;
+            _planBand.Visible = held;
+            PreviewPath.Clear();
+            PreviewRisk = -1;
+            PreviewText = "";
+            var lead = Lead();
+            if (!held || lead == null)
+            {
+                return;
+            }
+            if (World.Rating != MissionRating.Unseen)
+            {
+                PreviewText = "Wachen aufgescheucht: keine Vorhersage mehr";
+                return;
+            }
+            var m = ScreenToMap(GetGlobalMousePosition());
+            int tx = Mathf.FloorToInt(m.X), ty = Mathf.FloorToInt(m.Y);
+            var path = World.Map.IsBlocked(tx, ty) ? null : World.Map.FindPath(lead.TileX, lead.TileY, tx, ty);
+            if (path == null || path.Count == 0)
+            {
+                return;
+            }
+            PreviewPath.AddRange(path);
+            int wait = PlanWait(lead, path, tx, ty);
+            PreviewRisk = Watch.FirstRisk(path, lead.X, lead.Y, World.WalkSpeed(lead), World.Tick, PlanHold(lead, tx, ty));
+            PreviewText = wait == 0 ? "Weg frei"
+                : wait > 0 ? $"frei in {Mathf.CeilToInt(wait / (float)World.TickRate)} s"
+                : "kein freies Fenster";
+        }
+
+        private Unit? Lead() => World.Units.Where(u => Selected.Contains(u.Id)).OrderByDescending(u => u.CarriesItem).ThenBy(u => u.Id).FirstOrDefault();
+
+        private int PlanWait(Unit lead, List<(int X, int Y)> path, int tx, int ty) =>
+            Watch.TicksUntilClear(path, lead.X, lead.Y, World.WalkSpeed(lead), World.Tick, PlanHold(lead, tx, ty), MaxPlanWaitTicks);
+
+        /// <summary>Wie lange die Figur am Ziel steht: am Buch und im Fluchtwagen länger als sonst.</summary>
+        private int PlanHold(Unit lead, int tx, int ty)
+        {
+            if (!World.ItemTaken && (tx, ty) == (World.ItemX / World.TileUnits, World.ItemY / World.TileUnits))
+            {
+                return World.PickupTicks;
+            }
+            int cx = tx * World.TileUnits, cy = ty * World.TileUnits;
+            bool boarding = lead.CarriesItem && cx >= World.Exit.X0 && cx < World.Exit.X1 && cy >= World.Exit.Y0 && cy < World.Exit.Y1;
+            return boarding ? World.EscapeTicks : ArrivalHoldTicks;
+        }
+
+        /// <summary>Klick im Lageplan: Die Auswahl geht los, sobald der Weg frei ist. Liefert false ohne freies Fenster.</summary>
+        private bool QueueMove(int tx, int ty)
+        {
+            var lead = Lead();
+            var path = lead == null || World.Map.IsBlocked(tx, ty) ? null : World.Map.FindPath(lead.TileX, lead.TileY, tx, ty);
+            if (lead == null || path == null || World.Rating != MissionRating.Unseen)
+            {
+                return MoveSelected(tx, ty);
+            }
+            int wait = PlanWait(lead, path, tx, ty);
+            if (wait < 0)
+            {
+                return false;
+            }
+            if (wait == 0)
+            {
+                return MoveSelected(tx, ty);
+            }
+            WaitingIds.Clear();
+            WaitingIds.UnionWith(Selected);
+            _queuedX = tx;
+            _queuedY = ty;
+            _queuedTick = World.Tick + wait;
+            return true;
+        }
+
+        private void StartQueuedMove()
+        {
+            if (WaitingIds.Count == 0)
+            {
+                return;
+            }
+            // Bemerkt eine Wache etwas, stimmt der Plan nicht mehr. Dann entscheidet wieder der Spieler.
+            if (World.Rating != MissionRating.Unseen)
+            {
+                WaitingIds.Clear();
+            }
+            else if (World.Tick >= _queuedTick)
+            {
+                World.OrderGroupMove(WaitingIds, _queuedX, _queuedY);
+                WaitingIds.Clear();
             }
         }
 
@@ -483,13 +718,12 @@ namespace Messingstadt
                     int[] seq = { 1, 2, 3, 2 };
                     step = seq[u.WalkTick / 3 % 4];
                 }
-                int column = aiming ? AimColumn + dir : dir * 4 + step;
+                int column = !u.Alive ? FallenColumn : aiming ? AimColumn + dir : dir * 4 + step;
                 s.RegionRect = new Rect2(column * _cellW, row * _cellH, _cellW, _cellH);
-                s.FlipH = flip;
+                s.FlipH = u.Alive ? flip : u.Id % 2 == 1;
                 if (u.Alive)
                 {
-                    s.RotationDegrees = 0;
-                    s.Modulate = Colors.White;
+                    s.Modulate = FigureGlow(u, foot);
                     s.Position = foot - new Vector2(12, 41);
                     if (aiming && sinceShot <= 1)
                     {
@@ -500,9 +734,10 @@ namespace Messingstadt
                 }
                 else
                 {
-                    s.RotationDegrees = 90;
-                    s.Modulate = new Color(0.6f, 0.55f, 0.55f);
-                    s.Position = foot + new Vector2(20, -8);
+                    var shade = FigureGlow(u, foot) * FallenShade;
+                    shade.A = 1f;
+                    s.Modulate = shade;
+                    s.Position = foot - new Vector2(12, 36);
                     s.ZIndex = 0;
                 }
             }
@@ -510,6 +745,39 @@ namespace Messingstadt
             _book.Visible = !World.ItemTaken;
             _book.Position = ToScreen(World.ItemX, World.ItemY);
             _book.ZIndex = 1;
+        }
+
+        /// <summary>Stärke des Laternenlichts an einem Punkt, wie im Verlauf der Lichttextur.</summary>
+        private float LampLightAt(Vector2 p)
+        {
+            float sum = 0f;
+            foreach (var lamp in _lampLights)
+            {
+                float d = lamp.Position.DistanceTo(p) / LampRadius;
+                sum += d < 0.35f ? Mathf.Lerp(1f, 0.55f, d / 0.35f) : d < 1f ? Mathf.Lerp(0.55f, 0f, (d - 0.35f) / 0.65f) : 0f;
+            }
+            return sum;
+        }
+
+        /// <summary>Gleicht das Licht am Standort einer Figur aus. Wachen ohne Sichtkontakt bleiben im Dunkeln.</summary>
+        private Color FigureGlow(Unit u, Vector2 foot)
+        {
+            while (_unitGlow.Count <= u.Id)
+            {
+                _unitGlow.Add(Colors.White);
+            }
+            float light = LampLightAt(foot) * LampEnergy;
+            float brightness = (u.Faction == Faction.Agent || !u.Alive ? AgentBrightness
+                : World.IsSpottedByAgents(u) ? SpottedGuardBrightness : HiddenGuardBrightness)
+                * Mathf.Lerp(1f, BrightnessNearLamp, Mathf.Min(1f, light));
+            var target = new Color(
+                Mathf.Min(MaxFigureGain, brightness / (Night.R + LampColor.R * light)),
+                Mathf.Min(MaxFigureGain, brightness / (Night.G + LampColor.G * light)),
+                Mathf.Min(MaxFigureGain, brightness / (Night.B + LampColor.B * light)));
+            float weight = Mathf.Min(1f, GlowFadePerSecond * (float)GetProcessDeltaTime());
+            var g = _unitGlow[u.Id].Lerp(target, weight);
+            _unitGlow[u.Id] = g;
+            return g;
         }
 
         /// <summary>Macht Objekte durchscheinend, die einen lebenden Agenten verdecken.</summary>
@@ -624,10 +892,10 @@ namespace Messingstadt
             int guards = World.Units.Count(u => u.Faction == Faction.Guard && u.Alive);
             _banner.Text = World.State switch
             {
-                _ => _paused ? "PAUSE" : "",
+                _ => _abandonWarning > 0f ? "R nochmal: aufgeben, Trupp verloren" : _paused ? "PAUSE" : "",
             };
             _status.Text += $"   Wachen: {guards}   Zeit: {World.Tick / World.TickRate} s   Kasse: {World.Money}";
-            if (World.TicksUntilReinforcement >= 0)
+            if (World.TicksUntilReinforcement >= 0 && !_finished)
             {
                 _status.Text += $"   ALARM: Verstärkung in {World.TicksUntilReinforcement / World.TickRate + 1} s";
             }
@@ -658,7 +926,7 @@ namespace Messingstadt
                         break;
                     case Key.F: CenterOnSelection(); break;
                     case Key.P: _paused = !_paused; break;
-                    case Key.R: StartMission(); break;
+                    case Key.R: PressRestart(); break;
                 }
             }
             else if (e is InputEventMouseButton { Pressed: true } mouse)
@@ -676,7 +944,9 @@ namespace Messingstadt
                     else
                     {
                         var m = ScreenToMap(worldPos);
-                        if (MoveSelected((int)Mathf.Floor(m.X), (int)Mathf.Floor(m.Y), mouse.DoubleClick))
+                        int tx = (int)Mathf.Floor(m.X), ty = (int)Mathf.Floor(m.Y);
+                        WaitingIds.Clear();
+                        if (PlanHeld ? QueueMove(tx, ty) : MoveSelected(tx, ty, mouse.DoubleClick))
                         {
                             MarkerPos = worldPos;
                             MarkerTime = MarkerSeconds;
@@ -685,6 +955,7 @@ namespace Messingstadt
                 }
                 else if (mouse.ButtonIndex == MouseButton.Right)
                 {
+                    WaitingIds.Clear();
                     var guard = UnitUnderCursor(worldPos, Faction.Guard);
                     if (guard != null)
                     {
@@ -718,21 +989,16 @@ namespace Messingstadt
         {
             for (int d = 0; d < World.Doors.Count; d++)
             {
-                var tiles = World.Doors[d].Tiles;
-                if (World.Doors[d].Open || tiles.Count == 0)
+                if (!World.Doors[d].Open && DoorMark(World.Doors[d]).DistanceTo(p) < 22f)
                 {
-                    continue;
-                }
-                foreach (var (x, y) in new[] { tiles[0], tiles[^1] })
-                {
-                    if (TileCenter(x, y).DistanceTo(p) < 22f)
-                    {
-                        return d;
-                    }
+                    return d;
                 }
             }
             return -1;
         }
+
+        /// <summary>Wo das Schloss einer Tür im Bild sitzt: auf halber Höhe der gemalten Tür.</summary>
+        public Vector2 DoorMark(Door door) => ToScreen(door.MarkX, door.MarkY) + new Vector2(0, -20);
 
         public Vector2 TileCenter(int tileX, int tileY) =>
             ToScreen(tileX * World.TileUnits + World.TileUnits / 2, tileY * World.TileUnits + World.TileUnits / 2);

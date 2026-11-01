@@ -52,7 +52,9 @@ Grafik neu erzeugen: `python tools/art/generate_concept.py`
 | `1`–`4`, Leertaste | Agent wählen, alle wählen |
 | Pfeiltasten, WASD | Kamera |
 | `F` | Kamera auf die Auswahl |
-| `P`, `R` | Pause, Neustart |
+| `Q` halten | Lageplan: bewachte Felder, Wege der Wachen, Wegvorschau. Ein Klick wartet, bis der Weg frei ist |
+| `P` | Pause |
+| `R` | Einsatz abbrechen. Nach dem ersten Schuss zweimal drücken, dann gilt der Trupp als gefallen |
 
 ## Aufbau
 

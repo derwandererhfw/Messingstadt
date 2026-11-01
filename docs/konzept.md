@@ -44,6 +44,7 @@ Fluchtwagen am Ostende der Querstraße.
 | Alarm | Jeder Schuss ist im Umkreis von 8 Feldern zu hören, je Feld 0,15 s später |
 | Verstärkung | 6 s nach dem ersten Schuss und dann alle 4 s eine Wache nördlich vom Fluchtwagen, höchstens 3. Sie sichert den Wagen, nicht den Ort des Schusses |
 | Wertung | Unentdeckt: nie bemerkt. Leise: bemerkt, aber kein Schuss. Laut: Schüsse gefallen |
+| Abbrechen (R) | Vor dem ersten Schuss frei. Danach nur nach Warnung, und der Trupp gilt als gefallen. Fenster schließen zählt genauso |
 
 Die Werte sind erste Annahmen und werden beim Spielen angepasst.
 
@@ -61,7 +62,11 @@ Eine Wache ist immer in einem von fünf Zuständen. Sichtbare Wachen tragen im S
 
 Wachen kennen nur, was sie selbst sehen oder hören. Wer beschossen wird, geht sofort in den Kampf.
 Nach 2 s ohne Sichtkontakt wechselt eine kämpfende Wache zum Nachsehen. Sichtbare ahnungslose Wachen
-zeigen ihren Sichtkegel. Agenten sehen 10 Felder weit, der Spieler kann also vorausplanen.
+zeigen ihren Sichtkegel, auch ohne Sichtkontakt, dann aber schwächer. Agenten sehen 10 Felder weit.
+
+### Lageplan
+
+Wer Q hält, sieht, wie oft die Wachen jedes Feld im Blick haben (grün: nie, gelb bis rot: immer öfter), wo sie entlanggehen und den Weg zum Mauszeiger. Die Vorschau sagt, ob der Weg gerade frei ist oder in wie vielen Sekunden. Ein Klick im Lageplan schickt die Auswahl los, sobald er frei ist. Grundlage ist eine Probe der Mission ohne Agenten (`WatchMap`). Sie stimmt, bis eine Wache etwas bemerkt, danach gibt es keine Vorhersage mehr.
 
 Eine Gruppe verteilt sich beim Gehen auf eine Linie quer zur Blickrichtung, damit keine Figur im Bild
 hinter einer anderen steht. Der Träger des Kontobuchs bekommt dabei genau das angeklickte Feld.
@@ -84,7 +89,7 @@ Lohnkasse (300). Beute zählt nur, wenn der Trupp entkommt. Papiere fälschen is
 | Lohn pro Sieg | 300, bei Leise 450, bei Unentdeckt 600 |
 | Ausbau | 150 von Stufe 1 auf 2, 300 von Stufe 2 auf 3 |
 | Niederlage | Kein Lohn, Beute verloren, ausgegebenes Geld bleibt ausgegeben |
-| Gefallene Agenten | Kommen zurück, Beine und Herz fallen auf Stufe 1 |
+| Gefallene Agenten | Kommen zurück, Beine und Herz fallen auf Stufe 1, auch bei einer Niederlage |
 
 Der Stand wird im Benutzerordner des Spiels gespeichert (`kampagne.json`). Es gibt bisher nur eine
 Mission, „Nächster Einsatz“ spielt sie erneut.
@@ -95,6 +100,10 @@ Die Stadt bewegt sich auch ohne Zutun: Rauch aus Schornsteinen und Kesseln, Damp
 mit Ringen in den Pfützen, flackernde Laternen (eine mit Wackelkontakt), flackernde Kesselfeuer und
 Papierfetzen in Windböen. Das ist reine Darstellung mit eigenem Zufall in `game/Ambience.cs` und
 `game/RainLayer.cs`. Die Spiellogik bleibt deterministisch, und die Animation läuft auch in der Pause weiter.
+
+### Lesbarkeit
+
+Die Einfärbung der Figuren gleicht das Licht an ihrem Standort aus, damit sie überall gleich gut zu erkennen sind und der Mantel braun bleibt. Wachen ohne Sichtkontakt zu einem Agenten bleiben dunkler. Sichtkegel, Lageplan und Beute liegen unter den Gebäuden, Dächer verdecken sie also. Das ist reine Darstellung.
 
 ### Schüsse
 
@@ -114,6 +123,15 @@ Gemessen in der Spiellogik über je 300 Zufallsfolgen mit `tools/Messingstadt.Ba
 | Hinterhalt: einer lockt, alle warten zwischen den Häusern | 15 % | 84 % | 3,71 | 18 von 400 | 29 s | Laut |
 | Greta schleicht allein, Klicks auf ±0,5 s genau | 100 % | 0 % | 0 | 400 von 400 | 83 s | Unentdeckt |
 | Greta schleicht allein, Klicks auf ±1 s genau | 90 % | 9 % | 0,09 | | 83 s | meist Unentdeckt |
+
+Mit dem Lageplan ist kein vorab berechneter Zeitplan mehr nötig. Greta geht dabei von Versteck zu Versteck und startet, wenn die Vorschau den Weg frei zeigt (`--lageplan`, je 100 Läufe):
+
+| Start | Unentdeckt | Dauer |
+|---|---|---|
+| Klick im Lageplan, Start genau bei frei | 95 % | 58 s |
+| Eigener Klick, bis 0,25 s zu spät | 70 % | 122 s |
+| Eigener Klick, bis 0,5 s zu spät | 62 % | 142 s |
+| Eigener Klick, bis 1 s zu spät | 58 % | 145 s |
 
 Der Schleichplan ist als Test abgesichert. Eine frühere Fassung mit Klick 7 bei 63 s und ohne Einsteigen wurde im Spiel mit echten Klicks gewonnen:
 

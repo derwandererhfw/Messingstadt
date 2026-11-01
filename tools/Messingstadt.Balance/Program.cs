@@ -196,6 +196,70 @@ Action<World> HoldThenRush()
     };
 }
 
+// Spieler ohne vorab bekannte Zeiten: Greta geht von Versteck zu Versteck und läuft los, wenn der Lageplan den Weg frei zeigt.
+// Die Reaktion kommt zufällig bis zu lag Takte zu spät.
+void Sneak((int X, int Y)[] stops, int runs, int lag)
+{
+    var rng = new Random(1927);
+    var watch = WatchMap.Measure(Loader.ParseMap(mapJson), Loader.ParseMission(missionJson));
+    int won = 0, unseen = 0, ticks = 0;
+    for (int seed = 1; seed <= runs; seed++)
+    {
+        var w = NewWorld(seed * 7919);
+        int next = 0, wait = rng.Next(0, 200), goAt = -1;
+        for (int i = 0; i < MaxTicks && w.State == MissionState.Running; i++)
+        {
+            var a = w.Units[0];
+            bool busy = a.Path.Count > 0 || (next > 0 && stops[next - 1] == (w.ItemX / World.TileUnits, w.ItemY / World.TileUnits) && !w.ItemTaken);
+            if (!busy && next < stops.Length && i >= wait && i % 5 == 0)
+            {
+                var path = w.Map.FindPath(a.TileX, a.TileY, stops[next].X, stops[next].Y);
+                bool book = stops[next] == (w.ItemX / World.TileUnits, w.ItemY / World.TileUnits) && !w.ItemTaken;
+                int hold = book ? World.PickupTicks : next == stops.Length - 1 ? World.EscapeTicks : 40;
+                if (path != null && goAt < 0 && watch.FirstRisk(path, a.X, a.Y, World.WalkSpeed(a), w.Tick, hold) < 0)
+                {
+                    goAt = w.Tick + rng.Next(0, lag + 1);
+                }
+                if (goAt >= 0 && w.Tick >= goAt)
+                {
+                    w.OrderMove(0, stops[next].X, stops[next].Y);
+                    next++;
+                    goAt = -1;
+                }
+            }
+            w.Step();
+        }
+        won += w.State == MissionState.Won ? 1 : 0;
+        unseen += w.State == MissionState.Won && w.Rating == MissionRating.Unseen ? 1 : 0;
+        ticks += w.Tick;
+    }
+    Console.WriteLine($"Nach Lageplan schleichen, Reaktion bis {lag / 20.0:0.0} s: Sieg {100 * won / runs}%, unentdeckt {100 * unseen / runs}%, Dauer {ticks / runs / 20} s");
+}
+
+// Lageplan als Text: . nie bewacht, 1-9 Anteil in Zehnteln, # gesperrt, ein großes W auf dem Weg einer Wache.
+if (args.Length > 0 && args[0] == "--lageplan")
+{
+    var mission = Loader.ParseMission(missionJson);
+    var watch = WatchMap.Measure(Loader.ParseMap(mapJson), mission);
+    var blocked = NewWorld(1927).Map;
+    Console.WriteLine("    " + string.Concat(Enumerable.Range(0, watch.Width).Select(x => (x % 10).ToString())));
+    for (int y = 0; y < watch.Height; y++)
+    {
+        var line = new System.Text.StringBuilder($"{y,3} ");
+        for (int x = 0; x < watch.Width; x++)
+        {
+            double share = watch.Share(x, y);
+            line.Append(blocked.IsBlocked(x, y) ? '#' : watch.Routes.Contains((x, y)) ? 'W' : share == 0 ? '.' : (char)('0' + Math.Clamp((int)Math.Ceiling(share * 10), 1, 9)));
+        }
+        Console.WriteLine(line);
+    }
+    foreach (int lag in new[] { 0, 5, 10, 20 })
+    {
+        Sneak(new[] { (6, 15), (6, 5), (6, 3), (6, 5), (6, 14), (18, 18), (18, 11) }, 100, lag);
+    }
+    return;
+}
+
 // Mit Feldern als Argument, etwa "6,9 6,8": Welche Wache schaut wann hin? Eine Spalte sind 5 Takte.
 if (args.Length > 0)
 {
