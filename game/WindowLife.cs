@@ -14,13 +14,18 @@ namespace Messingstadt
         public const int MaxPanes = 256;
 
         private const float SomeoneHomeShare = 0.8f;
-        private const float MinToggleSeconds = 15f;
-        private const float MaxToggleSeconds = 70f;
+        private const float MinToggleSeconds = 25f;
+        private const float MaxToggleSeconds = 120f;
+        private const float MinPictureSeconds = 2f;
+        private const float MaxPictureSeconds = 7f;
+        private const float PictureBlendPerSecond = 2.5f;
+        private const float ScreenLightEnergy = 0.5f;
         private const float PasserChancePerSecond = 0.02f;
         private const float BrokenLetterStutterPerSecond = 0.5f;
         private const float SignDropoutPerSecond = 0.03f;
         private static readonly Color DarkPane = new(0.09f, 0.12f, 0.16f, 1f);
-        private static readonly Color PasserPane = new(0.3f, 0.2f, 0.12f, 1f);
+        private static readonly Color PasserPane = new(0.13f, 0.09f, 0.06f, 1f);
+        private static readonly Color CandleColor = new(0.62f, 0.36f, 0.15f);
         private static readonly Color NeonColor = new(1f, 0.28f, 0.2f, 1f);
         private static readonly Color DeadLetter = new(0.28f, 0.2f, 0.16f, 1f);
         private static readonly Color Unchanged = new(0f, 0f, 0f, 0f);
@@ -28,6 +33,9 @@ namespace Messingstadt
         private enum PaneKind
         {
             Window,
+            Toggle,
+            Dark,
+            Candle,
             Screen,
             Letter,
         }
@@ -41,6 +49,7 @@ namespace Messingstadt
             public float NextToggle;
             public float PasserUntil;
             public Color Picture;
+            public Color PictureTarget;
             public float NextCut;
             public PointLight2D? Light;
         }
@@ -57,6 +66,28 @@ namespace Messingstadt
 
         public ImageTexture States { get; }
 
+        /// <summary>Art und Lage aller Fenster und Buchstaben, etwa für Geräusche.</summary>
+        public List<(string Kind, Vector2 Center)> PaneSpots { get; } = new();
+
+        /// <summary>Mitte des Leuchtschilds, null ohne Schild.</summary>
+        public Vector2? SignCenter
+        {
+            get
+            {
+                var letters = PaneSpots.FindAll(p => p.Kind == "sign");
+                if (letters.Count == 0)
+                {
+                    return null;
+                }
+                var sum = Vector2.Zero;
+                foreach (var (_, center) in letters)
+                {
+                    sum += center;
+                }
+                return sum / letters.Count;
+            }
+        }
+
         public Texture2D Glow = null!;
         public Node2D LightParent = null!;
 
@@ -70,10 +101,19 @@ namespace Messingstadt
         /// <summary>Meldet ein Fenster oder einen Buchstaben an. kind: window, tv oder sign.</summary>
         public void AddPane(int id, string kind, Vector2 center)
         {
+            PaneSpots.Add((kind, center));
             var pane = new Pane
             {
                 Id = id, Center = center,
-                Kind = kind == "tv" ? PaneKind.Screen : kind == "sign" ? PaneKind.Letter : PaneKind.Window,
+                Kind = kind switch
+                {
+                    "tv" => PaneKind.Screen,
+                    "sign" => PaneKind.Letter,
+                    "dark" => PaneKind.Dark,
+                    "candle" => PaneKind.Candle,
+                    "toggle" => PaneKind.Toggle,
+                    _ => PaneKind.Window,
+                },
                 On = _rng.NextDouble() < SomeoneHomeShare,
                 NextToggle = Rand(MinToggleSeconds, MaxToggleSeconds),
             };
@@ -124,7 +164,9 @@ namespace Messingstadt
             {
                 _states.SetPixel(pane.Id, 0, pane.Kind switch
                 {
-                    PaneKind.Screen => UpdateScreen(pane),
+                    PaneKind.Screen => UpdateScreen(pane, dt),
+                    PaneKind.Dark => DarkPane,
+                    PaneKind.Candle => UpdateCandle(pane),
                     PaneKind.Letter => pane == _brokenLetter && _time < _stutterUntil && _rng.NextDouble() < 0.5 || _time < _dropoutUntil ? DeadLetter : NeonColor,
                     _ => UpdateWindow(pane, dt),
                 });
@@ -134,12 +176,12 @@ namespace Messingstadt
 
         private Color UpdateWindow(Pane pane, float dt)
         {
-            if (_time > pane.NextToggle)
+            if (pane.Kind == PaneKind.Toggle && _time > pane.NextToggle)
             {
                 pane.On = !pane.On;
                 pane.NextToggle = _time + Rand(MinToggleSeconds, MaxToggleSeconds);
             }
-            if (!pane.On)
+            if (pane.Kind == PaneKind.Toggle && !pane.On)
             {
                 return DarkPane;
             }
@@ -150,20 +192,27 @@ namespace Messingstadt
             return _time < pane.PasserUntil ? PasserPane : Unchanged;
         }
 
-        /// <summary>Wechselnde Bilder: Mal hell, mal dunkel, dazu ein feines Zittern wie bei einer alten Röhre.</summary>
-        private Color UpdateScreen(Pane pane)
+        /// <summary>Kerzenlicht: unruhig, aber langsam, und nie ganz aus.</summary>
+        private Color UpdateCandle(Pane pane)
+        {
+            float flame = 0.8f + 0.14f * Mathf.Sin(_time * 3.1f + pane.Id) + 0.06f * Mathf.Sin(_time * 7.7f + pane.Id * 2f);
+            return new Color(CandleColor.R * flame, CandleColor.G * flame, CandleColor.B * flame, 1f);
+        }
+
+        /// <summary>Gedämpftes Bild, das alle paar Sekunden weich wechselt, dazu ein kaum sichtbares Zittern der Röhre.</summary>
+        private Color UpdateScreen(Pane pane, float dt)
         {
             if (_time > pane.NextCut)
             {
-                float level = Rand(0.35f, 1f);
-                pane.Picture = new Color(level * Rand(0.5f, 0.72f), level * Rand(0.72f, 0.88f), level);
-                pane.NextCut = _time + (_rng.NextDouble() < 0.7 ? Rand(0.12f, 0.6f) : Rand(0.8f, 2.4f));
+                float level = Rand(0.2f, 0.5f);
+                pane.PictureTarget = new Color(level * Rand(0.55f, 0.72f), level * Rand(0.75f, 0.88f), level);
+                pane.NextCut = _time + Rand(MinPictureSeconds, MaxPictureSeconds);
             }
-            float tremble = 0.92f + 0.08f * Mathf.Sin(_time * 60f + pane.Id);
-            var c = pane.Picture * tremble;
+            pane.Picture = pane.Picture.Lerp(pane.PictureTarget, Mathf.Min(1f, PictureBlendPerSecond * dt));
+            var c = pane.Picture * (0.98f + 0.02f * Mathf.Sin(_time * 18f + pane.Id));
             if (pane.Light != null)
             {
-                pane.Light.Energy = c.B * 1.1f;
+                pane.Light.Energy = c.B * ScreenLightEnergy;
             }
             return new Color(c.R, c.G, c.B, 1f);
         }

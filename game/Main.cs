@@ -74,11 +74,12 @@ void fragment() {
         private const int RecoilColumn = 21;
         private const int AimWalkColumn = 22;
         private const int FallColumn = 30;
-        private const int FallFrames = 6;
+        private const int FallFrames = 8;
+        private const int FallVariants = 2;
         private const int CycleFrames = 8;
         private const int IdleFrames = 4;
         private const float IdleFramesPerSecond = 1.6f;
-        private const float FallSeconds = 0.55f;
+        private const float FallSeconds = 1f;
 
         // Weg für einen Doppelschritt in Einheiten, damit die Füße zum Tempo passen und nicht rutschen.
         private const float StrideUnits = 1150f;
@@ -94,6 +95,7 @@ void fragment() {
         private readonly List<Image> _thingImages = new();
         private readonly List<ShaderMaterial> _litMaterials = new();
         private readonly WindowLife _windowLife = new();
+        private readonly SoundScape _sound = new();
         private Texture2D _noPanes = null!;
         private Texture2D _critterGlow = null!;
 
@@ -187,12 +189,46 @@ void fragment() {
             overlayLayer.AddChild(new Overlay { Game = this });
             BuildUi();
             StartMission();
+            _sound.Game = this;
+            AddChild(_sound);
+            AddAmbientSounds();
             AddChild(new Critters
             {
-                Game = this, Sheet = LoadTexture("res://assets/critters.png"), Glow = _critterGlow,
+                Game = this, Sound = _sound, Sheet = LoadTexture("res://assets/critters.png"), Glow = _critterGlow,
                 Gullies = _ambience.Steam.ConvertAll(ScreenToMap),
                 WorkerSpot = WorkerTile, WorkerDoor = WorkerDoorTile,
             });
+        }
+
+        /// <summary>Dauergeräusche an festen Orten: Sie sind nur zu hören, wenn die Kamera in der Nähe ist.</summary>
+        private void AddAmbientSounds()
+        {
+            foreach (var lamp in _mission.Lamps)
+            {
+                _sound.AddLoop("lamp", ToScreen((int)(lamp[0] * World.TileUnits), (int)(lamp[1] * World.TileUnits)), -38f, 120f);
+            }
+            foreach (var p in _ambience.Steam)
+            {
+                _sound.AddLoop("steam", p, -27f);
+            }
+            foreach (var p in _ambience.Fires)
+            {
+                _sound.AddLoop("fire", p, -18f);
+                _sound.AddLoop("machine", p, -26f, 500f);
+            }
+            var exit = World.Exit;
+            _sound.AddLoop("diesel", ToScreen((exit.X0 + exit.X1) / 2, (exit.Y0 + exit.Y1) / 2), -20f, 380f);
+            foreach (var (kind, center) in _windowLife.PaneSpots)
+            {
+                if (kind == "tv")
+                {
+                    _sound.AddLoop("television", center, -32f, 180f);
+                }
+            }
+            if (_windowLife.SignCenter is { } sign)
+            {
+                _sound.AddLoop("neon", sign, -34f, 260f);
+            }
         }
 
         /// <summary>Lichtschein für Mündungsfeuer, die Marken am Boden und die bewegte Umgebung.</summary>
@@ -401,7 +437,7 @@ void fragment() {
             layer.AddChild(_planLegend);
             var help = new Label
             {
-                Text = "Links: wählen/gehen   Doppelklick: rennen   Rechts: Wache angreifen, Emil allein: bestechen, Otto: Tür öffnen   Q halten: Lageplan   1–4, Leertaste   WASD   F   P   R: abbrechen",
+                Text = "Links: wählen/gehen   Doppelklick: rennen   Rechts: Wache angreifen, Emil allein: bestechen, Otto: Tür öffnen   Q halten: Lageplan   1–4, Leertaste   WASD   F   P   M: Ton   R: abbrechen",
                 Position = new Vector2(12, 772),
             };
             help.AddThemeFontSizeOverride("font_size", 13);
@@ -648,6 +684,7 @@ void fragment() {
             }
             if (_shotPath != null && _frame == _shotFrame)
             {
+                GD.Print($"Geräusche abgespielt: {_sound.PlayCount}");
                 GetViewport().GetTexture().GetImage().SavePng(_shotPath);
                 GetTree().Quit();
             }
@@ -868,6 +905,16 @@ void fragment() {
             return new Color(tinted.R / Night.R, tinted.G / Night.G, tinted.B / Night.B);
         }
 
+        /// <summary>Zählt die Schritte einer gehenden Figur, damit das Geräusch zum Aufsetzen der Füße passt.</summary>
+        public int StepsTaken(Unit u)
+        {
+            float stride = u.Sprinting ? RunStrideUnits : StrideUnits;
+            float speed = World.WalkSpeed(u) * (u.Sprinting ? 1.4f : 1f);
+            return (int)(u.WalkTick * speed / stride * 2f);
+        }
+
+        public Vector2 CameraCenter => _camera.Position;
+
         /// <summary>Welches Bild der Bewegung gerade dran ist. Schrittlänge und Tempo passen zusammen, damit die Füße nicht rutschen.</summary>
         private int FigureColumn(Unit u, bool aiming, int sinceShot)
         {
@@ -879,7 +926,8 @@ void fragment() {
                     started = now;
                     _fallStarted[u.Id] = now;
                 }
-                return FallColumn + Mathf.Min(FallFrames - 1, (int)((now - started) / FallSeconds * FallFrames));
+                // Nicht alle sterben gleich: Die Id bestimmt, ob die Figur nach vorn oder zur Seite sackt.
+                return FallColumn + u.Id % FallVariants * FallFrames + Mathf.Min(FallFrames - 1, (int)((now - started) / FallSeconds * FallFrames));
             }
             if (u.Moving)
             {
@@ -1086,6 +1134,7 @@ void fragment() {
                         break;
                     case Key.F: CenterOnSelection(); break;
                     case Key.P: _paused = !_paused; break;
+                    case Key.M: _sound.ToggleMute(); break;
                     case Key.R: PressRestart(); break;
                 }
             }

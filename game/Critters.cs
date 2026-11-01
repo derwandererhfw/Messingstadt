@@ -78,6 +78,7 @@ namespace Messingstadt
         private float _time;
 
         public Main Game = null!;
+        public SoundScape Sound = null!;
         public Texture2D Sheet = null!;
         public Texture2D Glow = null!;
         public List<Vector2> Gullies = new();
@@ -239,6 +240,10 @@ namespace Messingstadt
                 rat.TargetX = best.X;
                 rat.TargetY = best.Y;
                 rat.Fleeing = true;
+                if (_rng.NextDouble() < 0.4)
+                {
+                    Sound.Play("rat", rat.Sprite.Position, -12f, 400f, 0.2f);
+                }
                 rat.Wait = 0f;
             }
             var to = new Vector2(rat.TargetX - rat.X, rat.TargetY - rat.Y);
@@ -306,6 +311,7 @@ namespace Messingstadt
                     p.Away = new Vector2(Rand(-240f, 240f), Rand(-300f, -200f));
                     p.Sprite.FlipH = p.Away.X < 0f;
                     p.Sprite.ZIndex = FlyingZ;
+                    Sound.Play("pigeons", p.Seat, -7f, 900f, 0.15f);
                 }
                 p.Peck -= dt;
                 if (p.Peck < -0.35f)

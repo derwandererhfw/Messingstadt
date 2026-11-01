@@ -26,8 +26,11 @@ Vector3 skyColor = Vec(root.GetProperty("sky"));
 Vector3 groundAlbedo = Vec(root.GetProperty("groundAlbedo"));
 Vector3 lampColor = Vec(root.GetProperty("lampColor"));
 Vector3 fireColor = Vec(root.GetProperty("fireColor"));
-Vector3 windowColor = Vec(root.GetProperty("windowColor"));
-float windowPower = root.GetProperty("windowPower").GetSingle();
+var windowTypes = new List<(Vector3 Color, float Power)>();
+foreach (var t in root.GetProperty("windowTypes").EnumerateArray())
+{
+    windowTypes.Add((Vec(t.GetProperty("color")), t.GetProperty("power").GetSingle()));
+}
 float specStrength = root.GetProperty("specStrength").GetSingle();
 float puddleSpec = root.GetProperty("puddleSpec").GetSingle();
 Vector3 viewDir = Vector3.Normalize(new Vector3(1f / 32f, 1f / 32f, 1f / zScale));
@@ -228,24 +231,25 @@ Vector3 Incoming(Vector3 from, Vector3 dir, int ignore, ref uint rng)
 
 // ---------- Fenster als kleine Flächenlichter, gesammelt aus den hellen Bildpunkten ----------
 
-var windowCells = new Dictionary<(int, int, int, int), (Vector3 Sum, int Count)>();
+var windowCells = new Dictionary<(int, int, int, int, int), (Vector3 Sum, int Count)>();
 foreach (var s in sprites)
 {
     for (int iy = 0; iy < s.H; iy++)
     {
         for (int ix = 0; ix < s.W; ix++)
         {
-            if (masks[s.Offset + iy * s.W + ix] == 2)
+            int mask = masks[s.Offset + iy * s.W + ix];
+            if (mask >= 2)
             {
                 var surface = Unproject(s, ix, iy);
-                var key = ((int)(surface.Pos.X / WindowCell), (int)(surface.Pos.Y / WindowCell), (int)(surface.Pos.Z / WindowCell), s.Box);
+                var key = ((int)(surface.Pos.X / WindowCell), (int)(surface.Pos.Y / WindowCell), (int)(surface.Pos.Z / WindowCell), s.Box, mask - 2);
                 windowCells.TryGetValue(key, out var cell);
                 windowCells[key] = (cell.Sum + surface.Pos, cell.Count + 1);
             }
         }
     }
 }
-var windowList = new List<(Vector3 Pos, Vector3 Normal, float Power, int Box)>();
+var windowList = new List<(Vector3 Pos, Vector3 Normal, Vector3 Color, float Power, int Box)>();
 foreach (var (key, cell) in windowCells)
 {
     var pos = cell.Sum / cell.Count;
@@ -253,7 +257,8 @@ foreach (var (key, cell) in windowCells)
     var n = key.Item4 < 0 ? Vector3.UnitZ
         : pos.Z >= box.Max.Z - 0.05f ? Vector3.UnitZ
         : MathF.Abs(pos.X - box.Max.X) < MathF.Abs(pos.Y - box.Max.Y) ? Vector3.UnitX : Vector3.UnitY;
-    windowList.Add((pos + n * 0.03f, n, windowPower * cell.Count, key.Item4));
+    var type = windowTypes[key.Item5];
+    windowList.Add((pos + n * 0.03f, n, type.Color, type.Power * cell.Count, key.Item4));
 }
 var windows = windowList.ToArray();
 Console.WriteLine($"{boxArray.Length} Quader, {lightArray.Length} Lichter, {windows.Length} Fensterlichter");
@@ -279,7 +284,7 @@ Vector3 Windows(Vector3 p, Vector3 n, int ignore)
         // Das eigene Haus nur ignorieren, wenn das Licht von außen kommt: Sonst leuchtet es durch die Wand.
         if (!Occluded(p, w.Pos, ignore))
         {
-            sum += windowColor * (w.Power * outCos * inCos / MathF.Max(dist2, 0.2f));
+            sum += w.Color * (w.Power * outCos * inCos / MathF.Max(dist2, 0.2f));
         }
     }
     return sum;

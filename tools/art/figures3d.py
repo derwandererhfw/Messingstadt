@@ -5,7 +5,7 @@ Gerendert wird mit Strahlen im selben Blickwinkel wie die Stadt, dann auf Pixelg
 Aufruf: python tools/art/figures3d.py   (etwa eine Minute)
 
 Blatt: je Figur fünf Zeilen für die Blickrichtungen S, SO, O, NO, N (Westen entsteht durch Spiegeln).
-Spalten: 0-7 gehen, 8-15 rennen, 16-19 stehen, 20-21 zielen, 22-29 zielend gehen, 30-35 fallen.
+Spalten: 0-7 gehen, 8-15 rennen, 16-19 stehen, 20-21 zielen, 22-29 zielend gehen, 30-37 und 38-45 sterben.
 """
 import json
 import math
@@ -30,7 +30,7 @@ RIGHT = np.array((1.0, 0.0, 0.0))
 LIGHT = np.array((-0.35, 0.3, 0.88)) / np.linalg.norm((-0.35, 0.3, 0.88))
 SMOOTH = 0.4
 HIP, THIGH, SHIN = 23.0, 12.0, 11.0
-FALL_FRAMES = 6
+FALL_FRAMES = 8
 
 # Teile der Figur, je ein Stoff
 COAT, COAT_D, COAT_L, TROUSERS, SHOE, SKIN, HAIR, HAT, GUN, SHIRT = range(10)
@@ -42,7 +42,8 @@ FRAMES = (
     + [("idle", i / 4) for i in range(4)]
     + [("aim", 0.0), ("recoil", 0.0)]
     + [("aimwalk", i / 8) for i in range(8)]
-    + [("fall", i / (FALL_FRAMES - 1)) for i in range(FALL_FRAMES)]
+    + [("fallA", i / (FALL_FRAMES - 1)) for i in range(FALL_FRAMES)]
+    + [("fallB", i / (FALL_FRAMES - 1)) for i in range(FALL_FRAMES)]
 )
 
 
@@ -90,6 +91,10 @@ def build(spec, motion, phase):
     # Das Knie beugt sich, wenn das Bein nach vorn schwingt, und streckt sich vor dem Aufsetzen.
     knee_l = knee_size * max(0.0, math.sin(t + 1.2)) if moving else 0.03
     knee_r = knee_size * max(0.0, math.sin(t + 1.2 + math.pi)) if moving else 0.03
+    dying = fall_pose(motion, phase) if motion.startswith("fall") else None
+    if dying:
+        swing_l, swing_r, knee_l, knee_r = dying["swing_l"], dying["swing_r"], dying["knee_l"], dying["knee_r"]
+        lean = dying["lean"]
     breath = 0.35 * math.sin(t) if motion == "idle" else 0.0
     weight = 0.5 * math.sin(t) if motion == "idle" else 0.0
 
@@ -169,6 +174,9 @@ def build(spec, motion, phase):
             p.capsule(hand + direction * 0.6, hand + direction * 4.2, 0.9, 0.8, GUN)
             continue
         arm = swing * arm_swing / max(swing_size, 0.01) if moving else 0.04 * math.sin(t + side)
+        if dying:
+            arm = dying["arm_l"] if side > 0 else dying["arm_r"]
+            elbow = dying["elbow_l"] if side > 0 else dying["elbow_r"]
         elbow_p = shoulder + (math.sin(arm) * 8.5, side * 0.9, -math.cos(arm) * 8.5)
         fore = arm + elbow
         hand = elbow_p + (math.sin(fore) * 8.0, side * 0.2, -math.cos(fore) * 8.0)
@@ -176,28 +184,59 @@ def build(spec, motion, phase):
         p.capsule(elbow_p, hand, 1.5, 1.2, COAT_D if side < 0 else COAT_L)
         p.ball(hand, 1.25, SKIN)
 
-    if motion == "fall":
-        fall(p, phase)
+    if dying:
+        collapse(p, dying)
     return p
 
 
-def fall(p, phase):
-    """Die Figur kippt nach hinten um die Füße, die Knie geben nach, am Ende liegt sie flach."""
-    angle = (phase ** 1.6) * math.radians(88)
-    sink = 7.0 * math.sin(min(1.0, phase * 1.6) * math.pi / 2) * (1 - phase)
-    cos, sin = math.cos(angle), math.sin(angle)
-    moved = []
-    low = 1e9
-    for a, b, r1, r2, material in p.parts:
-        points = []
-        for q in (a, b):
-            x, y, z = q[0], q[1], max(0.0, q[2] - sink)
-            points.append(np.array((x * cos - z * sin, y * (1 + 0.15 * phase), x * sin + z * cos)))
-        moved.append((points[0], points[1], r1, r2, material))
-        low = min(low, points[0][2] - r1, points[1][2] - r2)
-    # Beim Liegen zur Mitte des Feldes schieben, damit die Figur neben ihrem Standort liegt und nicht abgeschnitten wird.
-    slide = np.array((16.0 * phase * phase, 0, -low))
-    p.parts = [(a + slide, b + slide, r1, r2, m) for a, b, r1, r2, m in moved]
+def ramp(u, start, end):
+    """Weicher Übergang von 0 nach 1 zwischen start und end."""
+    x = min(1.0, max(0.0, (u - start) / (end - start)))
+    return x * x * (3 - 2 * x)
+
+
+def fall_pose(motion, u):
+    """Haltung beim Sterben. Erst zuckt der Körper, dann geben die Knie nach, zuletzt sackt er zusammen.
+
+    fallA sinkt nach vorn auf die Knie und aufs Gesicht, fallB dreht sich weg und fällt auf die Seite.
+    """
+    jolt = ramp(u, 0.0, 0.14) * (1 - ramp(u, 0.14, 0.4))
+    buckle = ramp(u, 0.12, 0.62)
+    drop = ramp(u, 0.5, 1.0)
+    if motion == "fallA":
+        return dict(
+            swing_l=(0.1 + 0.85 * buckle) * (1 - drop), swing_r=(-0.1 + 0.5 * buckle) * (1 - 0.8 * drop),
+            # Beim Aufschlag strecken sich die Beine wieder, sonst ragten die Füße in die Luft.
+            knee_l=2.15 * buckle * (1 - 0.92 * drop), knee_r=1.75 * buckle * (1 - 0.8 * drop),
+            lean=(-0.24 * jolt + 0.8 * buckle) * (1 - 0.95 * drop), arm_l=-0.5 * jolt + 0.55 * buckle + 0.9 * drop, arm_r=-0.35 * jolt + 0.25 * buckle + 1.5 * drop,
+            elbow_l=0.25 + 0.7 * buckle, elbow_r=0.25 + 0.3 * buckle,
+            pitch=math.radians(88) * drop, roll=math.radians(10) * drop, yaw=0.0,
+        )
+    return dict(
+        swing_l=0.05 + 0.75 * buckle, swing_r=-0.05 + 0.2 * buckle, knee_l=1.9 * buckle, knee_r=0.75 * buckle,
+        lean=-0.3 * jolt + 0.32 * buckle, arm_l=1.1 * jolt + 0.1 * buckle, arm_r=-0.9 * jolt + 2.0 * drop,
+        elbow_l=0.2 + 0.9 * buckle, elbow_r=0.15,
+        pitch=math.radians(12) * drop, roll=-math.radians(84) * drop, yaw=math.radians(50) * buckle,
+    )
+
+
+def collapse(p, pose):
+    """Dreht den ganzen Körper um die Füße, legt ihn auf den Boden und rückt ihn zum Standort."""
+    cp, sp = math.cos(pose["pitch"]), math.sin(pose["pitch"])
+    cr, sr = math.cos(pose["roll"]), math.sin(pose["roll"])
+    cy, sy = math.cos(pose["yaw"]), math.sin(pose["yaw"])
+
+    def turn(q):
+        x, y, z = q
+        x, z = x * cp + z * sp, -x * sp + z * cp
+        y, z = y * cr - z * sr, y * sr + z * cr
+        return np.array((x * cy - y * sy, x * sy + y * cy, z))
+
+    moved = [(turn(a), turn(b), r1, r2, m) for a, b, r1, r2, m in p.parts]
+    low = min(min(a[2] - r1, b[2] - r2) for a, b, r1, r2, _ in moved)
+    center = np.mean([a[:2] for a, *_ in moved], axis=0)
+    shift = np.array((-center[0] * 0.7, -center[1] * 0.7, -low))
+    p.parts = [(a + shift, b + shift, r1, r2, m) for a, b, r1, r2, m in moved]
 
 
 def sdf(points, parts):
@@ -280,8 +319,8 @@ def ground_marks(figure, motion, phase):
     h, w = figure.shape[:2]
     under = np.zeros((h, w, 4), np.uint8)
     ys, xs = np.mgrid[0:h, 0:w]
-    if motion == "fall":
-        grow = max(0.0, phase - 0.4) / 0.6
+    if motion.startswith("fall"):
+        grow = max(0.0, phase - 0.55) / 0.45
         if grow > 0:
             d = (((xs - FOOT_X) / (2 + 15 * grow)) ** 2 + ((ys - (FOOT_Y - 1)) / (1 + 5 * grow)) ** 2)
             under[d < 1] = (72, 10, 10, 225)

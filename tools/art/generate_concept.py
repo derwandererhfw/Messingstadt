@@ -20,6 +20,7 @@ from PIL import Image, ImageDraw
 
 OUT = Path(__file__).resolve().parents[2] / "assets" / "concept"
 RNG = random.Random(1923)
+LIT_ROOMS = random.Random(1933)  # was hinter erleuchteten Fenstern zu sehen ist
 WEAR = random.Random(1931)  # eigener Zufall für die Abnutzung, damit RNG die Fenster nicht verschiebt
 AMBIENT = {"smoke": [], "steam": [], "fires": [], "puddles": [], "lights": [], "fireLights": []}  # Bildpositionen für die Animationen im Spiel
 HW, HH = 32, 16  # halbe Tile-Breite und -Höhe
@@ -164,6 +165,42 @@ def wall(w, h, material):
     return img, d
 
 
+def lit_room(d, x, y, w, h):
+    """Blick in ein erleuchtetes Zimmer. Jedes Fenster sieht anders aus: Vorhänge, Rollo, Gardine oder offen."""
+    style = LIT_ROOMS.choice(("curtain", "both", "blind", "net", "open", "plant"))
+    mid_x, mid_y = x + w // 2, y + h // 2
+    if style == "curtain":
+        d.rectangle((x, y, x + w // 3, y + h), fill=C["wood"])
+        d.rectangle((x + w // 3 + 1, mid_y + 1, x + w - 1, y + h), fill=C["gas"])
+    elif style == "both":
+        d.rectangle((x + 3, y, x + w - 4, y + h), fill=C["gas"])
+        d.rectangle((x, y, x + 2, y + h), fill=C["wood"])
+        d.rectangle((x + w - 3, y, x + w - 1, y + h), fill=C["wood"])
+    elif style == "blind":
+        d.rectangle((x, y, x + w - 1, y + 7), fill=C["wood"])
+        for v in range(y + 1, y + 8, 2):
+            d.line((x, v, x + w - 1, v), fill=C["brass_d"])
+        d.rectangle((x, y + 8, x + w - 1, y + h), fill=C["gas"])
+    elif style == "net":
+        d.rectangle((x, y, x + w - 1, y + h), fill=C["gas"])
+        for v in range(y, y + h + 1):
+            for u in range(x + v % 2, x + w, 2):
+                d.point((u, v), fill=C["gas_d"])
+    elif style == "open":
+        # Deckenlampe oben, darunter wird der Raum dunkler
+        d.rectangle((x, y + h - 4, x + w - 1, y + h), fill=C["wood"])
+        d.rectangle((mid_x - 2, y + 1, mid_x + 1, y + 3), fill=C["gas"])
+    else:
+        # Topfpflanze auf der Fensterbank
+        d.rectangle((x, y, x + w - 1, y + h), fill=C["gas"])
+        d.rectangle((x + 3, y + h - 3, x + 6, y + h), fill=C["wood_d"])
+        # Kompakter Busch: Einzelne Blätter sähen auf diese Größe nach Insekten aus.
+        d.rectangle((x + 2, y + h - 6, x + 7, y + h - 4), fill=C["wood_d"])
+        d.rectangle((x + 3, y + h - 7, x + 6, y + h - 7), fill=C["wood_d"])
+    d.line((mid_x, y, mid_x, y + h), fill=C["wood_d"])
+    d.line((x, mid_y, x + w - 1, mid_y), fill=C["wood_d"])
+
+
 def window(d, x, y, w=11, h=17, lit=False, frame="stone_l"):
     d.rectangle((x - 1, y - 2, x + w, y + h + 1), fill=C[frame])
     d.rectangle((x, y, x + w - 1, y + h), fill=C["gas_d"] if lit else C["glass_d"])
@@ -181,9 +218,7 @@ def window(d, x, y, w=11, h=17, lit=False, frame="stone_l"):
     d.line((x + w // 2, y, x + w // 2, y + h), fill=C["wood_d"])
     d.line((x, y + h // 2, x + w - 1, y + h // 2), fill=C["wood_d"])
     if lit:
-        # Vergilbte Vorhänge, nur ein Spalt Licht
-        d.rectangle((x, y, x + w // 3, y + h), fill=C["wood"])
-        d.rectangle((x + w // 3 + 1, y + h // 2 + 1, x + w - 1, y + h), fill=C["gas"])
+        lit_room(d, x, y, w, h)
     else:
         d.point((x + 1, y + 1), fill=C["glass"])
     for _ in range(3):
@@ -598,8 +633,8 @@ def building(x0, y0, w, d, h, left, right, s, things, roof_items=()):
     west = s.to_screen(x0, y0 + d, h)
     south = s.to_screen(x0 + w, y0 + d, h)
     for tex, origin, slope in ((left, west, 0.5), (right, south, -0.5)):
-        for u, v, pw, ph in tex.info.get("panes", []):
-            things[-1].panes.append({"x": int(origin[0]), "y": int(origin[1]), "slope": slope, "u": u, "v": v, "w": pw, "h": ph, "kind": "window"})
+        for u, v, pw, ph, *fixed in tex.info.get("panes", []):
+            things[-1].panes.append({"x": int(origin[0]), "y": int(origin[1]), "slope": slope, "u": u, "v": v, "w": pw, "h": ph, "kind": "window", "type": fixed[0] if fixed else ""})
     for item in roof_items:
         item(x0, y0, w, d, h, s, things)
 
@@ -1007,6 +1042,7 @@ def build_scene(with_people=True):
         fd.rectangle((u, 16, u + 28, 44), fill=C["gas_d"])
         for k in range(u, u + 28, 7):
             fd.line((k, 16, k, 44), fill=C["iron"])
+        fab_l.info.setdefault("panes", []).append((u, 16, 29, 29, "halle"))
     fd.rectangle((60, 66, 112, 109), fill=C["iron"])
     for k in range(60, 112, 6):
         fd.line((k, 66, k, 109), fill=C["soot"])

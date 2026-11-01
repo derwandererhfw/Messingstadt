@@ -54,6 +54,7 @@ Grafik neu erzeugen: `python tools/art/generate_concept.py`
 | `F` | Kamera auf die Auswahl |
 | `Q` halten | Lageplan: bewachte Felder, Wege der Wachen, Wegvorschau. Ein Klick wartet, bis der Weg frei ist |
 | `P` | Pause |
+| `M` | Ton an und aus |
 | `R` | Einsatz abbrechen. Nach dem ersten Schuss zweimal drücken, dann gilt der Trupp als gefallen |
 
 ## Grafik und Licht neu berechnen
@@ -63,6 +64,12 @@ Nach Änderungen an der Stadt, dauert etwa zwei Minuten. Der erste Befehl render
 ```bash
 python tools/art/generate_concept.py
 python tools/art/bake_light.py
+```
+
+Die Geräusche entstehen unabhängig davon:
+
+```bash
+python tools/art/generate_audio.py
 ```
 
 ## Aufbau
