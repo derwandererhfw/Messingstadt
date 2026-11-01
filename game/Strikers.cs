@@ -91,7 +91,7 @@ namespace Messingstadt
             Game.Sound.AddLoop("fire", foot, -19f, 240f);
             for (int i = 0; i < Spots.Length; i++)
             {
-                var sprite = new Sprite2D { Texture = Game.FigureFrame("Arbeiter", 0, 0).Sheet, RegionEnabled = true, Centered = false };
+                var sprite = new Sprite2D { Texture = Game.FigureFrame("Arbeiter", 0, 0).Sheet, RegionEnabled = true, Centered = false, Scale = Game.FigureScale };
                 AddChild(sprite);
                 var person = new Striker { Sprite = sprite, Tile = Spots[i], Index = i };
                 _people.Add(person);

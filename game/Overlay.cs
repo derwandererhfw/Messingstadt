@@ -9,6 +9,7 @@ namespace Messingstadt
     {
         private const float LabelWidth = 11f;
         private const float LabelHeight = 14f;
+        private const float DogHeadDrop = 22f;
 
         public Main Game = null!;
 
@@ -82,6 +83,11 @@ namespace Messingstadt
                 // Steht eine Wache im Bild hinter einem Haus, soll der Balken nicht auf dem Dach schweben.
                 if (u.Faction == Faction.Agent || (world.IsSpottedByAgents(u) && !Game.IsHiddenByThing(u)))
                 {
+                    // Der Hund ist kleiner, sein Balken sitzt tiefer.
+                    if (u.Type.Bites)
+                    {
+                        p.Y += DogHeadDrop;
+                    }
                     DrawBar(p + new Vector2(-10, -46), u);
                     if (u.Faction == Faction.Agent)
                     {
@@ -122,6 +128,7 @@ namespace Messingstadt
                     }
                 }
             }
+            DrawHoveredGuard();
             foreach (var s in world.Shots)
             {
                 int age = world.Tick - s.Tick;
@@ -132,6 +139,22 @@ namespace Messingstadt
                 }
                 DrawShot(s, age);
             }
+        }
+
+        /// <summary>Unter dem Mauszeiger steht, was das für ein Gegner ist.</summary>
+        private void DrawHoveredGuard()
+        {
+            if (Game.HoveredGuard() is not { } guard)
+            {
+                return;
+            }
+            var type = guard.Type;
+            string text = type.Title + (type.BribeCost == 0 ? ", nicht käuflich" : $", käuflich für {type.BribeCost}");
+            var font = PaperUi.Typewriter;
+            float width = font.GetStringSize(text, HorizontalAlignment.Left, -1, 9).X;
+            var at = Game.UnitPos(guard) + new Vector2(-width / 2f, 14f);
+            DrawStringOutline(font, at, text, HorizontalAlignment.Left, -1, 9, 3, new Color(0f, 0f, 0f, 0.85f));
+            DrawString(font, at, text, HorizontalAlignment.Left, -1, 9, new Color(1f, 0.85f, 0.6f));
         }
 
         /// <summary>Zeigt im Lageplan den Weg zum Mauszeiger: grün bis zum ersten Feld, auf dem man bemerkt würde.</summary>

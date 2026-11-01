@@ -1,8 +1,9 @@
 """Rendert das Figurenblatt aus einem kleinen 3D-Modell mit Gelenken.
 
 Jede Figur besteht aus runden Körperteilen (Kapseln und Kugeln), die Pose kommt aus einem Gelenkmodell.
-Gerendert wird mit Strahlen im selben Blickwinkel wie die Stadt, dann auf Pixelgröße verkleinert.
-Aufruf: python tools/art/figures3d.py   (etwa eine Minute)
+Gerendert wird mit Strahlen im selben Blickwinkel wie die Stadt, in doppelter Auflösung: Das Spiel zeigt
+die Figuren halb so groß, mit der Kamera ergibt das scharfe Figuren vor der pixeligeren Stadt.
+Aufruf: python tools/art/figures3d.py   (einige Minuten)
 
 Blatt: je Figur fünf Zeilen für die Blickrichtungen S, SO, O, NO, N (Westen entsteht durch Spiegeln).
 Spalten: 0-7 gehen, 8-15 rennen, 16-19 stehen, 20-21 zielen, 22-29 zielend gehen, 30-37 und 38-45 sterben.
@@ -20,8 +21,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from generate_concept import C, SPECS  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
-CELL_W, CELL_H = 48, 50
-FOOT_X, FOOT_Y = 24, 46
+RES = 2
+CELL_W, CELL_H = 48 * RES, 50 * RES
+WORLD_FOOT_X, WORLD_FOOT_Y = 24, 46
+FOOT_X, FOOT_Y = WORLD_FOOT_X * RES, WORLD_FOOT_Y * RES
+SHADE_STEPS = 12
 SUPER = 2
 VIEWS = (90.0, 45.0, 0.0, -45.0, -90.0)  # Blickrichtung am Boden: 90 ist zur Kamera, 0 nach rechts im Bild
 TO_CAMERA = np.array((0.0, math.cos(math.radians(30)), math.sin(math.radians(30))))
@@ -33,7 +37,8 @@ HIP, THIGH, SHIN = 23.0, 12.0, 11.0
 FALL_FRAMES = 8
 
 # Teile der Figur, je ein Stoff
-COAT, COAT_D, COAT_L, TROUSERS, SHOE, SKIN, HAIR, HAT, GUN, SHIRT = range(10)
+COAT, COAT_D, COAT_L, TROUSERS, SHOE, SKIN, HAIR, HAT, GUN, SHIRT, TRIM = range(11)
+GUN_LENGTH = {"pistol": 4.2, "shotgun": 11.0, "rifle": 16.0}
 
 # Blatt: Spalte zu Bewegung und Phase
 FRAMES = (
@@ -52,6 +57,7 @@ def palette(spec):
     return {
         COAT: C[co], COAT_D: C[co_d], COAT_L: C[co_l], TROUSERS: C[spec["legs"]], SHOE: C["black"],
         SKIN: C["skin"], HAIR: C[spec["hair"]], HAT: C[spec["hat_c"]], GUN: C["soot"], SHIRT: C[spec["shirt"]],
+        TRIM: C[spec.get("trim", co_l)],
     }
 
 
@@ -77,9 +83,52 @@ def leg_points(side, swing, knee):
     return hip, hip + (kx, 0, kz), hip + (ax, 0, az), swing - knee
 
 
-def build(spec, motion, phase):
+def build_dog(motion, phase):
+    """Schäferhund: Rumpf, Kopf mit Ohren, Rute und vier Beine im Kreuzgang."""
     p = Pose()
     t = phase * math.tau
+    moving = motion in ("walk", "run", "aimwalk")
+    size = {"run": 0.75, "walk": 0.42, "aimwalk": 0.42}.get(motion, 0.0)
+    bob = 0.5 * abs(math.sin(t)) if moving else (0.25 * math.sin(t) if motion == "idle" else 0.0)
+    lunge = 3.0 if motion == "recoil" else 1.5 if motion == "aim" else 0.0
+    height = 12.0 + bob
+    chest = np.array((5.0 + lunge, 0.0, height + 1.5))
+    rump = np.array((-8.0 + lunge, 0.0, height))
+    p.capsule(chest, rump, 4.3, 3.5, COAT)
+    p.capsule(chest + (0, 0, 2.0), rump + (0, 0, 2.0), 2.6, 2.2, COAT_D)
+    neck = chest + (3.0, 0, 3.0)
+    head = chest + (7.5, 0, 7.0 if not motion in ("aim", "recoil") else 3.5)
+    p.capsule(neck, head, 2.7, 2.3, COAT)
+    p.capsule(head, head + (4.5, 0, -1.2), 1.7, 1.0, COAT_L)
+    p.ball(head + (5.0, 0, -1.2), 0.85, SHOE)
+    for side in (1, -1):
+        p.capsule(head + (-1, side * 1.6, 1.5), head + (-1.4, side * 1.9, 4.2), 1.0, 0.45, COAT_D)
+    wag = 0.8 * math.sin(t * 2) if moving else 0.4 * math.sin(t)
+    p.capsule(rump + (-3, 0, 1), rump + (-10, wag * 3, 3 + 2 * wag), 1.2, 0.6, COAT_D)
+    for x, side, offset in ((5.0, 1, 0.0), (5.0, -1, math.pi), (-8.0, 1, math.pi), (-8.0, -1, 0.0)):
+        swing = size * math.sin(t + offset) if moving else 0.0
+        top = np.array((x + lunge, side * 2.6, height - 1.5))
+        knee = top + (math.sin(swing) * 5.5, 0, -math.cos(swing) * 5.5)
+        lift = max(0.0, math.sin(t + offset + 1.2)) * size * 1.2 if moving else 0.0
+        paw = knee + (math.sin(swing - lift) * 5.5, 0, -math.cos(swing - lift) * 5.5)
+        p.capsule(top, knee, 1.6, 1.15, COAT_D if side < 0 else COAT)
+        p.capsule(knee, paw, 1.15, 0.9, COAT_D if side < 0 else COAT)
+        p.capsule(paw, paw + (1.4, 0, 0), 0.95, 0.9, SHOE)
+    low = min(min(a[2] - r1, b[2] - r2) for a, b, r1, r2, _ in p.parts)
+    p.parts = [(a + (0, 0, -low), b + (0, 0, -low), r1, r2, m) for a, b, r1, r2, m in p.parts]
+    if motion.startswith("fall"):
+        drop = ramp(phase, 0.1, 0.8)
+        collapse(p, dict(pitch=0.0, roll=(1 if motion == "fallA" else -1) * math.radians(88) * drop, yaw=0.0))
+    return p
+
+
+def build(spec, motion, phase):
+    if spec.get("dog"):
+        return build_dog(motion, phase)
+    p = Pose()
+    t = phase * math.tau
+    bulk = spec.get("bulk", 1.0)
+    gun = spec.get("gun", "pistol")
     swing_size, knee_size, lean, arm_swing, elbow = {
         "walk": (0.5, 0.75, 0.04, 0.42, 0.28),
         "aimwalk": (0.42, 0.65, 0.05, 0.3, 0.28),
@@ -124,18 +173,28 @@ def build(spec, motion, phase):
     shoulder_z = 38.5 - HIP + breath
     for side in (1, -1):
         for depth in (1.1, -1.1):
-            p.capsule(lean_up((depth, side * 1.7, waist)), lean_up((depth + 0.2, side * 2.9, shoulder_z - 1.2)), 2.5, 2.6, COAT)
+            p.capsule(lean_up((depth * bulk, side * 1.7 * bulk, waist)), lean_up((depth * bulk + 0.2, side * 2.9 * bulk, shoulder_z - 1.2)), 2.5 * bulk, 2.6 * bulk, COAT)
     # Mantel oder Jacke unter dem Gürtel: folgt den Oberschenkeln und schwingt beim Gehen.
     hem_z = (40 - spec["hem"]) * 1.15
     hem = max(4.0, 25.0 - hem_z)
     for side, swing in ((1, swing_l), (-1, swing_r)):
         for depth in (1.0, -1.2):
             skirt_end = body((depth + math.sin(swing) * hem * 0.8, side * 2.5, waist - hem))
-            p.capsule(lean_up((depth, side * 1.7, waist)), skirt_end, 2.4, 1.6 + hem * 0.09, COAT_D if side < 0 else COAT)
+            p.capsule(lean_up((depth, side * 1.7 * bulk, waist)), skirt_end, 2.4 * bulk, (1.6 + hem * 0.09) * bulk, COAT_D if side < 0 else COAT)
     # Gürtel und Kragen
-    p.capsule(lean_up((0.4, 2.1, waist + 0.3)), lean_up((0.4, -2.1, waist + 0.3)), 3.05, 3.05, COAT_D)
-    p.capsule(lean_up((0, 2.1, shoulder_z + 0.6)), lean_up((0, -2.1, shoulder_z + 0.6)), 1.5, 1.5, COAT_L)
-    p.ball(lean_up((1.9, 0, shoulder_z - 1.4)), 1.05, SHIRT)
+    p.capsule(lean_up((0.4, 2.1 * bulk, waist + 0.3)), lean_up((0.4, -2.1 * bulk, waist + 0.3)), 3.05 * bulk, 3.05 * bulk, COAT_D)
+    p.capsule(lean_up((0, 2.1, shoulder_z + 0.6)), lean_up((0, -2.1, shoulder_z + 0.6)), 1.5, 1.5, TRIM)
+    p.ball(lean_up((1.9 * bulk, 0, shoulder_z - 1.4)), 1.05, SHIRT)
+    if bulk > 1.0:
+        # Panzerplatte auf der Brust und Schulterstücke beim Werkschutz
+        p.capsule(lean_up((2.6, 2.0, waist + 3.0)), lean_up((2.6, -2.0, waist + 3.0)), 2.2, 2.2, TRIM)
+        p.capsule(lean_up((2.6, 2.0, shoulder_z - 3.0)), lean_up((2.6, -2.0, shoulder_z - 3.0)), 2.0, 2.0, TRIM)
+        for side in (1, -1):
+            p.ball(lean_up((0.1, side * 6.4, shoulder_z - 0.2)), 2.4, TRIM)
+    aiming_now = motion in ("aim", "recoil", "aimwalk")
+    if gun != "pistol" and not aiming_now and not dying:
+        # Lange Waffe quer vor dem Körper getragen
+        p.capsule(lean_up((3.3 * bulk, -4.5, waist + 1.5)), lean_up((3.0 * bulk, 3.5, shoulder_z + (2.5 if gun == "rifle" else 0.5))), 0.85, 0.75, GUN)
 
     # Kopf und Kopfbedeckung
     neck = lean_up((0.2, 0, shoulder_z + 1.5))
@@ -143,7 +202,13 @@ def build(spec, motion, phase):
     p.capsule(neck, head, 1.4, 1.4, SKIN)
     p.ball(head, 2.9, SKIN)
     p.ball(head + (-1.0, 0, 0.4), 2.7, HAIR)
-    if spec["hat"] == "fedora":
+    if spec["hat"] == "helmet":
+        # Stahlhelm: runde Kappe mit umlaufendem Rand
+        p.ball(head + (-0.1, 0, 1.3), 3.5, HAT)
+        for i in range(10):
+            a = i / 10 * math.tau
+            p.ball(head + (math.cos(a) * 3.5, math.sin(a) * 3.5, 0.6), 0.7, HAT)
+    elif spec["hat"] == "fedora":
         # Breite Krempe aus einem Ring flacher Kugeln, darauf der schmalere Hutkopf
         brim = head + (0, 0, 1.5)
         for i in range(12):
@@ -171,7 +236,15 @@ def build(spec, motion, phase):
             p.capsule(shoulder, elbow_p, 1.8, 1.5, COAT_L)
             p.capsule(elbow_p, hand, 1.5, 1.2, COAT_L)
             p.ball(hand, 1.25, SKIN)
-            p.capsule(hand + direction * 0.6, hand + direction * 4.2, 0.9, 0.8, GUN)
+            length = GUN_LENGTH[gun]
+            p.capsule(hand + direction * 0.6, hand + direction * length, 0.95 if gun == "shotgun" else 0.8, 0.8, GUN)
+            if gun != "pistol":
+                # Zweite Hand stützt die lange Waffe
+                other = hand + direction * length * 0.45
+                p.capsule(lean_up((0.1, 5.9, shoulder_z - 0.9)), other, 1.6, 1.25, COAT_L)
+                p.ball(other, 1.2, SKIN)
+            continue
+        if aiming and side > 0 and gun != "pistol":
             continue
         arm = swing * arm_swing / max(swing_size, 0.01) if moving else 0.04 * math.sin(t + side)
         if dying:
@@ -267,8 +340,8 @@ def render(args):
         parts.append((world[0], world[1], r1, r2, material))
 
     w, h = CELL_W * SUPER, CELL_H * SUPER
-    xs = (np.arange(w) + 0.5) / SUPER - FOOT_X
-    ys = (np.arange(h) + 0.5) / SUPER - FOOT_Y
+    xs = (np.arange(w) + 0.5) / (SUPER * RES) - WORLD_FOOT_X
+    ys = (np.arange(h) + 0.5) / (SUPER * RES) - WORLD_FOOT_Y
     gx, gy = np.meshgrid(xs, ys)
     origin = gx.ravel()[:, None] * RIGHT - gy.ravel()[:, None] * UP + TO_CAMERA * 70
     position = origin.copy()
@@ -297,7 +370,7 @@ def render(args):
         facing = np.clip(normal @ TO_CAMERA, 0, 1)
         # Licht von oben, dunkler zum Rand hin: Das macht die Figur rund. In Stufen, damit es Pixelgrafik bleibt.
         shade = (0.58 + 0.62 * light) * (0.68 + 0.32 * facing)
-        shade = np.round(shade * 7) / 7
+        shade = np.round(shade * SHADE_STEPS) / SHADE_STEPS
         colors = palette(spec)
         materials = np.array([colors[part[4]] for part in parts], np.float32)[nearest]
         rgb = materials * shade[:, None]
@@ -322,11 +395,11 @@ def ground_marks(figure, motion, phase):
     if motion.startswith("fall"):
         grow = max(0.0, phase - 0.55) / 0.45
         if grow > 0:
-            d = (((xs - FOOT_X) / (2 + 15 * grow)) ** 2 + ((ys - (FOOT_Y - 1)) / (1 + 5 * grow)) ** 2)
+            d = (((xs - FOOT_X) / ((2 + 15 * grow) * RES)) ** 2 + ((ys - (FOOT_Y - RES)) / ((1 + 5 * grow) * RES)) ** 2)
             under[d < 1] = (72, 10, 10, 225)
             under[d < 0.45] = (96, 14, 12, 225)
     else:
-        d = ((xs - FOOT_X) / 9.0) ** 2 + ((ys - FOOT_Y) / 3.2) ** 2
+        d = ((xs - FOOT_X) / (9.0 * RES)) ** 2 + ((ys - FOOT_Y) / (3.2 * RES)) ** 2
         under[d < 1] = (0, 0, 0, 105)
         under[d < 0.45] = (0, 0, 0, 140)
     solid = figure[..., 3] > 0
@@ -345,7 +418,7 @@ def main():
     assets = ROOT / "game" / "assets"
     Image.fromarray(sheet).save(assets / "figures.png", optimize=True)
     (assets / "figures.json").write_text(json.dumps({
-        "names": names, "w": CELL_W, "h": CELL_H, "footX": FOOT_X, "footY": FOOT_Y, "views": len(VIEWS),
+        "names": names, "w": CELL_W, "h": CELL_H, "footX": FOOT_X, "footY": FOOT_Y, "views": len(VIEWS), "res": RES,
     }), encoding="utf-8")
     print(f"{len(tasks)} Figurenbilder gerendert")
 

@@ -1,1 +1,1 @@
-{"names": ["Agent", "Wachmann", "Arbeiter"], "w": 48, "h": 50, "footX": 24, "footY": 46, "views": 5}
+{"names": ["Agent", "Wachmann", "Offizier", "Werkschutz", "Schuetze", "Hund", "Arbeiter"], "w": 96, "h": 100, "footX": 48, "footY": 92, "views": 5, "res": 2}

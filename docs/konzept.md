@@ -49,6 +49,18 @@ Fluchtwagen am Ostende der Querstraße.
 
 Die Werte sind erste Annahmen und werden beim Spielen angepasst.
 
+### Gegnertypen
+
+| Art | Lebenspunkte | Waffe | Besonderheit | Bestechung |
+|---|---|---|---|---|
+| Wachmann | 60 | Pistole, 7 Felder, 10 Schaden | | 200 |
+| Offizier | 70 | Pistole, 7 Felder, 12 Schaden | Bemerkt 30 % schneller, ruft beim Kampf Alarm auch ohne Schuss | 400 |
+| Werkschutz | 110 | Schrotflinte, 4 Felder, 18 Schaden, langsame Schussfolge | Gepanzert, im Alarm langsam | nicht käuflich |
+| Schütze | 50 | Gewehr, 11 Felder, 18 Schaden, sehr langsame Schussfolge | Sieht im Alarm 11 Felder weit | 200 |
+| Wachhund | 35 | Biss aus 1,2 Feldern, 12 Schaden | Wittert auf 2,5 Felder ringsum und in jedem Licht, sehr schnell, schlägt an. Sein Biss macht den Einsatz nicht laut | nicht käuflich |
+
+Die Art steht in der Mission je Gegner. Fährt die Maus über einen sichtbaren Gegner, zeigt das Spiel seine Art und ob er käuflich ist.
+
 ### Verhalten der Wachen
 
 Eine Wache ist immer in einem von fünf Zuständen. Sichtbare Wachen tragen im Spiel eine farbige Marke.
@@ -185,12 +197,12 @@ Gemessen in der Spiellogik über je 300 Zufallsfolgen mit `tools/Messingstadt.Ba
 
 | Spielweise | Siege | Niederlagen | Tote Agenten | Lebenspunkte übrig | Dauer | Wertung |
 |---|---|---|---|---|---|---|
-| Alle rennen zum Buch, dann zum Wagen | 70 % | 29 % | 2,40 | 71 von 400 | 19 s | Laut |
-| Jeder greift die nächste Wache an, dann Buch und Wagen | 92 % | 7 % | 1,10 | 176 von 400 | 36 s | Laut |
-| Alle schießen dieselbe Wache aus, dann Buch und Wagen | 78 % | 21 % | 1,58 | 147 von 400 | 34 s | Laut |
-| Alle sprinten den ganzen Weg zum Buch und zum Wagen | 37 % | 62 % | 3,34 | 15 von 400 | 15 s | Laut |
-| Auf die Straße stellen und kämpfen lassen, dann Buch und Wagen | 57 % | 39 % | 2,67 | 75 von 400 | 42 s | Laut |
-| Hinterhalt: einer lockt, alle warten zwischen den Häusern | 14 % | 85 % | 3,73 | 15 von 400 | 29 s | Laut |
+| Alle rennen zum Buch, dann zum Wagen | 46 % | 53 % | 2,71 | 43 von 400 | 19 s | Laut |
+| Jeder greift die nächste Wache an, dann Buch und Wagen | 82 % | 18 % | 1,36 | 134 von 400 | 37 s | Laut |
+| Alle schießen dieselbe Wache aus, dann Buch und Wagen | 81 % | 18 % | 1,56 | 140 von 400 | 39 s | Laut |
+| Alle sprinten den ganzen Weg zum Buch und zum Wagen | 54 % | 46 % | 2,97 | 27 von 400 | 15 s | Laut |
+| Auf die Straße stellen und kämpfen lassen, dann Buch und Wagen | 9 % | 90 % | 3,85 | 7 von 400 | 31 s | Laut |
+| Hinterhalt: einer lockt, alle warten zwischen den Häusern | 2 % | 97 % | 3,97 | 1 von 400 | 30 s | Laut |
 | Greta schleicht allein, Klicks auf ±0,5 s genau | 100 % | 0 % | 0 | 400 von 400 | 67 s | Unentdeckt |
 | Greta schleicht allein, Klicks auf ±1 s genau | 90 % | 9 % | 0,09 | | 67 s | meist Unentdeckt |
 
@@ -198,10 +210,10 @@ Mit dem Lageplan ist kein vorab berechneter Zeitplan mehr nötig. Greta geht dab
 
 | Start | Unentdeckt | Dauer |
 |---|---|---|
-| Klick im Lageplan, Start genau bei frei | 92 % | 61 s |
-| Eigener Klick, bis 0,25 s zu spät | 71 % | 112 s |
-| Eigener Klick, bis 0,5 s zu spät | 68 % | 122 s |
-| Eigener Klick, bis 1 s zu spät | 54 % | 154 s |
+| Klick im Lageplan, Start genau bei frei | 94 % | 55 s |
+| Eigener Klick, bis 0,25 s zu spät | 67 % | 119 s |
+| Eigener Klick, bis 0,5 s zu spät | 59 % | 146 s |
+| Eigener Klick, bis 1 s zu spät | 51 % | 161 s |
 
 Der Schleichplan ist als Test abgesichert. Eine frühere Fassung mit Klick 7 bei 63 s und ohne Einsteigen wurde im Spiel mit echten Klicks gewonnen:
 

@@ -135,6 +135,7 @@ namespace Messingstadt
             var (figures, region) = Game.FigureFrame("Arbeiter", 0, Main.IdleFirstColumn);
             _worker = NewSprite(figures, (int)region.Size.X, (int)region.Size.Y);
             _worker.RegionRect = region;
+            _worker.Scale = Game.FigureScale;
             _workerX = WorkerSpot.X;
             _workerY = WorkerSpot.Y;
             var dot = Image.CreateEmpty(2, 1, false, Image.Format.Rgba8);

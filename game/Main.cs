@@ -124,6 +124,7 @@ void fragment() {
         private readonly Dictionary<int, float> _fallStarted = new();
         private readonly List<Vector2> _tickFrom = new();
         private int _figureViews, _footX, _footY;
+        private float _figureRes = 1f;
         private Sprite2D _book = null!;
         private Camera2D _camera = null!;
         private PaperUi _paper = null!;
@@ -577,6 +578,7 @@ void fragment() {
             _figureViews = figures.RootElement.GetProperty("views").GetInt32();
             _footX = figures.RootElement.GetProperty("footX").GetInt32();
             _footY = figures.RootElement.GetProperty("footY").GetInt32();
+            _figureRes = figures.RootElement.GetProperty("res").GetSingle();
             int row = 0;
             foreach (var n in figures.RootElement.GetProperty("names").EnumerateArray())
             {
@@ -818,7 +820,7 @@ void fragment() {
             World = new World(_map, _mission);
             foreach (var u in World.Units)
             {
-                var sprite = new Sprite2D { Texture = _figures, RegionEnabled = true, Centered = false };
+                var sprite = new Sprite2D { Texture = _figures, RegionEnabled = true, Centered = false, Scale = FigureScale };
                 AddChild(sprite);
                 _unitSprites.Add(sprite);
             }
@@ -1033,7 +1035,7 @@ void fragment() {
             // Verstärkung kommt erst im Einsatz dazu und braucht dann ein eigenes Bild.
             while (_unitSprites.Count < World.Units.Count)
             {
-                var added = new Sprite2D { Texture = _figures, RegionEnabled = true, Centered = false };
+                var added = new Sprite2D { Texture = _figures, RegionEnabled = true, Centered = false, Scale = FigureScale };
                 AddChild(added);
                 _unitSprites.Add(added);
             }
@@ -1054,7 +1056,7 @@ void fragment() {
                 s.RegionRect = FigureRegion(u.Sprite, view, FigureColumn(u, aiming, sinceShot));
                 s.FlipH = across < 0;
                 s.Modulate = FigureGlow(u);
-                s.Position = foot - new Vector2(_footX, _footY);
+                s.Position = foot - FigureFoot;
                 int depth = ThingZ(InsertIndex(u.X / (float)World.TileUnits, u.Y / (float)World.TileUnits) - 1);
                 s.ZIndex = u.Alive ? depth + rank + 2 : depth + 1;
             }
@@ -1107,7 +1109,18 @@ void fragment() {
         public (Texture2D Sheet, Rect2 Region) FigureFrame(string name, int view, int column) =>
             (_figures, FigureRegion(name, view, column));
 
-        public Vector2 FigureFoot => new(_footX, _footY);
+        /// <summary>Lage der Füße im Figurenbild, in Weltpixeln.</summary>
+        public Vector2 FigureFoot => new Vector2(_footX, _footY) / _figureRes;
+
+        /// <summary>Das Blatt ist feiner aufgelöst als die Welt. So groß werden Figuren gezeichnet.</summary>
+        public Vector2 FigureScale => Vector2.One / _figureRes;
+
+        /// <summary>Gegner unter dem Mauszeiger, den ein Agent gerade sieht. Für die Anzeige der Art.</summary>
+        public Unit? HoveredGuard()
+        {
+            var guard = UnitUnderCursor(GetGlobalMousePosition(), Faction.Guard);
+            return guard != null && World.IsSpottedByAgents(guard) ? guard : null;
+        }
         public const int IdleFirstColumn = IdleColumn;
         public const int WalkFirstColumn = WalkColumn;
 
@@ -1153,10 +1166,12 @@ void fragment() {
             }
             if (u.Moving)
             {
-                float stride = u.Sprinting ? RunStrideUnits : StrideUnits;
+                // Ein alarmierter Hund rennt, er kennt kein Gehen mehr.
+                bool running = u.Sprinting || (u.Type.Bites && u.Alerted);
+                float stride = running ? RunStrideUnits : StrideUnits;
                 float speed = World.WalkSpeed(u) * (u.Sprinting ? 1.4f : 1f);
                 int frame = (int)(u.WalkTick * speed / stride * CycleFrames) % CycleFrames;
-                return (aiming ? AimWalkColumn : u.Sprinting ? RunColumn : WalkColumn) + frame;
+                return (aiming ? AimWalkColumn : running ? RunColumn : WalkColumn) + frame;
             }
             if (aiming)
             {

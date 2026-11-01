@@ -398,6 +398,10 @@ def tenement(w, h, name=None, material=("brick",), door_at=None, lit_rate=0.65):
 SPECS = {
     "Agent": dict(coat=("coat_d", "coat", "coat_l"), legs="iron", hat="fedora", hat_c="felt", shirt="ash", hair="hair", hem=31, belt=21),
     "Wachmann": dict(coat=("uni_d", "uni", "uni_l"), legs="uni", hat="peak", hat_c="soot", shirt="uni_d", hair="hair", hem=26, belt=19),
+    "Offizier": dict(coat=("soot", "iron", "steel"), legs="soot", hat="peak", hat_c="black", shirt="paper", hair="hair", hem=32, belt=20, trim="brass_l"),
+    "Werkschutz": dict(coat=("soot", "green", "green_l"), legs="soot", hat="helmet", hat_c="steel", shirt="soot", hair="hair", hem=26, belt=20, bulk=1.32, gun="shotgun", trim="steel"),
+    "Schuetze": dict(coat=("wood_d", "wood", "brass_d"), legs="iron", hat="peak", hat_c="wood_d", shirt="ash", hair="hair", hem=24, belt=19, gun="rifle"),
+    "Hund": dict(coat=("soot", "wood_d", "wood"), legs="wood_d", hat="peak", hat_c="soot", shirt="soot", hair="soot", hem=26, belt=19, dog=True),
     "Arbeiter": dict(coat=("grey_d", "grey", "grey_l"), legs="iron", hat="peak", hat_c="grime", shirt="ash", hair="hair", hem=25, belt=20),
 }
 

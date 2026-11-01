@@ -20,6 +20,7 @@ namespace Messingstadt
         private const float AmbientReach = 300f;
         private const float WhistleCooldown = 9f;
         private const float RepeatCooldown = 0.03f;
+        private const float BarkSeconds = 1.8f;
         private const float ShakeReach = 340f;
         private const float ShotShake = 0.3f;
         private const float MusicDb = -19f;
@@ -40,6 +41,8 @@ namespace Messingstadt
         private readonly HashSet<int> _fallen = new();
         private readonly HashSet<int> _bribed = new();
         private readonly HashSet<int> _inCombat = new();
+        private readonly Dictionary<int, int> _dogBite = new();
+        private float _nextBark;
         private AudioStreamPlayer2D _lockpick = null!;
         private AudioStreamPlayer _music = null!;
         private AudioStreamPlayer _tension = null!;
@@ -148,7 +151,7 @@ namespace Messingstadt
         }
 
         /// <summary>Spielt ein kurzes Geräusch an einer Stelle der Welt.</summary>
-        public void Play(string name, Vector2 position, float volume = 0f, float reach = EventReach, float pitchSpread = 0.06f)
+        public void Play(string name, Vector2 position, float volume = 0f, float reach = EventReach, float pitchSpread = 0.06f, float pitch = 1f)
         {
             if (_lastPlayed.TryGetValue(name, out float last) && _time - last < RepeatCooldown)
             {
@@ -161,7 +164,7 @@ namespace Messingstadt
             player.VolumeDb = volume;
             player.MaxDistance = reach;
             player.Attenuation = 1.4f;
-            player.PitchScale = 1f + (float)(_rng.NextDouble() * 2 - 1) * pitchSpread;
+            player.PitchScale = pitch * (1f + (float)(_rng.NextDouble() * 2 - 1) * pitchSpread);
             player.Play();
             PlayCount++;
             string group = name.Split('_')[0] + (name.StartsWith("step_") ? "_" + name.Split('_')[1] : "");
@@ -182,6 +185,7 @@ namespace Messingstadt
             _stepCount.Clear();
             _fallen.Clear();
             _bribed.Clear();
+            _dogBite.Clear();
             _inCombat.Clear();
             _doorsOpen = new bool[world.Doors.Count];
         }
@@ -219,6 +223,11 @@ namespace Messingstadt
                 int count = Game.StepsTaken(u);
                 if (_stepCount.TryGetValue(u.Id, out int before) && count != before)
                 {
+                    if (u.Type.Bites)
+                    {
+                        _stepCount[u.Id] = count;
+                        return;
+                    }
                     string kind = u.Sprinting ? "step_run" : u.Faction == Faction.Agent ? "step_soft" : "step_boot";
                     float volume = u.Sprinting ? -13f : u.Faction == Faction.Agent ? -19f : -22f;
                     // Wachen hört man erst aus der Nähe, sonst klappern alle Rundgänge der Karte zugleich.
@@ -235,6 +244,26 @@ namespace Messingstadt
             {
                 Play("whistle", at, -3f);
                 _nextWhistle = _time + WhistleCooldown;
+            }
+            if (u.Type.Bites)
+            {
+                ListenToDog(u, at);
+            }
+        }
+
+        private void ListenToDog(Unit dog, Vector2 at)
+        {
+            bool alarmed = dog.GuardState == GuardState.Noticing || dog.GuardState == GuardState.Combat;
+            if (alarmed && _time > _nextBark)
+            {
+                Play("dog", at, -6f, 800f, 0.1f);
+                _nextBark = _time + BarkSeconds;
+            }
+            _dogBite.TryGetValue(dog.Id, out int last);
+            if (dog.LastFiredTick > last)
+            {
+                _dogBite[dog.Id] = dog.LastFiredTick;
+                Play("hit", at, -4f, StepReach);
             }
         }
 
@@ -254,7 +283,10 @@ namespace Messingstadt
                     continue;
                 }
                 var from = Game.ToScreen(shot.FromX, shot.FromY);
-                Play($"shot_{(shot.FromX + shot.Tick) % 3}", from, 0f);
+                // Gewehr und Schrotflinte klingen tiefer als die Pistole, das Gewehr rollt länger.
+                var type = shot.ShooterId >= 0 && shot.ShooterId < world.Units.Count ? world.Units[shot.ShooterId].Type : GuardType.Wachmann;
+                float pitch = type == GuardType.Schuetze ? 0.72f : type == GuardType.Werkschutz ? 0.62f : 1f;
+                Play($"shot_{(shot.FromX + shot.Tick) % 3}", from, type == GuardType.Wachmann ? 0f : 2f, EventReach, 0.05f, pitch);
                 if (from.DistanceTo(Game.CameraCenter) < ShakeReach)
                 {
                     Game.ShakeCamera(ShotShake);

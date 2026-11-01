@@ -52,6 +52,7 @@ namespace Messingstadt.Core
         public string Name = "";
         public string Sprite = "";
         public Faction Faction;
+        public GuardType Type = GuardType.Wachmann;
         public int X, Y;
         public int Hp, MaxHp;
         public int Cooldown;
@@ -92,7 +93,7 @@ namespace Messingstadt.Core
     }
 
     /// <summary>Ein abgegebener Schuss, nur für die Darstellung.</summary>
-    public readonly record struct ShotEvent(int FromX, int FromY, int ToX, int ToY, bool Hit, int Tick);
+    public readonly record struct ShotEvent(int FromX, int FromY, int ToX, int ToY, bool Hit, int Tick, int ShooterId = -1);
 
     /// <summary>Der gesamte Spielzustand. Vollständig deterministisch: gleicher Seed und gleiche Befehle, gleicher Ablauf.</summary>
     public sealed class World
@@ -101,17 +102,11 @@ namespace Messingstadt.Core
         public const int TileUnits = 1000;
 
         private const int AgentHp = 100;
-        private const int GuardHp = 60;
         private const int AgentSpeed = 120;
-        private const int GuardPatrolSpeed = 80;
-        private const int GuardAlertSpeed = 110;
         private const int WeaponRange = 7 * TileUnits;
-        private const int WeaponCooldown = 14;
         private const int AgentDamage = 16;
-        private const int GuardDamage = 10;
         private const int HitChanceBase = 85;
         private const int HitChancePerTile = 5;
-        private const int SightRange = 7 * TileUnits;
         private const int AgentSightRange = 10 * TileUnits;
         private const int AlertRadius = 8 * TileUnits;
         private const int AlarmDelayPerTile = 3;
@@ -138,6 +133,10 @@ namespace Messingstadt.Core
         private const int MinSprintStamina = 20;
         private const int SprintHeardRange = 4 * TileUnits;
         private const int CoverHoldTicks = 60;
+
+        private const int BiteRange = 1200;
+        private const int BiteHitPercent = 80;
+        private const int BiteRepathTicks = 8;
 
         public const int PickupTicks = 60;
         public const int EscapeTicks = 20;
@@ -249,7 +248,7 @@ namespace Messingstadt.Core
             }
             foreach (var g in mission.Guards)
             {
-                AddUnit(g, Faction.Guard, GuardHp);
+                AddUnit(g, Faction.Guard, 0);
             }
         }
 
@@ -270,6 +269,11 @@ namespace Messingstadt.Core
             {
                 u.FacingX = ToUnits(d.Facing[0]);
                 u.FacingY = ToUnits(d.Facing[1]);
+            }
+            if (faction == Faction.Guard)
+            {
+                u.Type = GuardType.ForId(d.Type);
+                u.Hp = u.MaxHp = u.Type.Hp;
             }
             u.Skill = d.Skill;
             u.Legs = Math.Clamp(d.Legs, 1, 3);
@@ -358,7 +362,7 @@ namespace Messingstadt.Core
             var u = Units[unitId];
             var g = Units[guardId];
             if (!u.Alive || u.Skill != SkillBookkeeper || !g.Alive || g.Faction != Faction.Guard || g.Bribed
-                || g.GuardState == GuardState.Combat || Money < BribeCost || State != MissionState.Running)
+                || g.GuardState == GuardState.Combat || g.Type.BribeCost == 0 || Money < g.Type.BribeCost || State != MissionState.Running)
             {
                 return false;
             }
@@ -460,7 +464,7 @@ namespace Messingstadt.Core
             {
                 Name = $"Verstärkung {_reinforcedCount}", Sprite = _reinforcements.Sprite,
                 X = _reinforcements.X, Y = _reinforcements.Y,
-            }, Faction.Guard, GuardHp);
+            }, Faction.Guard, 0);
             var g = Units[^1];
             // Verstärkung sichert den Fluchtweg und verteilt sich über die Tiefe der Zone. Wer rennt, läuft in sie hinein.
             int zoneTiles = Math.Max(1, (_exit.Y1 - _exit.Y0) / TileUnits);
@@ -495,14 +499,14 @@ namespace Messingstadt.Core
         private void WorkOnBribe(Unit a)
         {
             var g = Units[a.BribeTarget];
-            if (!g.Alive || g.Bribed || g.GuardState == GuardState.Combat || Money < BribeCost)
+            if (!g.Alive || g.Bribed || g.GuardState == GuardState.Combat || Money < g.Type.BribeCost)
             {
                 a.BribeTarget = -1;
                 a.Path.Clear();
             }
             else if (CanSee(a, g, BribeRange))
             {
-                Money -= BribeCost;
+                Money -= g.Type.BribeCost;
                 g.Bribed = true;
                 a.BribeTarget = -1;
                 a.Path.Clear();
@@ -629,7 +633,7 @@ namespace Messingstadt.Core
                 return;
             }
             // Nur wer ahnungslos ist, hat einen Sichtkegel. Alarmierte Wachen achten auf alle Seiten.
-            Unit? seen = g.GuardState == GuardState.Patrol ? NearestNoticedEnemy(g) : NearestVisibleEnemy(g, SightRange);
+            Unit? seen = g.GuardState == GuardState.Patrol ? NearestNoticedEnemy(g) : NearestVisibleEnemy(g, g.Type.SightRange);
             if (seen != null)
             {
                 g.LastKnownX = seen.X;
@@ -647,7 +651,7 @@ namespace Messingstadt.Core
                     if (seen != null)
                     {
                         int ticks = NoticeBase + NoticePerTile * Distance(g, seen) / TileUnits;
-                        StartNoticing(g, seen, Math.Max(1, ticks * NoticePercentAt(seen.X, seen.Y) / 100));
+                        StartNoticing(g, seen, Math.Max(1, ticks * NoticePercentAt(seen.X, seen.Y) * g.Type.NoticePercent / 10000));
                     }
                     else
                     {
@@ -753,6 +757,11 @@ namespace Messingstadt.Core
             g.Alerted = true;
             g.LastSeenTick = Tick;
             g.RepathTick = 0;
+            // Offizier ruft, Hund schlägt an: Das hören die anderen auch ohne Schuss.
+            if (g.Type.CallsAlarm)
+            {
+                RaiseAlarm(g.X, g.Y);
+            }
         }
 
         private void StartInvestigating(Unit g)
@@ -772,12 +781,29 @@ namespace Messingstadt.Core
                 }
                 return;
             }
+            if (g.Type.Bites)
+            {
+                // Der Hund läuft direkt auf sein Ziel zu, statt sich eine Schussposition zu suchen.
+                if (Tick >= g.RepathTick)
+                {
+                    g.RepathTick = Tick + BiteRepathTicks;
+                    if (Distance(g, seen) > BiteRange)
+                    {
+                        WalkTo(g, seen.TileX, seen.TileY);
+                    }
+                    else
+                    {
+                        g.Path.Clear();
+                    }
+                }
+                return;
+            }
             if (g.Path.Count > 0 || Tick < g.RepathTick)
             {
                 return;
             }
             g.RepathTick = Tick + RepathInterval;
-            bool inRange = Distance(g, seen) <= WeaponRange - TileUnits;
+            bool inRange = Distance(g, seen) <= g.Type.WeaponRange - TileUnits;
             if (inRange && !TileIsTaken(g, g.TileX, g.TileY) && HasCoverFrom(g, seen))
             {
                 return;
@@ -813,7 +839,8 @@ namespace Messingstadt.Core
                     }
                     int tx = target.TileX - x, ty = target.TileY - y;
                     int distSq = tx * tx + ty * ty;
-                    if (distSq > 36 || distSq < 4)
+                    int reach = g.Type.WeaponRange / TileUnits - 1;
+                    if (distSq > reach * reach || distSq < 4)
                     {
                         continue;
                     }
@@ -895,7 +922,7 @@ namespace Messingstadt.Core
         /// <summary>Tempo beim Gehen in Einheiten pro Takt.</summary>
         public static int WalkSpeed(Unit u) => u.Faction == Faction.Agent
             ? (u.CarriesItem ? CarrierSpeed : AgentSpeed)
-            : (u.Alerted ? GuardAlertSpeed : GuardPatrolSpeed);
+            : (u.Alerted ? u.Type.AlertSpeed : u.Type.PatrolSpeed);
 
         private void Move(Unit u)
         {
@@ -949,6 +976,11 @@ namespace Messingstadt.Core
                 u.Cooldown--;
                 return;
             }
+            if (u.Type.Bites)
+            {
+                Bite(u);
+                return;
+            }
             // Wer rennt, schießt nicht: Das ist der Preis für das Tempo.
             if (u.Sprinting)
             {
@@ -960,17 +992,17 @@ namespace Messingstadt.Core
                 u.TargetId = -1;
                 target = null;
             }
-            if (target != null && !CanSee(u, target, WeaponRange))
+            if (target != null && !CanSee(u, target, u.Type.WeaponRange))
             {
                 // Befohlenes Ziel noch nicht in Reichweite: unterwegs nur auf alarmierte Gegner feuern.
-                target = NearestVisibleEnemy(u, WeaponRange);
+                target = NearestVisibleEnemy(u, u.Type.WeaponRange);
                 if (target != null && target.Alerted)
                 {
                     Shoot(u, target);
                 }
                 return;
             }
-            target ??= NearestVisibleEnemy(u, WeaponRange);
+            target ??= NearestVisibleEnemy(u, u.Type.WeaponRange);
             // Agenten bleiben ruhig, bis die Wachen alarmiert sind oder der Spieler ein Ziel vorgibt.
             if (target == null || (u.Faction == Faction.Guard && u.GuardState != GuardState.Combat))
             {
@@ -985,7 +1017,7 @@ namespace Messingstadt.Core
 
         private void Shoot(Unit u, Unit target)
         {
-            u.Cooldown = WeaponCooldown;
+            u.Cooldown = u.Type.Cooldown;
             u.FacingX = target.X - u.X;
             u.FacingY = target.Y - u.Y;
             u.AimX = u.FacingX;
@@ -1000,7 +1032,7 @@ namespace Messingstadt.Core
                 }
             }
             bool hit = NextRandom() % 100 < (uint)HitChance(u, target);
-            Shots.Add(new ShotEvent(u.X, u.Y, target.X, target.Y, hit, Tick));
+            Shots.Add(new ShotEvent(u.X, u.Y, target.X, target.Y, hit, Tick, u.Id));
             if (Shots.Count > 64)
             {
                 Shots.RemoveAt(0);
@@ -1018,19 +1050,48 @@ namespace Messingstadt.Core
             RaiseAlarm(u.X, u.Y);
             if (hit)
             {
-                target.Hp = Math.Max(0, target.Hp - (u.Faction == Faction.Agent ? AgentDamage : GuardDamage));
-                if (!target.Alive)
+                Hurt(target, u.Faction == Faction.Agent ? AgentDamage : u.Type.Damage);
+            }
+        }
+
+        private void Hurt(Unit target, int damage)
+        {
+            target.Hp = Math.Max(0, target.Hp - damage);
+            if (!target.Alive)
+            {
+                target.Path.Clear();
+                target.Moving = false;
+                if (target.CarriesItem)
                 {
-                    target.Path.Clear();
-                    target.Moving = false;
-                    if (target.CarriesItem)
-                    {
-                        target.CarriesItem = false;
-                        ItemTaken = false;
-                        ItemX = target.X;
-                        ItemY = target.Y;
-                    }
+                    target.CarriesItem = false;
+                    ItemTaken = false;
+                    ItemX = target.X;
+                    ItemY = target.Y;
                 }
+            }
+        }
+
+        /// <summary>Der Hund beißt, wenn er nah genug ist. Das ist kein Schuss und macht den Einsatz nicht laut.</summary>
+        private void Bite(Unit dog)
+        {
+            if (dog.GuardState != GuardState.Combat)
+            {
+                return;
+            }
+            var target = NearestVisibleEnemy(dog, BiteRange);
+            if (target == null)
+            {
+                return;
+            }
+            dog.Cooldown = dog.Type.Cooldown;
+            dog.FacingX = target.X - dog.X;
+            dog.FacingY = target.Y - dog.Y;
+            dog.AimX = dog.FacingX;
+            dog.AimY = dog.FacingY;
+            dog.LastFiredTick = Tick;
+            if (NextRandom() % 100 < BiteHitPercent)
+            {
+                Hurt(target, dog.Type.Damage);
             }
         }
 
@@ -1191,10 +1252,10 @@ namespace Messingstadt.Core
             int bestDist = int.MaxValue;
             foreach (var o in Units)
             {
+                int close = Math.Max(o.Sprinting ? SprintHeardRange : GuardCloseRange, g.Type.HearRange);
                 if (o.Alive && o.Faction != g.Faction && Distance(g, o) < bestDist
-                    && CanSee(g, o, Math.Max(NoticeRangeAt(o.X, o.Y), o.Sprinting ? SprintHeardRange : GuardCloseRange))
-                    && (Distance(g, o) <= (o.Sprinting ? SprintHeardRange : GuardCloseRange)
-                        || (InCone(g, o) && Distance(g, o) <= NoticeRangeAt(o.X, o.Y))))
+                    && CanSee(g, o, Math.Max(NoticeRangeAt(o.X, o.Y), close))
+                    && (Distance(g, o) <= close || (InCone(g, o) && Distance(g, o) <= NoticeRangeAt(o.X, o.Y))))
                 {
                     best = o;
                     bestDist = Distance(g, o);
@@ -1219,9 +1280,10 @@ namespace Messingstadt.Core
             int x = tileX * TileUnits + TileUnits / 2, y = tileY * TileUnits + TileUnits / 2;
             foreach (var g in Units)
             {
-                if (g.Alive && g.Faction == Faction.Guard && !g.Bribed && DistanceTo(g, x, y) <= NoticeRangeAt(x, y)
+                int close = Math.Max(GuardCloseRange, g.Type.HearRange);
+                if (g.Alive && g.Faction == Faction.Guard && !g.Bribed && DistanceTo(g, x, y) <= Math.Max(NoticeRangeAt(x, y), close)
                     && Map.HasLineOfSight(g.TileX, g.TileY, tileX, tileY)
-                    && (DistanceTo(g, x, y) <= GuardCloseRange || InCone(g, x, y)))
+                    && (DistanceTo(g, x, y) <= close || (InCone(g, x, y) && DistanceTo(g, x, y) <= NoticeRangeAt(x, y))))
                 {
                     return g;
                 }

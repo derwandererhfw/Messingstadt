@@ -40,6 +40,9 @@ namespace Messingstadt.Core
     {
         public string Name { get; set; } = "";
         public string Sprite { get; set; } = "";
+
+        /// <summary>Art des Gegners, siehe GuardType. Ohne Angabe ein Wachmann.</summary>
+        public string Type { get; set; } = "";
         public double X { get; set; }
         public double Y { get; set; }
         public List<double[]> Patrol { get; set; } = new();

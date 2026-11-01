@@ -228,7 +228,7 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
-        public void RealMissionRushUsuallyWinsButCostsAgents()
+        public void RealMissionRushIsARealRiskAndCostsAgents()
         {
             int wins = 0, dead = 0;
             const int Runs = 40;
@@ -260,7 +260,8 @@ namespace Messingstadt.Core.Tests
                 wins += w.State == MissionState.Won ? 1 : 0;
                 dead += w.Units.FindAll(u => u.Faction == Faction.Agent && !u.Alive).Count;
             }
-            Assert.True(wins >= Runs * 3 / 4, $"Nur {wins} von {Runs} Rennen gewonnen");
+            // Blindes Rennen soll möglich bleiben, aber gegen die stärkeren Gegner kein sicherer Weg sein.
+            Assert.InRange(wins, Runs / 4, Runs * 3 / 4);
             Assert.True(dead >= Runs, $"Rennen kostet zu wenig: {dead} Tote in {Runs} Läufen");
         }
 

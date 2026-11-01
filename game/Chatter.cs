@@ -36,6 +36,8 @@ namespace Messingstadt
             "Die Hintertür vom Lager bleibt zu. Da liegt die Lohnkasse.",
             // Stimmt: Hinter dem Lager gibt es keinen Rundgang, der Lageplan zeigt das Feld grün.
             "Hinter dem Lager läuft sowieso keiner Streife.",
+            // Stimmt: Am Wagen steht der Werkschutz, oben auf der Straße der Schütze, im Westen der Hund.
+            "Der Werkschutz am Wagen nimmt kein Geld.", "Oben an der Straße hat einer ein Gewehr.", "Der Hund im Fabrikhof riecht dich auch im Dunkeln.",
             // Stimmt: So wirkt die Lichtregel beim Bemerken.
             "Unter den Laternen erkenn ich dich sofort.", "Im Dunkeln siehst du die Hand vor Augen nicht.", "Halt dich ans Licht, im Schatten sieht man nichts.",
         };
@@ -106,7 +108,7 @@ namespace Messingstadt
             }
             foreach (var u in world.Units)
             {
-                if (u.Faction == Faction.Guard && u.Alive)
+                if (u.Faction == Faction.Guard && u.Alive && !u.Type.Bites)
                 {
                     ListenToGuard(world, u);
                 }
@@ -149,7 +151,7 @@ namespace Messingstadt
             var guards = new List<Unit>();
             foreach (var u in world.Units)
             {
-                if (u.Faction == Faction.Guard && u.Alive && u.GuardState == GuardState.Patrol && !u.Bribed
+                if (u.Faction == Faction.Guard && u.Alive && !u.Type.Bites && u.GuardState == GuardState.Patrol && !u.Bribed
                     && OnScreen(Game.UnitPos(u)) && !Game.IsHiddenByThing(u))
                 {
                     guards.Add(u);
