@@ -93,7 +93,9 @@ namespace Messingstadt
             {
                 var sprite = new Sprite2D { Texture = Game.FigureFrame("Arbeiter", 0, 0).Sheet, RegionEnabled = true, Centered = false };
                 AddChild(sprite);
-                _people.Add(new Striker { Sprite = sprite, Tile = Spots[i], Index = i });
+                var person = new Striker { Sprite = sprite, Tile = Spots[i], Index = i };
+                _people.Add(person);
+                Game.AddWorkerVoice(() => person.Gone ? null : Screen(person.Tile));
             }
         }
 

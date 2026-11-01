@@ -101,6 +101,21 @@ mit Ringen in den Pfützen, flackernde Laternen (eine mit Wackelkontakt), flacke
 Papierfetzen in Windböen. Das ist reine Darstellung mit eigenem Zufall in `game/Ambience.cs` und
 `game/RainLayer.cs`. Die Spiellogik bleibt deterministisch, und die Animation läuft auch in der Pause weiter.
 
+### Eintauchen
+
+Was den Spieler in die Welt ziehen soll, alles reine Darstellung:
+
+| Was | Wie |
+|---|---|
+| Einstieg | Titel auf Schwarz, die Kamera sinkt auf den Trupp, eine Schreibmaschine tippt den Auftrag. Jede Taste springt weiter (`game/Intro.cs`) |
+| Oberfläche | Oben ein Telegramm, unten vergilbte Personalakten mit Stempel. Ein Klick auf eine Akte wählt den Agenten (`game/PaperUi.cs`) |
+| Filmlook | Dunkle Bildränder, feines Filmkorn, leichte Farbstimmung (`game/FilmLook.cs`) |
+| Gespräche | Wachen und Arbeiter reden kurze Sätze, Wachen rufen im Alarm. Manche Sätze verraten etwas über die Rundgänge (`game/Chatter.cs`) |
+| Kamera | Folgt weich, atmet leicht, zittert bei Donner und nahen Schüssen, rückt heran, wenn ein Agent fällt |
+| Ton | Hund, Sirene, Güterzug und Schichthorn in der Ferne, Radio hinter einem Fenster. Herzschlag, wenn eine Wache gerade bemerkt. Im Dunkeln wird die Musik dünner |
+| Zeitung | Nach jedem Einsatz eine Schlagzeile, die zum Verlauf passt: unentdeckt, leise, blutig, verloren, aufgegeben (`Headlines` in der Spiellogik) |
+| Spuren | Nasse Fußabdrücke, die nach 8 Sekunden verschwinden, und Blutstropfen verletzter Figuren. Wachen folgen ihnen nicht (`game/Traces.cs`) |
+
 ### Figuren
 
 Figuren werden aus einem kleinen 3D-Modell gerendert (`tools/art/figures3d.py`): runde Körperteile mit Gelenken, im selben Blickwinkel wie die Stadt, dann auf Pixelgröße verkleinert. Das Blatt hat acht Blickrichtungen, fünf gerendert und drei gespiegelt. Bewegungen: Gehen und Rennen mit je 8 Bildern, Stehen mit leichtem Atmen, Zielen mit Rückstoß, zielend Gehen und zwei Arten zu sterben: Erst zuckt der Körper, dann geben die Knie nach, dann sackt er nach vorn oder zur Seite zusammen, und eine Blutlache wächst. Die Schrittgeschwindigkeit hängt am Tempo, damit die Füße nicht rutschen. Zwischen den 20 Spieltakten pro Sekunde wird die Position im Bild geglättet, die Spiellogik bleibt davon unberührt.
@@ -116,7 +131,7 @@ Reine Darstellung mit eigenem Zufall, ohne Einfluss auf die Spiellogik:
 | Hotelschild | Leuchtet rot, ein Buchstabe hat einen Wackelkontakt, manchmal fällt das ganze Schild kurz aus |
 | Ratten | Huschen an Hauswänden entlang, fliehen vor Menschen und Schüssen in den nächsten Gully (`game/Critters.cs`) |
 | Tauben | Sitzen auf Dachkanten und picken, fliegen bei Schüssen oder nahen Menschen auf und kommen später zurück |
-| Gewitter | Alle 35 bis 95 Sekunden Blitze mit vorberechneten Schatten, Figuren im Hausschatten bleiben dunkel. Der Donner kommt je nach Entfernung später und leiser (`game/Weather.cs`) |
+| Gewitter | Alle 35 bis 95 Sekunden Blitze mit vorberechneten Schatten, Figuren im Hausschatten bleiben dunkel. Der Donner kommt je nach Entfernung später und leiser. Dazwischen alle 18 bis 50 Sekunden fernes Grollen ohne Blitz (`game/Weather.cs`) |
 | Bodennebel | Schwaden ziehen über den Boden und leuchten dort, wo Licht fällt, weil der Nebel die Lichtkarte des Bodens liest |
 | Lichtkegel | Unter den Laternen steht ein Lichtkegel, in dem der Regen aufleuchtet |
 | Luftschiff | Zieht in Abständen über die Stadt, sein Suchscheinwerfer streift durch die Straßen. Bisher ohne Einfluss auf die Wachen (`game/Airship.cs`) |
@@ -132,7 +147,7 @@ Alle Geräusche werden per Synthese erzeugt (`tools/art/generate_audio.py`), es 
 |---|---|
 | Überall | Regen und Wind |
 | Am Ort, nur aus der Nähe | Laternen, Dampf aus Gullys, Kesselfeuer und Maschinen, Dieselmotor des Fluchtwagens, Bildfunk, Leuchtschild |
-| Figuren | Schritte, leiser bei Agenten, schwerer bei Wachen, laut beim Rennen. Schüsse mit Echo, Treffer, Querschläger, Fallen |
+| Figuren | Dumpfe Schritte, Wachen nur aus der Nähe, Agenten etwas weiter, laut beim Rennen. Schüsse mit Echo, Treffer, Querschläger, Fallen |
 | Einsatz | Trillerpfeife, wenn eine Wache in den Kampf geht, Alarmglocke beim Anrücken der Verstärkung, Dietrich und Tür, Blättern im Kontobuch, Münzen, Abschlussakkord |
 | Tiere | Tauben flattern auf, Ratten quieken |
 | Wetter und Stadt | Donner, Motoren des Luftschiffs, Dampfstöße, Schweißen, Feuertonne |

@@ -127,10 +127,6 @@ def lamp():
 def neon():
     t = 4.5
     x = hum(120, t, (1, 0.35), 0.05)
-    for _ in range(14):
-        at = RNG.integers(0, int((t - 0.1) * RATE))
-        d = time(0.015)
-        x[at:at + len(d)] += lowpass(noise(0.015), 2500)[:len(d)] * decay(d, 0.004) * 1.5
     save("neon", loopable(x), 0.5)
 
 
@@ -148,7 +144,7 @@ def fire():
     for _ in range(120):
         at = RNG.integers(0, int((t - 0.05) * RATE))
         d = time(0.02)
-        x[at:at + len(d)] += highpass(noise(0.02), 1500)[:len(d)] * decay(d, 0.005) * RNG.uniform(0.3, 1.8)
+        x[at:at + len(d)] += lowpass(noise(0.02), 1300)[:len(d)] * decay(d, 0.006) * RNG.uniform(0.2, 1.0)
     save("fire", loopable(x), 0.6)
 
 
@@ -158,15 +154,9 @@ def diesel():
     tt = time(t)
     x = np.zeros_like(tt)
     beat = 11.0
-    for k in range(int(t * beat)):
-        at = max(0, int((k / beat + RNG.uniform(-0.003, 0.003)) * RATE))
-        if at >= len(x):
-            continue
-        d = time(0.09)
-        pulse = (np.sin(2 * np.pi * 55 * d) + 0.5 * np.sin(2 * np.pi * 110 * d)) * decay(d, 0.03)
-        end = min(len(x), at + len(d))
-        x[at:end] += pulse[:end - at] * (1 if k % 2 else 0.7)
-    x += 0.15 * lowpass(noise(t), 500)
+    # Gleichmäßiges Grollen statt einzelner Schläge, die klackern würden.
+    x += (np.sin(2 * np.pi * 52 * tt) + 0.35 * np.sin(2 * np.pi * 104 * tt)) * (0.75 + 0.25 * np.sin(2 * np.pi * beat * tt))
+    x += 0.3 * lowpass(noise(t), 240)
     save("diesel", loopable(x), 0.6)
 
 
@@ -190,14 +180,13 @@ def television():
 
 
 def steps():
-    """Schritte auf nassem Pflaster: dumpfer Absatz, dazu ein leises Knirschen."""
-    for voice, (name, pitch, weight) in enumerate((("step_soft", 92, 0.8), ("step_boot", 72, 1.0), ("step_run", 110, 1.0))):
+    """Schritte auf nassem Pflaster: nur ein dumpfer Tritt. Hohe Anteile klängen bei vielen Wachen wie Metallklackern."""
+    for name, pitch, peak in (("step_soft", 80, 0.6), ("step_boot", 62, 0.7), ("step_run", 90, 0.8)):
         for i in range(4):
-            t = time(0.16)
-            thump = np.sin(2 * np.pi * (pitch + i * 5) * t * (1 - t)) * decay(t, 0.03)
-            scrape = highpass(lowpass(noise(0.16), 4500), 1200) * decay(t, 0.018 + 0.006 * i)
-            wet = highpass(noise(0.16), 2800) * np.exp(-((t - 0.05) / 0.02) ** 2) * 0.25
-            save(f"{name}_{i}", fade(weight * thump + 0.4 * scrape + wet), 0.85)
+            t = time(0.18)
+            thump = np.sin(2 * np.pi * (pitch + i * 4) * t * (1 - t)) * decay(t, 0.04)
+            body = lowpass(noise(0.18), 420) * decay(t, 0.035 + 0.006 * i)
+            save(f"{name}_{i}", fade(thump + 1.1 * body, 0.006, 0.03), peak)
 
 
 def shots():
@@ -426,6 +415,83 @@ def weld():
     save("weld", loopable(x, 0.2), 0.5)
 
 
+def dog():
+    """Bellen in der Ferne, dumpf durch die Häuser."""
+    t = time(1.6)
+    x = np.zeros_like(t)
+    for at in (0.0, 0.32, 0.72):
+        tt = np.maximum(t - at, 0)
+        bark = np.sin(2 * np.pi * (380 - 900 * tt) * tt) * np.minimum(tt * 60, 1) * decay(tt, 0.05) * (t >= at)
+        x += bark + 0.5 * lowpass(noise(1.6), 1100) * decay(tt, 0.05) * (t >= at)
+    save("dog", fade(echo(lowpass(x, 1100), (0.2, 0.45), 0.3), 0.002, 0.2), 0.8)
+
+
+def siren():
+    """Werkssirene weit weg: langsam auf- und abschwellend, stark gedämpft."""
+    t = time(9.0)
+    pitch = 240 + 150 * np.sin(np.pi * np.minimum(t / 4.5, 1)) ** 2 + 90 * np.sin(2 * np.pi * t / 9)
+    tone = np.sin(2 * np.pi * np.cumsum(pitch) / RATE) + 0.3 * np.sin(4 * np.pi * np.cumsum(pitch) / RATE)
+    save("siren", fade(lowpass(tone, 700) * np.sin(np.pi * t / 9.0) ** 2, 0.1, 0.5), 0.8)
+
+
+def factory_horn():
+    """Schichthorn der Fabrik: ein tiefer, langer Ton."""
+    t = time(4.5)
+    tone = sum(g * np.sin(2 * np.pi * f * t) for f, g in ((110, 1), (138, 0.7), (165, 0.5)))
+    save("factory_horn", fade(lowpass(tone, 500) * np.minimum(t * 2, 1) * np.minimum((4.5 - t) * 1.2, 1), 0.05, 0.3), 0.8)
+
+
+def train():
+    """Güterzug hinter den Fabriken: gleichmäßiges Rollen, in der Mitte am lautesten."""
+    t = time(12.0)
+    rumble = lowpass(noise(12.0), 180) * (0.75 + 0.25 * np.sin(2 * np.pi * 2.6 * t))
+    save("train", fade(rumble * np.sin(np.pi * t / 12.0) ** 2, 0.1, 0.5), 0.8)
+
+
+def radio():
+    """Tanzmusik aus einem Volksempfänger: dünn, dumpf, durch die Scheibe."""
+    t_total = 16.5
+    tt = time(t_total)
+    x = np.zeros_like(tt)
+    beat = 0.5
+    bass = (110, 147, 165, 147)
+    chord = ((277, 330, 440), (294, 370, 440), (330, 415, 494), (294, 370, 440))
+    for k in range(int(t_total / beat)):
+        at = k * beat
+        n = int(0.45 * RATE)
+        start = int(at * RATE)
+        d = time(0.45)
+        bar = k // 4 % 4
+        if k % 2 == 0:
+            sound = np.sin(2 * np.pi * bass[bar] * d) * decay(d, 0.16)
+        else:
+            sound = sum(np.sin(2 * np.pi * f * d) for f in chord[bar]) * decay(d, 0.09) * 0.45
+        end = min(len(x), start + n)
+        x[start:end] += sound[:end - start]
+    x = highpass(lowpass(x, 1500), 240) + 0.07 * highpass(lowpass(noise(t_total), 3000), 900)
+    save("radio", loopable(x), 0.5)
+
+
+def heartbeat():
+    t_total = 6.5
+    x = np.zeros(int(t_total * RATE))
+    period = 0.75
+    for k in range(int(t_total / period)):
+        for offset, gain in ((0.0, 1.0), (0.17, 0.7)):
+            at = int((k * period + offset) * RATE)
+            d = time(0.14)
+            beat = np.sin(2 * np.pi * 52 * d) * decay(d, 0.04) * gain
+            end = min(len(x), at + len(d))
+            x[at:end] += beat[:end - at]
+    save("heartbeat", loopable(x, 0.2), 0.85)
+
+
+def typewriter():
+    """Tastenanschlag: kurz und dumpf, kein helles Klicken."""
+    t = time(0.05)
+    save("typewriter", fade(lowpass(noise(0.05), 1500) * decay(t, 0.009) + np.sin(2 * np.pi * 170 * t) * decay(t, 0.012), 0.001, 0.008), 0.6)
+
+
 def stingers():
     """Kurze, dunkle Abschlüsse statt Fanfaren: Blechakkord und Pauke."""
     t = time(3.0)
@@ -438,7 +504,7 @@ def stingers():
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld):
+    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld, dog, siren, factory_horn, train, radio, heartbeat, typewriter):
         make()
     files = list(OUT.glob("*.wav"))
     print(f"{len(files)} Geräusche, {sum(f.stat().st_size for f in files) // 1024} KiB")

@@ -16,6 +16,16 @@ namespace Messingstadt
         private const float FlashFadePerSecond = 7f;
         private const float MinThunderDelay = 0.6f;
         private const float MaxThunderDelay = 4.5f;
+        private const float MinRumblePause = 18f;
+        private const float MaxRumblePause = 50f;
+        private const float RumbleQuietDb = -24f;
+        private const float RumbleLoudDb = -14f;
+        private const float MinCityPause = 14f;
+        private const float MaxCityPause = 38f;
+        private static readonly (string Sound, float Volume)[] CitySounds =
+        {
+            ("dog", -26f), ("dog", -29f), ("siren", -31f), ("train", -27f), ("factory_horn", -29f),
+        };
         private const int ConePoints = 14;
         private const float ConeHeight = 52f;
         private const float ConeRadius = 46f;
@@ -54,6 +64,8 @@ void fragment() {
         private readonly List<Cone> _cones = new();
         private ShaderMaterial _fog = null!;
         private float _nextStorm = FirstStormSeconds;
+        private float _nextRumble = 7f;
+        private float _nextCity = 12f;
         private float _time;
         private float _flash;
         private readonly List<float> _strokes = new();
@@ -132,6 +144,19 @@ void fragment() {
             {
                 StartStorm();
             }
+            // Fernes Grollen ohne Blitz: Das Gewitter zieht irgendwo hinter den Fabriken vorbei.
+            if (_time > _nextRumble)
+            {
+                _nextRumble = _time + Rand(MinRumblePause, MaxRumblePause);
+                Game.Sound.PlayEverywhere($"thunder_{_rng.Next(3)}", Rand(RumbleQuietDb, RumbleLoudDb));
+            }
+            // Die Stadt hinter den Häusern: Hund, Sirene, Güterzug, jeweils leise aus der Ferne.
+            if (_time > _nextCity)
+            {
+                _nextCity = _time + Rand(MinCityPause, MaxCityPause);
+                var (sound, volume) = CitySounds[_rng.Next(CitySounds.Length)];
+                Game.Sound.PlayEverywhere(sound, volume);
+            }
             for (int i = _strokes.Count - 1; i >= 0; i--)
             {
                 if (_time >= _strokes[i])
@@ -147,6 +172,7 @@ void fragment() {
             {
                 _thunderAt = -1f;
                 Game.Sound.PlayEverywhere(_thunderSound, _thunderVolume);
+                Game.ShakeCamera(Mathf.Clamp((_thunderVolume + 22f) / 16f, 0.15f, 0.6f));
             }
             foreach (var cone in _cones)
             {

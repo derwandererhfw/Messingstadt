@@ -65,6 +65,15 @@ void fragment() {
         private const int ArrivalHoldTicks = 40;
         private const int MaxPlanWaitTicks = 60 * World.TickRate;
         private const float AbandonWarningSeconds = 4f;
+
+        // Lebendige Kamera
+        private const float CameraFollow = 7f;
+        private const float DriftPixels = 1.2f;
+        private const float ShakePixels = 7f;
+        private const float TraumaFadePerSecond = 1.4f;
+        private const float FocusSeconds = 2.2f;
+        private const float FocusPull = 0.3f;
+        private const float FocusZoom = 0.2f;
         private const int AimTicksStanding = 12;
         private const int AimTicksWalking = 5;
 
@@ -117,9 +126,16 @@ void fragment() {
         private int _figureViews, _footX, _footY;
         private Sprite2D _book = null!;
         private Camera2D _camera = null!;
-        private Label _status = null!;
-        private RichTextLabel _roster = null!;
+        private PaperUi _paper = null!;
+        private Chatter _chatter = null!;
         private Label _banner = null!;
+        private bool _introRunning;
+        private bool _showIntro = true;
+        private float _trauma;
+        private float _focusLeft;
+        private Vector2 _focusAt;
+        private float _baseZoom = 2f;
+        private int _testPanelFrame = -1;
         private PanelContainer _panel = null!;
         private VBoxContainer _panelBody = null!;
         private Campaign _campaign = new();
@@ -144,6 +160,7 @@ void fragment() {
         private float _testFlash = -1f;
         private Vector2? _testShip;
         private bool _forcePlan;
+        private bool _forceIntro;
         private Vector2? _look;
         private int _shotOnFireTick = -1;
         private string? _shotPath;
@@ -195,19 +212,101 @@ void fragment() {
             var overlayLayer = new CanvasLayer { Layer = 1, FollowViewportEnabled = true };
             AddChild(overlayLayer);
             overlayLayer.AddChild(new Overlay { Game = this });
+            _chatter = new Chatter { Game = this };
+            overlayLayer.AddChild(_chatter);
             BuildUi();
             StartMission();
             _sound.Game = this;
             AddChild(_sound);
             AddAmbientSounds();
             AddWeatherAndLife();
+            AddChild(new Traces { Game = this, ZIndex = 0 });
             AddChild(new Critters
             {
                 Game = this, Sound = _sound, Sheet = LoadTexture("res://assets/critters.png"), Glow = _critterGlow,
                 Gullies = _ambience.Steam.ConvertAll(ScreenToMap),
                 WorkerSpot = WorkerTile, WorkerDoor = WorkerDoorTile,
             });
+            MaybeStartIntro();
         }
+
+        /// <summary>Der Einstieg läuft einmal beim Programmstart. Prüfläufe überspringen ihn, außer mit --intro.</summary>
+        private void MaybeStartIntro()
+        {
+            bool testing = _shotPath != null || _auto || _look != null;
+            if (!_showIntro || (testing && !_forceIntro))
+            {
+                _camera.PositionSmoothingEnabled = !testing;
+                _camera.PositionSmoothingSpeed = CameraFollow;
+                return;
+            }
+            _showIntro = false;
+            _introRunning = true;
+            _paper.Visible = false;
+            var target = _camera.Position;
+            AddChild(new Intro
+            {
+                Game = this, Briefing = _mission.Briefing, MissionTitle = _mission.Title,
+                CameraFrom = new Vector2(_ox, _oy + _map.Height * 12f), CameraTo = target,
+            });
+        }
+
+        /// <summary>Kamerafahrt des Einstiegs.</summary>
+        public void SetIntroCamera(Vector2 position, float zoom)
+        {
+            _camera.Position = position;
+            _camera.Zoom = new Vector2(zoom, zoom);
+        }
+
+        public void EndIntro()
+        {
+            _introRunning = false;
+            _paper.Visible = true;
+            _camera.Zoom = new Vector2(_baseZoom, _baseZoom);
+            _camera.PositionSmoothingEnabled = true;
+            _camera.PositionSmoothingSpeed = CameraFollow;
+        }
+
+        /// <summary>Lässt das Bild kurz zittern, etwa bei Donner oder nahen Schüssen. Stärke von 0 bis 1.</summary>
+        public void ShakeCamera(float amount) => _trauma = Mathf.Min(1f, Mathf.Max(_trauma, amount));
+
+        /// <summary>Lebendige Kamera: leichtes Atmen, Zittern und ein kurzes Heranrücken, wenn ein Agent fällt.</summary>
+        private void UpdateCameraLife(float dt)
+        {
+            if (_introRunning || _look != null || _shotPath != null)
+            {
+                return;
+            }
+            float now = Time.GetTicksMsec() / 1000f;
+            _trauma = Mathf.Max(0f, _trauma - TraumaFadePerSecond * dt);
+            float shake = _trauma * _trauma * ShakePixels;
+            var offset = new Vector2(Mathf.Sin(now * 0.31f), Mathf.Sin(now * 0.23f + 1f)) * DriftPixels
+                + new Vector2(Mathf.Sin(now * 47f), Mathf.Sin(now * 53f + 2f)) * shake;
+            float zoom = _baseZoom;
+            if (_focusLeft > 0f)
+            {
+                _focusLeft -= dt;
+                float strength = Mathf.Sin(Mathf.Clamp(_focusLeft / FocusSeconds, 0f, 1f) * Mathf.Pi);
+                offset += (_focusAt - _camera.Position) * FocusPull * strength;
+                zoom += FocusZoom * strength;
+            }
+            _camera.Offset = offset;
+            _camera.Zoom = new Vector2(zoom, zoom);
+        }
+
+        /// <summary>Helligkeit am Standort des führenden Agenten, für die Musik.</summary>
+        public float LeadLight()
+        {
+            var lead = Lead();
+            if (lead == null)
+            {
+                return 1f;
+            }
+            var light = LightAt(lead.X, lead.Y);
+            return (light.R + light.G + light.B) / 3f;
+        }
+
+        public void AddWorkerVoice(Func<Vector2?> where) => _chatter.Workers.Add(where);
 
         /// <summary>Wetter, Luftschiff und Streikposten. Sie brauchen die fertige Tiefe der Objekte.</summary>
         private void AddWeatherAndLife()
@@ -259,6 +358,15 @@ void fragment() {
             if (_windowLife.SignCenter is { } sign)
             {
                 _sound.AddLoop("neon", sign, -34f, 260f);
+            }
+            // Ein Radio spielt hinter einem Fenster des Hotels, ganz leise.
+            foreach (var (kind, center) in _windowLife.PaneSpots)
+            {
+                if (kind == "window")
+                {
+                    _sound.AddLoop("radio", center, -24f, 230f);
+                    break;
+                }
             }
         }
 
@@ -314,6 +422,14 @@ void fragment() {
                 {
                     var ship = a["--ship=".Length..].Split(',');
                     _testShip = new Vector2(float.Parse(ship[0], System.Globalization.CultureInfo.InvariantCulture), float.Parse(ship[1], System.Globalization.CultureInfo.InvariantCulture));
+                }
+                else if (a == "--intro")
+                {
+                    _forceIntro = true;
+                }
+                else if (a.StartsWith("--panel="))
+                {
+                    _testPanelFrame = int.Parse(a["--panel=".Length..]);
                 }
                 else if (a == "--plan")
                 {
@@ -461,60 +577,39 @@ void fragment() {
 
         private void BuildUi()
         {
-            var layer = new CanvasLayer { Layer = 2 };
+            AddChild(new FilmLook { Layer = 2 });
+            var layer = new CanvasLayer { Layer = 3 };
             AddChild(layer);
-            var font = 16;
-            // Dunkle Bänder hinter den Texten, damit sie auch auf hellem Boden lesbar sind.
-            foreach (var band in new[] { new Rect2(0, 0, 1280, 62), new Rect2(0, 658, 420, 112), new Rect2(0, 770, 1280, 30) })
-            {
-                layer.AddChild(new ColorRect
-                {
-                    Position = band.Position, Size = band.Size,
-                    Color = new Color(0.03f, 0.03f, 0.05f, 0.6f), MouseFilter = Control.MouseFilterEnum.Ignore,
-                });
-            }
-            _status = new Label { Position = new Vector2(12, 8), Size = new Vector2(1250, 60), AutowrapMode = TextServer.AutowrapMode.WordSmart };
-            _status.AddThemeFontSizeOverride("font_size", font);
-            _status.AddThemeColorOverride("font_shadow_color", Colors.Black);
-            layer.AddChild(_status);
-            _roster = new RichTextLabel
-            {
-                Position = new Vector2(12, 660), Size = new Vector2(760, 110), BbcodeEnabled = true,
-                ScrollActive = false, MouseFilter = Control.MouseFilterEnum.Ignore,
-            };
-            _roster.AddThemeFontSizeOverride("normal_font_size", font);
-            _roster.AddThemeColorOverride("font_shadow_color", Colors.Black);
-            layer.AddChild(_roster);
+            _paper = new PaperUi { Game = this };
+            layer.AddChild(_paper);
             _planBand = new ColorRect
             {
-                Position = new Vector2(0, 62), Size = new Vector2(1280, 46), Visible = false,
-                Color = new Color(0.03f, 0.03f, 0.05f, 0.75f), MouseFilter = Control.MouseFilterEnum.Ignore,
+                Position = new Vector2(10, 62), Size = new Vector2(1252, 46), Visible = false,
+                Color = PaperUi.PaperDark, MouseFilter = Control.MouseFilterEnum.Ignore,
             };
             layer.AddChild(_planBand);
-            _planLegend = new Label
-            {
-                Text = "LAGEPLAN  Grün: nie bewacht. Gelb bis Rot: immer öfter im Blick. Punkte: Wege der Wachen. Klick: losgehen, sobald der Weg frei ist.\n"
-                    + "Zum Buch führt der Weg über die Straße in die Gasse am Mietshaus, zum Wagen hinten um das Lager.",
-                Position = new Vector2(12, 65), Visible = false,
-            };
-            _planLegend.AddThemeFontSizeOverride("font_size", 15);
+            _planLegend = PaperUi.Text(
+                "LAGEPLAN  Grün: nie bewacht. Gelb bis Rot: immer öfter im Blick. Punkte: Wege der Wachen. Klick: losgehen, sobald frei.\n"
+                + "Zum Buch führt der Weg über die Straße in die Gasse am Mietshaus, zum Wagen hinten um das Lager.",
+                13, PaperUi.Ink, PaperUi.Typewriter);
+            _planLegend.Position = new Vector2(20, 65);
+            _planLegend.Visible = false;
             layer.AddChild(_planLegend);
-            var help = new Label
-            {
-                Text = "Links: wählen/gehen   Doppelklick: rennen   Rechts: Wache angreifen, Emil allein: bestechen, Otto: Tür öffnen   Q halten: Lageplan   1–4, Leertaste   WASD   F   P   M: Ton   R: abbrechen",
-                Position = new Vector2(12, 772),
-            };
-            help.AddThemeFontSizeOverride("font_size", 13);
-            help.AddThemeColorOverride("font_shadow_color", Colors.Black);
+            var help = PaperUi.Text(
+                "Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen, Otto: Tür   Q halten: Lageplan   1-4 Leertaste   WASD F P M   R: abbrechen",
+                12, new Color(0.75f, 0.72f, 0.65f, 0.75f), PaperUi.Typewriter);
+            help.Position = new Vector2(12, 777);
             layer.AddChild(help);
-            _banner = new Label { Position = new Vector2(0, 340), Size = new Vector2(1280, 80), HorizontalAlignment = HorizontalAlignment.Center };
-            _banner.AddThemeFontSizeOverride("font_size", 40);
-            _banner.AddThemeColorOverride("font_color", new Color(1f, 0.85f, 0.4f));
+            _banner = PaperUi.Text("", 34, new Color(1f, 0.85f, 0.4f), PaperUi.Serif);
+            _banner.Position = new Vector2(0, 340);
+            _banner.Size = new Vector2(1280, 80);
+            _banner.HorizontalAlignment = HorizontalAlignment.Center;
             _banner.AddThemeColorOverride("font_shadow_color", Colors.Black);
             layer.AddChild(_banner);
-            _panel = new PanelContainer { Position = new Vector2(340, 130), CustomMinimumSize = new Vector2(600, 0), Visible = false };
+            _panel = new PanelContainer { Position = new Vector2(300, 90), CustomMinimumSize = new Vector2(680, 0), Visible = false };
+            _panel.AddThemeStyleboxOverride("panel", PaperUi.PaperBox(PaperUi.PaperColor));
             _panelBody = new VBoxContainer();
-            _panelBody.AddThemeConstantOverride("separation", 10);
+            _panelBody.AddThemeConstantOverride("separation", 8);
             _panel.AddChild(_panelBody);
             layer.AddChild(_panel);
         }
@@ -585,12 +680,7 @@ void fragment() {
             _panel.Visible = true;
         }
 
-        private static Label PanelLabel(string text, int size = 16)
-        {
-            var label = new Label { Text = text };
-            label.AddThemeFontSizeOverride("font_size", size);
-            return label;
-        }
+        private static Label PanelLabel(string text, int size = 15) => PaperUi.Text(text, size, PaperUi.Ink, PaperUi.Typewriter);
 
         /// <summary>Baut den Bildschirm zwischen den Einsätzen neu auf: Ergebnis, Kasse und Ausbau.</summary>
         private void RefreshPanel()
@@ -600,7 +690,20 @@ void fragment() {
                 child.QueueFree();
             }
             bool won = World.State == MissionState.Won;
-            _panelBody.AddChild(PanelLabel(won ? $"EINSATZ GEGLÜCKT: {RatingText()}" : _abandoned ? "EINSATZ AUFGEGEBEN" : "TRUPP VERLOREN", 26));
+            var (headline, line) = Headlines.For(World, _abandoned);
+            _panelBody.AddChild(PaperUi.Text(Headlines.Paper.ToUpperInvariant(), 14, PaperUi.StampRed, PaperUi.Serif));
+            _panelBody.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 2), Color = PaperUi.Ink, MouseFilter = Control.MouseFilterEnum.Ignore });
+            var head = PaperUi.Text(headline, 28, PaperUi.Ink, PaperUi.Serif);
+            head.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            head.CustomMinimumSize = new Vector2(640, 0);
+            _panelBody.AddChild(head);
+            var article = PaperUi.Text(line, 14, PaperUi.Ink, PaperUi.Typewriter);
+            article.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            article.CustomMinimumSize = new Vector2(640, 0);
+            _panelBody.AddChild(article);
+            _panelBody.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 1), Color = PaperUi.PaperDark, MouseFilter = Control.MouseFilterEnum.Ignore });
+            string result = won ? $"Einsatz geglückt: {RatingText()}" : _abandoned ? "Einsatz aufgegeben" : "Trupp verloren";
+            _panelBody.AddChild(PaperUi.Text(result, 16, PaperUi.StampRed, PaperUi.Serif));
             if (won)
             {
                 string loot = World.LootTaken ? $", dazu {World.LootName} {World.LootValue}" : "";
@@ -610,7 +713,7 @@ void fragment() {
             {
                 _panelBody.AddChild(PanelLabel("Gefallene kommen zurück, aber Beine und Herz fallen auf Stufe 1."));
             }
-            _panelBody.AddChild(PanelLabel($"Kasse: {_campaign.Money}    Einsätze: {_campaign.Missions}", 18));
+            _panelBody.AddChild(PanelLabel($"Kasse: {_campaign.Money}    Einsätze: {_campaign.Missions}", 16));
             foreach (var u in World.Units.Where(u => u.Faction == Faction.Agent))
             {
                 var record = _campaign.Agent(u.Name);
@@ -624,9 +727,11 @@ void fragment() {
                 _panelBody.AddChild(row);
             }
             var next = new Button { Text = won ? "Nächster Einsatz" : "Nochmal" };
+            PaperUi.InkButton(next);
             next.Pressed += StartMission;
             _panelBody.AddChild(next);
             var reset = new Button { Text = "Neue Kampagne" };
+            PaperUi.InkButton(reset);
             reset.Pressed += () =>
             {
                 _campaign = new Campaign();
@@ -647,6 +752,7 @@ void fragment() {
                 Disabled = full || _campaign.Money < cost,
                 CustomMinimumSize = new Vector2(130, 0),
             };
+            PaperUi.InkButton(button);
             button.Pressed += () =>
             {
                 if (_campaign.TryUpgrade(agent, legs))
@@ -709,11 +815,22 @@ void fragment() {
 
         public override void _Process(double delta)
         {
-            HandleCamera((float)delta);
+            if (!_introRunning)
+            {
+                HandleCamera((float)delta);
+            }
+            UpdateCameraLife((float)delta);
+            if (_testPanelFrame >= 0 && _frame == _testPanelFrame)
+            {
+                _abandoned = true;
+                _finished = true;
+                RefreshPanel();
+                _panel.Visible = true;
+            }
             MarkerTime = Mathf.Max(0f, MarkerTime - (float)delta);
             _abandonWarning = Mathf.Max(0f, _abandonWarning - (float)delta);
             Selected.RemoveWhere(id => !World.Units[id].Alive);
-            if (!_paused && !_finished)
+            if (!_paused && !_finished && !_introRunning)
             {
                 _accumulator += (float)delta;
                 while (_accumulator >= TickSeconds)
@@ -748,7 +865,7 @@ void fragment() {
             }
             if (_shotPath != null && _frame == _shotFrame)
             {
-                GD.Print($"Geräusche abgespielt: {_sound.PlayCount}");
+                GD.Print($"Geräusche abgespielt: {_sound.PlayCount}  " + string.Join(", ", _sound.PlayedByGroup.Select(g => $"{g.Key} {g.Value}")));
                 GetViewport().GetTexture().GetImage().SavePng(_shotPath);
                 GetTree().Quit();
             }
@@ -991,6 +1108,11 @@ void fragment() {
                 {
                     started = now;
                     _fallStarted[u.Id] = now;
+                    if (u.Faction == Faction.Agent)
+                    {
+                        _focusAt = ToScreen(u.X, u.Y);
+                        _focusLeft = FocusSeconds;
+                    }
                 }
                 // Nicht alle sterben gleich: Die Id bestimmt, ob die Figur nach vorn oder zur Seite sackt.
                 return FallColumn + u.Id % FallVariants * FallFrames + Mathf.Min(FallFrames - 1, (int)((now - started) / FallSeconds * FallFrames));
@@ -1146,34 +1268,19 @@ void fragment() {
 
         private void UpdateUi()
         {
-            var sb = new StringBuilder();
-            sb.Append(_mission.Title).Append(": ");
-            sb.Append(World.ItemTaken
-                ? (World.EscapeProgress > 0 ? "Einsteigen. Stehen bleiben!" : $"{World.ItemName} gesichert. Zum Fluchtwagen im Osten!")
-                : World.ItemProgress > 0 ? $"{World.ItemName} wird gesichert. Stehen bleiben!" : _mission.Briefing);
-            _status.Text = sb.ToString();
-            var r = new StringBuilder();
-            int n = 1;
-            foreach (var u in World.Units.Where(u => u.Faction == Faction.Agent))
-            {
-                string mark = Selected.Contains(u.Id) ? "> " : "  ";
-                string state = u.Alive ? $"{u.Hp}/{u.MaxHp}" : "ausgeschaltet";
-                string item = u.CarriesItem ? " [Kontobuch]" : "";
-                string skill = u.Skill == World.SkillLocksmith ? "  Schlosser" : u.Skill == World.SkillBookkeeper ? "  Buchhalter" : "";
-                string body = u.Alive ? $"  Beine {u.Legs} Herz {u.Heart}{skill}{(u.Sprinting ? "  rennt" : "")}" : "";
-                r.Append(mark).Append(n++).Append(' ').Append(u.Name).Append("  ").Append(state).Append(body).Append(item).Append('\n');
-            }
-            _roster.Text = r.ToString();
+            string name = World.ItemName.ToUpperInvariant();
+            string telegram = World.ItemTaken
+                ? (World.EscapeProgress > 0 ? "EINSTEIGEN STOP STEHEN BLEIBEN STOP" : $"{name} GESICHERT STOP ZUM FLUCHTWAGEN IM OSTEN STOP")
+                : World.ItemProgress > 0 ? $"{name} WIRD GESICHERT STOP STEHEN BLEIBEN STOP"
+                : $"{name} AM MIETSHAUS HOLEN STOP GASSE NUTZEN STOP DANN ZUM FLUCHTWAGEN IM OSTEN STOP";
             int guards = World.Units.Count(u => u.Faction == Faction.Guard && u.Alive);
-            _banner.Text = World.State switch
-            {
-                _ => _abandonWarning > 0f ? "R nochmal: aufgeben, Trupp verloren" : _paused ? "PAUSE" : "",
-            };
-            _status.Text += $"   Wachen: {guards}   Zeit: {World.Tick / World.TickRate} s   Kasse: {World.Money}";
+            string info = $"WACHEN {guards}   ZEIT {World.Tick / World.TickRate} S   KASSE {World.Money}";
             if (World.TicksUntilReinforcement >= 0 && !_finished)
             {
-                _status.Text += $"   ALARM: Verstärkung in {World.TicksUntilReinforcement / World.TickRate + 1} s";
+                info += $"   ALARM: VERSTÄRKUNG IN {World.TicksUntilReinforcement / World.TickRate + 1} S";
             }
+            _paper.Refresh(World, Selected, telegram, info);
+            _banner.Text = _abandonWarning > 0f ? "R nochmal: aufgeben, Trupp verloren" : _paused ? "PAUSE" : "";
         }
 
         private string RatingText() => World.Rating switch
@@ -1254,7 +1361,7 @@ void fragment() {
             }
         }
 
-        private void SelectAgent(int index, bool add)
+        public void SelectAgent(int index, bool add)
         {
             if (!World.Units[index].Alive) return;
             if (!add) Selected.Clear();

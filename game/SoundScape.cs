@@ -14,12 +14,22 @@ namespace Messingstadt
     {
         private const int PoolSize = 24;
         private const float StepReach = 620f;
+        private const float AgentStepReach = 420f;
+        private const float GuardStepReach = 220f;
         private const float EventReach = 1500f;
         private const float AmbientReach = 300f;
         private const float WhistleCooldown = 9f;
-        private const float RepeatCooldown = 0.07f;
+        private const float RepeatCooldown = 0.03f;
+        private const float ShakeReach = 340f;
+        private const float ShotShake = 0.3f;
         private const float MusicDb = -19f;
         private const float SilentDb = -60f;
+        private const float DarkLight = 0.42f;
+        private const float DarkMusicDrop = 5f;
+        private const float MusicFadeDbPerSecond = 2f;
+        private const float HeartDb = -10f;
+        private const float HeartRisePerSecond = 4f;
+        private const float HeartFallPerSecond = 0.5f;
         private const float TensionFadePerSecond = 0.35f;
 
         private readonly Dictionary<string, AudioStreamWav> _sounds = new();
@@ -33,6 +43,9 @@ namespace Messingstadt
         private AudioStreamPlayer2D _lockpick = null!;
         private AudioStreamPlayer _music = null!;
         private AudioStreamPlayer _tension = null!;
+        private AudioStreamPlayer _heart = null!;
+        private float _heartLevel;
+        private float _musicDb = MusicDb;
         private float _tensionLevel;
         private World? _world;
         private int _lastShot;
@@ -47,6 +60,9 @@ namespace Messingstadt
 
         /// <summary>Wie oft insgesamt etwas abgespielt wurde. Für den Prüflauf.</summary>
         public int PlayCount { get; private set; }
+
+        /// <summary>Wie oft welche Art Geräusch lief. Für den Prüflauf, um Dauergeräusche zu finden.</summary>
+        public Dictionary<string, int> PlayedByGroup { get; } = new();
 
         public override void _Ready()
         {
@@ -67,6 +83,7 @@ namespace Messingstadt
             AddBackground("wind", -30f);
             _music = AddBackground("music_calm", MusicDb);
             _tension = AddBackground("music_tension", SilentDb);
+            _heart = AddBackground("heartbeat", SilentDb);
         }
 
         private AudioStreamWav Looping(string name)
@@ -92,6 +109,14 @@ namespace Messingstadt
                 || world.Units.Exists(u => u.Alive && u.Faction == Faction.Guard && u.Alerted));
             _tensionLevel = Mathf.MoveToward(_tensionLevel, alarmed ? 1f : 0f, TensionFadePerSecond * dt);
             _tension.VolumeDb = Mathf.Max(SilentDb, MusicDb + Mathf.LinearToDb(Mathf.Max(_tensionLevel, 0.001f)));
+            // Schleicht der Agent im Dunkeln, wird die Musik dünner und der Regen rückt nach vorn.
+            float wanted = !alarmed && Game.LeadLight() < DarkLight ? MusicDb - DarkMusicDrop : MusicDb;
+            _musicDb = Mathf.MoveToward(_musicDb, wanted, MusicFadeDbPerSecond * dt);
+            _music.VolumeDb = _musicDb;
+            // Herzschlag, solange eine Wache gerade etwas bemerkt und noch nicht schießt.
+            bool noticed = world.Units.Exists(u => u.Alive && u.Faction == Faction.Guard && u.GuardState == GuardState.Noticing);
+            _heartLevel = Mathf.MoveToward(_heartLevel, noticed ? 1f : 0f, (noticed ? HeartRisePerSecond : HeartFallPerSecond) * dt);
+            _heart.VolumeDb = Mathf.Max(SilentDb, HeartDb + Mathf.LinearToDb(Mathf.Max(_heartLevel, 0.001f)));
         }
 
         /// <summary>Ein Dauergeräusch an einem festen Ort, etwa an einer Laterne. Es ist nur aus der Nähe zu hören.</summary>
@@ -139,6 +164,8 @@ namespace Messingstadt
             player.PitchScale = 1f + (float)(_rng.NextDouble() * 2 - 1) * pitchSpread;
             player.Play();
             PlayCount++;
+            string group = name.Split('_')[0] + (name.StartsWith("step_") ? "_" + name.Split('_')[1] : "");
+            PlayedByGroup[group] = PlayedByGroup.GetValueOrDefault(group) + 1;
         }
 
         public void ToggleMute()
@@ -193,8 +220,10 @@ namespace Messingstadt
                 if (_stepCount.TryGetValue(u.Id, out int before) && count != before)
                 {
                     string kind = u.Sprinting ? "step_run" : u.Faction == Faction.Agent ? "step_soft" : "step_boot";
-                    float volume = u.Sprinting ? -5f : u.Faction == Faction.Agent ? -13f : -9f;
-                    PlayStep($"{kind}_{_rng.Next(4)}", at, volume);
+                    float volume = u.Sprinting ? -13f : u.Faction == Faction.Agent ? -19f : -22f;
+                    // Wachen hört man erst aus der Nähe, sonst klappern alle Rundgänge der Karte zugleich.
+                    float reach = u.Faction == Faction.Agent ? AgentStepReach : GuardStepReach;
+                    PlayStep($"{kind}_{_rng.Next(4)}", at, volume, reach);
                 }
                 _stepCount[u.Id] = count;
             }
@@ -210,10 +239,10 @@ namespace Messingstadt
         }
 
         // Schritte teilen sich keine Sperre, sonst verschluckt ein Trupp seine eigenen Schritte.
-        private void PlayStep(string name, Vector2 at, float volume)
+        private void PlayStep(string name, Vector2 at, float volume, float reach)
         {
             _lastPlayed.Remove(name);
-            Play(name, at, volume, StepReach, 0.1f);
+            Play(name, at, volume, reach, 0.1f);
         }
 
         private void ListenToShots(World world)
@@ -224,7 +253,12 @@ namespace Messingstadt
                 {
                     continue;
                 }
-                Play($"shot_{(shot.FromX + shot.Tick) % 3}", Game.ToScreen(shot.FromX, shot.FromY), 0f);
+                var from = Game.ToScreen(shot.FromX, shot.FromY);
+                Play($"shot_{(shot.FromX + shot.Tick) % 3}", from, 0f);
+                if (from.DistanceTo(Game.CameraCenter) < ShakeReach)
+                {
+                    Game.ShakeCamera(ShotShake);
+                }
                 var impact = Game.ToScreen(shot.ToX, shot.ToY);
                 if (shot.Hit)
                 {

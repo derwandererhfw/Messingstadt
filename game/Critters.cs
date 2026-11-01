@@ -162,6 +162,7 @@ namespace Messingstadt
                 ScaleAmountMin = 0.5f, ScaleAmountMax = 1.1f, Color = new Color(1.8f, 1.8f, 1.9f, 0.16f),
             };
             AddChild(_workerSmoke);
+            Game.AddWorkerVoice(() => _workerAway >= 0f ? null : Game.ToScreen((int)(_workerX * World.TileUnits), (int)(_workerY * World.TileUnits)));
         }
 
         public override void _Process(double delta)
@@ -418,7 +419,7 @@ namespace Messingstadt
             // Glut an der Zigarette: Beim Zug wird sie hell, und etwas Rauch steigt auf.
             float phase = _time % DragPeriodSeconds;
             float drag = phase < DragSeconds ? Mathf.Sin(phase / DragSeconds * Mathf.Pi) : 0f;
-            var mouth = foot + new Vector2(0, -35);
+            var mouth = foot + new Vector2(0, -38);
             _ember.Position = mouth;
             _ember.ZIndex = z + 1;
             float glow = 0.55f + 0.45f * drag;
