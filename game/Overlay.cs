@@ -55,7 +55,7 @@ namespace Messingstadt
                 {
                     continue;
                 }
-                var p = Game.ToScreen(u.X, u.Y);
+                var p = Game.UnitPos(u);
                 if (u.Faction == Faction.Agent)
                 {
                     // Der innere Ring gehört immer zum Agenten, der äußere weiße Ring zeigt die Auswahl.
@@ -109,7 +109,7 @@ namespace Messingstadt
                 }
                 if (u.TargetId >= 0 && u.Faction == Faction.Agent && Game.Selected.Contains(u.Id))
                 {
-                    DrawIsoRing(Game.ToScreen(world.Units[u.TargetId].X, world.Units[u.TargetId].Y), new Color(1f, 0.3f, 0.25f));
+                    DrawIsoRing(Game.UnitPos(world.Units[u.TargetId]), new Color(1f, 0.3f, 0.25f));
                 }
                 if (u.CarriesItem)
                 {

@@ -64,7 +64,7 @@ namespace Messingstadt
             {
                 var flash = new PointLight2D
                 {
-                    Texture = Glow, TextureScale = 0.4f, Color = new Color(1f, 0.8f, 0.5f), Energy = 1.5f,
+                    Texture = Glow, TextureScale = 0.4f, Color = new Color(1f, 0.8f, 0.5f), Energy = 0.4f,
                     RangeZMin = -1, RangeZMax = 4096, Visible = false,
                 };
                 AddChild(flash);

@@ -68,7 +68,8 @@ namespace Messingstadt
                 {
                     continue;
                 }
-                float x = u.X / (float)World.TileUnits, y = u.Y / (float)World.TileUnits;
+                var at = Game.ScreenToMap(Game.UnitPos(u));
+                float x = at.X, y = at.Y;
                 foreach (var lamp in Game.LampSpots)
                 {
                     var away = new Vector2(x - (float)lamp[0], y - (float)lamp[1]);

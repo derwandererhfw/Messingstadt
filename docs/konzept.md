@@ -101,6 +101,23 @@ mit Ringen in den Pfützen, flackernde Laternen (eine mit Wackelkontakt), flacke
 Papierfetzen in Windböen. Das ist reine Darstellung mit eigenem Zufall in `game/Ambience.cs` und
 `game/RainLayer.cs`. Die Spiellogik bleibt deterministisch, und die Animation läuft auch in der Pause weiter.
 
+### Figuren
+
+Figuren werden aus einem kleinen 3D-Modell gerendert (`tools/art/figures3d.py`): runde Körperteile mit Gelenken, im selben Blickwinkel wie die Stadt, dann auf Pixelgröße verkleinert. Das Blatt hat acht Blickrichtungen, fünf gerendert und drei gespiegelt. Bewegungen: Gehen und Rennen mit je 8 Bildern, Stehen mit leichtem Atmen, Zielen mit Rückstoß, zielend Gehen und Fallen mit wachsender Blutlache. Die Schrittgeschwindigkeit hängt am Tempo, damit die Füße nicht rutschen. Zwischen den 20 Spieltakten pro Sekunde wird die Position im Bild geglättet, die Spiellogik bleibt davon unberührt.
+
+### Leben in der Stadt
+
+Reine Darstellung mit eigenem Zufall, ohne Einfluss auf die Spiellogik:
+
+| Was | Verhalten |
+|---|---|
+| Fenster | Gehen zufällig an und aus, ab und zu läuft jemand vorbei (`game/WindowLife.cs`) |
+| Bildfunk | In drei Fenstern flimmert bläuliches Licht, das auch auf Wand und Boden davor fällt. In unserer Zeitlinie ein teures Gerät für wenige |
+| Hotelschild | Leuchtet rot, ein Buchstabe hat einen Wackelkontakt, manchmal fällt das ganze Schild kurz aus |
+| Ratten | Huschen an Hauswänden entlang, fliehen vor Menschen und Schüssen in den nächsten Gully (`game/Critters.cs`) |
+| Tauben | Sitzen auf Dachkanten und picken, fliegen bei Schüssen oder nahen Menschen auf und kommen später zurück |
+| Arbeiter | Raucht vor der Seitentür des Hotels, geht bei Schüssen oder nahen Menschen hinein und kommt später wieder |
+
 ### Licht
 
 Das Licht von Häusern und Boden kommt aus einem Pathtracer (`tools/Messingstadt.LightBake`, Aufruf über `tools/art/bake_light.py`). Er rechnet jeden Bildpunkt über den Kamerastrahl auf ein 3D-Modell aus Quadern zurück und verfolgt von dort das Licht: direkt von Laternen, Feuerluken und erleuchteten Fenstern, dazu drei Umwege über Wände und Boden und der Nachthimmel. Das nasse Pflaster und die Pfützen spiegeln die Lampen Richtung Kamera. Das Ergebnis liegt je Sprite als Lichtkarte in `game/assets/light`.

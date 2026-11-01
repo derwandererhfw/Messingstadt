@@ -56,9 +56,9 @@ Grafik neu erzeugen: `python tools/art/generate_concept.py`
 | `P` | Pause |
 | `R` | Einsatz abbrechen. Nach dem ersten Schuss zweimal drücken, dann gilt der Trupp als gefallen |
 
-## Licht neu berechnen
+## Grafik und Licht neu berechnen
 
-Nach Änderungen an der Stadt, dauert etwa eine Minute:
+Nach Änderungen an der Stadt, dauert etwa zwei Minuten. Der erste Befehl rendert auch die Figuren, für Figuren allein reicht `python tools/art/figures3d.py`.
 
 ```bash
 python tools/art/generate_concept.py

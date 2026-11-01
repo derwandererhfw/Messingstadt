@@ -12,6 +12,7 @@ Aufruf (aus dem Projektordner):
 """
 import json
 import random
+import subprocess
 import sys
 from pathlib import Path
 
@@ -333,7 +334,7 @@ def pipe_h(d, x0, x1, y):
     rust_patches(d, x0, y, x1, y + 3)
 
 
-def tenement(w, h, name=None, material=("brick",), door_at=None, lit_rate=0.45):
+def tenement(w, h, name=None, material=("brick",), door_at=None, lit_rate=0.65):
     img, d = wall(w, h, material)
     d.rectangle((0, 0, w, 3), fill=C["stone_l"])
     floors = (h - 6) // 42
@@ -344,7 +345,10 @@ def tenement(w, h, name=None, material=("brick",), door_at=None, lit_rate=0.45):
         for u in range(10, w - 16, 26):
             if f == 0:
                 continue
-            window(d, u, base - 32, lit=RNG.random() < lit_rate)
+            lit = RNG.random() < lit_rate
+            window(d, u, base - 32, lit=lit)
+            if lit:
+                img.info.setdefault("panes", []).append((u, base - 32, 11, 18))
     if door_at is not None:
         door(d, door_at, h - 1)
     if name:
@@ -359,6 +363,7 @@ def tenement(w, h, name=None, material=("brick",), door_at=None, lit_rate=0.45):
 SPECS = {
     "Agent": dict(coat=("coat_d", "coat", "coat_l"), legs="iron", hat="fedora", hat_c="felt", shirt="ash", hair="hair", hem=31, belt=21),
     "Wachmann": dict(coat=("uni_d", "uni", "uni_l"), legs="uni", hat="peak", hat_c="soot", shirt="uni_d", hair="hair", hem=26, belt=19),
+    "Arbeiter": dict(coat=("grey_d", "grey", "grey_l"), legs="iron", hat="peak", hat_c="grime", shirt="ash", hair="hair", hem=25, belt=20),
 }
 
 
@@ -488,6 +493,7 @@ class Thing:
         self.x0, self.y0, self.x1, self.y1, self.z0, self.z1, self.draw = x0, y0, x1, y1, z0, z1, draw
         self.solid, self.opaque = solid, opaque
         self.kind = ""
+        self.panes = []
 
 
 def behind(a, b):
@@ -588,6 +594,12 @@ def building(x0, y0, w, d, h, left, right, s, things, roof_items=()):
     def draw():
         box(s, x0, y0, x0 + w, y0 + d, 0, h, left, right, roof_color)
     things.append(Thing(x0, y0, x0 + w, y0 + d, 0, h, draw, solid=True, opaque=True))
+    # Erleuchtete Fenster mit ihrer Lage im Bild, damit das Spiel sie einzeln schalten kann
+    west = s.to_screen(x0, y0 + d, h)
+    south = s.to_screen(x0 + w, y0 + d, h)
+    for tex, origin, slope in ((left, west, 0.5), (right, south, -0.5)):
+        for u, v, pw, ph in tex.info.get("panes", []):
+            things[-1].panes.append({"x": int(origin[0]), "y": int(origin[1]), "slope": slope, "u": u, "v": v, "w": pw, "h": ph, "kind": "window"})
     for item in roof_items:
         item(x0, y0, w, d, h, s, things)
 
@@ -653,6 +665,16 @@ def roof_sign(word, fy=0.92):
             west = s.to_screen(x0 + 0.3, y + 0.05, h + tex.height)
             shear(s, tex, int(west[0]), int(west[1]), 0.5, 1.0)
         things.append(Thing(x0 + 0.3, y, x0 + 0.3 + tex.width / HW, y + 0.05, h, h + tex.height, draw))
+        # Jeder Buchstabe des Schilds wird einzeln geschaltet: Spalten mit Farbe, getrennt durch leere Spalten.
+        west = s.to_screen(x0 + 0.3, y + 0.05, h + tex.height)
+        start = None
+        for u in range(tex.width + 1):
+            used = u < tex.width and any(tex.getpixel((u, v))[3] for v in range(1, th + 2))
+            if used and start is None:
+                start = u
+            elif not used and start is not None:
+                things[-1].panes.append({"x": int(west[0]), "y": int(west[1]), "slope": 0.5, "u": start, "v": 1, "w": u - start, "h": th + 1, "kind": "sign"})
+                start = None
     return add
 
 
@@ -968,8 +990,8 @@ def build_scene(with_people=True):
     bank_r = tenement(64, 84, material=("stone",), lit_rate=0.7)
     building(0, 7, 6, 2, 84, bank_l, bank_r, s, things, [vent(0.2, 0.3), vent(0.5, 0.3), skylight(0.7, 0.2)])
 
-    hotel_l = tenement(160, 170, "HOTEL", door_at=72, lit_rate=0.6)
-    hotel_r = tenement(160, 170, door_at=30, lit_rate=0.6)
+    hotel_l = tenement(160, 170, "HOTEL", door_at=72, lit_rate=0.8)
+    hotel_r = tenement(160, 170, door_at=30, lit_rate=0.8)
     pipe_v(ImageDraw.Draw(hotel_r), 120, 6, 169)
     poster(ImageDraw.Draw(hotel_l), 20, 138)
     poster(ImageDraw.Draw(hotel_l), 110, 136)
@@ -1074,13 +1096,14 @@ def export_game():
             continue
         name = f"{i:03d}.png"
         s.img.crop(bbox).save(assets / "things" / name)
-        manifest.append({"file": name, "px": bbox[0], "py": bbox[1], "x0": t.x0, "y0": t.y0, "x1": t.x1, "y1": t.y1, "z0": t.z0, "z1": t.z1, "kind": t.kind})
+        manifest.append({"file": name, "px": bbox[0], "py": bbox[1], "x0": t.x0, "y0": t.y0, "x1": t.x1, "y1": t.y1, "z0": t.z0, "z1": t.z1, "kind": t.kind, "panes": t.panes})
         if t.solid:
             solids.append({"x0": t.x0, "y0": t.y0, "x1": t.x1, "y1": t.y1, "opaque": t.opaque})
     (assets / "manifest.json").write_text(json.dumps({"ox": s.ox, "oy": s.oy, "things": manifest, **AMBIENT}), encoding="utf-8")
     (root / "data" / "map_01.json").write_text(json.dumps({"width": 20, "height": 20, "solids": solids}, indent=1), encoding="utf-8")
 
-    export_figures(assets)
+    export_critters(assets)
+    subprocess.run([sys.executable, str(Path(__file__).with_name("figures3d.py"))], check=True)
 
     # Kontobuch
     book = Image.new("RGBA", (14, 10), (0, 0, 0, 0))
@@ -1093,53 +1116,50 @@ def export_game():
     print(f"{len(manifest)} Objekte, {len(solids)} Blockaden exportiert nach {assets}")
 
 
-def fallen(sheet, cx, cy, spec):
-    """Liegende Figur in einer Blutlache: Kopf links, ein Arm abgespreizt, die Mütze daneben."""
-    co_d, co, co_l = spec["coat"]
-    d = ImageDraw.Draw(sheet.img)
-    P = lambda pts: [(cx + x, cy + y) for x, y in pts]  # noqa: E731
-    d.ellipse(P([(0, 31), (19, 41)]), fill=(70, 10, 10, 235))
-    d.ellipse(P([(4, 34), (13, 40)]), fill=(96, 14, 12, 235))
-    d.polygon(P([(16, 33), (23, 34), (23, 37), (16, 37)]), fill=C[spec["legs"]])
-    d.line(P([(16, 37), (23, 37)]), fill=C["black"])
-    d.rectangle(P([(22, 33), (23, 35)]), fill=C["black"])
-    d.polygon(P([(10, 28), (13, 28), (13, 32), (10, 32)]), fill=C[co_d])
-    d.rectangle(P([(10, 26), (12, 27)]), fill=C["skin_d"])
-    d.polygon(P([(6, 31), (17, 30), (18, 37), (8, 38)]), fill=C[co])
-    d.line(P([(6, 31), (17, 30)]), fill=C[co_l])
-    d.line(P([(8, 38), (18, 37)]), fill=C[co_d])
-    d.line(P([(12, 31), (13, 37)]), fill=C[co_d])
-    d.ellipse(P([(1, 31), (6, 36)]), fill=C["skin_d"])
-    d.line(P([(2, 31), (6, 31)]), fill=C[spec["hair"]])
-    d.ellipse(P([(17, 27), (22, 30)]), fill=C[spec["hat_c"]])
+def export_critters(assets):
+    """Kleintiere, Feld 16 × 12. Zeile 0 Ratte: laufen, laufen, sitzen. Zeile 1 Taube: sitzen, picken, Flügel oben, Flügel unten."""
+    sheet = Image.new("RGBA", (16 * 4, 12 * 2), (0, 0, 0, 0))
+    d = ImageDraw.Draw(sheet)
+    fur, fur_d, fur_l, skin = (104, 92, 82), (66, 58, 54), (136, 122, 106), (168, 120, 112)
+    for column, lift in ((0, 0), (1, 1), (2, 0)):
+        x = column * 16
+        run = column < 2
+        d.line((x + 1, 9 - lift, x + 4, 9), fill=skin)
+        d.rectangle((x + 4, 7 - lift, x + 10, 10 - lift), fill=fur)
+        d.line((x + 4, 7 - lift, x + 10, 7 - lift), fill=fur_l)
+        d.line((x + 4, 10 - lift, x + 10, 10 - lift), fill=fur_d)
+        d.rectangle((x + 11, 8 - lift, x + 13, 10 - lift), fill=fur)
+        d.point((x + 14, 9 - lift), fill=skin)
+        d.point((x + 12, 7 - lift), fill=fur_d)
+        d.point((x + 13, 8 - lift), fill=(16, 12, 12))
+        feet = (5, 9) if lift == 0 or not run else (7, 11)
+        for foot in feet:
+            d.point((x + foot, 11), fill=fur_d)
+    grey, grey_d, grey_l, neck = (128, 132, 142), (82, 86, 98), (170, 172, 178), (92, 120, 110)
+    y = 12
 
+    def body(x, head_y, head_x=11):
+        d.polygon([(x + 4, y + 7), (x + 7, y + 4), (x + 11, y + 5), (x + 11, y + 9), (x + 6, y + 10)], fill=grey)
+        d.line((x + 6, y + 9, x + 10, y + 9), fill=grey_d)
+        d.line((x + 2, y + 8, x + 5, y + 8), fill=grey_d)
+        d.rectangle((x + head_x, y + head_y, x + head_x + 1, y + head_y + 2), fill=neck)
+        d.point((x + head_x + 2, y + head_y + 1), fill=(216, 176, 96))
 
-def export_figures(assets):
-    """Figurenblatt: je Figur eine Zeile, Spalten s0–s3, e0–e3, n0–n3, Schießhaltung s, e, n, zuletzt gefallen. Feld 24 × 42."""
-    names = list(SPECS)
-    sheet = Scene(1)
-    sheet.w, sheet.h = 24 * 16, 42 * len(names)
-    sheet.img = Image.new("RGBA", (sheet.w, sheet.h), (0, 0, 0, 0))
-    sheet.px = sheet.img.load()
-    frames = [(d_i * 4 + step, d, step, False) for d_i, d in enumerate(("s", "e", "n")) for step in range(4)]
-    frames += [(12 + d_i, d, 0, True) for d_i, d in enumerate(("s", "e", "n"))]
-    for row, name in enumerate(names):
-        for column, d, step, aim in frames:
-            cell_x, cell_y = column * 24, row * 42
-            # Weicher Schatten am Boden, damit die Figur im Bild steht und nicht schwebt
-            for j in range(38, 42):
-                half = {38: 6, 39: 9, 40: 9, 41: 6}[j]
-                for i in range(12 - half, 12 + half):
-                    sheet.px[cell_x + i, cell_y + j] = (0, 0, 0, 120)
-            figure(sheet, 1 + cell_x, 1 + cell_y, SPECS[name], d, step, aim)
-        fallen(sheet, 15 * 24, row * 42, SPECS[name])
-    sheet.img.save(assets / "figures.png")
-    (assets / "figures.json").write_text(json.dumps({"names": names, "w": 24, "h": 42}), encoding="utf-8")
+    body(0, 3)
+    d.point((8, y + 11), fill=(150, 80, 70))
+    body(16, 7, 12)
+    d.point((16 + 8, y + 11), fill=(150, 80, 70))
+    for column, wing in ((2, ((6, 6), (3, 0), (10, 2), (10, 6))), (3, ((6, 6), (2, 10), (9, 11), (10, 6)))):
+        x = column * 16
+        body(x, 4)
+        d.polygon([(x + a, y + b) for a, b in wing], fill=grey_l)
+    sheet.save(assets / "critters.png")
 
 
 def main():
     if "--figures" in sys.argv:
-        export_figures(Path(__file__).resolve().parents[2] / "game" / "assets")
+        export_critters(Path(__file__).resolve().parents[2] / "game" / "assets")
+        subprocess.run([sys.executable, str(Path(__file__).with_name("figures3d.py"))], check=True)
         print("Nur das Figurenblatt neu erzeugt")
         return
     OUT.mkdir(parents=True, exist_ok=True)

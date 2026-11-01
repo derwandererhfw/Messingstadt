@@ -5,6 +5,7 @@ Schreibt game/assets/light/: je Sprite <name>_a.png (Licht gesamt) und <name>_b.
 sowie grid.png, das Lichtgitter für bewegte Figuren. Werte sind Wurzeln von Licht / MAX_LIGHT.
 """
 import json
+import random
 import shutil
 import subprocess
 from pathlib import Path
@@ -27,7 +28,8 @@ FIRE_COLOR = (1.0, 0.45, 0.15)
 WINDOW_COLOR = (1.0, 0.72, 0.42)
 LAMP_POWER = 4.2
 FIRE_POWER = 0.7
-WINDOW_POWER = 0.02
+WINDOW_POWER = 0.009
+SCREEN_WINDOWS = 3  # Fenster mit flimmerndem Bildfunk, ihr Licht kommt im Spiel dazu
 SPEC_STRENGTH = 1.6
 PUDDLE_SPEC = 7.0
 STUTTER_LAMP = (5.6, 10.5)
@@ -48,18 +50,30 @@ def is_emissive(rgba):
     return hit & (rgba[..., 3] > 128)
 
 
-def half_mask(rgba, emissive_allowed):
+def half_mask(rgba, glow):
     """Maske in halber Auflösung: 0 durchsichtig, 1 Fläche, 2 leuchtet selbst."""
     h, w = rgba.shape[:2]
     hw, hh = (w + 1) // 2, (h + 1) // 2
     mask = np.zeros((hh, hw), np.uint8)
     solid = rgba[..., 3] > 16
-    glow = is_emissive(rgba) if emissive_allowed else np.zeros((h, w), bool)
     for y in range(hh):
         for x in range(hw):
             if solid[y * 2:y * 2 + 2, x * 2:x * 2 + 2].any():
                 mask[y, x] = 2 if glow[y * 2:y * 2 + 2, x * 2:x * 2 + 2].sum() >= 2 else 1
     return mask
+
+
+def pane_pixels(pane, sprite_left, sprite_top, rgba):
+    """Bildpunkte eines Fensters oder Buchstabens innerhalb seines Sprites. Dunkle Sprossen bleiben ausgespart."""
+    h, w = rgba.shape[:2]
+    pixels = []
+    for u in range(pane["u"], pane["u"] + pane["w"]):
+        off = int(u * pane["slope"]) if pane["slope"] > 0 else -int(u * -pane["slope"])
+        for v in range(pane["v"], pane["v"] + pane["h"]):
+            x, y = pane["x"] + u - sprite_left, pane["y"] + off + v - sprite_top
+            if 0 <= x < w and 0 <= y < h and rgba[y, x, 3] > 128 and rgba[y, x, 0] >= 70:
+                pixels.append((y, x))
+    return pixels
 
 
 def mean_albedo(rgba):
@@ -118,11 +132,47 @@ def main():
         sprites.append({"name": Path(t["file"]).stem, "box": len(boxes) - 1, "left": t["px"], "top": t["py"], "kind": t["kind"]})
         images.append(rgba)
 
+    # Jedes erleuchtete Fenster und jeder Buchstabe bekommt eine Kennung für das Spiel.
+    pane_list = []
+    for sprite, thing in zip(sprites[1:], manifest["things"]):
+        for pane in thing["panes"]:
+            pane_list.append((sprite, pane))
+    # Bildfunk reihum auf die Häuser verteilt, damit das Flimmern nicht an einer Stelle sitzt.
+    by_house = {}
+    for i, (sprite, pane) in enumerate(pane_list):
+        if pane["kind"] == "window":
+            by_house.setdefault(sprite["name"], []).append(i + 1)
+    picker = random.Random(1927)
+    houses = sorted(by_house)
+    picker.shuffle(houses)
+    screens = set()
+    for turn in range(SCREEN_WINDOWS):
+        screens.add(picker.choice([w for w in by_house[houses[turn % len(houses)]] if w not in screens]))
+    panes_out = []
+    for sprite, rgba in zip(sprites, images):
+        sprite["ids"] = np.zeros(rgba.shape[:2], np.uint8)
+        sprite["lit"] = np.zeros(rgba.shape[:2], bool)
+    sprite_rgba = {id(sprite): rgba for sprite, rgba in zip(sprites, images)}
+    for index, (sprite, pane) in enumerate(pane_list):
+        pane_id = index + 1
+        pixels = pane_pixels(pane, sprite["left"], sprite["top"], sprite_rgba[id(sprite)])
+        for y, x in pixels:
+            sprite["ids"][y, x] = pane_id
+            # Bildfunk und Schild leuchten im Spiel selbst, sie zählen nicht zum vorberechneten Licht.
+            if pane["kind"] == "window" and pane_id not in screens:
+                sprite["lit"][y, x] = True
+        if pixels:
+            ys, xs = zip(*pixels)
+            kind = "tv" if pane_id in screens else pane["kind"]
+            panes_out.append({"id": pane_id, "kind": kind, "x": sprite["left"] + sum(xs) / len(xs), "y": sprite["top"] + sum(ys) / len(ys)})
+    (ASSETS / "panes.json").write_text(json.dumps(panes_out), encoding="utf-8")
+
     with open(WORK / "scene.bin", "wb") as f:
         for sprite, rgba in zip(sprites, images):
             # Lampengläser und Feuerluken sind eigene Lichtquellen, sie zählen nicht als Fenster.
             allowed = sprite.get("kind", "") not in ("lamp", "boiler") and sprite["box"] >= 0
-            mask = half_mask(rgba, allowed)
+            glow = sprite["lit"] | (is_emissive(rgba) & (sprite["ids"] == 0) if allowed else False)
+            mask = half_mask(rgba, glow)
             sprite["w"], sprite["h"] = mask.shape[1], mask.shape[0]
             f.write(mask.tobytes())
 
@@ -138,7 +188,8 @@ def main():
         "sky": SKY, "groundAlbedo": (groundless.mean(axis=0)[:3] / 255).tolist(),
         "lampColor": LAMP_COLOR, "fireColor": FIRE_COLOR, "windowColor": WINDOW_COLOR, "windowPower": WINDOW_POWER,
         "specStrength": SPEC_STRENGTH, "puddleSpec": PUDDLE_SPEC,
-        "boxes": boxes, "lights": lights, "sprites": sprites, "puddles": manifest["puddles"],
+        "boxes": boxes, "lights": lights, "puddles": manifest["puddles"],
+        "sprites": [{k: s[k] for k in ("box", "left", "top", "w", "h")} for s in sprites],
         "gridRes": GRID_RES, "gridZ": GRID_Z,
     }
     (WORK / "scene.json").write_text(json.dumps(scene), encoding="utf-8")
@@ -153,7 +204,7 @@ def main():
         at += w * h * 9
         void = block[..., 0] < 0
         block[void] = 0
-        mask = half_mask(rgba, False) > 0
+        mask = half_mask(rgba, np.zeros(rgba.shape[:2], bool)) > 0
         light = tone(block[..., :3] + blur(block[..., 3:6], mask))
         light[void] = VOID_LIGHT
         deltas = np.stack([block[..., 6], block[..., 7], block[..., 8]], axis=-1)
@@ -163,11 +214,13 @@ def main():
         size = (rgba.shape[1], rgba.shape[0])
         a = np.array(Image.fromarray(encode(light)).resize(size, Image.BILINEAR))
         b = np.array(Image.fromarray(encode(deltas)).resize(size, Image.BILINEAR))
-        glow = is_emissive(rgba) if sprite["box"] >= 0 else np.zeros(rgba.shape[:2], bool)
+        glow = (is_emissive(rgba) if sprite["box"] >= 0 else np.zeros(rgba.shape[:2], bool)) | (sprite["ids"] > 0)
         a[glow] = encode(np.array([EMISSIVE_LIGHT] * 3))
         b[glow] = 0
         Image.fromarray(a).save(OUT / f"{sprite['name']}_a.png", optimize=True)
         Image.fromarray(b).save(OUT / f"{sprite['name']}_b.png", optimize=True)
+        if sprite["ids"].any():
+            Image.fromarray(sprite["ids"]).convert("RGB").save(OUT / f"{sprite['name']}_w.png")
 
     size = 20 * GRID_RES
     grid = np.fromfile(WORK / "grid.bin", dtype="<f4").reshape(size, size, 3)

@@ -23,6 +23,8 @@ namespace Messingstadt
 shader_type canvas_item;
 uniform sampler2D light_a : filter_nearest;
 uniform sampler2D light_b : filter_nearest;
+uniform sampler2D pane_ids : filter_nearest;
+uniform sampler2D pane_states : filter_nearest;
 uniform vec3 night;
 uniform vec3 lamp_color;
 uniform vec3 fire_color;
@@ -34,7 +36,13 @@ void fragment() {
     vec3 b = texture(light_b, UV).rgb;
     vec3 l = 4.0 * a * a + 4.0 * b.r * b.r * (stutter - 1.0) * lamp_color
         + 4.0 * b.b * b.b * (unrest - 1.0) * lamp_color + 4.0 * b.g * b.g * (fire - 1.0) * fire_color;
+    float shade = dot(COLOR.rgb, vec3(0.34));
     COLOR.rgb *= max(l, vec3(0.0)) / night;
+    float pane = texture(pane_ids, UV).r;
+    if (pane > 0.0) {
+        vec4 state = texture(pane_states, vec2((pane * 255.0 + 0.5) / 256.0, 0.5));
+        COLOR.rgb = mix(COLOR.rgb, state.rgb * (0.35 + shade * 1.3) / night, state.a);
+    }
 }";
         private const float LightMax = 4f;
         private static readonly Color LampColor = new(1f, 0.74f, 0.42f);
@@ -50,7 +58,6 @@ void fragment() {
         private const float FigureMaxLight = 1.2f;
         private const float FigureLightColor = 0.65f;
         private const float GlowFadePerSecond = 5f;
-        private const int FallenColumn = 15;
 
         // Im Lageplan: So lange bleibt eine Figur am Ziel stehen, das muss noch unbemerkt gehen.
         private const int ArrivalHoldTicks = 40;
@@ -58,23 +65,50 @@ void fragment() {
         private const float AbandonWarningSeconds = 4f;
         private const int AimTicksStanding = 12;
         private const int AimTicksWalking = 5;
-        private const int AimColumn = 12;
+
+        // Spalten im Figurenblatt, siehe tools/art/figures3d.py
+        private const int WalkColumn = 0;
+        private const int RunColumn = 8;
+        private const int IdleColumn = 16;
+        private const int AimColumn = 20;
+        private const int RecoilColumn = 21;
+        private const int AimWalkColumn = 22;
+        private const int FallColumn = 30;
+        private const int FallFrames = 6;
+        private const int CycleFrames = 8;
+        private const int IdleFrames = 4;
+        private const float IdleFramesPerSecond = 1.6f;
+        private const float FallSeconds = 0.55f;
+
+        // Weg für einen Doppelschritt in Einheiten, damit die Füße zum Tempo passen und nicht rutschen.
+        private const float StrideUnits = 1150f;
+        private const float RunStrideUnits = 1700f;
 
         /// <summary>Farbe für Ring und Nummer. Alle Agenten tragen dasselbe, nur die Nummer unterscheidet sie.</summary>
         public static readonly Color AgentColor = new(1f, 0.8f, 0.45f);
 
-        private sealed record ThingInfo(float X0, float Y0, float X1, float Y1);
+        private sealed record ThingInfo(float X0, float Y0, float X1, float Y1, float Z1);
 
         private readonly List<ThingInfo> _things = new();
         private readonly List<Sprite2D> _thingSprites = new();
         private readonly List<Image> _thingImages = new();
         private readonly List<ShaderMaterial> _litMaterials = new();
+        private readonly WindowLife _windowLife = new();
+        private Texture2D _noPanes = null!;
+        private Texture2D _critterGlow = null!;
+
+        // Der Arbeiter raucht vor der Seitentür des Hotels.
+        private static readonly Vector2 WorkerTile = new(6.35f, 15.35f);
+        private static readonly Vector2 WorkerDoorTile = new(6.04f, 15.8f);
         private Shader _litShader = null!;
         private Image _lightGrid = null!;
         private readonly List<Color> _unitGlow = new();
         private readonly Ambience _ambience = new();
         private readonly List<Sprite2D> _unitSprites = new();
         private readonly Dictionary<string, int> _figureRows = new();
+        private readonly Dictionary<int, float> _fallStarted = new();
+        private readonly List<Vector2> _tickFrom = new();
+        private int _figureViews, _footX, _footY;
         private Sprite2D _book = null!;
         private Camera2D _camera = null!;
         private Label _status = null!;
@@ -153,6 +187,12 @@ void fragment() {
             overlayLayer.AddChild(new Overlay { Game = this });
             BuildUi();
             StartMission();
+            AddChild(new Critters
+            {
+                Game = this, Sheet = LoadTexture("res://assets/critters.png"), Glow = _critterGlow,
+                Gullies = _ambience.Steam.ConvertAll(ScreenToMap),
+                WorkerSpot = WorkerTile, WorkerDoor = WorkerDoorTile,
+            });
         }
 
         /// <summary>Lichtschein für Mündungsfeuer, die Marken am Boden und die bewegte Umgebung.</summary>
@@ -175,6 +215,10 @@ void fragment() {
             float halfW = _map.Width * 32f;
             _ambience.Area = new Rect2(_ox - halfW, _oy, 2 * halfW, _map.Height * 32f);
             AddChild(_ambience);
+            _windowLife.Glow = glow;
+            _windowLife.LightParent = this;
+            AddChild(_windowLife);
+            _critterGlow = glow;
             AddChild(new RainLayer { ZIndex = 3900 });
         }
 
@@ -221,6 +265,9 @@ void fragment() {
             var material = new ShaderMaterial { Shader = _litShader };
             material.SetShaderParameter("light_a", LoadTexture($"res://assets/light/{name}_a.png"));
             material.SetShaderParameter("light_b", LoadTexture($"res://assets/light/{name}_b.png"));
+            string panes = ProjectSettings.GlobalizePath($"res://assets/light/{name}_w.png");
+            material.SetShaderParameter("pane_ids", File.Exists(panes) ? LoadTexture($"res://assets/light/{name}_w.png") : _noPanes);
+            material.SetShaderParameter("pane_states", _windowLife.States);
             material.SetShaderParameter("night", Night);
             material.SetShaderParameter("lamp_color", LampColor);
             material.SetShaderParameter("fire_color", FireColor);
@@ -242,6 +289,9 @@ void fragment() {
         private void LoadStatics()
         {
             _litShader = new Shader { Code = LitShaderCode };
+            var blank = Image.CreateEmpty(1, 1, false, Image.Format.Rgba8);
+            blank.Fill(Colors.Black);
+            _noPanes = ImageTexture.CreateFromImage(blank);
             _lightGrid = Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/light/grid.png"));
             AddChild(new Sprite2D { Texture = LoadTexture("res://assets/ground.png"), Centered = false, ZIndex = -1, Material = LitMaterial("ground") });
             using var manifest = JsonDocument.Parse(File.ReadAllText(ProjectSettings.GlobalizePath("res://assets/manifest.json")));
@@ -251,7 +301,7 @@ void fragment() {
             foreach (var t in manifest.RootElement.GetProperty("things").EnumerateArray())
             {
                 _things.Add(new ThingInfo(t.GetProperty("x0").GetSingle(), t.GetProperty("y0").GetSingle(),
-                    t.GetProperty("x1").GetSingle(), t.GetProperty("y1").GetSingle()));
+                    t.GetProperty("x1").GetSingle(), t.GetProperty("y1").GetSingle(), t.GetProperty("z1").GetSingle()));
                 var image = Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/things/" + t.GetProperty("file").GetString()));
                 _thingImages.Add(image);
                 var sprite = new Sprite2D
@@ -268,6 +318,14 @@ void fragment() {
             }
             _ambience.Smoke = ReadPoints(manifest.RootElement, "smoke");
             _ambience.Steam = ReadPoints(manifest.RootElement, "steam");
+            using (var panes = JsonDocument.Parse(File.ReadAllText(ProjectSettings.GlobalizePath("res://assets/panes.json"))))
+            {
+                foreach (var p in panes.RootElement.EnumerateArray())
+                {
+                    _windowLife.AddPane(p.GetProperty("id").GetInt32(), p.GetProperty("kind").GetString()!,
+                        new Vector2(p.GetProperty("x").GetSingle(), p.GetProperty("y").GetSingle()));
+                }
+            }
             _ambience.Fires = ReadPoints(manifest.RootElement, "fires");
             foreach (var p in manifest.RootElement.GetProperty("puddles").EnumerateArray())
             {
@@ -276,6 +334,9 @@ void fragment() {
             using var figures = JsonDocument.Parse(File.ReadAllText(ProjectSettings.GlobalizePath("res://assets/figures.json")));
             _cellW = figures.RootElement.GetProperty("w").GetInt32();
             _cellH = figures.RootElement.GetProperty("h").GetInt32();
+            _figureViews = figures.RootElement.GetProperty("views").GetInt32();
+            _footX = figures.RootElement.GetProperty("footX").GetInt32();
+            _footY = figures.RootElement.GetProperty("footY").GetInt32();
             int row = 0;
             foreach (var n in figures.RootElement.GetProperty("names").EnumerateArray())
             {
@@ -505,6 +566,8 @@ void fragment() {
             }
             _unitSprites.Clear();
             _unitGlow.Clear();
+            _fallStarted.Clear();
+            _tickFrom.Clear();
             _campaign.Prepare(_mission);
             SaveCampaign();
             _finished = false;
@@ -538,7 +601,7 @@ void fragment() {
             _ox + (x - y) / (float)World.TileUnits * 32f,
             _oy + (x + y) / (float)World.TileUnits * 16f);
 
-        private Vector2 ScreenToMap(Vector2 p)
+        public Vector2 ScreenToMap(Vector2 p)
         {
             float a = (p.X - _ox) / 32f, b = (p.Y - _oy) / 16f;
             return new Vector2((a + b) / 2f, (b - a) / 2f);
@@ -556,6 +619,7 @@ void fragment() {
                 while (_accumulator >= TickSeconds)
                 {
                     _accumulator -= TickSeconds;
+                    RememberPositions();
                     World.Step();
                     StartQueuedMove();
                 }
@@ -726,50 +790,21 @@ void fragment() {
             {
                 var u = order[rank];
                 var s = _unitSprites[u.Id];
-                var foot = ToScreen(u.X, u.Y);
-                int row = _figureRows.GetValueOrDefault(u.Sprite, 0);
+                var foot = UnitPos(u);
                 // Nach einem Schuss hält die Figur die Waffe kurz aufs Ziel, auch wenn sie dabei weitergeht.
                 int sinceShot = World.Tick - u.LastFiredTick;
                 bool aiming = u.Alive && sinceShot <= (u.Moving ? AimTicksWalking : AimTicksStanding);
                 int lookX = aiming ? u.AimX : u.FacingX, lookY = aiming ? u.AimY : u.FacingY;
-                float sx = lookX - lookY, sy = (lookX + lookY) / 2f;
-                int dir;
-                bool flip = false;
-                if (Math.Abs(sx) > Math.Abs(sy) * 1.2f)
-                {
-                    dir = 1;
-                    flip = sx < 0;
-                }
-                else
-                {
-                    dir = sy >= 0 ? 0 : 2;
-                }
-                int step = 0;
-                if (u.Moving)
-                {
-                    int[] seq = { 1, 2, 3, 2 };
-                    step = seq[u.WalkTick / 3 % 4];
-                }
-                int column = !u.Alive ? FallenColumn : aiming ? AimColumn + dir : dir * 4 + step;
-                s.RegionRect = new Rect2(column * _cellW, row * _cellH, _cellW, _cellH);
-                s.FlipH = u.Alive ? flip : u.Id % 2 == 1;
-                if (u.Alive)
-                {
-                    s.Modulate = FigureGlow(u);
-                    s.Position = foot - new Vector2(12, 41);
-                    if (aiming && sinceShot <= 1)
-                    {
-                        // Rückstoß: ein kurzer Ruck gegen die Schussrichtung
-                        s.Position -= new Vector2(sx, sy).Normalized() * 1.5f;
-                    }
-                    s.ZIndex = ThingZ(InsertIndex(u) - 1) + rank + 1;
-                }
-                else
-                {
-                    s.Modulate = FigureGlow(u);
-                    s.Position = foot - new Vector2(12, 36);
-                    s.ZIndex = 0;
-                }
+                // Am Boden gedacht: x - y läuft im Bild quer, x + y zur Kamera. Der Westen entsteht durch Spiegeln.
+                float across = lookX - lookY, toward = lookX + lookY;
+                float angle = Mathf.RadToDeg(Mathf.Atan2(toward, Mathf.Abs(across)));
+                int view = Mathf.Clamp(Mathf.RoundToInt((90f - angle) / 45f), 0, _figureViews - 1);
+                s.RegionRect = FigureRegion(u.Sprite, view, FigureColumn(u, aiming, sinceShot));
+                s.FlipH = across < 0;
+                s.Modulate = FigureGlow(u);
+                s.Position = foot - new Vector2(_footX, _footY);
+                int depth = ThingZ(InsertIndex(u.X / (float)World.TileUnits, u.Y / (float)World.TileUnits) - 1);
+                s.ZIndex = u.Alive ? depth + rank + 2 : depth + 1;
             }
             UpdateOcclusion();
             _book.Visible = !World.ItemTaken;
@@ -794,6 +829,34 @@ void fragment() {
             return GridLight(x, y).Lerp(GridLight(x + 1, y), fx).Lerp(GridLight(x, y + 1).Lerp(GridLight(x + 1, y + 1), fx), fy);
         }
 
+        /// <summary>Einfärbung für Kleintiere und Passanten am gleichen Licht wie die Figuren.</summary>
+        public Color FigureLight(int unitsX, int unitsY, float minLight) => LightFor(LightAt(unitsX, unitsY), minLight);
+
+        /// <summary>Tiefe im Bild für eine kleine Figur an dieser Stelle, zwischen den Objekten davor und dahinter.</summary>
+        public int DepthZ(float x, float y) => ThingZ(InsertIndex(x, y) - 1) + 20;
+
+        /// <summary>Tiefe für etwas, das auf einem Objekt in dieser Höhe sitzt: direkt über diesem Objekt.</summary>
+        public int PerchZ(float x, float y, float z)
+        {
+            for (int i = _things.Count - 1; i >= 0; i--)
+            {
+                var t = _things[i];
+                if (x >= t.X0 && x <= t.X1 && y >= t.Y0 && y <= t.Y1 && Mathf.Abs(t.Z1 - z) < 1f)
+                {
+                    return ThingZ(i) + 20;
+                }
+            }
+            return DepthZ(x, y);
+        }
+
+        /// <summary>Figurenblatt und Ausschnitt für eine Figur, Blickrichtung und Spalte.</summary>
+        public (Texture2D Sheet, Rect2 Region) FigureFrame(string name, int view, int column) =>
+            (_figures, FigureRegion(name, view, column));
+
+        public Vector2 FigureFoot => new(_footX, _footY);
+        public const int IdleFirstColumn = IdleColumn;
+        public const int WalkFirstColumn = WalkColumn;
+
         /// <summary>Einfärbung einer Figur: das Licht am Ort, nicht dunkler als minLight und nur gedämpft farbig.</summary>
         private static Color LightFor(Color light, float minLight)
         {
@@ -803,6 +866,63 @@ void fragment() {
             var grey = new Color(target, target, target);
             var tinted = grey.Lerp(new Color(light.R * scale, light.G * scale, light.B * scale), FigureLightColor);
             return new Color(tinted.R / Night.R, tinted.G / Night.G, tinted.B / Night.B);
+        }
+
+        /// <summary>Welches Bild der Bewegung gerade dran ist. Schrittlänge und Tempo passen zusammen, damit die Füße nicht rutschen.</summary>
+        private int FigureColumn(Unit u, bool aiming, int sinceShot)
+        {
+            float now = Time.GetTicksMsec() / 1000f;
+            if (!u.Alive)
+            {
+                if (!_fallStarted.TryGetValue(u.Id, out float started))
+                {
+                    started = now;
+                    _fallStarted[u.Id] = now;
+                }
+                return FallColumn + Mathf.Min(FallFrames - 1, (int)((now - started) / FallSeconds * FallFrames));
+            }
+            if (u.Moving)
+            {
+                float stride = u.Sprinting ? RunStrideUnits : StrideUnits;
+                float speed = World.WalkSpeed(u) * (u.Sprinting ? 1.4f : 1f);
+                int frame = (int)(u.WalkTick * speed / stride * CycleFrames) % CycleFrames;
+                return (aiming ? AimWalkColumn : u.Sprinting ? RunColumn : WalkColumn) + frame;
+            }
+            if (aiming)
+            {
+                return sinceShot <= 1 ? RecoilColumn : AimColumn;
+            }
+            return IdleColumn + (int)(now * IdleFramesPerSecond + u.Id * 1.7f) % IdleFrames;
+        }
+
+        private Rect2 FigureRegion(string name, int view, int column) =>
+            new(column * _cellW, (_figureRows.GetValueOrDefault(name, 0) * _figureViews + view) * _cellH, _cellW, _cellH);
+
+        private void RememberPositions()
+        {
+            for (int i = 0; i < World.Units.Count; i++)
+            {
+                var pos = ToScreen(World.Units[i].X, World.Units[i].Y);
+                if (i < _tickFrom.Count)
+                {
+                    _tickFrom[i] = pos;
+                }
+                else
+                {
+                    _tickFrom.Add(pos);
+                }
+            }
+        }
+
+        /// <summary>Stelle der Figur im Bild, geglättet zwischen zwei Spieltakten. Die Spiellogik bleibt davon unberührt.</summary>
+        public Vector2 UnitPos(Unit u)
+        {
+            var now = ToScreen(u.X, u.Y);
+            if (_paused || _finished || u.Id >= _tickFrom.Count)
+            {
+                return now;
+            }
+            return _tickFrom[u.Id].Lerp(now, Mathf.Clamp(_accumulator / TickSeconds, 0f, 1f));
         }
 
         /// <summary>Licht am Standort einer Figur. Wachen ohne Sichtkontakt bleiben im Dunkeln.</summary>
@@ -893,9 +1013,8 @@ void fragment() {
         }
 
         /// <summary>Index des ersten Objekts, das vor der Figur steht.</summary>
-        private int InsertIndex(Unit u)
+        private int InsertIndex(float x, float y)
         {
-            float x = u.X / (float)World.TileUnits, y = u.Y / (float)World.TileUnits;
             float x0 = x - 0.1f, x1 = x + 0.1f, y0 = y - 0.1f, y1 = y + 0.1f;
             for (int i = 0; i < _things.Count; i++)
             {
