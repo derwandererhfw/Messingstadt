@@ -16,20 +16,40 @@ namespace Messingstadt
         private const float ScrollSpeed = 300f;
         private const float MarkerSeconds = 0.8f;
         private static readonly Color Night = new(0.34f, 0.37f, 0.55f);
-        private const float LampEnergy = 1.15f;
 
-        // Figuren sollen überall lesbar sein und der Mantel braun bleiben. Deshalb gleicht ihre Einfärbung
-        // das Licht an ihrem Standort aus, Nachtblau wie Laternengelb. Unter der Laterne dürfen sie etwas heller sein.
-        private const float AgentBrightness = 0.72f;
-        private const float SpottedGuardBrightness = 0.75f;
-        private const float HiddenGuardBrightness = 0.48f;
-        private const float BrightnessNearLamp = 1.2f;
-        private const float MaxFigureGain = 2.6f;
-        private const float LampTextureScale = 1.1f;
-        private const float LampRadius = 128f * LampTextureScale;
+        // Häuser und Boden tragen vorberechnetes Licht aus dem Pathtracer (tools/art/bake_light.py).
+        // Die Nacht von CanvasModulate wird im Shader herausgerechnet, sie gilt nur noch für Rauch, Regen und Marken.
+        private const string LitShaderCode = @"
+shader_type canvas_item;
+uniform sampler2D light_a : filter_nearest;
+uniform sampler2D light_b : filter_nearest;
+uniform vec3 night;
+uniform vec3 lamp_color;
+uniform vec3 fire_color;
+uniform float stutter = 1.0;
+uniform float unrest = 1.0;
+uniform float fire = 1.0;
+void fragment() {
+    vec3 a = texture(light_a, UV).rgb;
+    vec3 b = texture(light_b, UV).rgb;
+    vec3 l = 4.0 * a * a + 4.0 * b.r * b.r * (stutter - 1.0) * lamp_color
+        + 4.0 * b.b * b.b * (unrest - 1.0) * lamp_color + 4.0 * b.g * b.g * (fire - 1.0) * fire_color;
+    COLOR.rgb *= max(l, vec3(0.0)) / night;
+}";
+        private const float LightMax = 4f;
         private static readonly Color LampColor = new(1f, 0.74f, 0.42f);
-        private const float GlowFadePerSecond = 4f;
-        private const float FallenShade = 0.8f;
+        private static readonly Color FireColor = new(1f, 0.45f, 0.15f);
+
+        // Bewegte Figuren nehmen ihr Licht aus dem Lichtgitter. Damit sie lesbar bleiben, gibt es eine Mindesthelligkeit,
+        // und das Licht färbt den braunen Mantel nur gedämpft ein.
+        private const float AgentMinLight = 0.6f;
+        private const float SpottedGuardMinLight = 0.5f;
+        private const float HiddenGuardMinLight = 0.26f;
+        private const float FallenMinLight = 0.42f;
+        private const float BookMinLight = 0.7f;
+        private const float FigureMaxLight = 1.2f;
+        private const float FigureLightColor = 0.65f;
+        private const float GlowFadePerSecond = 5f;
         private const int FallenColumn = 15;
 
         // Im Lageplan: So lange bleibt eine Figur am Ziel stehen, das muss noch unbemerkt gehen.
@@ -48,7 +68,9 @@ namespace Messingstadt
         private readonly List<ThingInfo> _things = new();
         private readonly List<Sprite2D> _thingSprites = new();
         private readonly List<Image> _thingImages = new();
-        private readonly List<PointLight2D> _lampLights = new();
+        private readonly List<ShaderMaterial> _litMaterials = new();
+        private Shader _litShader = null!;
+        private Image _lightGrid = null!;
         private readonly List<Color> _unitGlow = new();
         private readonly Ambience _ambience = new();
         private readonly List<Sprite2D> _unitSprites = new();
@@ -91,6 +113,7 @@ namespace Messingstadt
         public Vector2 MarkerPos { get; private set; }
         public float MarkerTime { get; private set; }
         public bool Finished => _finished;
+        public List<double[]> LampSpots => _mission.Lamps;
         public Color NightColor => Night;
 
         /// <summary>Wann die Wachen welches Feld im Blick haben. Grundlage für Lageplan und Wegvorschau.</summary>
@@ -123,7 +146,7 @@ namespace Messingstadt
             _camera = new Camera2D { Zoom = new Vector2(2, 2) };
             AddChild(_camera);
             _camera.MakeCurrent();
-            AddLamps();
+            AddEnvironment();
             // Eigene Ebene, die der Kamera folgt: Ringe und Balken bleiben auch in der Nacht gut lesbar.
             var overlayLayer = new CanvasLayer { Layer = 1, FollowViewportEnabled = true };
             AddChild(overlayLayer);
@@ -132,8 +155,8 @@ namespace Messingstadt
             StartMission();
         }
 
-        /// <summary>Setzt an jede Straßenlaterne ein warmes Licht, das die Nacht aufhellt.</summary>
-        private void AddLamps()
+        /// <summary>Lichtschein für Mündungsfeuer, die Marken am Boden und die bewegte Umgebung.</summary>
+        private void AddEnvironment()
         {
             var gradient = new Gradient
             {
@@ -145,27 +168,10 @@ namespace Messingstadt
                 Gradient = gradient, Width = 256, Height = 256, Fill = GradientTexture2D.FillEnum.Radial,
                 FillFrom = new Vector2(0.5f, 0.5f), FillTo = new Vector2(1f, 0.5f),
             };
-            foreach (var lamp in _mission.Lamps)
-            {
-                var light = new PointLight2D
-                {
-                    Texture = glow,
-                    TextureScale = LampTextureScale,
-                    Color = LampColor,
-                    Energy = LampEnergy,
-                    RangeZMin = -1,
-                    RangeZMax = 4096,
-                    Position = new Vector2(_ox + (float)(lamp[0] - lamp[1]) * 32f, _oy + (float)(lamp[0] + lamp[1]) * 16f),
-                };
-                AddChild(light);
-                _lampLights.Add(light);
-            }
             // Unter den Gebäuden gezeichnet: Was hinter einem Haus liegt, bleibt auch im Bild verdeckt.
             AddChild(new GroundMarks { Game = this, ZIndex = 0 });
             _ambience.Game = this;
             _ambience.Glow = glow;
-            _ambience.Lamps = _lampLights;
-            _ambience.LampEnergy = LampEnergy;
             float halfW = _map.Width * 32f;
             _ambience.Area = new Rect2(_ox - halfW, _oy, 2 * halfW, _map.Height * 32f);
             AddChild(_ambience);
@@ -210,9 +216,34 @@ namespace Messingstadt
             return ImageTexture.CreateFromImage(image);
         }
 
+        private ShaderMaterial LitMaterial(string name)
+        {
+            var material = new ShaderMaterial { Shader = _litShader };
+            material.SetShaderParameter("light_a", LoadTexture($"res://assets/light/{name}_a.png"));
+            material.SetShaderParameter("light_b", LoadTexture($"res://assets/light/{name}_b.png"));
+            material.SetShaderParameter("night", Night);
+            material.SetShaderParameter("lamp_color", LampColor);
+            material.SetShaderParameter("fire_color", FireColor);
+            _litMaterials.Add(material);
+            return material;
+        }
+
+        /// <summary>Flackern von Laternen und Feuer. Die Anteile dafür stehen in den Lichtkarten.</summary>
+        public void SetFlicker(float stutter, float unrest, float fire)
+        {
+            foreach (var material in _litMaterials)
+            {
+                material.SetShaderParameter("stutter", stutter);
+                material.SetShaderParameter("unrest", unrest);
+                material.SetShaderParameter("fire", fire);
+            }
+        }
+
         private void LoadStatics()
         {
-            AddChild(new Sprite2D { Texture = LoadTexture("res://assets/ground.png"), Centered = false, ZIndex = -1 });
+            _litShader = new Shader { Code = LitShaderCode };
+            _lightGrid = Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/light/grid.png"));
+            AddChild(new Sprite2D { Texture = LoadTexture("res://assets/ground.png"), Centered = false, ZIndex = -1, Material = LitMaterial("ground") });
             using var manifest = JsonDocument.Parse(File.ReadAllText(ProjectSettings.GlobalizePath("res://assets/manifest.json")));
             _ox = manifest.RootElement.GetProperty("ox").GetInt32();
             _oy = manifest.RootElement.GetProperty("oy").GetInt32();
@@ -229,6 +260,7 @@ namespace Messingstadt
                     Centered = false,
                     Position = new Vector2(t.GetProperty("px").GetInt32(), t.GetProperty("py").GetInt32()),
                     ZIndex = ThingZ(index),
+                    Material = LitMaterial(Path.GetFileNameWithoutExtension(t.GetProperty("file").GetString()!)),
                 };
                 AddChild(sprite);
                 _thingSprites.Add(sprite);
@@ -723,7 +755,7 @@ namespace Messingstadt
                 s.FlipH = u.Alive ? flip : u.Id % 2 == 1;
                 if (u.Alive)
                 {
-                    s.Modulate = FigureGlow(u, foot);
+                    s.Modulate = FigureGlow(u);
                     s.Position = foot - new Vector2(12, 41);
                     if (aiming && sinceShot <= 1)
                     {
@@ -734,9 +766,7 @@ namespace Messingstadt
                 }
                 else
                 {
-                    var shade = FigureGlow(u, foot) * FallenShade;
-                    shade.A = 1f;
-                    s.Modulate = shade;
+                    s.Modulate = FigureGlow(u);
                     s.Position = foot - new Vector2(12, 36);
                     s.ZIndex = 0;
                 }
@@ -745,35 +775,46 @@ namespace Messingstadt
             _book.Visible = !World.ItemTaken;
             _book.Position = ToScreen(World.ItemX, World.ItemY);
             _book.ZIndex = 1;
+            _book.Modulate = LightFor(LightAt(World.ItemX, World.ItemY), BookMinLight);
         }
 
-        /// <summary>Stärke des Laternenlichts an einem Punkt, wie im Verlauf der Lichttextur.</summary>
-        private float LampLightAt(Vector2 p)
+        private Color GridLight(int x, int y)
         {
-            float sum = 0f;
-            foreach (var lamp in _lampLights)
-            {
-                float d = lamp.Position.DistanceTo(p) / LampRadius;
-                sum += d < 0.35f ? Mathf.Lerp(1f, 0.55f, d / 0.35f) : d < 1f ? Mathf.Lerp(0.55f, 0f, (d - 0.35f) / 0.65f) : 0f;
-            }
-            return sum;
+            var c = _lightGrid.GetPixel(Mathf.Clamp(x, 0, _lightGrid.GetWidth() - 1), Mathf.Clamp(y, 0, _lightGrid.GetHeight() - 1));
+            return new Color(c.R * c.R * LightMax, c.G * c.G * LightMax, c.B * c.B * LightMax);
         }
 
-        /// <summary>Gleicht das Licht am Standort einer Figur aus. Wachen ohne Sichtkontakt bleiben im Dunkeln.</summary>
-        private Color FigureGlow(Unit u, Vector2 foot)
+        /// <summary>Licht aus dem vorberechneten Gitter an einer Stelle der Karte.</summary>
+        public Color LightAt(int unitsX, int unitsY)
+        {
+            float cells = _lightGrid.GetWidth() / (float)_map.Width;
+            float gx = unitsX / (float)World.TileUnits * cells - 0.5f, gy = unitsY / (float)World.TileUnits * cells - 0.5f;
+            int x = Mathf.FloorToInt(gx), y = Mathf.FloorToInt(gy);
+            float fx = gx - x, fy = gy - y;
+            return GridLight(x, y).Lerp(GridLight(x + 1, y), fx).Lerp(GridLight(x, y + 1).Lerp(GridLight(x + 1, y + 1), fx), fy);
+        }
+
+        /// <summary>Einfärbung einer Figur: das Licht am Ort, nicht dunkler als minLight und nur gedämpft farbig.</summary>
+        private static Color LightFor(Color light, float minLight)
+        {
+            float level = (light.R + light.G + light.B) / 3f;
+            float target = Mathf.Clamp(level, minLight, FigureMaxLight);
+            float scale = target / Mathf.Max(level, 0.01f);
+            var grey = new Color(target, target, target);
+            var tinted = grey.Lerp(new Color(light.R * scale, light.G * scale, light.B * scale), FigureLightColor);
+            return new Color(tinted.R / Night.R, tinted.G / Night.G, tinted.B / Night.B);
+        }
+
+        /// <summary>Licht am Standort einer Figur. Wachen ohne Sichtkontakt bleiben im Dunkeln.</summary>
+        private Color FigureGlow(Unit u)
         {
             while (_unitGlow.Count <= u.Id)
             {
                 _unitGlow.Add(Colors.White);
             }
-            float light = LampLightAt(foot) * LampEnergy;
-            float brightness = (u.Faction == Faction.Agent || !u.Alive ? AgentBrightness
-                : World.IsSpottedByAgents(u) ? SpottedGuardBrightness : HiddenGuardBrightness)
-                * Mathf.Lerp(1f, BrightnessNearLamp, Mathf.Min(1f, light));
-            var target = new Color(
-                Mathf.Min(MaxFigureGain, brightness / (Night.R + LampColor.R * light)),
-                Mathf.Min(MaxFigureGain, brightness / (Night.G + LampColor.G * light)),
-                Mathf.Min(MaxFigureGain, brightness / (Night.B + LampColor.B * light)));
+            float minLight = !u.Alive ? FallenMinLight : u.Faction == Faction.Agent ? AgentMinLight
+                : World.IsSpottedByAgents(u) ? SpottedGuardMinLight : HiddenGuardMinLight;
+            var target = LightFor(LightAt(u.X, u.Y), minLight);
             float weight = Mathf.Min(1f, GlowFadePerSecond * (float)GetProcessDeltaTime());
             var g = _unitGlow[u.Id].Lerp(target, weight);
             _unitGlow[u.Id] = g;

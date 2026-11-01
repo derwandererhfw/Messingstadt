@@ -20,7 +20,7 @@ from PIL import Image, ImageDraw
 OUT = Path(__file__).resolve().parents[2] / "assets" / "concept"
 RNG = random.Random(1923)
 WEAR = random.Random(1931)  # eigener Zufall für die Abnutzung, damit RNG die Fenster nicht verschiebt
-AMBIENT = {"smoke": [], "steam": [], "fires": [], "puddles": []}  # Bildpositionen für die Animationen im Spiel
+AMBIENT = {"smoke": [], "steam": [], "fires": [], "puddles": [], "lights": [], "fireLights": []}  # Bildpositionen für die Animationen im Spiel
 HW, HH = 32, 16  # halbe Tile-Breite und -Höhe
 
 # Palette: Abenddämmerung statt Nacht, deutlich heller als die erste Fassung
@@ -487,6 +487,7 @@ class Thing:
     def __init__(self, x0, y0, x1, y1, z0=0, z1=10, draw=None, solid=False, opaque=False):
         self.x0, self.y0, self.x1, self.y1, self.z0, self.z1, self.draw = x0, y0, x1, y1, z0, z1, draw
         self.solid, self.opaque = solid, opaque
+        self.kind = ""
 
 
 def behind(a, b):
@@ -689,6 +690,8 @@ def boiler(x, y, s, things):
     top = s.to_screen(x + 0.9, y + 0.9, 62)
     AMBIENT["smoke"].append([int(top[0]), int(top[1]) - 4])
     AMBIENT["fires"].append([int(top[0]) + 8, int(top[1]) + 46])
+    # Die Feuerluke sitzt zur Kamera hin, knapp vor dem Kern des Kessels
+    AMBIENT["fireLights"].append([x + 1.5, y + 1.5, 14])
 
     def draw():
         cx, cy = top
@@ -712,6 +715,7 @@ def boiler(x, y, s, things):
         s.rect(cx + 4, cy + 42, 9, 9, C["gas_d"])
         s.rect(cx + 6, cy + 44, 5, 5, C["gas"])
     things.append(Thing(x, y, x + 1.8, y + 1.8, 0, 90, draw, solid=True, opaque=True))
+    things[-1].kind = "boiler"
 
 
 def overhead_pipe(x0, y0, x1, y1, z, s, things):
@@ -776,6 +780,7 @@ def getaway_truck(x, y, s, things):
 
 def lamp(x, y, s, things, glows):
     glows.append((x, y))
+    AMBIENT["lights"].append([x, y, 55])
     def draw():
         sx, sy = s.to_screen(x, y)
         sx, sy = int(sx), int(sy)
@@ -786,6 +791,7 @@ def lamp(x, y, s, things, glows):
         s.rect(sx - 4, sy - 63, 8, 3, C["soot"])
         s.rect(sx - 7, sy - 46, 14, 1, C["iron"])
     things.append(Thing(x - 0.05, y - 0.05, x + 0.05, y + 0.05, 0, 60, draw))
+    things[-1].kind = "lamp"
 
 
 def person(x, y, name, direction, step, s, things):
@@ -1068,7 +1074,7 @@ def export_game():
             continue
         name = f"{i:03d}.png"
         s.img.crop(bbox).save(assets / "things" / name)
-        manifest.append({"file": name, "px": bbox[0], "py": bbox[1], "x0": t.x0, "y0": t.y0, "x1": t.x1, "y1": t.y1})
+        manifest.append({"file": name, "px": bbox[0], "py": bbox[1], "x0": t.x0, "y0": t.y0, "x1": t.x1, "y1": t.y1, "z0": t.z0, "z1": t.z1, "kind": t.kind})
         if t.solid:
             solids.append({"x0": t.x0, "y0": t.y0, "x1": t.x1, "y1": t.y1, "opaque": t.opaque})
     (assets / "manifest.json").write_text(json.dumps({"ox": s.ox, "oy": s.oy, "things": manifest, **AMBIENT}), encoding="utf-8")

@@ -101,9 +101,23 @@ mit Ringen in den Pfützen, flackernde Laternen (eine mit Wackelkontakt), flacke
 Papierfetzen in Windböen. Das ist reine Darstellung mit eigenem Zufall in `game/Ambience.cs` und
 `game/RainLayer.cs`. Die Spiellogik bleibt deterministisch, und die Animation läuft auch in der Pause weiter.
 
+### Licht
+
+Das Licht von Häusern und Boden kommt aus einem Pathtracer (`tools/Messingstadt.LightBake`, Aufruf über `tools/art/bake_light.py`). Er rechnet jeden Bildpunkt über den Kamerastrahl auf ein 3D-Modell aus Quadern zurück und verfolgt von dort das Licht: direkt von Laternen, Feuerluken und erleuchteten Fenstern, dazu drei Umwege über Wände und Boden und der Nachthimmel. Das nasse Pflaster und die Pfützen spiegeln die Lampen Richtung Kamera. Das Ergebnis liegt je Sprite als Lichtkarte in `game/assets/light`.
+
+Berechnet wird vorab, nicht in jedem Bild: Godot hat im 2D kein Pathtracing, und die Stadt steht still. Das Spiel multipliziert die Karten nur noch per Shader. Was sich bewegt, wird angenähert:
+
+| Was | Wie |
+|---|---|
+| Figuren | Licht aus einem Gitter (4 Punkte je Feld), mit Schlagschatten von nahen Laternen. Agenten und entdeckte Wachen haben eine Mindesthelligkeit, damit sie lesbar bleiben, Wachen ohne Sichtkontakt bleiben dunkler |
+| Flackern | Die Anteile von Laternen und Feuer stehen in einer zweiten Karte. Nur das direkte Licht flackert, das Umwegelicht bleibt gleich |
+| Mündungsfeuer | Weiter ein einfaches 2D-Licht ohne Schatten |
+
+Nach Änderungen an der Stadt erst `generate_concept.py`, dann `bake_light.py` laufen lassen.
+
 ### Lesbarkeit
 
-Die Einfärbung der Figuren gleicht das Licht an ihrem Standort aus, damit sie überall gleich gut zu erkennen sind und der Mantel braun bleibt. Wachen ohne Sichtkontakt zu einem Agenten bleiben dunkler. Sichtkegel, Lageplan und Beute liegen unter den Gebäuden, Dächer verdecken sie also. Das ist reine Darstellung.
+Sichtkegel, Lageplan und Beute liegen unter den Gebäuden, Dächer verdecken sie also. Das ist reine Darstellung.
 
 ### Schüsse
 

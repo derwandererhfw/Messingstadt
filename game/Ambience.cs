@@ -32,7 +32,6 @@ namespace Messingstadt
         private readonly Random _rng = new();
         private readonly List<Ripple> _ripples = new();
         private readonly List<Paper> _papers = new();
-        private readonly List<PointLight2D> _fireLights = new();
         private readonly List<PointLight2D> _flashLights = new();
         private float _time;
         private float _stutterUntil;
@@ -44,10 +43,8 @@ namespace Messingstadt
         public List<Vector2> Steam = new();
         public List<Vector2> Fires = new();
         public List<(Vector2 Pos, float Radius)> Puddles = new();
-        public List<PointLight2D> Lamps = new();
         public Main Game = null!;
         public Texture2D Glow = null!;
-        public float LampEnergy;
         public Rect2 Area;
 
         private float Rand(float min, float max) => min + (float)_rng.NextDouble() * (max - min);
@@ -62,16 +59,6 @@ namespace Messingstadt
             foreach (var p in Steam)
             {
                 AddPlume(p, amount: 18, life: 2.8f, speed: 11f, size: 1f, new Color(2.3f, 2.3f, 2.4f, 0.28f));
-            }
-            foreach (var p in Fires)
-            {
-                var light = new PointLight2D
-                {
-                    Texture = Glow, TextureScale = 0.3f, Color = new Color(1f, 0.45f, 0.15f), Energy = 1f,
-                    RangeZMin = -1, RangeZMax = 4096, Position = p,
-                };
-                AddChild(light);
-                _fireLights.Add(light);
             }
             for (int i = 0; i < FlashLights; i++)
             {
@@ -135,11 +122,7 @@ namespace Messingstadt
         {
             float dt = (float)delta;
             _time += dt;
-            FlickerLamps(dt);
-            for (int i = 0; i < _fireLights.Count; i++)
-            {
-                _fireLights[i].Energy = 0.8f + 0.35f * Mathf.Sin(_time * 9f + i * 2f) * Mathf.Sin(_time * 14f + i);
-            }
+            FlickerLights(dt);
             UpdateFlashes();
             UpdateRipples(dt);
             UpdatePapers(dt);
@@ -168,22 +151,17 @@ namespace Messingstadt
             }
         }
 
-        private void FlickerLamps(float dt)
+        private void FlickerLights(float dt)
         {
             // Eine Laterne hat einen Wackelkontakt, die übrigen brennen nur leicht unruhig.
             if (_time > _stutterUntil && _rng.NextDouble() < 0.3 * dt)
             {
                 _stutterUntil = _time + Rand(0.25f, 0.7f);
             }
-            for (int i = 0; i < Lamps.Count; i++)
-            {
-                float e = 1f + 0.05f * Mathf.Sin(_time * (3f + i * 0.7f) + i * 1.7f) + 0.025f * Mathf.Sin(_time * 11f + i);
-                if (i == 4 && _time < _stutterUntil)
-                {
-                    e = _rng.NextDouble() < 0.5 ? 0.12f : 1f;
-                }
-                Lamps[i].Energy = LampEnergy * e;
-            }
+            float unrest = 1f + 0.05f * Mathf.Sin(_time * 3f) + 0.025f * Mathf.Sin(_time * 11f);
+            float stutter = _time < _stutterUntil && _rng.NextDouble() < 0.5 ? 0.12f : unrest;
+            float fire = 1f + 0.35f * Mathf.Sin(_time * 9f) * Mathf.Sin(_time * 14f);
+            Game.SetFlicker(stutter, unrest, fire);
         }
 
         private void UpdateRipples(float dt)

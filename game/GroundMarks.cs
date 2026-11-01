@@ -11,11 +11,17 @@ namespace Messingstadt
     {
         private const int ConeRays = 28;
         private const int ConeStepUnits = 100;
-        private const float SpottedConeAlpha = 0.42f;
-        private const float HiddenConeAlpha = 0.2f;
+        private const float SpottedConeAlpha = 0.3f;
+        private const float HiddenConeAlpha = 0.13f;
 
         // Auch am Rand bleibt der Fächer schwach sichtbar, denn dort wird man genauso bemerkt.
         private const float ConeEdgeShare = 0.18f;
+
+        private const float ShadowLampReach = 4.5f;
+        private const float ShadowLength = 0.8f;
+        private const float ShadowMaxTiles = 2.2f;
+        private const float ShadowHalfWidth = 0.14f;
+        private const float ShadowAlpha = 0.75f;
 
         public Main Game = null!;
 
@@ -35,6 +41,7 @@ namespace Messingstadt
             {
                 return;
             }
+            DrawFigureShadows(world);
             if (Game.PlanHeld && !Game.Finished)
             {
                 DrawPlan(world);
@@ -51,6 +58,43 @@ namespace Messingstadt
                 DrawRing(Game.ToScreen(world.LootX, world.LootY), Lit(0.4f, 1f, 0.5f, 1f));
             }
         }
+
+        /// <summary>Figuren werfen im Laternenlicht Schatten von der Lampe weg, schwächer mit dem Abstand.</summary>
+        private void DrawFigureShadows(World w)
+        {
+            foreach (var u in w.Units)
+            {
+                if (!u.Alive)
+                {
+                    continue;
+                }
+                float x = u.X / (float)World.TileUnits, y = u.Y / (float)World.TileUnits;
+                foreach (var lamp in Game.LampSpots)
+                {
+                    var away = new Vector2(x - (float)lamp[0], y - (float)lamp[1]);
+                    float distance = away.Length();
+                    if (distance > ShadowLampReach || distance < 0.05f
+                        || !w.Map.HasLineOfSight(u.TileX, u.TileY, (int)lamp[0], (int)lamp[1]))
+                    {
+                        continue;
+                    }
+                    var dir = away / distance;
+                    float length = Mathf.Min(ShadowMaxTiles, ShadowLength * distance);
+                    var side = new Vector2(-dir.Y, dir.X) * ShadowHalfWidth;
+                    var far = new Vector2(x, y) + dir * length;
+                    float alpha = ShadowAlpha * (1f - distance / ShadowLampReach);
+                    var dark = new Color(0f, 0f, 0f, alpha);
+                    var clear = new Color(0f, 0f, 0f, 0f);
+                    DrawPolygon(new[]
+                    {
+                        Map(x + side.X, y + side.Y), Map(x - side.X, y - side.Y),
+                        Map(far.X - side.X * 1.5f, far.Y - side.Y * 1.5f), Map(far.X + side.X * 1.5f, far.Y + side.Y * 1.5f),
+                    }, new[] { dark, dark, clear, clear });
+                }
+            }
+        }
+
+        private Vector2 Map(float x, float y) => Game.ToScreen((int)(x * World.TileUnits), (int)(y * World.TileUnits));
 
         /// <summary>Fächer, der nach außen ausläuft. Jeder Strahl endet am ersten Gebäude, das die Sicht sperrt.</summary>
         private void DrawSightCone(World w, Unit g, float alpha)
