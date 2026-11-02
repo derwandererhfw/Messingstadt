@@ -19,7 +19,7 @@ namespace Messingstadt
         private const float FlameLightScale = 0.55f;
         private const float FlameEnergy = 1.9f;
 
-        private static readonly Vector2 BarrelTile = new(13.25f, 18.7f);
+        public static readonly Vector2 BarrelTile = new(13.25f, 18.7f);
         private static readonly Vector2[] Spots = { new(12.65f, 18.55f), new(13.85f, 18.6f), new(13.4f, 19.3f) };
         private static readonly Vector2 BannerTile = new(12.35f, 18.02f);
 

@@ -49,10 +49,13 @@ void fragment() {
     vec2 iso = vec2(px.x, px.y * 2.0) / 512.0;
     float n = texture(noise_map, iso + vec2(TIME * 0.012, TIME * 0.004)).r * 0.6
         + texture(noise_map, iso * 1.9 - vec2(TIME * 0.018, -TIME * 0.009)).r * 0.4;
-    float amount = smoothstep(0.46, 0.78, n) * 0.5 * edge;
+    // Am Kartenrand steht der Smog dicht und verwischt die Grenze zur Stadt dahinter.
+    float inside = min(min(mx, my), min(20.0 - mx, 20.0 - my));
+    float rim = smoothstep(1.3, 0.0, abs(inside + 0.2));
+    float amount = max(smoothstep(0.46, 0.78, n) * 0.5 * edge, rim * (0.3 + 0.45 * n));
     vec3 l = texture(ground_light, UV).rgb;
-    l = 4.0 * l * l + lightning * vec3(0.5, 0.58, 0.72);
-    COLOR = vec4((l * vec3(0.82, 0.86, 0.95) + vec3(0.03, 0.035, 0.05)) / night, amount);
+    l = (1.0 - step(inside, 0.0)) * 4.0 * l * l + lightning * vec3(0.5, 0.58, 0.72);
+    COLOR = vec4(mix(l * vec3(0.82, 0.86, 0.95) + vec3(0.03, 0.035, 0.05), vec3(0.086, 0.098, 0.17), rim * 0.8) / night, amount);
 }";
 
         private sealed class Cone
