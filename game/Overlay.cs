@@ -10,6 +10,9 @@ namespace Messingstadt
         private const float LabelWidth = 11f;
         private const float LabelHeight = 14f;
         private const float DogHeadDrop = 22f;
+        private static readonly Vector2 LeashHand = new(0f, -20f);
+        private static readonly Vector2 LeashCollar = new(0f, -13f);
+        private static readonly Color LeashColor = new(0.2f, 0.13f, 0.08f);
 
         public Main Game = null!;
 
@@ -83,6 +86,10 @@ namespace Messingstadt
                 // Steht eine Wache im Bild hinter einem Haus, soll der Balken nicht auf dem Dach schweben.
                 if (u.Faction == Faction.Agent || (world.IsSpottedByAgents(u) && !Game.IsHiddenByThing(u)))
                 {
+                    if (u.LeashedTo >= 0)
+                    {
+                        DrawLine(Game.UnitPos(world.Units[u.LeashedTo]) + LeashHand, Game.UnitPos(u) + LeashCollar, LeashColor, 1f);
+                    }
                     // Der Hund ist kleiner, sein Balken sitzt tiefer.
                     if (u.Type.Bites)
                     {
@@ -150,6 +157,14 @@ namespace Messingstadt
             }
             var type = guard.Type;
             string text = type.Title + (type.BribeCost == 0 ? ", nicht käuflich" : $", käuflich für {type.BribeCost}");
+            if (Game.World.Units.Exists(o => o.LeashedTo == guard.Id))
+            {
+                text += " samt Hund";
+            }
+            if (type.OrderOnly)
+            {
+                text += ", Feuer nur auf Befehl";
+            }
             var font = PaperUi.Typewriter;
             float width = font.GetStringSize(text, HorizontalAlignment.Left, -1, 9).X;
             var at = Game.UnitPos(guard) + new Vector2(-width / 2f, 14f);

@@ -1216,8 +1216,8 @@ void fragment() {
             }
             if (u.Moving)
             {
-                // Ein alarmierter Hund rennt, er kennt kein Gehen mehr.
-                bool running = u.Sprinting || (u.Type.Bites && u.Alerted);
+                // Ein alarmierter Hund rennt, er kennt kein Gehen mehr. Der Laufbursche auch.
+                bool running = u.Sprinting || ((u.Type.Bites || u.Type.Reports) && u.Alerted);
                 float stride = running ? RunStrideUnits : StrideUnits;
                 float speed = World.WalkSpeed(u) * (u.Sprinting ? 1.4f : 1f);
                 int frame = (int)(u.WalkTick * speed / stride * CycleFrames) % CycleFrames;

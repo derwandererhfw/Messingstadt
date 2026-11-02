@@ -57,9 +57,17 @@ Die Werte sind erste Annahmen und werden beim Spielen angepasst.
 | Offizier | 70 | Pistole, 7 Felder, 12 Schaden | Bemerkt 30 % schneller, ruft beim Kampf Alarm auch ohne Schuss | 400 |
 | Werkschutz | 110 | Schrotflinte, 4 Felder, 18 Schaden, langsame Schussfolge | Gepanzert, im Alarm langsam | nicht käuflich |
 | Schütze | 50 | Gewehr, 11 Felder, 18 Schaden, sehr langsame Schussfolge | Sieht im Alarm 11 Felder weit | 200 |
-| Wachhund | 35 | Biss aus 1,2 Feldern, 12 Schaden | Wittert auf 2,5 Felder ringsum und in jedem Licht, sehr schnell, schlägt an. Sein Biss macht den Einsatz nicht laut | nicht käuflich |
+| Wachhund | 35 | Biss aus 0,8 Feldern, 12 Schaden | Wittert auf 2,5 Felder ringsum und in jedem Licht, sehr schnell, schlägt an. Sein Biss macht den Einsatz nicht laut. Folgt alarmiert 20 s alten Spuren | nicht käuflich |
+| Hundeführer | 60 | Pistole, 7 Felder, 10 Schaden | Führt einen Hund an der Leine | 300, der Hund ist dann mit ruhig |
+| Laufbursche | 15 | keine | Bemerkt er jemanden, rennt er zur nächsten Wache und meldet es | 50, auch auf der Flucht |
 
-Die Art steht in der Mission je Gegner. Fährt die Maus über einen sichtbaren Gegner, zeigt das Spiel seine Art und ob er käuflich ist.
+Die Art steht in der Mission je Gegner. Fährt die Maus über einen sichtbaren Gegner, zeigt das Spiel seine Art und ob er käuflich ist. Ein Hund an der Leine nennt in der Mission seinen Führer unter `handler`.
+
+Hund und Laufbursche beschießen Agenten nur auf Befehl, denn der Schuss macht den Einsatz laut. Ohne Befehl tritt ein Agent nach dem Hund, der ihn anfällt: 9 Schaden je Sekunde, leise, aber der Hund beißt in der Zeit weiter. Das kostet etwa die Hälfte der Lebenspunkte. Der Schuss dauert kürzer und alarmiert alle.
+
+Fällt der Führer, läuft der Hund auf den nächsten Agenten los. Sobald einer von beiden kämpft, ist der Hund von der Leine. Der Schuss auf einen von beiden bricht den Handel mit beiden.
+
+Der Laufbursche ist schneller als ein gehender Agent und langsamer als ein rennender. Ein Treffer stoppt ihn. Emil rennt ihm von selbst nach, wenn er ihn bestechen soll, die Puste reicht aber nur für ein kurzes Stück. Kommt die Meldung an, geht die Wache zum gemeldeten Ort, alle Wachen im Umkreis werden alarmiert und die Verstärkung rückt an. Die Wertung bleibt ohne Schuss leise.
 
 ### Verhalten der Wachen
 
