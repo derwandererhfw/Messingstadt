@@ -22,15 +22,16 @@ namespace Messingstadt
         private const int LevelDots = 3;
         private const int CardsFromBottom = 120;
 
-        public static readonly SystemFont Typewriter = new()
-        {
-            FontNames = new[] { "Courier New", "Courier", "Liberation Mono", "monospace" }, FontWeight = 600,
-        };
+        // Mitgelieferte Schriften unter der OFL, siehe game/assets/fonts. So sieht das Spiel überall gleich aus.
+        public static readonly Font Typewriter = LoadFont("CourierPrime-Bold.ttf");
+        public static readonly Font Serif = LoadFont("OldStandard-Bold.ttf");
 
-        public static readonly SystemFont Serif = new()
+        private static FontFile LoadFont(string file)
         {
-            FontNames = new[] { "Georgia", "Times New Roman", "Liberation Serif", "serif" }, FontWeight = 700,
-        };
+            var font = new FontFile { Hinting = TextServer.Hinting.Light };
+            font.LoadDynamicFont($"res://assets/fonts/{file}");
+            return font;
+        }
 
         private sealed class Card
         {
@@ -54,7 +55,8 @@ namespace Messingstadt
 
         public static Label Text(string text, int size, Color color, Font font)
         {
-            var label = new Label { Text = text, MouseFilter = MouseFilterEnum.Ignore };
+            // Die Welt ist Pixelgrafik, Schrift muss beim Strecken des Fensters aber weich bleiben, sonst zerfällt sie.
+            var label = new Label { Text = text, MouseFilter = MouseFilterEnum.Ignore, TextureFilter = TextureFilterEnum.Linear };
             label.AddThemeFontOverride("font", font);
             label.AddThemeFontSizeOverride("font_size", size);
             label.AddThemeColorOverride("font_color", color);
@@ -76,12 +78,46 @@ namespace Messingstadt
             button.AddThemeStyleboxOverride("pressed", box);
             button.AddThemeStyleboxOverride("hover", hover);
             button.AddThemeStyleboxOverride("disabled", off);
-            button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+            // Was gewählt ist, trägt denselben goldenen Rand wie eine gewählte Akte. Die Maus wählt dasselbe wie die Tasten.
+            button.AddThemeStyleboxOverride("focus", new StyleBoxFlat
+            {
+                DrawCenter = false, BorderColor = Selected, BorderWidthLeft = 2, BorderWidthRight = 2, BorderWidthTop = 2, BorderWidthBottom = 2,
+            });
             button.AddThemeFontOverride("font", Typewriter);
             button.AddThemeFontSizeOverride("font_size", 14);
             button.AddThemeColorOverride("font_color", PaperColor);
             button.AddThemeColorOverride("font_hover_color", new Color(1f, 0.95f, 0.8f));
+            button.AddThemeColorOverride("font_focus_color", new Color(1f, 0.95f, 0.8f));
             button.AddThemeColorOverride("font_disabled_color", new Color(0.3f, 0.26f, 0.2f));
+            button.TextureFilter = TextureFilterEnum.Linear;
+            button.MouseEntered += () =>
+            {
+                if (!button.Disabled)
+                {
+                    button.GrabFocus();
+                }
+            };
+        }
+
+        /// <summary>Lautstärkeregler in Tinte: gefüllter Teil dunkel, Griff als schmaler Balken.</summary>
+        public static void InkSlider(HSlider slider)
+        {
+            var track = new StyleBoxFlat { BgColor = PaperDark, ContentMarginTop = 4, ContentMarginBottom = 4 };
+            var filled = new StyleBoxFlat { BgColor = Ink, ContentMarginTop = 4, ContentMarginBottom = 4 };
+            var active = new StyleBoxFlat { BgColor = StampRed, ContentMarginTop = 4, ContentMarginBottom = 4 };
+            slider.AddThemeStyleboxOverride("slider", track);
+            slider.AddThemeStyleboxOverride("grabber_area", filled);
+            slider.AddThemeStyleboxOverride("grabber_area_highlight", active);
+            slider.AddThemeIconOverride("grabber", GrabberIcon(Ink));
+            slider.AddThemeIconOverride("grabber_highlight", GrabberIcon(StampRed));
+            slider.MouseEntered += () => slider.GrabFocus();
+        }
+
+        private static ImageTexture GrabberIcon(Color color)
+        {
+            var image = Image.CreateEmpty(8, 18, false, Image.Format.Rgba8);
+            image.Fill(color);
+            return ImageTexture.CreateFromImage(image);
         }
 
         public override void _Ready()
@@ -89,7 +125,10 @@ namespace Messingstadt
             SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
             MouseFilter = MouseFilterEnum.Ignore;
             AddChild(Strip(14, 12, new Color(0, 0, 0, 0.5f)));
-            AddChild(Strip(10, 8, PaperColor));
+            // Das Papier fängt Klicks ab, sonst liefe die Auswahl auf ein Feld darunter.
+            var strip = Strip(10, 8, PaperColor);
+            strip.MouseFilter = MouseFilterEnum.Stop;
+            AddChild(strip);
             var head = Text("TELEGRAMM", 13, StampRed, Serif);
             head.Position = new Vector2(20, 12);
             AddChild(head);

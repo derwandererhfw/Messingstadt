@@ -32,6 +32,8 @@ namespace Messingstadt
         private const float HeartRisePerSecond = 4f;
         private const float HeartFallPerSecond = 0.5f;
         private const float TensionFadePerSecond = 0.35f;
+        private const string MusicBus = "Musik";
+        private const string EffectsBus = "Geräusche";
 
         private readonly Dictionary<string, AudioStreamWav> _sounds = new();
         private readonly Dictionary<string, float> _lastPlayed = new();
@@ -57,7 +59,6 @@ namespace Messingstadt
         private float _time;
         private float _nextWhistle;
         private float _nextPages;
-        private bool _muted;
 
         public Main Game = null!;
 
@@ -69,6 +70,8 @@ namespace Messingstadt
 
         public override void _Ready()
         {
+            AddBus(MusicBus);
+            AddBus(EffectsBus);
             string dir = ProjectSettings.GlobalizePath("res://assets/audio");
             foreach (string path in Directory.GetFiles(dir, "*.wav"))
             {
@@ -76,17 +79,39 @@ namespace Messingstadt
             }
             for (int i = 0; i < PoolSize; i++)
             {
-                var player = new AudioStreamPlayer2D();
+                var player = new AudioStreamPlayer2D { Bus = EffectsBus };
                 AddChild(player);
                 _pool.Add(player);
             }
-            _lockpick = new AudioStreamPlayer2D { Stream = Looping("lockpick"), MaxDistance = StepReach, VolumeDb = -8f };
+            _lockpick = new AudioStreamPlayer2D { Stream = Looping("lockpick"), MaxDistance = StepReach, VolumeDb = -8f, Bus = EffectsBus };
             AddChild(_lockpick);
-            AddBackground("rain", -27f);
-            AddBackground("wind", -30f);
-            _music = AddBackground("music_calm", MusicDb);
-            _tension = AddBackground("music_tension", SilentDb);
-            _heart = AddBackground("heartbeat", SilentDb);
+            AddBackground("rain", -27f, EffectsBus);
+            AddBackground("wind", -30f, EffectsBus);
+            _music = AddBackground("music_calm", MusicDb, MusicBus);
+            _tension = AddBackground("music_tension", SilentDb, MusicBus);
+            _heart = AddBackground("heartbeat", SilentDb, MusicBus);
+        }
+
+        private static void AddBus(string name)
+        {
+            int index = AudioServer.BusCount;
+            AudioServer.AddBus(index);
+            AudioServer.SetBusName(index, name);
+            AudioServer.SetBusSend(index, "Master");
+        }
+
+        /// <summary>Stellt die Regler aus dem Menü ein: Lautstärken von 0 bis 1, stumm schaltet alles ab.</summary>
+        public void SetVolumes(double master, double music, double effects, bool muted)
+        {
+            SetBusVolume(0, master);
+            SetBusVolume(AudioServer.GetBusIndex(MusicBus), music);
+            SetBusVolume(AudioServer.GetBusIndex(EffectsBus), effects);
+            AudioServer.SetBusMute(0, muted);
+        }
+
+        private static void SetBusVolume(int bus, double volume)
+        {
+            AudioServer.SetBusVolumeDb(bus, volume <= 0.0 ? SilentDb * 2f : Mathf.LinearToDb((float)volume));
         }
 
         private AudioStreamWav Looping(string name)
@@ -98,9 +123,9 @@ namespace Messingstadt
             return sound;
         }
 
-        private AudioStreamPlayer AddBackground(string name, float volume)
+        private AudioStreamPlayer AddBackground(string name, float volume, string bus)
         {
-            var player = new AudioStreamPlayer { Stream = Looping(name), VolumeDb = volume, Autoplay = true };
+            var player = new AudioStreamPlayer { Stream = Looping(name), VolumeDb = volume, Autoplay = true, Bus = bus };
             AddChild(player);
             return player;
         }
@@ -128,7 +153,7 @@ namespace Messingstadt
             var player = new AudioStreamPlayer2D
             {
                 Stream = Looping(name), Position = position, VolumeDb = volume, MaxDistance = reach,
-                Attenuation = 1.6f, Autoplay = true,
+                Attenuation = 1.6f, Autoplay = true, Bus = EffectsBus,
             };
             AddChild(player);
         }
@@ -136,7 +161,7 @@ namespace Messingstadt
         /// <summary>Ein Dauergeräusch, das mit etwas mitfliegt. Der Aufrufer startet es und setzt die Lage selbst.</summary>
         public AudioStreamPlayer2D AddMovingLoop(string name, float volume, float reach)
         {
-            var player = new AudioStreamPlayer2D { Stream = Looping(name), VolumeDb = volume, MaxDistance = reach, Attenuation = 1.2f };
+            var player = new AudioStreamPlayer2D { Stream = Looping(name), VolumeDb = volume, MaxDistance = reach, Attenuation = 1.2f, Bus = EffectsBus };
             AddChild(player);
             return player;
         }
@@ -144,7 +169,7 @@ namespace Messingstadt
         /// <summary>Überall gleich laut, etwa Donner.</summary>
         public void PlayEverywhere(string name, float volume)
         {
-            var player = new AudioStreamPlayer { Stream = _sounds[name], VolumeDb = volume, Autoplay = true };
+            var player = new AudioStreamPlayer { Stream = _sounds[name], VolumeDb = volume, Autoplay = true, Bus = EffectsBus };
             player.Finished += player.QueueFree;
             AddChild(player);
             PlayCount++;
@@ -169,12 +194,6 @@ namespace Messingstadt
             PlayCount++;
             string group = name.Split('_')[0] + (name.StartsWith("step_") ? "_" + name.Split('_')[1] : "");
             PlayedByGroup[group] = PlayedByGroup.GetValueOrDefault(group) + 1;
-        }
-
-        public void ToggleMute()
-        {
-            _muted = !_muted;
-            AudioServer.SetBusMute(0, _muted);
         }
 
         private void Reset(World world)
