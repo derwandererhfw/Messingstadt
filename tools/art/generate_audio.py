@@ -426,6 +426,36 @@ def dog():
     save("dog", fade(echo(lowpass(x, 1100), (0.2, 0.45), 0.3), 0.002, 0.2), 0.8)
 
 
+def dog_fight():
+    """Biss, Fehlbiss, Tritt und Kette: alles kurz und aus der Nähe."""
+    t = time(0.28)
+    snarl = np.sin(2 * np.pi * (210 + 60 * np.sin(2 * np.pi * 38 * t)) * t) * decay(t, 0.09)
+    crunch = lowpass(noise(0.28), 2600) * decay(t, 0.03)
+    save("dog_bite", fade(snarl * 0.8 + crunch * 1.2 + 0.6 * lowpass(noise(0.28), 500) * decay(t, 0.08)), 0.8)
+    t = time(0.12)
+    click = lowpass(noise(0.12), 3800) * decay(t, 0.007)
+    save("dog_snap", fade(click + 0.3 * np.sin(2 * np.pi * 330 * t) * decay(t, 0.02)), 0.6)
+    t = time(0.2)
+    thud = np.sin(2 * np.pi * 95 * t * (1 - t)) * decay(t, 0.04)
+    yelp = np.sin(2 * np.pi * np.cumsum(1250 - 2400 * t) / RATE) * decay(np.maximum(t - 0.03, 0), 0.05) * (t > 0.03)
+    save("kick", fade(thud + 0.35 * lowpass(noise(0.2), 1000) * decay(t, 0.02) + 0.3 * yelp), 0.7)
+    t = time(0.22)
+    x = np.zeros_like(t)
+    for at, pitch in ((0.0, 3400), (0.07, 4100), (0.13, 3000)):
+        tt = np.maximum(t - at, 0)
+        x += sum(np.sin(2 * np.pi * pitch * r * tt) for r in (1.0, 1.47, 2.09)) * decay(tt, 0.012) * (t >= at)
+    save("chain", fade(highpass(x, 1500)), 0.4)
+
+
+def boy_whistle():
+    """Der Laufbursche pfeift durch die Finger: steigend, dann fallend, zweimal."""
+    t = time(0.34)
+    glide = 1900 + 1400 * np.sin(np.pi * t / 0.34)
+    tone = np.sin(2 * np.pi * np.cumsum(glide) / RATE) + 0.25 * lowpass(noise(0.34), 6000)
+    gap = np.zeros(int(0.06 * RATE))
+    save("boy_whistle", echo(np.concatenate((fade(tone, 0.015, 0.05), gap, fade(tone, 0.015, 0.05))), (0.12, 0.27), 0.25), 0.5)
+
+
 def siren():
     """Werkssirene weit weg: langsam auf- und abschwellend, stark gedämpft."""
     t = time(9.0)
@@ -504,7 +534,7 @@ def stingers():
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld, dog, siren, factory_horn, train, radio, heartbeat, typewriter):
+    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld, dog, siren, factory_horn, train, radio, heartbeat, typewriter, dog_fight, boy_whistle):
         make()
     files = list(OUT.glob("*.wav"))
     print(f"{len(files)} Geräusche, {sum(f.stat().st_size for f in files) // 1024} KiB")

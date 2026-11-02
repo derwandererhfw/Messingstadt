@@ -44,6 +44,7 @@ namespace Messingstadt.Core
         Combat,
         Investigate,
         Search,
+        Report,
     }
 
     public sealed class Unit
@@ -83,6 +84,15 @@ namespace Messingstadt.Core
         public int DoorTarget = -1;
         public int BribeTarget = -1;
         public bool Bribed;
+
+        /// <summary>Id des Hundeführers, solange der Hund an der Leine geht, sonst -1.</summary>
+        public int LeashedTo = -1;
+
+        /// <summary>Ob der letzte Biss getroffen hat. Nur für die Darstellung.</summary>
+        public bool LastBiteHit;
+        public int LastKickTick = -1000;
+        public int ScentTick;
+        public int ScentTileX = -1, ScentTileY = -1;
 
         /// <summary>Richtung des letzten Schusses. Nur für die Darstellung, Gehen ändert sie nicht.</summary>
         public int AimX, AimY;
@@ -134,9 +144,17 @@ namespace Messingstadt.Core
         private const int SprintHeardRange = 4 * TileUnits;
         private const int CoverHoldTicks = 60;
 
-        private const int BiteRange = 1200;
+        private const int BiteRange = 800;
+        private const int BiteStandOff = 550;
         private const int BiteHitPercent = 80;
         private const int BiteRepathTicks = 8;
+        private const int KickDamage = 9;
+        private const int KickCooldown = 20;
+        private const int ScentTicks = 20 * TickRate;
+        private const int ScentReach = 3;
+        private const int HeelStartRange = 1500;
+        private const int HeelStopRange = 800;
+        private const int ReportRange = 2 * TileUnits;
 
         public const int PickupTicks = 60;
         public const int EscapeTicks = 20;
@@ -176,6 +194,7 @@ namespace Messingstadt.Core
         private bool _everShot;
         private readonly bool _hasAgents;
         private readonly LightData? _light;
+        private readonly List<(int X, int Y, int Tick)> _scent = new();
 
         public GameMap Map { get; }
         public List<Unit> Units { get; } = new();
@@ -249,6 +268,15 @@ namespace Messingstadt.Core
             foreach (var g in mission.Guards)
             {
                 AddUnit(g, Faction.Guard, 0);
+            }
+            for (int i = 0; i < mission.Guards.Count; i++)
+            {
+                string handler = mission.Guards[i].Handler;
+                if (handler.Length > 0)
+                {
+                    var leader = Units.Find(u => u.Faction == Faction.Guard && u.Name == handler) ?? throw new ArgumentException($"Unbekannter Hundeführer {handler}");
+                    Units[mission.Agents.Count + i].LeashedTo = leader.Id;
+                }
             }
         }
 
@@ -368,7 +396,8 @@ namespace Messingstadt.Core
             }
             u.TargetId = -1;
             u.DoorTarget = -1;
-            u.Sprinting = false;
+            // Einem Laufburschen auf der Flucht läuft nur nach, wer rennt.
+            u.Sprinting = g.GuardState == GuardState.Report && u.Stamina >= MinSprintStamina;
             u.BribeTarget = guardId;
             u.RepathTick = 0;
             return true;
@@ -447,6 +476,7 @@ namespace Messingstadt.Core
                     ThinkAgent(u);
                 }
                 Move(u);
+                LeaveScent(u);
                 Fight(u);
             }
             SpawnReinforcement();
@@ -508,6 +538,13 @@ namespace Messingstadt.Core
             {
                 Money -= g.Type.BribeCost;
                 g.Bribed = true;
+                foreach (var dog in Units)
+                {
+                    if (dog.LeashedTo == g.Id)
+                    {
+                        dog.Bribed = true;
+                    }
+                }
                 a.BribeTarget = -1;
                 a.Path.Clear();
             }
@@ -624,6 +661,10 @@ namespace Messingstadt.Core
 
         private void ThinkGuard(Unit g)
         {
+            if (g.LeashedTo >= 0 && !Units[g.LeashedTo].Alive)
+            {
+                SlipLeash(g);
+            }
             if (g.Bribed)
             {
                 g.GuardState = GuardState.Patrol;
@@ -676,16 +717,21 @@ namespace Messingstadt.Core
                     {
                         StartNoticing(g, seen, NoticeWhenAlert);
                     }
-                    else if (g.Path.Count == 0)
+                    else if (!FollowScent(g) && g.Path.Count == 0)
                     {
                         g.GuardState = GuardState.Search;
                         g.SearchUntilTick = Tick + SearchTicks;
                     }
                     break;
                 case GuardState.Search:
-                    if (seen != null)
+                    // Wer gerade gemeldet hat, wartet, statt gleich wieder loszulaufen.
+                    if (seen != null && !g.Type.Reports)
                     {
                         StartNoticing(g, seen, NoticeWhenAlert);
+                    }
+                    else if (FollowScent(g))
+                    {
+                        g.GuardState = GuardState.Investigate;
                     }
                     else if (Tick >= g.SearchUntilTick)
                     {
@@ -693,12 +739,16 @@ namespace Messingstadt.Core
                         g.Alerted = false;
                     }
                     break;
+                case GuardState.Report:
+                    ThinkReport(g);
+                    break;
             }
         }
 
         private void HearAlarm(Unit g, Unit? seen)
         {
-            if (g.GuardState == GuardState.Combat)
+            // Der Laufbursche läuft nicht zum Lärm hin.
+            if (g.GuardState == GuardState.Combat || g.Type.Reports)
             {
                 return;
             }
@@ -714,6 +764,11 @@ namespace Messingstadt.Core
 
         private void WalkPatrol(Unit g)
         {
+            if (g.LeashedTo >= 0)
+            {
+                WalkAtHeel(g);
+                return;
+            }
             if (g.Patrol.Count == 0)
             {
                 // Posten bleiben stehen und schauen reihum in alle vier Richtungen.
@@ -728,6 +783,132 @@ namespace Messingstadt.Core
                 g.PatrolIndex = (g.PatrolIndex + 1) % g.Patrol.Count;
                 var (px, py) = g.Patrol[g.PatrolIndex];
                 WalkTo(g, px, py);
+            }
+        }
+
+        /// <summary>Der Hund an der Leine läuft auf, wenn sein Führer zu weit weg ist, und schaut sonst in dieselbe Richtung.</summary>
+        private void WalkAtHeel(Unit dog)
+        {
+            var handler = Units[dog.LeashedTo];
+            int distance = Distance(dog, handler);
+            if (dog.Path.Count > 0 ? distance <= HeelStopRange : distance <= HeelStartRange)
+            {
+                dog.Path.Clear();
+                (dog.FacingX, dog.FacingY) = (handler.FacingX, handler.FacingY);
+            }
+            else if (Tick >= dog.RepathTick)
+            {
+                dog.RepathTick = Tick + BiteRepathTicks;
+                WalkTo(dog, handler.TileX, handler.TileY);
+            }
+        }
+
+        /// <summary>Fällt der Führer, gilt kein Handel mehr und der Hund läuft auf den nächsten Agenten los.</summary>
+        private void SlipLeash(Unit dog)
+        {
+            dog.LeashedTo = -1;
+            dog.Bribed = false;
+            Unit? nearest = null;
+            foreach (var o in Units)
+            {
+                if (o.Alive && o.Faction == Faction.Agent && (nearest == null || Distance(dog, o) < Distance(dog, nearest)))
+                {
+                    nearest = o;
+                }
+            }
+            if (nearest != null)
+            {
+                dog.LastKnownX = nearest.X;
+                dog.LastKnownY = nearest.Y;
+                StartInvestigating(dog);
+            }
+        }
+
+        /// <summary>Agenten hinterlassen auf jedem Feld eine Spur, der ein alarmierter Hund folgen kann.</summary>
+        private void LeaveScent(Unit u)
+        {
+            if (u.Faction != Faction.Agent || (u.ScentTileX == u.TileX && u.ScentTileY == u.TileY))
+            {
+                return;
+            }
+            u.ScentTileX = u.TileX;
+            u.ScentTileY = u.TileY;
+            _scent.Add((u.TileX, u.TileY, Tick));
+            while (_scent[0].Tick < Tick - ScentTicks)
+            {
+                _scent.RemoveAt(0);
+            }
+        }
+
+        /// <summary>Der frei laufende Hund geht zur frischesten Spur in der Nähe. True, wenn er damit einen neuen Weg begonnen hat.</summary>
+        private bool FollowScent(Unit dog)
+        {
+            if (!dog.Type.Bites || dog.LeashedTo >= 0 || dog.Path.Count > 0)
+            {
+                return false;
+            }
+            (int X, int Y, int Tick)? best = null;
+            foreach (var s in _scent)
+            {
+                bool own = s.X == dog.TileX && s.Y == dog.TileY;
+                if (!own && s.Tick > dog.ScentTick && s.Tick >= Tick - ScentTicks
+                    && Math.Max(Math.Abs(s.X - dog.TileX), Math.Abs(s.Y - dog.TileY)) <= ScentReach
+                    && (best == null || s.Tick > best.Value.Tick))
+                {
+                    best = s;
+                }
+            }
+            if (best == null)
+            {
+                return false;
+            }
+            dog.ScentTick = best.Value.Tick;
+            WalkTo(dog, best.Value.X, best.Value.Y);
+            return dog.Path.Count > 0;
+        }
+
+        private void ThinkReport(Unit g)
+        {
+            Unit? listener = null;
+            foreach (var o in Units)
+            {
+                if (o.Alive && o.Faction == Faction.Guard && !o.Bribed && o.Type.WeaponRange > 0 && (listener == null || Distance(g, o) < Distance(g, listener)))
+                {
+                    listener = o;
+                }
+            }
+            if (listener == null)
+            {
+                // Niemand mehr da, dem er es sagen könnte. Kommt die Verstärkung, läuft er zu ihr.
+                g.Path.Clear();
+            }
+            else if (CanSee(g, listener, ReportRange))
+            {
+                // Die Wache erfährt, wo er jemanden gesehen hat. Wer dort in der Nähe ist, wird mit alarmiert.
+                listener.LastKnownX = g.LastKnownX;
+                listener.LastKnownY = g.LastKnownY;
+                if (listener.GuardState != GuardState.Combat && listener.GuardState != GuardState.Noticing)
+                {
+                    StartInvestigating(listener);
+                }
+                RaiseAlarm(g.LastKnownX, g.LastKnownY);
+                CallReinforcements();
+                g.Path.Clear();
+                g.GuardState = GuardState.Search;
+                g.SearchUntilTick = Tick + SearchTicks;
+            }
+            else if (Tick >= g.RepathTick)
+            {
+                g.RepathTick = Tick + RepathInterval;
+                WalkTo(g, listener.TileX, listener.TileY);
+            }
+        }
+
+        private void CallReinforcements()
+        {
+            if (_reinforcements != null && _reinforceTick == 0 && _reinforcedCount == 0)
+            {
+                _reinforceTick = Tick + _reinforcements.FirstDelay * TickRate;
             }
         }
 
@@ -753,10 +934,32 @@ namespace Messingstadt.Core
 
         private void StartCombat(Unit g)
         {
+            if (g.Type.Reports)
+            {
+                g.GuardState = GuardState.Report;
+                g.Alerted = true;
+                g.RepathTick = 0;
+                return;
+            }
             g.GuardState = GuardState.Combat;
             g.Alerted = true;
             g.LastSeenTick = Tick;
             g.RepathTick = 0;
+            // Wer kämpft, lässt den Hund los, und der Hund reißt sich los, sobald er selbst kämpft.
+            g.LeashedTo = -1;
+            foreach (var dog in Units)
+            {
+                if (dog.LeashedTo == g.Id)
+                {
+                    dog.LeashedTo = -1;
+                    if (dog.Alive && dog.GuardState != GuardState.Noticing && dog.GuardState != GuardState.Combat)
+                    {
+                        dog.LastKnownX = g.LastKnownX;
+                        dog.LastKnownY = g.LastKnownY;
+                        StartInvestigating(dog);
+                    }
+                }
+            }
             // Offizier ruft, Hund schlägt an: Das hören die anderen auch ohne Schuss.
             if (g.Type.CallsAlarm)
             {
@@ -783,18 +986,15 @@ namespace Messingstadt.Core
             }
             if (g.Type.Bites)
             {
-                // Der Hund läuft direkt auf sein Ziel zu, statt sich eine Schussposition zu suchen.
-                if (Tick >= g.RepathTick)
+                // Der Hund läuft direkt auf sein Ziel zu, statt sich eine Schussposition zu suchen, und bleibt erst dicht davor stehen.
+                if (Distance(g, seen) <= BiteStandOff)
+                {
+                    g.Path.Clear();
+                }
+                else if (Tick >= g.RepathTick)
                 {
                     g.RepathTick = Tick + BiteRepathTicks;
-                    if (Distance(g, seen) > BiteRange)
-                    {
-                        WalkTo(g, seen.TileX, seen.TileY);
-                    }
-                    else
-                    {
-                        g.Path.Clear();
-                    }
+                    WalkTo(g, seen.TileX, seen.TileY);
                 }
                 return;
             }
@@ -971,6 +1171,10 @@ namespace Messingstadt.Core
 
         private void Fight(Unit u)
         {
+            if (u.Faction == Faction.Agent && !u.Sprinting)
+            {
+                KickDog(u);
+            }
             if (u.Cooldown > 0)
             {
                 u.Cooldown--;
@@ -1026,10 +1230,7 @@ namespace Messingstadt.Core
             if (!_everShot)
             {
                 _everShot = true;
-                if (_reinforcements != null)
-                {
-                    _reinforceTick = Tick + _reinforcements.FirstDelay * TickRate;
-                }
+                CallReinforcements();
             }
             bool hit = NextRandom() % 100 < (uint)HitChance(u, target);
             Shots.Add(new ShotEvent(u.X, u.Y, target.X, target.Y, hit, Tick, u.Id));
@@ -1041,6 +1242,14 @@ namespace Messingstadt.Core
             {
                 // Wer auf einen bestochenen Wachmann schießt, hat den Handel gebrochen.
                 target.Bribed = false;
+                foreach (var o in Units)
+                {
+                    // Führer und Hund gehören zu einem Handel: Wer auf einen schießt, hat ihn mit beiden gebrochen.
+                    if (o.LeashedTo == target.Id || target.LeashedTo == o.Id)
+                    {
+                        o.Bribed = false;
+                    }
+                }
                 // Wer beschossen wird, reagiert sofort und kennt die Richtung.
                 target.LastKnownX = u.X;
                 target.LastKnownY = u.Y;
@@ -1089,9 +1298,28 @@ namespace Messingstadt.Core
             dog.AimX = dog.FacingX;
             dog.AimY = dog.FacingY;
             dog.LastFiredTick = Tick;
-            if (NextRandom() % 100 < BiteHitPercent)
+            dog.LastBiteHit = NextRandom() % 100 < BiteHitPercent;
+            if (dog.LastBiteHit)
             {
                 Hurt(target, dog.Type.Damage);
+            }
+        }
+
+        /// <summary>Ein Agent tritt nach dem Hund, der ihn anfällt. Das hilft langsam, bleibt aber leise, und die Waffe bleibt frei.</summary>
+        private void KickDog(Unit a)
+        {
+            if (Tick - a.LastKickTick < KickCooldown)
+            {
+                return;
+            }
+            foreach (var dog in Units)
+            {
+                if (dog.Alive && dog.Type.Bites && dog.GuardState == GuardState.Combat && Distance(a, dog) <= BiteRange)
+                {
+                    a.LastKickTick = Tick;
+                    Hurt(dog, KickDamage);
+                    return;
+                }
             }
         }
 
@@ -1236,7 +1464,9 @@ namespace Messingstadt.Core
             int bestDist = int.MaxValue;
             foreach (var o in Units)
             {
-                if (o.Alive && o.Faction != u.Faction && !o.Bribed && Distance(u, o) < bestDist && CanSee(u, o, range))
+                // Auf Hund und Laufbursche schießt ein Agent nur auf Befehl: Der Schuss macht den Einsatz laut, das entscheidet der Spieler.
+                if (o.Alive && o.Faction != u.Faction && !o.Bribed && !(u.Faction == Faction.Agent && o.Type.OrderOnly)
+                    && Distance(u, o) < bestDist && CanSee(u, o, range))
                 {
                     best = o;
                     bestDist = Distance(u, o);
@@ -1319,6 +1549,7 @@ namespace Messingstadt.Core
                 Mix((long)u.GuardState);
                 Mix(u.NoticeTicks);
                 Mix(u.AlarmTick);
+                Mix(u.LeashedTo);
             }
             return h;
         }

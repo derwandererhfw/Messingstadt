@@ -403,6 +403,8 @@ SPECS = {
     "Schuetze": dict(coat=("wood_d", "wood", "brass_d"), legs="iron", hat="peak", hat_c="wood_d", shirt="ash", hair="hair", hem=24, belt=19, gun="rifle"),
     "Hund": dict(coat=("soot", "wood_d", "wood"), legs="wood_d", hat="peak", hat_c="soot", shirt="soot", hair="soot", hem=26, belt=19, dog=True),
     "Arbeiter": dict(coat=("grey_d", "grey", "grey_l"), legs="iron", hat="peak", hat_c="grime", shirt="ash", hair="hair", hem=25, belt=20),
+    "Hundefuehrer": dict(coat=("uni_d", "uni", "uni_l"), legs="uni", hat="peak", hat_c="wood_d", shirt="uni_d", hair="hair", hem=26, belt=19, trim="wood_d", strap=True, leash=True),
+    "Laufbursche": dict(coat=("iron", "grey_d", "grey"), legs="wood_d", hat="peak", hat_c="wood", shirt="ash", hair="hair", hem=22, belt=20, trim="wood", gun="none", strap=True, satchel=True, scale=0.86),
 }
 
 

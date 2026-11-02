@@ -41,6 +41,8 @@ namespace Messingstadt
         private readonly HashSet<int> _fallen = new();
         private readonly HashSet<int> _bribed = new();
         private readonly HashSet<int> _inCombat = new();
+        private readonly HashSet<int> _reporting = new();
+        private readonly Dictionary<int, int> _kicks = new();
         private readonly Dictionary<int, int> _dogBite = new();
         private float _nextBark;
         private AudioStreamPlayer2D _lockpick = null!;
@@ -187,6 +189,8 @@ namespace Messingstadt
             _bribed.Clear();
             _dogBite.Clear();
             _inCombat.Clear();
+            _reporting.Clear();
+            _kicks.Clear();
             _doorsOpen = new bool[world.Doors.Count];
         }
 
@@ -226,6 +230,11 @@ namespace Messingstadt
                     if (u.Type.Bites)
                     {
                         _stepCount[u.Id] = count;
+                        // Die Kette an der Leine verrät das Paar, bevor man es sieht.
+                        if (u.LeashedTo >= 0 && count % 4 == 0)
+                        {
+                            PlayStep("chain", at, -17f, GuardStepReach);
+                        }
                         return;
                     }
                     string kind = u.Sprinting ? "step_run" : u.Faction == Faction.Agent ? "step_soft" : "step_boot";
@@ -249,6 +258,24 @@ namespace Messingstadt
             {
                 ListenToDog(u, at);
             }
+            if (u.GuardState == GuardState.Report)
+            {
+                if (_reporting.Add(u.Id))
+                {
+                    Play("boy_whistle", at, -5f);
+                }
+            }
+            else if (_reporting.Remove(u.Id) && !u.Bribed)
+            {
+                // Die Meldung ist angekommen: Jetzt pfeift die Wache.
+                Play("whistle", at, -3f);
+            }
+            _kicks.TryGetValue(u.Id, out int lastKick);
+            if (u.LastKickTick > lastKick)
+            {
+                _kicks[u.Id] = u.LastKickTick;
+                Play("kick", at, -5f, StepReach);
+            }
         }
 
         private void ListenToDog(Unit dog, Vector2 at)
@@ -263,7 +290,7 @@ namespace Messingstadt
             if (dog.LastFiredTick > last)
             {
                 _dogBite[dog.Id] = dog.LastFiredTick;
-                Play("hit", at, -4f, StepReach);
+                Play(dog.LastBiteHit ? "dog_bite" : "dog_snap", at, -4f, StepReach);
             }
         }
 
