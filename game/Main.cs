@@ -185,6 +185,7 @@ void fragment() {
         // Mit --shot-on-fire=<n> entsteht das Bild im Moment des ersten Schusses ab Takt n.
         // --plan zeigt den Lageplan, --look=<x>,<y> hält die Kamera auf einem Feld.
         // --flash=<stärke> hält einen Blitz an, --ship=<x>,<y> stellt das Luftschiff über dieses Feld.
+        // --rain=<stärke> hält den Regen, von 0 bis 1.
         // --menu öffnet auch im Prüflauf das Hauptmenü, --fresh tut so, als gäbe es keinen Spielstand.
         // --script=<datei> spielt Tasten und Klicks ab, siehe TestScript. Mit --script-writes schreibt er auch Dateien,
         // das gehört nur in einen eigenen APPDATA-Ordner.
@@ -193,6 +194,7 @@ void fragment() {
         private string? _scriptPath;
         private bool _scriptWrites;
         private float _testFlash = -1f;
+        private float _testRain = -1f;
         private Vector2? _testShip;
         private bool _forcePlan;
         private bool _forceIntro;
@@ -212,6 +214,9 @@ void fragment() {
         public List<double[]> LampSpots => _mission.Lamps;
         public Color NightColor => Night;
         public float Lightning => _lightning;
+
+        /// <summary>Regen, Wind und woher das Blitzlicht kommt.</summary>
+        public Weather Climate { get; private set; } = null!;
 
         /// <summary>Wann die Wachen welches Feld im Blick haben. Grundlage für Lageplan und Wegvorschau.</summary>
         public WatchMap Watch { get; private set; } = null!;
@@ -547,12 +552,15 @@ void fragment() {
         {
             var weather = new Weather
             {
-                Game = this, Night = Night, LampColor = LampColor, HeldFlash = _testFlash,
+                Game = this, Night = Night, LampColor = LampColor, HeldFlash = _testFlash, HeldRain = _testRain, Glow = _critterGlow,
+                ManifestPath = ProjectSettings.GlobalizePath("res://assets/manifest.json"),
                 GroundLight = LoadTexture("res://assets/light/ground_a.png"), FogNoise = LoadTexture("res://assets/light/fog.png"),
                 GroundSize = LoadTexture("res://assets/ground.png").GetSize(), GroundOrigin = new Vector2(_ox, _oy),
             };
+            Climate = weather;
             AddChild(weather);
             weather.AddLampCones(_mission.Lamps, StutterLamp);
+            AddChild(new Water { Game = this, ManifestPath = ProjectSettings.GlobalizePath("res://assets/manifest.json") });
             AddChild(new Airship { Game = this, Glow = _critterGlow, Night = Night, ShipTexture = LoadTexture("res://assets/airship.png"), HeldAt = _testShip });
             AddChild(new Strikers
             {
@@ -647,7 +655,7 @@ void fragment() {
             _windowLife.Sound = _sound;
             AddChild(_windowLife);
             _critterGlow = glow;
-            AddChild(new RainLayer { ZIndex = 3900 });
+            AddChild(new RainLayer { Game = this, ZIndex = 3900 });
         }
 
         private void ParseArgs()
@@ -669,6 +677,10 @@ void fragment() {
                 else if (a.StartsWith("--flash="))
                 {
                     _testFlash = float.Parse(a["--flash=".Length..], System.Globalization.CultureInfo.InvariantCulture);
+                }
+                else if (a.StartsWith("--rain="))
+                {
+                    _testRain = float.Parse(a["--rain=".Length..], System.Globalization.CultureInfo.InvariantCulture);
                 }
                 else if (a.StartsWith("--ship="))
                 {
