@@ -202,6 +202,7 @@ namespace Messingstadt
                 var foot = Tile(x, y);
                 var light = Game.FigureLight((int)(Mathf.Clamp(x + 0.1f, 0.1f, 19.9f) * World.TileUnits), (int)(Mathf.Clamp(y + 0.1f, 0.1f, 19.9f) * World.TileUnits), MinLight);
                 wall.AddStream(foot - new Vector2(0f, z1), foot, light);
+                Game.Sound.AddGutter(foot);
             }
             wall.AddEdge(Tile(x0, y1), Tile(x1, y1), z1);
             wall.AddEdge(Tile(x1, y1), Tile(x1, y0), z1);

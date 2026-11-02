@@ -48,6 +48,7 @@ namespace Messingstadt
         private static readonly (string Sound, float Volume)[] CitySounds =
         {
             ("dog", -26f), ("dog", -29f), ("siren", -31f), ("train", -27f), ("factory_horn", -29f),
+            ("tram", -29f), ("foghorn", -29f), ("church_bell", -30f), ("shutter", -18f), ("distant_shots", -16f),
         };
         private const int ConePoints = 14;
         private const float ConeHeight = 52f;

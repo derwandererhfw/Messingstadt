@@ -601,14 +601,15 @@ void fragment() {
             {
                 _sound.AddLoop("neon", sign, -34f, 260f);
             }
-            // Ein Radio spielt hinter einem Fenster des Hotels, ganz leise.
-            foreach (var (kind, center) in _windowLife.PaneSpots)
+            // Ein Radio spielt hinter einem Fenster des Hotels, ganz leise. Hinter dem letzten Fenster klimpert ein Klavier.
+            var windows = _windowLife.PaneSpots.Where(s => s.Item1 == "window").Select(s => s.Item2).ToList();
+            if (windows.Count > 0)
             {
-                if (kind == "window")
-                {
-                    _sound.AddLoop("radio", center, -24f, 230f);
-                    break;
-                }
+                _sound.AddLoop("radio", windows[0], -24f, 230f);
+            }
+            if (windows.Count > 1)
+            {
+                _sound.AddLoop("piano", windows[^1], -26f, 230f);
             }
         }
 
@@ -1169,7 +1170,7 @@ void fragment() {
             }
             if (_shotPath != null && _frame == _shotFrame)
             {
-                GD.Print($"Geräusche abgespielt: {_sound.PlayCount}  " + string.Join(", ", _sound.PlayedByGroup.Select(g => $"{g.Key} {g.Value}")));
+                GD.Print($"Raum {_sound.Enclosure:0.00}, Geräusche abgespielt: {_sound.PlayCount}  " + string.Join(", ", _sound.PlayedByGroup.Select(g => $"{g.Key} {g.Value}")));
                 GetViewport().GetTexture().GetImage().SavePng(_shotPath);
                 GetTree().Quit();
             }
