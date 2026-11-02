@@ -35,6 +35,8 @@ foreach (var t in root.GetProperty("windowTypes").EnumerateArray())
 float specStrength = root.GetProperty("specStrength").GetSingle();
 Vector3 flashDir = Vector3.Normalize(Vec(root.GetProperty("flashDirection")));
 float flashAmbient = root.GetProperty("flashAmbient").GetSingle();
+Vector3 moonDir = Vector3.Normalize(Vec(root.GetProperty("moonDirection")));
+Vector3 moonColor = Vec(root.GetProperty("moonColor"));
 float puddleSpec = root.GetProperty("puddleSpec").GetSingle();
 Vector3 viewDir = Vector3.Normalize(new Vector3(1f / 32f, 1f / 32f, 1f / zScale));
 
@@ -312,6 +314,25 @@ float Flash(Vector3 p, Vector3 n, int ignore, ref uint rng)
     return sum / FlashSamples + flashAmbient;
 }
 
+// Mond: nur für die Oberseiten von Objekten. Straße und Lichtgitter bekommen nichts davon, das Schleichen bleibt, wie es ist.
+Vector3 Moon(Vector3 p, Vector3 n, int ignore, ref uint rng)
+{
+    const int MoonSamples = 12;
+    const float MoonSpread = 0.04f;
+    const float FarAway = 60f;
+    float sum = 0f;
+    for (int i = 0; i < MoonSamples; i++)
+    {
+        var dir = Vector3.Normalize(moonDir + RandomOnSphere(ref rng) * MoonSpread);
+        float cos = Vector3.Dot(n, dir);
+        if (cos > 0f && !Occluded(p, p + dir * FarAway, ignore))
+        {
+            sum += cos;
+        }
+    }
+    return moonColor * (sum / MoonSamples);
+}
+
 // ---------- Beleuchten ----------
 
 float[] Shade(Surface s, ref uint rng, float px, float py)
@@ -360,6 +381,10 @@ float[] Shade(Surface s, ref uint rng, float px, float py)
     }
     direct /= DirectSamples;
     direct += Windows(s.Pos, s.Normal, s.Box);
+    if (!s.IsGround && s.Normal == Vector3.UnitZ)
+    {
+        direct += Moon(s.Pos, s.Normal, s.Box, ref rng);
+    }
     var indirect = Vector3.Zero;
     for (int i = 0; i < IndirectSamples; i++)
     {

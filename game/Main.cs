@@ -32,6 +32,13 @@ uniform float stutter = 1.0;
 uniform float unrest = 1.0;
 uniform float fire = 1.0;
 uniform float lightning = 0.0;
+uniform vec2 cuts[6];
+uniform int cut_count = 0;
+uniform float cut_open = 0.0;
+varying vec2 world;
+void vertex() {
+    world = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
+}
 void fragment() {
     vec3 a = texture(light_a, UV).rgb;
     vec4 b = texture(light_b, UV);
@@ -45,8 +52,19 @@ void fragment() {
         vec4 state = texture(pane_states, vec2((pane * 255.0 + 0.5) / 256.0, 0.5));
         COLOR.rgb = mix(COLOR.rgb, state.rgb * (0.35 + shade * 1.3) / night, state.a);
     }
+    // Durchblick auf verdeckte Agenten: innen frei, zum Rand hin gerastert, im Raster der Stadtgrafik.
+    vec2 cell = floor(world);
+    for (int i = 0; i < cut_count; i++) {
+        float reach = length((cell + 0.5 - cuts[i]) / vec2(21.0, 33.0));
+        if (reach < cut_open * 0.72 || (reach < cut_open && mod(cell.x + cell.y, 2.0) < 1.0)) {
+            COLOR.a = 0.0;
+        }
+    }
 }";
         private const float LightMax = 4f;
+        private const int MaxCuts = 6;
+        private const float CutOpenPerSecond = 6f;
+        private const float CutRise = 21f;
         private static readonly Color LampColor = new(1f, 0.74f, 0.42f);
         private static readonly Color FireColor = new(1f, 0.45f, 0.15f);
 
@@ -103,6 +121,8 @@ void fragment() {
 
         private readonly List<ThingInfo> _things = new();
         private readonly List<Sprite2D> _thingSprites = new();
+        private readonly List<float> _thingCuts = new();
+        private readonly Vector2[] _cutPoints = new Vector2[MaxCuts];
         private readonly List<Image> _thingImages = new();
         private readonly List<ShaderMaterial> _litMaterials = new();
         private readonly WindowLife _windowLife = new();
@@ -537,6 +557,16 @@ void fragment() {
             using var manifest = JsonDocument.Parse(File.ReadAllText(ProjectSettings.GlobalizePath("res://assets/manifest.json")));
             _ox = manifest.RootElement.GetProperty("ox").GetInt32();
             _oy = manifest.RootElement.GetProperty("oy").GetInt32();
+            var backdrop = manifest.RootElement.GetProperty("backdrop");
+            AddChild(new Sprite2D
+            {
+                Texture = LoadTexture("res://assets/" + backdrop.GetProperty("file").GetString()),
+                Centered = false,
+                Position = new Vector2(backdrop.GetProperty("px").GetInt32(), backdrop.GetProperty("py").GetInt32()),
+                ZIndex = -2,
+                LightMask = 3,
+                Material = LitMaterial("backdrop"),
+            });
             int index = 0;
             foreach (var t in manifest.RootElement.GetProperty("things").EnumerateArray())
             {
@@ -555,6 +585,7 @@ void fragment() {
                 };
                 AddChild(sprite);
                 _thingSprites.Add(sprite);
+                _thingCuts.Add(0f);
                 index++;
             }
             _ambience.Smoke = ReadPoints(manifest.RootElement, "smoke");
@@ -1227,36 +1258,45 @@ void fragment() {
             return g;
         }
 
-        /// <summary>Macht Objekte durchscheinend, die einen lebenden Agenten verdecken.</summary>
+        /// <summary>Öffnet in Objekten, die einen lebenden Agenten verdecken, einen Durchblick um die Figur.</summary>
         private void UpdateOcclusion()
         {
+            float step = CutOpenPerSecond * (float)GetProcessDeltaTime();
             for (int i = 0; i < _things.Count; i++)
             {
                 var sprite = _thingSprites[i];
                 var rect = new Rect2(sprite.Position, sprite.Texture.GetSize());
-                bool covers = false;
+                int count = 0;
                 foreach (var u in World.Units)
                 {
-                    if (u.Faction != Faction.Agent || !u.Alive)
+                    if (u.Faction != Faction.Agent || !u.Alive || count == MaxCuts)
                     {
                         continue;
                     }
-                    if (IsInside(_things[i], u))
+                    var body = new Rect2(ToScreen(u.X, u.Y) + new Vector2(-12, -46), new Vector2(24, 48));
+                    if (IsInside(_things[i], u) || (IsInFront(_things[i], u) && rect.Intersects(body)))
                     {
-                        covers = true;
-                        break;
-                    }
-                    if (!IsInFront(_things[i], u))
-                    {
-                        continue;
-                    }
-                    if (rect.HasPoint(ToScreen(u.X, u.Y) + new Vector2(0, -20)))
-                    {
-                        covers = true;
-                        break;
+                        _cutPoints[count++] = UnitPos(u) + new Vector2(0, -CutRise);
                     }
                 }
-                sprite.Modulate = new Color(1, 1, 1, covers ? 0.45f : 1f);
+                float open = Mathf.MoveToward(_thingCuts[i], count > 0 ? 1f : 0f, step);
+                if (count == 0 && _thingCuts[i] == 0f)
+                {
+                    continue;
+                }
+                _thingCuts[i] = open;
+                var material = (ShaderMaterial)sprite.Material;
+                material.SetShaderParameter("cut_open", open);
+                // Beim Schließen bleiben die letzten Stellen stehen, bis der Durchblick zu ist.
+                if (count > 0)
+                {
+                    material.SetShaderParameter("cuts", _cutPoints);
+                    material.SetShaderParameter("cut_count", count);
+                }
+                else if (open == 0f)
+                {
+                    material.SetShaderParameter("cut_count", 0);
+                }
             }
         }
 
@@ -1266,7 +1306,7 @@ void fragment() {
             var foot = ToScreen(u.X, u.Y);
             for (int i = 0; i < _things.Count; i++)
             {
-                if (_thingSprites[i].Modulate.A >= 1f && IsInFront(_things[i], u)
+                if (IsInFront(_things[i], u)
                     && IsOpaqueAt(i, foot + new Vector2(0, -40)) && IsOpaqueAt(i, foot + new Vector2(0, -20)))
                 {
                     return true;
