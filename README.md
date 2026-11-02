@@ -67,6 +67,12 @@ python tools/art/generate_concept.py
 python tools/art/bake_light.py
 ```
 
+Laternen, Hochbahn und Smog über den Häusern hinter der Karte stehen in deren Straßen, nach dem Verschieben der Blöcke also auch das:
+
+```bash
+python tools/art/skyline.py
+```
+
 Die Geräusche entstehen unabhängig davon:
 
 ```bash

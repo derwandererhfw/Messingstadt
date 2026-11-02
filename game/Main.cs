@@ -178,6 +178,7 @@ void fragment() {
         public SoundScape Sound => _sound;
         public List<double[]> LampSpots => _mission.Lamps;
         public Color NightColor => Night;
+        public float Lightning => _lightning;
 
         /// <summary>Wann die Wachen welches Feld im Blick haben. Grundlage für Lageplan und Wegvorschau.</summary>
         public WatchMap Watch { get; private set; } = null!;
@@ -408,6 +409,24 @@ void fragment() {
                 Gradient = gradient, Width = 256, Height = 256, Fill = GradientTexture2D.FillEnum.Radial,
                 FillFrom = new Vector2(0.5f, 0.5f), FillTo = new Vector2(1f, 0.5f),
             };
+            var fogNoise = LoadTexture("res://assets/light/fog.png");
+            // Smog, Laternen und Hochbahn stehen in den Straßen der Häuser hinter der Karte, ohne diese hingen sie in der Luft.
+            if (File.Exists(ProjectSettings.GlobalizePath("res://assets/backdrop.png")))
+            {
+                AddChild(new Skyline
+                {
+                    Game = this, ZIndex = -1, Backdrop = LoadTexture("res://assets/skyline.png"), Effects = LoadTexture("res://assets/skyline_fx.png"), Noise = fogNoise,
+                    DataPath = ProjectSettings.GlobalizePath("res://assets/skyline.json"),
+                });
+            }
+            AddChild(new WetGround
+            {
+                Game = this, ZIndex = 0, Windows = _windowLife, Noise = fogNoise, GroundSize = LoadTexture("res://assets/ground.png").GetSize(),
+                ManifestPath = ProjectSettings.GlobalizePath("res://assets/manifest.json"),
+                LampColor = LampColor, FireColor = FireColor, StutterLamp = StutterLamp, Lamps = _mission.Lamps, Fires = _ambience.Fires,
+                ExtraFires = new[] { ToScreen((int)(Strikers.BarrelTile.X * World.TileUnits), (int)(Strikers.BarrelTile.Y * World.TileUnits)) },
+                Puddles = _ambience.Puddles,
+            });
             // Unter den Gebäuden gezeichnet: Was hinter einem Haus liegt, bleibt auch im Bild verdeckt.
             AddChild(new GroundMarks { Game = this, ZIndex = 0 });
             _ambience.Game = this;

@@ -72,6 +72,21 @@ namespace Messingstadt
         /// <summary>Art und Lage aller Fenster und Buchstaben, etwa für Geräusche.</summary>
         public List<(string Kind, Vector2 Center)> PaneSpots { get; } = new();
 
+        /// <summary>Kennung, Art und Lage aller Fenster und Buchstaben, etwa für die Spiegelung im Pflaster.</summary>
+        public IEnumerable<(int Id, string Kind, Vector2 Center)> AllPanes
+        {
+            get
+            {
+                for (int i = 0; i < _panes.Count; i++)
+                {
+                    yield return (_panes[i].Id, PaneSpots[i].Kind, _panes[i].Center);
+                }
+            }
+        }
+
+        /// <summary>Wie ein Fenster gerade aussieht. Alpha 0 heißt: wie im vorberechneten Bild.</summary>
+        public Color PaneLook(int id) => _states.GetPixel(id, 0);
+
         /// <summary>Mitte des Leuchtschilds, null ohne Schild.</summary>
         public Vector2? SignCenter
         {
