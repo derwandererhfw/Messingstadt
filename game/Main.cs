@@ -82,7 +82,7 @@ void fragment() {
         // Im Lageplan: So lange bleibt eine Figur am Ziel stehen, das muss noch unbemerkt gehen.
         private const int ArrivalHoldTicks = 40;
         private const int MaxPlanWaitTicks = 60 * World.TickRate;
-        private const float AbandonWarningSeconds = 4f;
+        private static readonly Vector2I MinWindow = new(1024, 640);
 
         // Lebendige Kamera
         private const float CameraFollow = 7f;
@@ -163,8 +163,14 @@ void fragment() {
         private Campaign _campaign = new();
         private bool _finished;
         private bool _abandoned;
-        private float _abandonWarning;
         private Label _planLegend = null!;
+        private Label _help = null!;
+        private Menus _menus = null!;
+        private CanvasLayer _overlayLayer = null!;
+        private Settings _settings = new();
+        private bool _hadSave;
+        private Button? _panelFocus;
+        private string _upgradeFocus = "";
         private ColorRect _planBand = null!;
         private int _queuedX, _queuedY, _queuedTick;
         private int _lastReward;
@@ -179,6 +185,13 @@ void fragment() {
         // Mit --shot-on-fire=<n> entsteht das Bild im Moment des ersten Schusses ab Takt n.
         // --plan zeigt den Lageplan, --look=<x>,<y> hält die Kamera auf einem Feld.
         // --flash=<stärke> hält einen Blitz an, --ship=<x>,<y> stellt das Luftschiff über dieses Feld.
+        // --menu öffnet auch im Prüflauf das Hauptmenü, --fresh tut so, als gäbe es keinen Spielstand.
+        // --script=<datei> spielt Tasten und Klicks ab, siehe TestScript. Mit --script-writes schreibt er auch Dateien,
+        // das gehört nur in einen eigenen APPDATA-Ordner.
+        private bool _forceMenu;
+        private bool _fresh;
+        private string? _scriptPath;
+        private bool _scriptWrites;
         private float _testFlash = -1f;
         private Vector2? _testShip;
         private bool _forcePlan;
@@ -204,7 +217,7 @@ void fragment() {
         public WatchMap Watch { get; private set; } = null!;
 
         /// <summary>Q gehalten: Lageplan und Wegvorschau anzeigen.</summary>
-        public bool PlanHeld => _forcePlan || Input.IsPhysicalKeyPressed(Key.Q);
+        public bool PlanHeld => _forcePlan || (!ControlsLocked && Input.IsPhysicalKeyPressed(Key.Q));
         public List<(int X, int Y)> PreviewPath { get; } = new();
         public int PreviewRisk { get; private set; } = -1;
         public string PreviewText { get; private set; } = "";
@@ -216,6 +229,7 @@ void fragment() {
         public override void _Ready()
         {
             ParseArgs();
+            LoadSettings();
             // Gleiche Farbe wie der Himmel in ground.png, damit außerhalb der Karte kein Streifen sichtbar ist.
             RenderingServer.SetDefaultClearColor(new Color(52 / 255f, 56 / 255f, 78 / 255f) * Night);
             AddChild(new CanvasModulate { Color = Night });
@@ -233,11 +247,11 @@ void fragment() {
             _camera.MakeCurrent();
             AddEnvironment();
             // Eigene Ebene, die der Kamera folgt: Ringe und Balken bleiben auch in der Nacht gut lesbar.
-            var overlayLayer = new CanvasLayer { Layer = 1, FollowViewportEnabled = true };
-            AddChild(overlayLayer);
-            overlayLayer.AddChild(new Overlay { Game = this });
+            _overlayLayer = new CanvasLayer { Layer = 1, FollowViewportEnabled = true };
+            AddChild(_overlayLayer);
+            _overlayLayer.AddChild(new Overlay { Game = this });
             _chatter = new Chatter { Game = this };
-            overlayLayer.AddChild(_chatter);
+            _overlayLayer.AddChild(_chatter);
             BuildUi();
             StartMission();
             _sound.Game = this;
@@ -251,8 +265,177 @@ void fragment() {
                 Gullies = _ambience.Steam.ConvertAll(ScreenToMap),
                 WorkerSpot = WorkerTile, WorkerDoor = WorkerDoorTile,
             });
+            _menus = new Menus { Game = this };
+            AddChild(_menus);
+            ApplySound();
+            ApplyWindow();
+            if (!Testing || _forceMenu)
+            {
+                OpenMainMenu();
+            }
+            else
+            {
+                MaybeStartIntro();
+            }
+            if (_scriptPath != null)
+            {
+                AddChild(new TestScript { Game = this, FilePath = _scriptPath });
+            }
+        }
+
+        /// <summary>Prüfläufe schreiben nichts in die Dateien des Spielers.</summary>
+        private bool Testing => _shotPath != null || _auto || _look != null || _scriptPath != null;
+        private bool WritesFiles => !Testing || _scriptWrites;
+
+        /// <summary>Menü offen, Einstieg läuft oder Einsatz vorbei: Das Spiel nimmt keine Befehle an.</summary>
+        private bool ControlsLocked => _introRunning || _finished || (_menus != null && _menus.IsOpen);
+
+        public Settings Settings => _settings;
+        public bool HasSave => _hadSave;
+        public bool AbandonCostsSquad => Campaign.AbandonCostsSquad(World);
+        public string CampaignLine => $"Kasse {_campaign.Money}, {_campaign.Missions} Einsätze";
+
+        private static string SettingsPath => ProjectSettings.GlobalizePath("user://einstellungen.json");
+
+        private void LoadSettings()
+        {
+            if (WritesFiles && File.Exists(SettingsPath))
+            {
+                _settings = Settings.FromJson(File.ReadAllText(SettingsPath));
+            }
+        }
+
+        public void SaveSettings()
+        {
+            if (WritesFiles)
+            {
+                File.WriteAllText(SettingsPath, _settings.ToJson());
+            }
+        }
+
+        public void ApplySound() => _sound.SetVolumes(_settings.MasterVolume, _settings.MusicVolume, _settings.EffectsVolume, _settings.Muted);
+
+        private void ApplyWindow()
+        {
+            // Prüfläufe dürfen kleinere Fenster und --resolution behalten.
+            if (!WritesFiles)
+            {
+                return;
+            }
+            DisplayServer.WindowSetMinSize(MinWindow);
+            if (_settings.Fullscreen)
+            {
+                DisplayServer.WindowSetMode(DisplayServer.WindowMode.Fullscreen);
+            }
+        }
+
+        public void ToggleMute()
+        {
+            _settings.Muted = !_settings.Muted;
+            ApplySound();
+            SaveSettings();
+            _menus.Refresh();
+        }
+
+        public void ToggleFullscreen()
+        {
+            bool full = DisplayServer.WindowGetMode() == DisplayServer.WindowMode.Fullscreen;
+            DisplayServer.WindowSetMode(full ? DisplayServer.WindowMode.Windowed : DisplayServer.WindowMode.Fullscreen);
+            _settings.Fullscreen = !full;
+            SaveSettings();
+            _menus.Refresh();
+        }
+
+        private void OpenMainMenu()
+        {
+            _paper.Visible = false;
+            _overlayLayer.Visible = false;
+            _menus.ShowMain();
+        }
+
+        /// <summary>Vom Hauptmenü in den Einsatz, beim Betreten läuft der Einstieg.</summary>
+        public void ContinueMission()
+        {
+            _hadSave = true;
+            _paper.Visible = true;
+            _overlayLayer.Visible = true;
+            _menus.CloseAll();
             MaybeStartIntro();
         }
+
+        public void NewCampaign()
+        {
+            _campaign = new Campaign();
+            SaveCampaign();
+            _mission = LoadMission();
+            StartMission();
+            ContinueMission();
+        }
+
+        /// <summary>Verlässt einen laufenden Einsatz, das zählt wie ein Abbruch. Danach steht das Hauptmenü wieder am Anfang.</summary>
+        public void ToMainMenu()
+        {
+            BookLeaving();
+            _menus.CloseAll();
+            StartMission();
+            _showIntro = true;
+            OpenMainMenu();
+        }
+
+        public void QuitGame()
+        {
+            BookLeaving();
+            SaveSettings();
+            GetTree().Quit();
+        }
+
+        private void BookLeaving()
+        {
+            if (!_finished)
+            {
+                _campaign.Abandon(World);
+                SaveCampaign();
+            }
+        }
+
+        /// <summary>Nach dem Schließen eines Blatts bekommt der Ergebnis-Bildschirm die Tasten zurück.</summary>
+        public void MenusClosed()
+        {
+            if (_panel.Visible)
+            {
+                _panelFocus?.GrabFocus();
+            }
+        }
+
+        /// <summary>Wo im Prüflauf nach Knöpfen gesucht wird: im offenen Blatt, sonst überall.</summary>
+        public Node ActiveUi() => _menus.IsOpen ? _menus : this;
+
+        /// <summary>Zustand für den Prüflauf.</summary>
+        public Dictionary<string, string> Probe() => new()
+        {
+            ["screen"] = _menus.ScreenName,
+            ["focus"] = GetViewport().GuiGetFocusOwner() is Button button ? button.Text : GetViewport().GuiGetFocusOwner()?.GetClass() ?? "",
+            ["tick"] = World.Tick.ToString(),
+            ["paused"] = _paused.ToString(),
+            ["finished"] = _finished.ToString(),
+            ["panel"] = _panel.Visible.ToString(),
+            ["hud"] = _paper.Visible.ToString(),
+            ["help"] = _help.Visible.ToString(),
+            ["camera"] = _camera.Position.ToString(),
+            ["selected"] = string.Join(",", Selected.OrderBy(id => id)),
+            ["moving"] = World.Units.Count(u => u.Faction == Faction.Agent && u.Moving).ToString(),
+            ["plan"] = _planBand.Visible.ToString(),
+            ["master"] = _settings.MasterVolume.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+            ["music"] = _settings.MusicVolume.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+            ["musicdb"] = AudioServer.GetBusVolumeDb(AudioServer.GetBusIndex("Musik")).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture),
+            ["muted"] = AudioServer.IsBusMute(0).ToString(),
+            ["shake"] = _settings.ScreenShake.ToString(),
+            ["fullscreen"] = (DisplayServer.WindowGetMode() == DisplayServer.WindowMode.Fullscreen).ToString(),
+            ["window"] = DisplayServer.WindowGetSize().ToString(),
+            ["money"] = _campaign.Money.ToString(),
+            ["rating"] = World.Rating.ToString(),
+            ["cash"] = World.Money.ToString(),
+        };
 
         private MissionData LoadMission()
         {
@@ -272,10 +455,9 @@ void fragment() {
         /// <summary>Der Einstieg läuft einmal beim Programmstart. Prüfläufe überspringen ihn, außer mit --intro.</summary>
         private void MaybeStartIntro()
         {
-            bool testing = _shotPath != null || _auto || _look != null;
-            if (!_showIntro || (testing && !_forceIntro))
+            if (!_showIntro || (Testing && !_forceIntro))
             {
-                _camera.PositionSmoothingEnabled = !testing;
+                _camera.PositionSmoothingEnabled = !Testing;
                 _camera.PositionSmoothingSpeed = CameraFollow;
                 return;
             }
@@ -303,7 +485,7 @@ void fragment() {
         public void EndIntro()
         {
             _introRunning = false;
-            if (_shotPath == null)
+            if (WritesFiles)
             {
                 File.WriteAllText(IntroSeenPath, "");
             }
@@ -314,7 +496,13 @@ void fragment() {
         }
 
         /// <summary>Lässt das Bild kurz zittern, etwa bei Donner oder nahen Schüssen. Stärke von 0 bis 1.</summary>
-        public void ShakeCamera(float amount) => _trauma = Mathf.Min(1f, Mathf.Max(_trauma, amount));
+        public void ShakeCamera(float amount)
+        {
+            if (_settings.ScreenShake)
+            {
+                _trauma = Mathf.Min(1f, Mathf.Max(_trauma, amount));
+            }
+        }
 
         /// <summary>Lebendige Kamera: leichtes Atmen, Zittern und ein kurzes Heranrücken, wenn ein Agent fällt.</summary>
         private void UpdateCameraLife(float dt)
@@ -491,6 +679,22 @@ void fragment() {
                 {
                     _forceIntro = true;
                 }
+                else if (a == "--menu")
+                {
+                    _forceMenu = true;
+                }
+                else if (a == "--fresh")
+                {
+                    _fresh = true;
+                }
+                else if (a == "--script-writes")
+                {
+                    _scriptWrites = true;
+                }
+                else if (a.StartsWith("--script="))
+                {
+                    _scriptPath = a["--script=".Length..];
+                }
                 else if (a.StartsWith("--panel="))
                 {
                     _testPanelFrame = int.Parse(a["--panel=".Length..]);
@@ -661,7 +865,7 @@ void fragment() {
             _planBand = new ColorRect
             {
                 AnchorRight = 1f, OffsetLeft = 10f, OffsetTop = 62f, OffsetRight = -18f, OffsetBottom = 108f, Visible = false,
-                Color = PaperUi.PaperDark, MouseFilter = Control.MouseFilterEnum.Ignore,
+                Color = PaperUi.PaperDark, MouseFilter = Control.MouseFilterEnum.Stop,
             };
             layer.AddChild(_planBand);
             _planLegend = PaperUi.Text(
@@ -671,14 +875,14 @@ void fragment() {
             _planLegend.Position = new Vector2(20, 65);
             _planLegend.Visible = false;
             layer.AddChild(_planLegend);
-            var help = PaperUi.Text(
-                "Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen, Otto: Tür   Q halten: Lageplan   1-4 Leertaste   WASD F P M   F11: Vollbild   R: abbrechen",
+            _help = PaperUi.Text(
+                "Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen, Otto: Tür   Q halten: Lageplan   1-4 Leertaste   WASD F P M   Esc: Menü",
                 12, new Color(0.75f, 0.72f, 0.65f, 0.75f), PaperUi.Typewriter);
-            help.AnchorTop = 1f;
-            help.AnchorBottom = 1f;
-            help.OffsetLeft = 12f;
-            help.OffsetTop = -23f;
-            layer.AddChild(help);
+            _help.AnchorTop = 1f;
+            _help.AnchorBottom = 1f;
+            _help.OffsetLeft = 12f;
+            _help.OffsetTop = -23f;
+            layer.AddChild(_help);
             _banner = PaperUi.Text("", 34, new Color(1f, 0.85f, 0.4f), PaperUi.Serif);
             _banner.AnchorRight = 1f;
             _banner.AnchorTop = 0.45f;
@@ -704,13 +908,14 @@ void fragment() {
 
         private void LoadCampaign()
         {
-            _campaign = File.Exists(SavePath) ? Campaign.FromJson(File.ReadAllText(SavePath)) : new Campaign();
+            _hadSave = !_fresh && File.Exists(SavePath);
+            _campaign = _hadSave ? Campaign.FromJson(File.ReadAllText(SavePath)) : new Campaign();
         }
 
         private void SaveCampaign()
         {
             // Prüfläufe dürfen den echten Spielstand nicht verändern.
-            if (_shotPath == null)
+            if (WritesFiles)
             {
                 File.WriteAllText(SavePath, _campaign.ToJson());
             }
@@ -719,41 +924,40 @@ void fragment() {
         public override void _Notification(int what)
         {
             // Fenster schließen ist derselbe Abbruch wie R, sonst wäre es der Ausweg vor dem Tod eines Agenten.
-            if (what == NotificationWMCloseRequest && World != null && !_finished && Campaign.AbandonCostsSquad(World))
+            // Auch ohne Schuss, sonst käme bezahltes Bestechungsgeld zurück.
+            if (what == NotificationWMCloseRequest && World != null)
             {
-                _campaign.Abandon(World);
-                SaveCampaign();
+                BookLeaving();
+                SaveSettings();
             }
         }
 
-        /// <summary>R: Vor dem ersten Schuss ist der Rückzug frei, danach kostet er nach einer Warnung den Trupp.</summary>
-        private void PressRestart()
+        /// <summary>R: fragt nach, was der Abbruch kostet. Vor dem ersten Schuss ist der Rückzug frei, danach kostet er den Trupp.</summary>
+        private void PressRestart() => _menus.ConfirmAbandon();
+
+        /// <summary>Verbucht den Abbruch: ohne Schuss neu antreten, sonst zeigt die Zeitung den verlorenen Trupp.</summary>
+        public void AbandonMission()
         {
-            if (_finished)
+            bool costs = Campaign.AbandonCostsSquad(World);
+            _campaign.Abandon(World);
+            SaveCampaign();
+            _menus.CloseAll();
+            if (!costs)
             {
                 StartMission();
+                return;
             }
-            else if (!Campaign.AbandonCostsSquad(World))
-            {
-                _campaign.Abandon(World);
-                SaveCampaign();
-                StartMission();
-            }
-            else if (_abandonWarning <= 0f)
-            {
-                _abandonWarning = AbandonWarningSeconds;
-            }
-            else
-            {
-                _campaign.Abandon(World);
-                SaveCampaign();
-                _finished = true;
-                _abandoned = true;
-                _abandonWarning = 0f;
-                _lastReward = 0;
-                RefreshPanel();
-                _panel.Visible = true;
-            }
+            _finished = true;
+            _abandoned = true;
+            _lastReward = 0;
+            ShowPanel();
+        }
+
+        private void ShowPanel()
+        {
+            RefreshPanel();
+            _panel.Visible = true;
+            _panelFocus?.GrabFocus();
         }
 
         private void FinishMission()
@@ -762,8 +966,7 @@ void fragment() {
             _lastReward = World.State == MissionState.Won ? Campaign.Reward(World.Rating) : 0;
             _campaign.Finish(World);
             SaveCampaign();
-            RefreshPanel();
-            _panel.Visible = true;
+            ShowPanel();
         }
 
         private static Label PanelLabel(string text, int size = 15) => PaperUi.Text(text, size, PaperUi.Ink, PaperUi.Typewriter);
@@ -773,8 +976,10 @@ void fragment() {
         {
             foreach (var child in _panelBody.GetChildren())
             {
+                _panelBody.RemoveChild(child);
                 child.QueueFree();
             }
+            _panelFocus = null;
             bool won = World.State == MissionState.Won;
             var (headline, line) = Headlines.For(World, _abandoned);
             _panelBody.AddChild(PaperUi.Text(Headlines.Paper.ToUpperInvariant(), 14, PaperUi.StampRed, PaperUi.Serif));
@@ -806,7 +1011,7 @@ void fragment() {
                 var row = new HBoxContainer();
                 row.AddThemeConstantOverride("separation", 12);
                 var name = PanelLabel($"{u.Name}: Beine {record.Legs}, Herz {record.Heart}{(u.Alive && !_abandoned ? "" : "  (gefallen)")}");
-                name.CustomMinimumSize = new Vector2(280, 0);
+                name.CustomMinimumSize = new Vector2(340, 0);
                 row.AddChild(name);
                 row.AddChild(UpgradeButton("Beine", record.Name, record.Legs, true));
                 row.AddChild(UpgradeButton("Herz", record.Name, record.Heart, false));
@@ -816,16 +1021,11 @@ void fragment() {
             PaperUi.InkButton(next);
             next.Pressed += StartMission;
             _panelBody.AddChild(next);
-            var reset = new Button { Text = "Neue Kampagne" };
-            PaperUi.InkButton(reset);
-            reset.Pressed += () =>
-            {
-                _campaign = new Campaign();
-                SaveCampaign();
-                _mission = LoadMission();
-                StartMission();
-            };
-            _panelBody.AddChild(reset);
+            var menu = new Button { Text = "Zum Hauptmenü" };
+            PaperUi.InkButton(menu);
+            menu.Pressed += ToMainMenu;
+            _panelBody.AddChild(menu);
+            _panelFocus ??= next;
         }
 
         private Button UpgradeButton(string label, string agent, int level, bool legs)
@@ -838,13 +1038,21 @@ void fragment() {
                 Disabled = full || _campaign.Money < cost,
                 CustomMinimumSize = new Vector2(130, 0),
             };
+            button.FocusMode = button.Disabled ? Control.FocusModeEnum.None : Control.FocusModeEnum.All;
             PaperUi.InkButton(button);
+            // Nach dem Kauf wird die Liste neu gebaut. Die Tastenwahl bleibt auf diesem Knopf, solange er noch geht.
+            string key = agent + label;
+            if (key == _upgradeFocus && !button.Disabled)
+            {
+                _panelFocus = button;
+            }
             button.Pressed += () =>
             {
                 if (_campaign.TryUpgrade(agent, legs))
                 {
                     SaveCampaign();
-                    RefreshPanel();
+                    _upgradeFocus = key;
+                    ShowPanel();
                 }
             };
             return button;
@@ -864,7 +1072,7 @@ void fragment() {
             SaveCampaign();
             _finished = false;
             _abandoned = false;
-            _abandonWarning = 0f;
+            _upgradeFocus = "";
             WaitingIds.Clear();
             _panel.Visible = false;
             World = new World(_map, _mission);
@@ -901,7 +1109,7 @@ void fragment() {
 
         public override void _Process(double delta)
         {
-            if (!_introRunning)
+            if (!ControlsLocked)
             {
                 HandleCamera((float)delta);
             }
@@ -910,13 +1118,11 @@ void fragment() {
             {
                 _abandoned = true;
                 _finished = true;
-                RefreshPanel();
-                _panel.Visible = true;
+                ShowPanel();
             }
             MarkerTime = Mathf.Max(0f, MarkerTime - (float)delta);
-            _abandonWarning = Mathf.Max(0f, _abandonWarning - (float)delta);
             Selected.RemoveWhere(id => !World.Units[id].Alive);
-            if (!_paused && !_finished && !_introRunning)
+            if (!_paused && !ControlsLocked)
             {
                 _accumulator += (float)delta;
                 while (_accumulator >= TickSeconds)
@@ -1388,7 +1594,8 @@ void fragment() {
                 info += $"   ALARM: VERSTÄRKUNG IN {World.TicksUntilReinforcement / World.TickRate + 1} S";
             }
             _paper.Refresh(World, Selected, telegram, info);
-            _banner.Text = _abandonWarning > 0f ? "R nochmal: aufgeben, Trupp verloren" : _paused ? "PAUSE" : "";
+            _banner.Text = _paused && !ControlsLocked ? "PAUSE" : "";
+            _help.Visible = _paper.Visible && !_finished;
         }
 
         private string RatingText() => World.Rating switch
@@ -1400,6 +1607,32 @@ void fragment() {
 
         public override void _UnhandledInput(InputEvent e)
         {
+            if (e is InputEventKey { Pressed: true, Echo: false } global)
+            {
+                // Diese Tasten gelten auch in den Menüs.
+                if (global.PhysicalKeycode == Key.F11)
+                {
+                    ToggleFullscreen();
+                    GetViewport().SetInputAsHandled();
+                    return;
+                }
+                if (global.PhysicalKeycode == Key.M)
+                {
+                    ToggleMute();
+                    GetViewport().SetInputAsHandled();
+                    return;
+                }
+                if (global.PhysicalKeycode == Key.Escape && !_menus.IsOpen && !_introRunning)
+                {
+                    _menus.ShowPause();
+                    GetViewport().SetInputAsHandled();
+                    return;
+                }
+            }
+            if (ControlsLocked)
+            {
+                return;
+            }
             if (e is InputEventKey { Pressed: true, Echo: false } key)
             {
                 switch (key.PhysicalKeycode)
@@ -1416,8 +1649,6 @@ void fragment() {
                         break;
                     case Key.F: CenterOnSelection(); break;
                     case Key.P: _paused = !_paused; break;
-                    case Key.M: _sound.ToggleMute(); break;
-                    case Key.F11: ToggleFullscreen(); break;
                     case Key.R: PressRestart(); break;
                 }
             }
@@ -1468,12 +1699,6 @@ void fragment() {
                     }
                 }
             }
-        }
-
-        private static void ToggleFullscreen()
-        {
-            bool full = DisplayServer.WindowGetMode() == DisplayServer.WindowMode.Fullscreen;
-            DisplayServer.WindowSetMode(full ? DisplayServer.WindowMode.Windowed : DisplayServer.WindowMode.Fullscreen);
         }
 
         public void SelectAgent(int index, bool add)
