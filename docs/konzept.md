@@ -166,8 +166,10 @@ Alle Geräusche werden per Synthese erzeugt (`tools/art/generate_audio.py`), es 
 
 | Art | Was |
 |---|---|
-| Überall | Regen und Wind |
-| Am Ort, nur aus der Nähe | Laternen, Dampf aus Gullys, Kesselfeuer und Maschinen, Dieselmotor des Fluchtwagens, Bildfunk, Leuchtschild |
+| Musik | Vier Lagen im selben Takt: Ruhe, Dunkel beim Schleichen, Verdacht, Gefecht. Sie blenden je nach Lage ineinander |
+| Überall | Regen und Wind folgen dem Wetter, Böen rauschen in den Mitten. Ferne Stadt: Hund, Sirene, Güterzug, Schichthorn, Straßenbahn, Nebelhorn, Kirchenglocke, Fensterladen, ferne Schüsse |
+| Raum | Der Hall wächst, je enger die Hindernisse um die Kamera stehen. In der Gasse klingt der Regen dumpfer |
+| Am Ort, nur aus der Nähe | Laternen, Dampf aus Gullys, Kesselfeuer und Maschinen, Dieselmotor des Fluchtwagens, Bildfunk, Leuchtschild, Radio und Klavier hinter Fenstern, Regenrinnen je nach Dachablauf |
 | Figuren | Dumpfe Schritte, Wachen nur aus der Nähe, Agenten etwas weiter, laut beim Rennen. Schüsse mit Echo, Treffer, Querschläger, Fallen |
 | Einsatz | Trillerpfeife, wenn eine Wache in den Kampf geht, Alarmglocke beim Anrücken der Verstärkung, Dietrich und Tür, Blättern im Kontobuch, Münzen, Abschlussakkord |
 | Tiere | Tauben flattern auf, Ratten quieken |

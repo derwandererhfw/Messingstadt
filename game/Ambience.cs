@@ -5,7 +5,7 @@ using Godot;
 namespace Messingstadt
 {
     /// <summary>
-    /// Bewegte Umgebung: Rauch, Dampf, flackerndes Licht, Regenringe und Papier im Wind.
+    /// Bewegte Umgebung: Rauch und Dampf im Wind, flackerndes Licht, Regenringe und Papier.
     /// Reine Darstellung mit eigenem Zufall. Die Spiellogik bleibt davon unberührt und deterministisch.
     /// </summary>
     public partial class Ambience : Node2D
@@ -17,6 +17,9 @@ namespace Messingstadt
         private const int FlashLights = 6;
         private const float MinValveSeconds = 16f;
         private const float MaxValveSeconds = 45f;
+        private const float PlumeWindShare = 0.55f;
+        private const float PlumeDriftX = 3f;
+        private const float PlumeLift = -2f;
 
         private sealed class Ripple
         {
@@ -35,10 +38,9 @@ namespace Messingstadt
         private readonly List<Ripple> _ripples = new();
         private readonly List<Paper> _papers = new();
         private readonly List<PointLight2D> _flashLights = new();
+        private readonly List<CpuParticles2D> _plumes = new();
         private float _time;
         private float _stutterUntil;
-        private float _gustUntil;
-        private float _nextGust = 2f;
         private float _rippleDebt;
         private float _nextValve = 9f;
 
@@ -103,7 +105,7 @@ namespace Messingstadt
                 Width = 16, Height = 16, Fill = GradientTexture2D.FillEnum.Radial,
                 FillFrom = new Vector2(0.5f, 0.5f), FillTo = new Vector2(1f, 0.5f),
             };
-            AddChild(new CpuParticles2D
+            var plume = new CpuParticles2D
             {
                 Texture = puff,
                 TextureFilter = TextureFilterEnum.Nearest,
@@ -121,13 +123,20 @@ namespace Messingstadt
                 ScaleAmountMax = size * 1.8f,
                 ScaleAmountCurve = growth,
                 ColorRamp = ramp,
-            });
+            };
+            AddChild(plume);
+            _plumes.Add(plume);
         }
 
         public override void _Process(double delta)
         {
             float dt = (float)delta;
             _time += dt;
+            var plumeDrift = new Vector2(PlumeDriftX + Game.Climate.Wind * PlumeWindShare, PlumeLift);
+            foreach (var plume in _plumes)
+            {
+                plume.Gravity = plumeDrift;
+            }
             FlickerLights(dt);
             UpdateValves();
             UpdateFlashes();
@@ -197,7 +206,8 @@ namespace Messingstadt
 
         private void UpdateRipples(float dt)
         {
-            _rippleDebt += RipplesPerSecond * Puddles.Count * dt / 4f;
+            // Bei Niesel wie gehabt, im Schauer kochen die Pfützen, in der Pause fällt kaum ein Tropfen.
+            _rippleDebt += RipplesPerSecond * Puddles.Count * dt / 4f * Game.Climate.RainStrength * 3.3f;
             while (_rippleDebt >= 1f && Puddles.Count > 0)
             {
                 _rippleDebt -= 1f;
@@ -217,12 +227,7 @@ namespace Messingstadt
 
         private void UpdatePapers(float dt)
         {
-            if (_time > _nextGust)
-            {
-                _gustUntil = _time + Rand(1.5f, 3.5f);
-                _nextGust = _gustUntil + Rand(3f, 8f);
-            }
-            float wind = _time < _gustUntil ? 34f : 2f;
+            float wind = Game.Climate.Wind;
             foreach (var p in _papers)
             {
                 p.Pos += new Vector2(wind, wind * 0.32f + Mathf.Sin(_time * 5f + p.Phase) * wind * 0.5f) * dt;
