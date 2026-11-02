@@ -149,11 +149,11 @@ namespace Messingstadt
             {
                 Position = at, ZIndex = HighZ, Amount = 40, Lifetime = 1.6f, OneShot = true, Explosiveness = 0.45f,
                 Direction = new Vector2(0.3f, -1f), Spread = 16f, Gravity = new Vector2(8f, 12f),
-                InitialVelocityMin = 45f, InitialVelocityMax = 85f, ScaleAmountMin = 2f, ScaleAmountMax = 5f,
+                // Die Größe muss hier stehen: Die Skalierung der Node wirkt ohne lokale Koordinaten nicht auf die Partikel.
+                InitialVelocityMin = 45f, InitialVelocityMax = 85f, ScaleAmountMin = 0.16f, ScaleAmountMax = 0.4f,
                 Texture = Glow, TextureFilter = TextureFilterEnum.Linear,
                 Color = new Color(2.4f, 2.4f, 2.5f, 0.09f),
             };
-            burst.Scale = new Vector2(0.08f, 0.08f);
             AddChild(burst);
             burst.Emitting = true;
             burst.Finished += burst.QueueFree;
