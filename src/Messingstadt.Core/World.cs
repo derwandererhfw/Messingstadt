@@ -216,6 +216,9 @@ namespace Messingstadt.Core
         public int LootY { get; }
         public int LootValue { get; }
         public bool LootTaken { get; private set; }
+
+        /// <summary>Zeitungstexte aus der Mission, nur für die Darstellung.</summary>
+        public HeadlineData? Press { get; }
         public MissionRating Rating => _everShot ? MissionRating.Loud : _everNoticed ? MissionRating.Quiet : MissionRating.Unseen;
 
         /// <summary>Takte bis zur nächsten Verstärkung, -1 wenn keine unterwegs ist.</summary>
@@ -230,6 +233,7 @@ namespace Messingstadt.Core
             ItemName = mission.ItemName;
             _reinforcements = mission.Reinforcements;
             Money = mission.Money;
+            Press = mission.Headlines;
             foreach (var d in mission.Doors)
             {
                 var door = new Door { Name = d.Name };
