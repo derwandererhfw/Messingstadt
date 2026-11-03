@@ -66,7 +66,7 @@ namespace Messingstadt
             var body = new VBoxContainer();
             body.AddThemeConstantOverride("separation", 10);
             _paper.AddChild(body);
-            body.AddChild(PaperUi.Text("ROTER HAMMER   VERTRAULICH", 14, PaperUi.StampRed, PaperUi.Serif));
+            body.AddChild(PaperUi.Text("ROTER HAMMER   ABTEILUNG K   VERTRAULICH", 14, PaperUi.StampRed, PaperUi.Serif));
             body.AddChild(PaperUi.Text("Einsatz: " + MissionTitle, 24, PaperUi.Ink, PaperUi.Serif));
             _typed = PaperUi.Text("", 17, PaperUi.Ink, PaperUi.Typewriter);
             _typed.AutowrapMode = TextServer.AutowrapMode.WordSmart;

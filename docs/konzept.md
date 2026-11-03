@@ -7,7 +7,7 @@ Städten zurückgezogen. Die Stadt gehört drei Mächten: den Brandt-Werken, der
 Stadtwache, die offiziell neutral ist. Dagegen steht die Gewerkschaft „Roter Hammer“.
 
 Der Spieler führt eine verdeckte Abteilung der Gewerkschaft. Die Mittel sind Diebstahl, Sabotage,
-Befreiung und, wenn es nicht anders geht, Gewalt.
+Befreiung und, wenn es nicht anders geht, Gewalt. Figuren, Konflikt und Verlauf der Kampagne stehen in `story.md`.
 
 ## Was das Spiel ausmachen soll
 
@@ -126,7 +126,7 @@ Was den Spieler in die Welt ziehen soll, alles reine Darstellung:
 | Gespräche | Wachen und Arbeiter reden kurze Sätze, Wachen rufen im Alarm. Manche Sätze verraten etwas über die Rundgänge (`game/Chatter.cs`) |
 | Kamera | Folgt weich, atmet leicht, zittert bei Donner und nahen Schüssen, rückt heran, wenn ein Agent fällt |
 | Ton | Hund, Sirene, Güterzug und Schichthorn in der Ferne, Radio hinter einem Fenster. Herzschlag, wenn eine Wache gerade bemerkt. Im Dunkeln wird die Musik dünner |
-| Zeitung | Nach jedem Einsatz eine Schlagzeile, die zum Verlauf passt: unentdeckt, leise, blutig, verloren, aufgegeben (`Headlines` in der Spiellogik) |
+| Zeitung | Nach jedem Einsatz eine Schlagzeile, die zum Verlauf passt: unentdeckt, leise, blutig, verloren, aufgegeben, ohne Schuss zurückgezogen. Die Texte stehen je Mission unter `headlines`, `Headlines` in der Spiellogik füllt die Platzhalter |
 | Spuren | Nasse Fußabdrücke, die nach 8 Sekunden verschwinden, und Blutstropfen verletzter Figuren. Wachen folgen ihnen nicht (`game/Traces.cs`) |
 
 ### Figuren
@@ -165,7 +165,7 @@ Alle Geräusche werden per Synthese erzeugt (`tools/art/generate_audio.py`), es 
 | Tiere | Tauben flattern auf, Ratten quieken |
 | Wetter und Stadt | Donner, Motoren des Luftschiffs, Dampfstöße, Schweißen, Feuertonne |
 
-Dazu kommt leise Musik: langsame dunkle Flächen in d-Moll mit einem sparsamen Thema, eine eigene Komposition in der Stimmung des Originals. Solange Wachen alarmiert sind, blendet sich eine treibende Bassfigur ein.
+Dazu kommt leise Musik: langsame dunkle Flächen in d-Moll mit einem sparsamen Thema, eine eigene Komposition. Solange Wachen alarmiert sind, blendet sich eine treibende Bassfigur ein.
 
 Taste `M` schaltet den Ton aus.
 

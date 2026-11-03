@@ -747,7 +747,7 @@ void fragment() {
             }
             if (World.Units.Any(u => u.Faction == Faction.Agent && (!u.Alive || _abandoned)))
             {
-                _panelBody.AddChild(PanelLabel("Gefallene kommen zurück, aber Beine und Herz fallen auf Stufe 1."));
+                _panelBody.AddChild(PanelLabel("Verwundete kommen aus der Krankenstube zurück, aber Beine und Herz fallen auf Stufe 1."));
             }
             _panelBody.AddChild(PanelLabel($"Kasse: {_campaign.Money}    Einsätze: {_campaign.Missions}", 16));
             foreach (var u in World.Units.Where(u => u.Faction == Faction.Agent))

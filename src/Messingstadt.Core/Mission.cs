@@ -107,6 +107,31 @@ namespace Messingstadt.Core
         public int[] Levels { get; set; } = System.Array.Empty<int>();
     }
 
+    /// <summary>Kopf und Zeile einer Schlagzeile. Platzhalter siehe Headlines.</summary>
+    public sealed class HeadlineText
+    {
+        public string Head { get; set; } = "";
+        public string Line { get; set; } = "";
+    }
+
+    /// <summary>Was die Zeitung nach diesem Einsatz schreibt, je nach Ausgang. Fehlende Fälle nehmen einen allgemeinen Text.</summary>
+    public sealed class HeadlineData
+    {
+        public HeadlineText? Unseen { get; set; }
+        public HeadlineText? Quiet { get; set; }
+        public HeadlineText? Loud { get; set; }
+        public HeadlineText? Lost { get; set; }
+
+        /// <summary>Abbruch nach dem ersten Schuss.</summary>
+        public HeadlineText? Abandoned { get; set; }
+
+        /// <summary>Abbruch, bevor ein Schuss fiel.</summary>
+        public HeadlineText? Retreat { get; set; }
+
+        /// <summary>Satz für den Platzhalter {loot}, wenn die Beute fehlt.</summary>
+        public string? Loot { get; set; }
+    }
+
     public sealed class MissionData
     {
         public string Title { get; set; } = "";
@@ -120,6 +145,9 @@ namespace Messingstadt.Core
         public ReinforcementData? Reinforcements { get; set; }
         public List<DoorData> Doors { get; set; } = new();
         public LootData? Loot { get; set; }
+
+        /// <summary>Zeitungstexte nach dem Einsatz. Ohne Angabe allgemeine Texte.</summary>
+        public HeadlineData? Headlines { get; set; }
 
         /// <summary>Helligkeit der Karte. Ohne Angabe gilt überall dieselbe Reichweite beim Bemerken.</summary>
         public LightData? Light { get; set; }

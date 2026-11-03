@@ -2,38 +2,67 @@ using System.Linq;
 
 namespace Messingstadt.Core
 {
-    /// <summary>Was am nächsten Morgen in der Zeitung steht. Die Stadt reagiert darauf, wie der Einsatz lief.</summary>
+    /// <summary>
+    /// Was am nächsten Morgen in der Zeitung steht. Die Stadt reagiert darauf, wie der Einsatz lief.
+    /// Die Texte kommen aus der Mission (siehe docs/story.md), hier werden nur die Platzhalter gefüllt:
+    /// {item} Name des Ziels, {dead} tote Wachen, {fallen} verwundete Agenten, {loot} fehlende Beute, {paid} bestochene Wachen.
+    /// Platzhalter außer {item} werden zu einem Satz mit führendem Leerzeichen oder zu nichts.
+    /// </summary>
     public static class Headlines
     {
         public const string Paper = "Messingstädter Anzeiger";
 
+        private static readonly HeadlineText Unseen = new() { Head = "Einbruch, den niemand bemerkte",
+            Line = "Erst am Morgen fiel auf, was fehlt: {item}. Gesehen haben will niemand etwas.{loot}{paid}" };
+        private static readonly HeadlineText Quiet = new() { Head = "Einbruch bei Nacht: Wache sah Schatten",
+            Line = "Ein Wachmann will Gestalten gesehen haben, gefasst wurde niemand. Es fehlt: {item}.{loot}{paid}" };
+        private static readonly HeadlineText Loud = new() { Head = "Blutige Nacht in Messingstadt",
+            Line = "Schüsse hallten durch die Straßen.{dead} Die Täter entkamen.{fallen}{loot}{paid}" };
+        private static readonly HeadlineText Lost = new() { Head = "Roter Hammer zerschlagen?",
+            Line = "Die Stadtwache meldet einen vereitelten Überfall und mehrere Festnahmen. Namen nennt sie nicht. Die Gewerkschaft schweigt.{dead}" };
+        private static readonly HeadlineText Abandoned = new() { Head = "Schießerei in der Nacht, Täter flüchtig",
+            Line = "Bewaffnete lieferten sich ein Gefecht mit der Stadtwache und zogen sich ohne Beute zurück.{dead}" };
+        private static readonly HeadlineText Retreat = new() { Head = "Unruhe in der Nacht",
+            Line = "Anwohner meldeten Gestalten auf der Straße. Als die Wache kam, war niemand mehr da." };
+
         public static (string Head, string Line) For(World world, bool abandoned)
         {
-            int deadGuards = world.Units.Count(u => u.Faction == Faction.Guard && !u.Alive);
-            int deadAgents = world.Units.Count(u => u.Faction == Faction.Agent && !u.Alive);
-            int bribed = world.Units.Count(u => u.Faction == Faction.Guard && u.Bribed);
-            string loot = world.LootTaken ? $" Auch die {world.LootName} der Brandt-Werke fehlt." : "";
-            string paid = bribed > 0 ? " Die Stadtwache schweigt auffällig." : "";
-
+            var press = world.Press;
+            HeadlineText text;
             if (abandoned)
             {
-                return ("Schießerei in der Nacht, Täter flüchtig",
-                    $"Bewaffnete lieferten sich am Mietshaus ein Gefecht mit der Stadtwache und zogen sich ohne Beute zurück. {Dead(deadGuards)}");
+                text = Campaign.AbandonCostsSquad(world) ? press?.Abandoned ?? Abandoned : press?.Retreat ?? Retreat;
             }
-            if (world.State != MissionState.Won)
+            else if (world.State != MissionState.Won)
             {
-                return ("Roter Hammer zerschlagen?",
-                    $"Die Stadtwache meldet einen vereitelten Überfall. Vier Bewaffnete seien gestellt worden. Die Gewerkschaft schweigt. {Dead(deadGuards)}");
+                text = press?.Lost ?? Lost;
             }
-            return world.Rating switch
+            else
             {
-                MissionRating.Unseen => ("Kontobuch der Brandt-Werke spurlos verschwunden",
-                    $"Niemand will etwas bemerkt haben. In den Fabriken wird schon von Schwarzgeld getuschelt.{loot}{paid}"),
-                MissionRating.Quiet => ("Einbruch bei Nacht: Wache sah Schatten",
-                    $"Ein Wachmann will Gestalten in der Gasse gesehen haben, gefasst wurde niemand. Das Kontobuch der Brandt-Werke fehlt.{loot}{paid}"),
-                _ => ("Blutige Nacht am Mietshaus",
-                    $"Stundenlang hallten Schüsse durch die Querstraße. {Dead(deadGuards)} Der Fluchtwagen entkam Richtung Osten.{Fallen(deadAgents)}{loot}{paid}"),
-            };
+                text = world.Rating switch
+                {
+                    MissionRating.Unseen => press?.Unseen ?? Unseen,
+                    MissionRating.Quiet => press?.Quiet ?? Quiet,
+                    _ => press?.Loud ?? Loud,
+                };
+            }
+            return (Fill(world, text.Head), Fill(world, text.Line));
+        }
+
+        private static string Fill(World world, string text)
+        {
+            // Hunde zählen nicht als Wachleute.
+            int deadGuards = world.Units.Count(u => u.Faction == Faction.Guard && !u.Type.Bites && !u.Alive);
+            int fallen = world.Units.Count(u => u.Faction == Faction.Agent && !u.Alive);
+            bool paid = world.Units.Any(u => u.Faction == Faction.Guard && u.Bribed);
+            string loot = world.LootTaken ? " " + (world.Press?.Loot ?? "Gestohlen wurde außerdem: {lootName}.").Replace("{lootName}", world.LootName) : "";
+            return text
+                .Replace("{item}", world.ItemName)
+                .Replace("{dead}", " " + Dead(deadGuards))
+                .Replace("{fallen}", Fallen(fallen))
+                .Replace("{loot}", loot)
+                .Replace("{paid}", paid ? " Die Stadtwache schweigt auffällig." : "")
+                .Trim();
         }
 
         private static string Dead(int guards) => guards switch
@@ -43,11 +72,12 @@ namespace Messingstadt.Core
             _ => $"{guards} Wachleute kamen ums Leben.",
         };
 
+        // Gefallene Agenten sind schwer verwundet und kommen zurück, die Zeitung findet nur Blut.
         private static string Fallen(int agents) => agents switch
         {
             0 => "",
-            1 => " Am Tatort blieb ein Toter zurück.",
-            _ => $" Am Tatort blieben {agents} Tote zurück.",
+            1 => " Blutspuren führen bis zur nächsten Kreuzung.",
+            _ => " Die Blutspuren mehrerer Verletzter verlieren sich im Regen.",
         };
     }
 }
