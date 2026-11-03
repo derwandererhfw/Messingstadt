@@ -14,6 +14,7 @@ namespace Messingstadt
     public partial class Water : Node2D
     {
         private const float MinFootprint = 6f;
+        private const float TramHeight = 40f;
         private const float MinHeight = 60f;
         private const float BeamMinLength = 5f;
         private const float BeamMaxDepth = 0.3f;
@@ -189,6 +190,10 @@ namespace Messingstadt
                 {
                     AddBeam(x0, x1, y1, z1);
                 }
+                else if (Mathf.IsEqualApprox(z1, TramHeight) && w < 1f && d > 3f)
+                {
+                    AddTram(x1, y0, y1);
+                }
             }
         }
 
@@ -205,6 +210,14 @@ namespace Messingstadt
             }
             wall.AddEdge(Tile(x0, y1), Tile(x1, y1), z1);
             wall.AddEdge(Tile(x1, y1), Tile(x1, y0), z1);
+            wall.MakeDrips(DripsPerWall);
+        }
+
+        private void AddTram(float x1, float y0, float y1)
+        {
+            var wall = new Wall { Game = this.Game, ZIndex = Game.DepthZ(x1 + 0.05f, y1 + 0.05f) };
+            AddChild(wall);
+            wall.AddEdge(Tile(x1, y1), Tile(x1, y0), TramHeight);
             wall.MakeDrips(DripsPerWall);
         }
 

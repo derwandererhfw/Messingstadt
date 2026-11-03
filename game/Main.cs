@@ -119,6 +119,7 @@ void fragment() {
         private Image _lightGrid = null!;
         private readonly List<Color> _unitGlow = new();
         private readonly Ambience _ambience = new();
+        private PuddleMirror _puddleMirror = null!;
         private readonly List<Sprite2D> _unitSprites = new();
         private readonly Dictionary<string, int> _figureRows = new();
         private readonly Dictionary<int, float> _fallStarted = new();
@@ -159,9 +160,10 @@ void fragment() {
         // Mit --shot-on-fire=<n> entsteht das Bild im Moment des ersten Schusses ab Takt n.
         // --plan zeigt den Lageplan, --look=<x>,<y> hält die Kamera auf einem Feld.
         // --flash=<stärke> hält einen Blitz an, --ship=<x>,<y> stellt das Luftschiff über dieses Feld.
-        // --rain=<stärke> hält den Regen, von 0 bis 1.
+        // --rain=<stärke> hält den Regen, von 0 bis 1. --smoke lässt alle ruhigen Wachen gleich rauchen.
         private float _testFlash = -1f;
         private float _testRain = -1f;
+        private bool _testSmoke;
         private Vector2? _testShip;
         private bool _forcePlan;
         private bool _forceIntro;
@@ -181,6 +183,12 @@ void fragment() {
         public List<double[]> LampSpots => _mission.Lamps;
         public Color NightColor => Night;
         public float Lightning => _lightning;
+        public WindowLife Windows => _windowLife;
+        public IReadOnlyList<Sprite2D> UnitSprites => _unitSprites;
+
+        /// <summary>Die Karte, schon bevor der Einsatz beginnt.</summary>
+        public MapData Map => _map;
+
 
         /// <summary>Regen, Wind und woher das Blitzlicht kommt.</summary>
         public Weather Climate { get; private set; } = null!;
@@ -353,6 +361,11 @@ void fragment() {
             AddChild(weather);
             weather.AddLampCones(_mission.Lamps, StutterLamp);
             AddChild(new Water { Game = this, ManifestPath = ProjectSettings.GlobalizePath("res://assets/manifest.json") });
+            AddChild(new GunSmoke { Game = this });
+            var tram = new Tram { Game = this, ManifestPath = ProjectSettings.GlobalizePath("res://assets/manifest.json") };
+            AddChild(tram);
+            _puddleMirror.Tram = tram;
+            AddChild(new Breath { Game = this, Glow = _critterGlow, HeldSmoke = _testSmoke });
             AddChild(new Airship { Game = this, Glow = _critterGlow, Night = Night, ShipTexture = LoadTexture("res://assets/airship.png"), HeldAt = _testShip });
             AddChild(new Strikers
             {
@@ -427,14 +440,23 @@ void fragment() {
                     DataPath = ProjectSettings.GlobalizePath("res://assets/skyline.json"),
                 });
             }
-            AddChild(new WetGround
+            var wet = new WetGround
             {
                 Game = this, ZIndex = 0, Windows = _windowLife, Noise = fogNoise, GroundSize = LoadTexture("res://assets/ground.png").GetSize(),
                 ManifestPath = ProjectSettings.GlobalizePath("res://assets/manifest.json"),
                 LampColor = LampColor, FireColor = FireColor, StutterLamp = StutterLamp, Lamps = _mission.Lamps, Fires = _ambience.Fires,
                 ExtraFires = new[] { ToScreen((int)(Strikers.BarrelTile.X * World.TileUnits), (int)(Strikers.BarrelTile.Y * World.TileUnits)) },
                 Puddles = _ambience.Puddles,
-            });
+            };
+            AddChild(wet);
+            _puddleMirror = new PuddleMirror
+            {
+                Game = this, ZIndex = 0, Wet = wet, Windows = _windowLife, Noise = fogNoise,
+                GroundPath = ProjectSettings.GlobalizePath("res://assets/ground.png"), GroundLight = LoadTexture("res://assets/light/ground_a.png"), GroundLightB = LoadTexture("res://assets/light/ground_b.png"),
+                LampColor = LampColor, FireColor = FireColor, StutterLamp = StutterLamp, Lamps = _mission.Lamps,
+                ManifestPath = ProjectSettings.GlobalizePath("res://assets/manifest.json"), Puddles = _ambience.Puddles,
+            };
+            AddChild(_puddleMirror);
             // Unter den Gebäuden gezeichnet: Was hinter einem Haus liegt, bleibt auch im Bild verdeckt.
             AddChild(new GroundMarks { Game = this, ZIndex = 0 });
             _ambience.Game = this;
@@ -445,6 +467,7 @@ void fragment() {
             _windowLife.Glow = glow;
             _windowLife.LightParent = this;
             _windowLife.Sound = _sound;
+            _windowLife.Game = this;
             AddChild(_windowLife);
             _critterGlow = glow;
             AddChild(new RainLayer { Game = this, ZIndex = 3900 });
@@ -469,6 +492,10 @@ void fragment() {
                 else if (a.StartsWith("--flash="))
                 {
                     _testFlash = float.Parse(a["--flash=".Length..], System.Globalization.CultureInfo.InvariantCulture);
+                }
+                else if (a == "--smoke")
+                {
+                    _testSmoke = true;
                 }
                 else if (a.StartsWith("--rain="))
                 {
@@ -527,6 +554,7 @@ void fragment() {
         /// <summary>Helligkeit der Laternen gerade jetzt, für die Lichtkegel.</summary>
         public float UnrestLevel { get; private set; } = 1f;
         public float StutterLevel { get; private set; } = 1f;
+        public float FireLevel { get; private set; } = 1f;
 
         /// <summary>Blitzlicht: blendet den vorberechneten Blitzanteil ein und hellt kurz den Himmel auf.</summary>
         public void SetLightning(float strength)
@@ -549,6 +577,7 @@ void fragment() {
         {
             UnrestLevel = unrest;
             StutterLevel = stutter;
+            FireLevel = fire;
             foreach (var material in _litMaterials)
             {
                 material.SetShaderParameter("stutter", stutter);
