@@ -87,6 +87,18 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void DeadRunnerIsNamedApart()
+        {
+            var m = Mission();
+            m.Guards = new() { new UnitData { Name = "L", Sprite = "Laufbursche", Type = "laufbursche", X = 5.5, Y = 5.5 } };
+            var w = Lost(m);
+            w.Units[1].Hp = 0;
+            var line = Headlines.For(w, false).Line;
+            Assert.EndsWith("schweigt. Ein Laufbursche, vierzehn Jahre alt, ist unter den Toten.", line);
+            Assert.DoesNotContain("Verletzt wurde niemand", line);
+        }
+
+        [Fact]
         public void MissionTextsReplaceTheGeneralOnes()
         {
             var m = Mission();

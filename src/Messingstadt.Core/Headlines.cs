@@ -51,26 +51,39 @@ namespace Messingstadt.Core
 
         private static string Fill(World world, string text)
         {
-            // Hunde zählen nicht als Wachleute.
-            int deadGuards = world.Units.Count(u => u.Faction == Faction.Guard && !u.Type.Bites && !u.Alive);
+            // Hunde zählen nicht als Wachleute, Laufburschen werden eigens genannt.
+            int deadGuards = world.Units.Count(u => u.Faction == Faction.Guard && !u.Type.Bites && !u.Type.Reports && !u.Alive);
+            int deadBoys = world.Units.Count(u => u.Faction == Faction.Guard && u.Type.Reports && !u.Alive);
             int fallen = world.Units.Count(u => u.Faction == Faction.Agent && !u.Alive);
             bool paid = world.Units.Any(u => u.Faction == Faction.Guard && u.Bribed);
             string loot = world.LootTaken ? " " + (world.Press?.Loot ?? "Gestohlen wurde außerdem: {lootName}.").Replace("{lootName}", world.LootName) : "";
             return text
                 .Replace("{item}", world.ItemName)
-                .Replace("{dead}", " " + Dead(deadGuards))
+                .Replace("{dead}", Dead(deadGuards, deadBoys))
                 .Replace("{fallen}", Fallen(fallen))
                 .Replace("{loot}", loot)
                 .Replace("{paid}", paid ? " Die Stadtwache schweigt auffällig." : "")
                 .Trim();
         }
 
-        private static string Dead(int guards) => guards switch
+        private static string Dead(int guards, int boys)
         {
-            0 => "Verletzt wurde niemand.",
-            1 => "Ein Wachmann kam ums Leben.",
-            _ => $"{guards} Wachleute kamen ums Leben.",
-        };
+            string men = guards switch
+            {
+                0 => boys == 0 ? " Verletzt wurde niemand." : "",
+                1 => " Ein Wachmann kam ums Leben.",
+                _ => $" {guards} Wachleute kamen ums Leben.",
+            };
+            string young = (boys, guards > 0) switch
+            {
+                (0, _) => "",
+                (1, true) => " Auch ein Laufbursche, vierzehn Jahre alt, ist unter den Toten.",
+                (1, false) => " Ein Laufbursche, vierzehn Jahre alt, ist unter den Toten.",
+                (_, true) => $" Auch {boys} Laufburschen sind unter den Toten.",
+                _ => $" {boys} Laufburschen sind unter den Toten.",
+            };
+            return men + young;
+        }
 
         // Gefallene Agenten sind schwer verwundet und kommen zurück, die Zeitung findet nur Blut.
         private static string Fallen(int agents) => agents switch

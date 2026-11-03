@@ -39,6 +39,8 @@ namespace Messingstadt
             "Hinter dem Lager läuft sowieso keiner Streife.",
             // Stimmt: Am Wagen steht der Werkschutz, oben auf der Straße der Schütze, der Hund läuft im Hof an der Fabrik.
             "Der Werkschutz am Wagen nimmt kein Geld.", "Oben an der Straße hat einer ein Gewehr.", "Der Hund im Fabrikhof riecht dich auch im Dunkeln.",
+            // Stimmt: Der Hundeführer ist für 300 käuflich, sein Hund gibt dann mit Ruhe. Der Laufbursche am Hotel rennt zur nächsten Wache.
+            "Der mit dem Hund verkauft seine Mutter. Den Hund gleich mit.", "Der Junge am Hotel rennt sofort zu uns, wenn er was sieht.",
             // Stimmt: So wirkt die Lichtregel beim Bemerken.
             "Unter den Laternen erkenn ich dich sofort.", "Im Dunkeln siehst du die Hand vor Augen nicht.", "Halt dich ans Licht, im Schatten sieht man nichts.",
         };
@@ -51,7 +53,7 @@ namespace Messingstadt
             "Meine Frau näht jetzt für die Bank.", "Heute Nacht bleibt keiner allein.", "Sechzehn Stunden am Kessel, und wofür?",
             "Im Hotel brennt Licht, für die reicht es immer.", "Hörst du? Das Schichthorn. Ohne uns.", "Noch hält die Kasse vom Hammer.",
             "Mach die Augen auf, die Wache ist nervös.", "Einer hat den Roten Hammer in der Gasse gesehen.", "Gestern haben sie wieder einen abgeholt.",
-            "Den jungen Roth haben sie auch geholt.", "Rehm sagt, wir halten durch. Der hat leicht reden.", "Woher hat die Streikkasse eigentlich das Geld?",
+            "Den jungen Roth haben sie auch geholt.", "Der kleine Kurt läuft für die Wache. Für zwei Groschen.", "Rehm sagt, wir halten durch. Der hat leicht reden.", "Woher hat die Streikkasse eigentlich das Geld?",
         };
 
         private static readonly string[] Noticed = { "Moment. War da was?", "He! Wer da?", "Hab ich was gesehen?" };
