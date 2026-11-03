@@ -59,6 +59,7 @@ namespace Messingstadt
         private float _visible = 1f;
         private float _time;
         private Rect2 _area;
+        private AudioStreamPlayer2D? _hum;
 
         public Main Game = null!;
         public string ManifestPath = "";
@@ -91,6 +92,7 @@ namespace Messingstadt
                 return;
             }
             float length = (_y1 - _y0) * WallU;
+            _hum = Game.Sound.AddTramHum(_area.GetCenter());
             for (float u = FirstWindowU; u < length - 12f; u += WindowStepU)
             {
                 _windows.Add(u);
@@ -112,6 +114,10 @@ namespace Messingstadt
             float wanted = hushed ? 0f : _time < _stutterUntil && _rng.NextDouble() < 0.6 ? 0.1f : 1f;
             // Beim Stottern springt das Licht, beim Ausschalten und Wiederkommen geht es weich.
             _light = _time < _stutterUntil && !hushed ? wanted : Mathf.MoveToward(_light, wanted, LightFadePerSecond * dt);
+            if (_hum != null)
+            {
+                _hum.VolumeDb = SoundScape.TramHumAt(_light);
+            }
             if (_restLeft > 0f)
             {
                 _restLeft -= dt;

@@ -39,6 +39,9 @@ namespace Messingstadt
         private const float GutterReach = 220f;
         private const float GutterSpacing = 60f;
         private const int MaxGutters = 12;
+        private const float HushFadePerSecond = 0.6f;
+        private const float TramHumDb = -30f;
+        private const float TramHumReach = 260f;
         private const int CalmLayer = 0, DarkLayer = 1, SuspectLayer = 2, FightLayer = 3;
         private const float LayerFadePerSecond = 0.35f;
         private const float SuspectRisePerSecond = 0.7f;
@@ -78,6 +81,8 @@ namespace Messingstadt
         private AudioStreamPlayer _gust = null!;
         private AudioStreamPlayer _heart = null!;
         private readonly List<AudioStreamPlayer2D> _gutters = new();
+        private readonly List<(AudioStreamPlayer2D Player, float Db)> _hushable = new();
+        private float _hush;
         private AudioEffectReverb _reverb = null!;
         private AudioEffectLowPassFilter _rainFilter = null!;
         private float _heartLevel;
@@ -250,6 +255,17 @@ namespace Messingstadt
             }
         }
 
+        /// <summary>Radio, Bildfunk und Klavier werden still, so weit die Fenster ringsum dunkel sind.</summary>
+        private void UpdateHush(float dt)
+        {
+            float wanted = Game.Windows?.Hush ?? 0f;
+            _hush = Mathf.MoveToward(_hush, wanted, HushFadePerSecond * dt);
+            foreach (var (player, db) in _hushable)
+            {
+                player.VolumeDb = Faded(db, 1f - _hush);
+            }
+        }
+
         /// <summary>Der Raum wird aus den Hindernissen ringsum geschätzt: Kurze Wege bis zur nächsten Wand ergeben eine enge Gasse.</summary>
         private void UpdateRoom(World world, float dt)
         {
@@ -302,7 +318,8 @@ namespace Messingstadt
         }
 
         /// <summary>Ein Dauergeräusch an einem festen Ort, etwa an einer Laterne. Es ist nur aus der Nähe zu hören.</summary>
-        public void AddLoop(string name, Vector2 position, float volume, float reach = AmbientReach)
+        /// <summary>Mit hushable verstummt es, wenn die Nachbarschaft nach Schüssen die Fenster dunkel macht.</summary>
+        public void AddLoop(string name, Vector2 position, float volume, float reach = AmbientReach, bool hushable = false)
         {
             var player = new AudioStreamPlayer2D
             {
@@ -310,7 +327,25 @@ namespace Messingstadt
                 Attenuation = 1.6f, Autoplay = true, Bus = EffectsBus,
             };
             AddChild(player);
+            if (hushable)
+            {
+                _hushable.Add((player, volume));
+            }
         }
+
+        /// <summary>Das Brummen der Lampe in der Straßenbahn. Der Aufrufer stellt die Helligkeit, mit ihr wird es lauter oder leiser.</summary>
+        public AudioStreamPlayer2D AddTramHum(Vector2 position)
+        {
+            var player = new AudioStreamPlayer2D
+            {
+                Stream = Looping("tram_hum"), Position = position, VolumeDb = TramHumDb, MaxDistance = TramHumReach,
+                Attenuation = 1.6f, Autoplay = true, Bus = EffectsBus,
+            };
+            AddChild(player);
+            return player;
+        }
+
+        public static float TramHumAt(float light) => Faded(TramHumDb, light);
 
         /// <summary>Ein Dauergeräusch, das mit etwas mitfliegt. Der Aufrufer startet es und setzt die Lage selbst.</summary>
         public AudioStreamPlayer2D AddMovingLoop(string name, float volume, float reach)
@@ -382,6 +417,7 @@ namespace Messingstadt
             UpdateMusic(world, (float)delta);
             UpdateRoom(world, (float)delta);
             UpdateWeather();
+            UpdateHush((float)delta);
         }
 
         private void ListenToUnit(World world, Unit u)

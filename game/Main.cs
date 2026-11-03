@@ -607,7 +607,7 @@ void fragment() {
             {
                 if (kind == "tv")
                 {
-                    _sound.AddLoop("television", center, -32f, 180f);
+                    _sound.AddLoop("television", center, -32f, 180f, hushable: true);
                 }
             }
             if (_windowLife.SignCenter is { } sign)
@@ -618,11 +618,11 @@ void fragment() {
             var windows = _windowLife.PaneSpots.Where(s => s.Item1 == "window").Select(s => s.Item2).ToList();
             if (windows.Count > 0)
             {
-                _sound.AddLoop("radio", windows[0], -24f, 230f);
+                _sound.AddLoop("radio", windows[0], -24f, 230f, hushable: true);
             }
             if (windows.Count > 1)
             {
-                _sound.AddLoop("piano", windows[^1], -26f, 230f);
+                _sound.AddLoop("piano", windows[^1], -26f, 230f, hushable: true);
             }
         }
 
@@ -1199,7 +1199,7 @@ void fragment() {
             }
             if (_shotPath != null && _frame == _shotFrame)
             {
-                GD.Print($"Raum {_sound.Enclosure:0.00}, Geräusche abgespielt: {_sound.PlayCount}  " + string.Join(", ", _sound.PlayedByGroup.Select(g => $"{g.Key} {g.Value}")));
+                GD.Print($"Raum {_sound.Enclosure:0.00}, Stille {_windowLife.Hush:0.00}, Geräusche abgespielt: {_sound.PlayCount}  " + string.Join(", ", _sound.PlayedByGroup.Select(g => $"{g.Key} {g.Value}")));
                 GetViewport().GetTexture().GetImage().SavePng(_shotPath);
                 GetTree().Quit();
             }

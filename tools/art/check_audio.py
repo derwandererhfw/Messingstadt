@@ -20,7 +20,7 @@ AUDIO = ROOT / "game" / "assets" / "audio"
 SOUNDSCAPE = (ROOT / "game" / "SoundScape.cs").read_text(encoding="utf-8")
 
 MUSIC_LAYERS = ("music_calm", "music_dark", "music_suspect", "music_tension")
-LOOPS = ("rain", "wind", "wind_gust", "lamp", "neon", "steam", "fire", "diesel", "machine", "television", "airship", "weld", "radio", "heartbeat", "lockpick", "gutter", "piano") + MUSIC_LAYERS
+LOOPS = ("rain", "wind", "wind_gust", "lamp", "neon", "steam", "fire", "diesel", "machine", "television", "airship", "weld", "radio", "heartbeat", "lockpick", "gutter", "piano", "tram_hum") + MUSIC_LAYERS
 STEPS = tuple(f"step_{kind}_{i}" for kind in ("soft", "boot", "run") for i in range(4))
 CITY = ("distant_shots", "tram", "foghorn", "church_bell", "shutter")
 
@@ -30,6 +30,7 @@ MAX_MUSIC_GAME_DBA = -43.0
 MAX_MUSIC_ABOVE_2K = 0.1
 MAX_CITY_ABOVE_2K = 1.0
 MAX_SEAM = 6.0
+MAX_MATCH_ABOVE_4K = 10.0
 MAX_FIGHT_BELOW_120 = 60.0
 MAX_HEART_BELOW_120 = 75.0
 MUSIC_SECONDS = 96
@@ -112,6 +113,9 @@ def main():
     for name in CITY:
         x, rate = load(name)
         check(share(x, rate, 2000, 1e9) <= MAX_CITY_ABOVE_2K, f"{name}: über 2 kHz {share(x, rate, 2000, 1e9):.2f} %")
+
+    x, rate = load("match")
+    check(share(x, rate, 4000, 1e9) <= MAX_MATCH_ABOVE_4K, f"Streichholz über 4 kHz: {share(x, rate, 4000, 1e9):.1f} %")
 
     for name in LOOPS:
         x, _ = load(name)

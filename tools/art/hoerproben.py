@@ -129,6 +129,45 @@ def near(name, db, seconds=20):
     return looped(name, seconds) * gain(db) + weather(seconds, DRIZZLE)
 
 
+def match():
+    parts = []
+    for _ in range(4):
+        parts += [load("match") * gain(-14), np.zeros((RATE * 2, 2))]
+    x = np.concatenate(parts)
+    return x + weather(len(x) / RATE, DRIZZLE)[:len(x)]
+
+
+def hushed():
+    """Radio, Bildfunk und Klavier, dann Schüsse: Die Fenster gehen aus, nach einer Weile kommt alles wieder."""
+    seconds = 40
+    t = np.arange(seconds * RATE) / RATE
+    hush = np.clip((t - 10) / 2, 0, 1) - np.clip((t - 28) / 8, 0, 1)
+    quiet = np.zeros_like(t)
+    value = 0.0
+    for i, wanted in enumerate(hush):
+        value += np.clip(wanted - value, -0.6 / RATE, 0.6 / RATE)
+        quiet[i] = value
+    city = looped("radio", seconds) * gain(-24) + looped("television", seconds) * gain(-32) + looped("piano", seconds) * gain(-26)
+    shots = np.zeros((len(t), 2))
+    for at in (9.6, 10.0, 10.9):
+        x = load("shot_0") * gain(-8)
+        i = int(at * RATE)
+        shots[i:i + len(x)] += x[:len(shots) - i]
+    return city * (1 - quiet)[:, None] + shots + weather(seconds, DRIZZLE)
+
+
+def tram_light():
+    """Das Licht in der Bahn stottert und geht aus: Das Brummen folgt der Helligkeit."""
+    seconds = 20
+    t = np.arange(seconds * RATE) / RATE
+    light = np.ones_like(t)
+    for a, b in ((4, 4.3), (4.5, 4.9), (9, 9.6)):
+        light[(t >= a) & (t < b)] = 0.1
+    light[t >= 14] = np.clip(1 - (t[t >= 14] - 14) * 1.5, 0, 1)
+    env = np.maximum(10 ** ((-30 + 20 * np.log10(np.maximum(light, 0.001))) / 20), 10 ** (-60 / 20))
+    return looped("tram_hum", seconds) * env[:, None] + weather(seconds, DRIZZLE)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     seconds = 30
@@ -142,6 +181,9 @@ def main():
     save("8_stadt_alle_fernen_geraeusche", city())
     save("9_regenrinne_aus_der_naehe", near("gutter", -20 + 14 * np.log10(DRIZZLE)))
     save("10_klavier_hinter_der_scheibe", near("piano", -26))
+    save("11_streichholz", match())
+    save("12_fenster_gehen_aus_stadt_verstummt", hushed())
+    save("13_strassenbahnlicht_stottert_und_geht_aus", tram_light())
 
 
 if __name__ == "__main__":
