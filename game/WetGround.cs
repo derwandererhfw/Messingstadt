@@ -23,13 +23,10 @@ namespace Messingstadt
         private const float LetterAlpha = 0.3f;
         private const float FireWidth = 24f;
         private const float FireAlpha = 0.8f;
-        private const float PuddleSheen = 0.05f;
-        private const float PuddleFlash = 0.2f;
         private const int WetMapDivisor = 4;
         private const float PuddleWetScale = 1.1f;
         private const float MinWallHeightAround = 80f;
         private static readonly Color UnchangedWindow = new(0.62f, 0.46f, 0.26f);
-        private static readonly Color PuddleSky = new(0.34f, 0.42f, 0.62f);
 
         // Die Streifen verschieben sich zeilenweise wie auf bewegtem Wasser und reißen auf trockenerem Pflaster ab.
         private const string ShaderCode = @"
@@ -69,9 +66,10 @@ void fragment() {
         private sealed record Wall(Vector2 West, Vector2 South, Vector2 East, float Height);
 
         private readonly List<Streak> _streaks = new();
-        private readonly List<Rect2> _puddles = new();
         private Texture2D _streak = null!;
-        private Texture2D _disc = null!;
+
+        /// <summary>Fenster und Buchstaben mit dem Fuß ihrer Wand im Bild. Daraus entstehen die Spiegelbilder in den Pfützen.</summary>
+        public List<(int Id, string Kind, Vector2 Center, float FootY)> PaneFeet { get; } = new();
         private float _time;
 
         public Main Game = null!;
@@ -90,7 +88,6 @@ void fragment() {
         public override void _Ready()
         {
             _streak = MakeStreakTexture();
-            _disc = MakeDiscTexture();
             var material = new ShaderMaterial { Shader = new Shader { Code = ShaderCode } };
             material.SetShaderParameter("noise_map", Noise);
             material.SetShaderParameter("wet_map", MakeWetMap());
@@ -122,10 +119,6 @@ void fragment() {
             foreach (var p in ExtraFires)
             {
                 _streaks.Add(new Streak { Area = StreakArea(p, 22f, FireWidth * 0.7f), Tint = Lit(FireColor), Alpha = FireAlpha, Fire = true, Phase = p.X });
-            }
-            foreach (var (pos, radius) in Puddles)
-            {
-                _puddles.Add(new Rect2(pos - new Vector2(radius, radius * 0.5f), new Vector2(radius * 2f, radius)));
             }
         }
 
@@ -165,6 +158,7 @@ void fragment() {
                 return;
             }
             bool letter = kind == "sign";
+            PaneFeet.Add((id, kind, center, foot.Value));
             _streaks.Add(new Streak
             {
                 Area = StreakArea(new Vector2(center.X, foot.Value), foot.Value - center.Y, letter ? LetterWidth : WindowWidth),
@@ -205,21 +199,6 @@ void fragment() {
                     float u = (x + 0.5f) / W * 2f - 1f;
                     float across = Mathf.Exp(-u * u * 4f) * (1f - Mathf.Abs(u));
                     image.SetPixel(x, y, new Color(1f, 1f, 1f, along * across));
-                }
-            }
-            return ImageTexture.CreateFromImage(image);
-        }
-
-        private static Texture2D MakeDiscTexture()
-        {
-            const int S = 32;
-            var image = Image.CreateEmpty(S, S, false, Image.Format.Rgba8);
-            for (int y = 0; y < S; y++)
-            {
-                for (int x = 0; x < S; x++)
-                {
-                    float d = new Vector2((x + 0.5f) / S * 2f - 1f, (y + 0.5f) / S * 2f - 1f).Length();
-                    image.SetPixel(x, y, new Color(1f, 1f, 1f, Mathf.Clamp((1f - d) * 2f, 0f, 1f)));
                 }
             }
             return ImageTexture.CreateFromImage(image);
@@ -273,13 +252,6 @@ void fragment() {
                     alpha *= stutters ? Game.StutterLevel : Game.UnrestLevel;
                 }
                 DrawTextureRect(_streak, s.Area, false, new Color(tint, alpha));
-            }
-            // Die Pfützen zeigen den Himmel: fast nichts, bis es blitzt.
-            var sky = Lit(PuddleSky);
-            float sheen = PuddleSheen + Game.Lightning * PuddleFlash;
-            foreach (var puddle in _puddles)
-            {
-                DrawTextureRect(_disc, puddle, false, new Color(sky, sheen));
             }
         }
     }

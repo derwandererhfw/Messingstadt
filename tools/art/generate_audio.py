@@ -735,9 +735,27 @@ def piano():
     save_music("piano", spectrum_filter(x, 1000, 170), 0.5)
 
 
+def tram_hum():
+    """Licht in der stehenden Straßenbahn: Brummen der Drossel, kaum hörbar, nichts Helles."""
+    rng = own_rng("tram_hum")
+    t = 4.5
+    x = hum(100, t, (1, 0.3, 0.12), 0.05) + 0.08 * lowpass(noise(t, rng), 500)
+    save("tram_hum", loopable(x), 0.5)
+
+
+def match():
+    """Streichholz: kurzes Reiben, dann Aufflammen. Weich gefiltert, damit es nicht klackert."""
+    rng = own_rng("match")
+    t = time(0.9)
+    rub = highpass(lowpass(noise(0.9, rng), 2800), 900) * np.exp(-((t - 0.07) / 0.045) ** 2)
+    rub *= 0.6 + 0.4 * np.abs(np.sin(2 * np.pi * 60 * t))
+    flare = lowpass(noise(0.9, rng), 1600) * np.minimum(np.maximum(t - 0.1, 0) / 0.03, 1) * decay(np.maximum(t - 0.1, 0), 0.22)
+    save("match", fade(rub + 0.7 * flare, 0.002, 0.15), 0.6)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld, dog, siren, factory_horn, train, radio, heartbeat, typewriter, fresh_random, dog_fight, boy_whistle, wind_gust, distant_shots, tram, foghorn, church_bell, shutter, gutter, piano):
+    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld, dog, siren, factory_horn, train, radio, heartbeat, typewriter, fresh_random, dog_fight, boy_whistle, wind_gust, distant_shots, tram, foghorn, church_bell, shutter, gutter, piano, tram_hum, match):
         make()
     files = list(OUT.glob("*.wav"))
     print(f"{len(files)} Geräusche, {sum(f.stat().st_size for f in files) // 1024} KiB")
