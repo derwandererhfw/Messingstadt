@@ -16,6 +16,12 @@ Voraussetzung: Godot 4.7.2 .NET (`C:\Users\user\.tools\godot\`) und .NET SDK 9.
 
 Spielen: Doppelklick auf `Spielen.bat`.
 
+Branches testen: Doppelklick auf `Branch-Hub.bat`. Das Fenster listet alle Branches mit Ort, Datum und Abstand zu `main`.
+- **Spielen** (oder Doppelklick auf die Zeile) holt den Commit-Stand in die Prüfkopie `work\hub`, baut und startet ihn. `main` und die Ordner der Sessions bleiben unberührt.
+- **Arbeitsstand spielen** startet eine Session direkt aus ihrem Ordner, mit nicht committeten Änderungen.
+- **Tests**, **Im Godot-Editor**, **Commits zeigen**, **Ordner öffnen** und **Von GitHub holen** tun, was sie sagen.
+- Spielstand, Einstellungen und Einstieg werden vor jedem Test gesichert und danach zurückgespielt, außer der Haken „Spielstand behalten“ ist gesetzt.
+
 Die folgenden Befehle gelten für PowerShell im Projektordner.
 
 Tests:
