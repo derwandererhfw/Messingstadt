@@ -13,6 +13,9 @@ namespace Messingstadt.Core
         public bool Fullscreen { get; set; }
         public bool ScreenShake { get; set; } = true;
 
+        /// <summary>Welcher Aktenordner zuletzt offen war, 1 bis 3.</summary>
+        public int LastSlot { get; set; } = 1;
+
         public string ToJson() => JsonSerializer.Serialize(this);
 
         /// <summary>Lädt die Einstellungen. Unlesbares führt zu den Vorgaben, Werte außerhalb der Regler werden begrenzt.</summary>
@@ -30,6 +33,7 @@ namespace Messingstadt.Core
             settings.MasterVolume = Limit(settings.MasterVolume);
             settings.MusicVolume = Limit(settings.MusicVolume);
             settings.EffectsVolume = Limit(settings.EffectsVolume);
+            settings.LastSlot = SaveFolder.ClampSlot(settings.LastSlot);
             return settings;
         }
 

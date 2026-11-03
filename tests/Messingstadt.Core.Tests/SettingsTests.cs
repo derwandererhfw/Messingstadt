@@ -46,6 +46,13 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void LastSlot_OutsideTheCabinet_FallsBackToTheFirst()
+        {
+            Assert.Equal(1, Settings.FromJson("{\"LastSlot\":9}").LastSlot);
+            Assert.Equal(3, Settings.FromJson("{\"LastSlot\":3}").LastSlot);
+        }
+
+        [Fact]
         public void MissingFields_KeepTheirDefaults()
         {
             var s = Settings.FromJson("{\"Muted\":true}");

@@ -54,6 +54,12 @@ namespace Messingstadt.Core
         /// <summary>Besondere Fähigkeit: "schlosser" oder "buchhalter".</summary>
         public string Skill { get; set; } = "";
 
+        /// <summary>Beruf für die Akte, etwa "Truppführerin". Ohne Angabe gilt der Beruf aus der Fähigkeit.</summary>
+        public string Role { get; set; } = "";
+
+        public string RoleName() => Role.Length > 0 ? Role
+            : Skill == World.SkillLocksmith ? "Schlosser" : Skill == World.SkillBookkeeper ? "Buchhalter" : "Agent";
+
         /// <summary>Ausbaustufe 1 bis 3: bestimmt das Tempo beim Rennen.</summary>
         public int Legs { get; set; } = 1;
 

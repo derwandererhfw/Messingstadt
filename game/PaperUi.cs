@@ -193,8 +193,9 @@ namespace Messingstadt
             card.Alive.AddChild(new ColorRect { Position = new Vector2(6, 77), Size = new Vector2(CardWidth - 12, 6), Color = PaperDark, MouseFilter = MouseFilterEnum.Ignore });
             card.Breath = new ColorRect { Position = new Vector2(7, 78), Size = new Vector2(CardWidth - 14, 4), Color = new Color(0.15f, 0.22f, 0.32f), MouseFilter = MouseFilterEnum.Ignore };
             card.Alive.AddChild(card.Breath);
-            card.Stamp = Text("GEFALLEN", 21, StampRed, Serif);
-            card.Stamp.Position = new Vector2(14, 50);
+            // Gefallen heißt schwer verwundet, siehe docs/story.md.
+            card.Stamp = Text("KRANKENSTUBE", 16, StampRed, Serif);
+            card.Stamp.Position = new Vector2(10, 56);
             card.Stamp.RotationDegrees = -11f;
             card.Stamp.Visible = false;
             root.AddChild(card.Stamp);
@@ -231,7 +232,7 @@ namespace Messingstadt
                 var u = world.Units[i];
                 var card = _cards[i];
                 card.Name.Text = $"{i + 1} {u.Name.ToUpperInvariant()}";
-                string skill = u.Skill == World.SkillLocksmith ? "Schlosser" : u.Skill == World.SkillBookkeeper ? "Buchhalter" : "Agent";
+                string skill = Game.AgentRole(i);
                 string doing = u.CarriesItem ? "trägt das Buch" : u.Sprinting ? "rennt" : skill;
                 string light = Game.LightWord(u);
                 card.Status.Text = !u.Alive ? skill : light.Length > 0 ? $"{doing}, {light}" : doing;

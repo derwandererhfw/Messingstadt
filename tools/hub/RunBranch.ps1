@@ -17,7 +17,7 @@ $HubCopy = Join-Path $Repo 'work\hub'
 $GodotDir = if ($env:GODOT_DIR) { $env:GODOT_DIR } else { 'C:\Users\user\.tools\godot\Godot_v4.7.2-stable_mono_win64' }
 $GodotConsole = Join-Path $GodotDir 'Godot_v4.7.2-stable_mono_win64_console.exe'
 $UserData = Join-Path $env:APPDATA 'Godot\app_userdata\Messingstadt'
-$SaveFiles = 'kampagne.json', 'einstellungen.json', 'einstieg_gesehen'
+$SaveFiles = 'kampagne.json', 'kampagne_2.json', 'kampagne_3.json', 'einstellungen.json', 'einstieg_gesehen'
 
 function Step([string]$text) { Write-Host ''; Write-Host "== $text" -ForegroundColor Yellow }
 

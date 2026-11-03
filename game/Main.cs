@@ -170,6 +170,8 @@ void fragment() {
         private CanvasLayer _overlayLayer = null!;
         private Settings _settings = new();
         private bool _hadSave;
+        private readonly SaveFolder _saves = new(ProjectSettings.GlobalizePath("user://"));
+        private int _slot = 1;
         private Button? _panelFocus;
         private string _upgradeFocus = "";
         private ColorRect _planBand = null!;
@@ -306,7 +308,15 @@ void fragment() {
         public Settings Settings => _settings;
         public bool HasSave => _hadSave;
         public bool AbandonCostsSquad => Campaign.AbandonCostsSquad(World);
-        public string CampaignLine => $"Kasse {_campaign.Money}, {_campaign.Missions} Einsätze";
+        public string CampaignLine => $"Akte {_slot}: {SaveFolder.Describe(_campaign)}";
+        public int CurrentSlot => _slot;
+
+        /// <summary>Ein Aktenordner im Menü. Mit --fresh gelten alle als leer.</summary>
+        public bool SlotExists(int slot) => !_fresh && _saves.Exists(slot);
+        public string SlotLine(int slot) => SlotExists(slot) ? _saves.Describe(slot) : "leer";
+
+        /// <summary>Beruf für die Akte im Einsatz, aus den Missionsdaten.</summary>
+        public string AgentRole(int index) => index < _mission.Agents.Count ? _mission.Agents[index].RoleName() : "Agent";
 
         private static string SettingsPath => ProjectSettings.GlobalizePath("user://einstellungen.json");
 
@@ -376,9 +386,15 @@ void fragment() {
             MaybeStartIntro();
         }
 
-        public void NewCampaign()
+        public void NewCampaign() => OpenSlot(_slot, true);
+
+        /// <summary>Öffnet einen Aktenordner und tritt den Einsatz an. Neu heißt: die Akte beginnt von vorn.</summary>
+        public void OpenSlot(int slot, bool fresh)
         {
-            _campaign = new Campaign();
+            _slot = SaveFolder.ClampSlot(slot);
+            _settings.LastSlot = _slot;
+            SaveSettings();
+            _campaign = fresh || !SlotExists(_slot) ? new Campaign() : _saves.Load(_slot);
             SaveCampaign();
             _mission = LoadMission();
             StartMission();
@@ -446,6 +462,8 @@ void fragment() {
             ["fullscreen"] = (DisplayServer.WindowGetMode() == DisplayServer.WindowMode.Fullscreen).ToString(),
             ["window"] = DisplayServer.WindowGetSize().ToString(),
             ["money"] = _campaign.Money.ToString(),
+            ["slot"] = _slot.ToString(),
+            ["down"] = World.Units.Count(u => u.Faction == Faction.Agent && !u.Alive).ToString(),
             ["rating"] = World.Rating.ToString(),
             ["cash"] = World.Money.ToString(),
         };
@@ -946,12 +964,11 @@ void fragment() {
             layer.AddChild(_panel);
         }
 
-        private static string SavePath => ProjectSettings.GlobalizePath("user://kampagne.json");
-
         private void LoadCampaign()
         {
-            _hadSave = !_fresh && File.Exists(SavePath);
-            _campaign = _hadSave ? Campaign.FromJson(File.ReadAllText(SavePath)) : new Campaign();
+            _slot = _settings.LastSlot;
+            _hadSave = SlotExists(_slot);
+            _campaign = _hadSave ? _saves.Load(_slot) : new Campaign();
         }
 
         private void SaveCampaign()
@@ -959,7 +976,7 @@ void fragment() {
             // Prüfläufe dürfen den echten Spielstand nicht verändern.
             if (WritesFiles)
             {
-                File.WriteAllText(SavePath, _campaign.ToJson());
+                _saves.Save(_slot, _campaign);
             }
         }
 
@@ -1024,7 +1041,12 @@ void fragment() {
             _panelFocus = null;
             bool won = World.State == MissionState.Won;
             var (headline, line) = Headlines.For(World, _abandoned);
-            _panelBody.AddChild(PaperUi.Text(Headlines.Paper.ToUpperInvariant(), 14, PaperUi.StampRed, PaperUi.Serif));
+            var masthead = new HBoxContainer();
+            var paper = PaperUi.Text(Headlines.Paper.ToUpperInvariant(), 14, PaperUi.StampRed, PaperUi.Serif);
+            paper.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            masthead.AddChild(paper);
+            masthead.AddChild(PaperUi.Text($"in Akte {_slot} abgelegt", 13, new Color(PaperUi.Ink, 0.7f), PaperUi.Typewriter));
+            _panelBody.AddChild(masthead);
             _panelBody.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 2), Color = PaperUi.Ink, MouseFilter = Control.MouseFilterEnum.Ignore });
             var head = PaperUi.Text(headline, 28, PaperUi.Ink, PaperUi.Serif);
             head.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -1035,38 +1057,44 @@ void fragment() {
             article.CustomMinimumSize = new Vector2(640, 0);
             _panelBody.AddChild(article);
             _panelBody.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 1), Color = PaperUi.PaperDark, MouseFilter = Control.MouseFilterEnum.Ignore });
-            string result = won ? $"Einsatz geglückt: {RatingText()}" : _abandoned ? "Einsatz aufgegeben" : "Trupp verloren";
-            _panelBody.AddChild(PaperUi.Text(result, 16, PaperUi.StampRed, PaperUi.Serif));
-            if (won)
-            {
-                string loot = World.LootTaken ? $", dazu {World.LootName} {World.LootValue}" : "";
-                _panelBody.AddChild(PanelLabel($"Lohn: {_lastReward}{loot}"));
-            }
+            // Ergebnis und Abrechnung stehen in einer Zeile, darunter die Akten der Agenten.
+            var result = new HBoxContainer();
+            result.AddThemeConstantOverride("separation", 18);
+            string verdict = won ? $"Einsatz geglückt: {RatingText()}" : _abandoned ? "Einsatz aufgegeben" : "Trupp verloren";
+            result.AddChild(PaperUi.Text(verdict, 17, PaperUi.StampRed, PaperUi.Serif));
+            string loot = won && World.LootTaken ? $" + {World.LootName} {World.LootValue}" : "";
+            string pay = won ? $"Lohn {_lastReward}{loot}   " : "";
+            result.AddChild(PanelLabel($"{pay}Kasse {_campaign.Money}   Einsätze {_campaign.Missions}"));
+            _panelBody.AddChild(result);
             if (World.Units.Any(u => u.Faction == Faction.Agent && (!u.Alive || _abandoned)))
             {
-                _panelBody.AddChild(PanelLabel("Verwundete kommen aus der Krankenstube zurück, aber Beine und Herz fallen auf Stufe 1."));
+                _panelBody.AddChild(PanelLabel("Verwundete kommen aus der Krankenstube zurück, aber Beine und Herz fallen auf Stufe 1.", 13));
             }
-            _panelBody.AddChild(PanelLabel($"Kasse: {_campaign.Money}    Einsätze: {_campaign.Missions}", 16));
             foreach (var u in World.Units.Where(u => u.Faction == Faction.Agent))
             {
                 var record = _campaign.Agent(u.Name);
                 var row = new HBoxContainer();
                 row.AddThemeConstantOverride("separation", 12);
-                var name = PanelLabel($"{u.Name}: Beine {record.Legs}, Herz {record.Heart}{(u.Alive && !_abandoned ? "" : "  (gefallen)")}");
-                name.CustomMinimumSize = new Vector2(340, 0);
+                var name = PanelLabel($"{u.Name}: Beine {record.Legs}, Herz {record.Heart}{(u.Alive && !_abandoned ? "" : "  (Krankenstube)")}");
+                name.CustomMinimumSize = new Vector2(360, 0);
                 row.AddChild(name);
                 row.AddChild(UpgradeButton("Beine", record.Name, record.Legs, true));
                 row.AddChild(UpgradeButton("Herz", record.Name, record.Heart, false));
                 _panelBody.AddChild(row);
             }
-            var next = new Button { Text = won ? "Nächster Einsatz" : "Nochmal" };
-            PaperUi.InkButton(next);
-            next.Pressed += StartMission;
-            _panelBody.AddChild(next);
-            var menu = new Button { Text = "Zum Hauptmenü" };
+            _panelBody.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 1), Color = PaperUi.PaperDark, MouseFilter = Control.MouseFilterEnum.Ignore });
+            // Der Weg nach vorn steht rechts und ist vorgewählt, der Weg hinaus links.
+            var buttons = new HBoxContainer();
+            buttons.AddThemeConstantOverride("separation", 12);
+            var menu = new Button { Text = "Zum Hauptmenü", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
             PaperUi.InkButton(menu);
             menu.Pressed += ToMainMenu;
-            _panelBody.AddChild(menu);
+            buttons.AddChild(menu);
+            var next = new Button { Text = won ? "Nächster Einsatz" : "Nochmal", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            PaperUi.InkButton(next);
+            next.Pressed += StartMission;
+            buttons.AddChild(next);
+            _panelBody.AddChild(buttons);
             _panelFocus ??= next;
         }
 
