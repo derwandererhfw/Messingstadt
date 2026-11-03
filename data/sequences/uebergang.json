@@ -1,0 +1,8 @@
+{
+  "id": "uebergang",
+  "beats": [
+    { "show": "card", "body": "{place}\n{time}", "seconds": 1.0, "fade": [1, 1],
+      "camera": { "from": "@start", "to": "@start" } },
+    { "seconds": 1.4, "fade": [1, 0], "camera": { "from": "@start", "to": "@start" } }
+  ]
+}

@@ -128,7 +128,7 @@ Was den Spieler in die Welt ziehen soll, alles reine Darstellung:
 
 | Was | Wie |
 |---|---|
-| Einstieg | Titel auf Schwarz, die Kamera sinkt auf den Trupp, eine Schreibmaschine tippt den Auftrag. Jede Taste beendet ihn, wer ihn kennt, sieht nur eine kurze Aufblende (`game/Intro.cs`) |
+| Zwischensequenzen | Laufen in der Spielgrafik und stehen als Daten in `data/sequences`: Kamerafahrt, Schwarzblende, Titel, Ortskarte, Auftrag, Telegramm, Zeitung und Ton. Beim ersten Mal der Einstieg, danach ein kurzer Übergang mit Ort und Uhrzeit. Nach dem Sieg die Zeitung, nach Niederlage oder Abbruch ein Telegramm von K. und die Zeitung, nach dem Rückzug ohne Schuss nur ein Telegramm. Esc überspringt, Leertaste oder Klick schreibt fertig und geht weiter. Der Spielstand ist vorher verbucht, Sequenzen schreiben nichts (`src/Messingstadt.Core/Sequence.cs`, `game/SequencePlayer.cs`) |
 | Oberfläche | Oben ein Telegramm, unten vergilbte Personalakten mit Stempel. Ein Klick auf eine Akte wählt den Agenten (`game/PaperUi.cs`) |
 | Filmlook | Dunkle Bildränder, feines Filmkorn, leichte Farbstimmung (`game/FilmLook.cs`) |
 | Gespräche | Wachen und Arbeiter reden kurze Sätze, Wachen rufen im Alarm. Manche Sätze verraten etwas über die Rundgänge (`game/Chatter.cs`) |

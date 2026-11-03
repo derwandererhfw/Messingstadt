@@ -1,0 +1,26 @@
+# Aus dem Hauptmenü in den Einsatz, Einstieg läuft, zurück ins Menü und wieder hinein: dann der Übergang
+wait 20
+expect screen Hauptmenü
+click Kampagne beginnen
+wait 10
+expect screen 
+expect sequence einstieg
+key Escape
+wait 10
+expect sequence 
+key Escape
+wait 5
+expect screen Pausenmappe
+click Zum Hauptmenü
+wait 5
+click Zum Hauptmenü
+wait 10
+expect screen Hauptmenü
+expect sequence 
+click Weiter
+wait 10
+expect sequence uebergang
+key Escape
+wait 10
+expect sequence 
+expect hud True

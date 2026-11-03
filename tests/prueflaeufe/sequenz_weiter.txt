@@ -1,0 +1,19 @@
+# Leertaste: Titel weiter, Karte erst fertig tippen, dann weiter
+wait 20
+expect beat 0
+key Space
+expect beat 1
+key Space
+expect beat 1
+key Space
+expect beat 2
+key Space
+expect beat 3
+key Space
+expect beat 3
+key Space
+expect sequence 
+expect hud True
+remember tick
+wait 60
+changed tick
