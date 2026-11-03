@@ -29,7 +29,16 @@ namespace Messingstadt
         public Main Game = null!;
         public string FilePath = "";
 
-        public override void _Ready() => _lines = File.ReadAllLines(FilePath);
+        public override void _Ready()
+        {
+            // Ein fehlendes Skript darf nicht als fehlerfreier Lauf durchgehen.
+            if (!File.Exists(FilePath))
+            {
+                Check("script " + FilePath, false, "Datei fehlt");
+                return;
+            }
+            _lines = File.ReadAllLines(FilePath);
+        }
 
         public override void _Process(double delta)
         {

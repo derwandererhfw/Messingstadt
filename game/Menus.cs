@@ -155,14 +155,12 @@ namespace Messingstadt
             {
                 _body.AddChild(PaperUi.Text(Game.CampaignLine, 15, PaperUi.StampRed, PaperUi.Typewriter));
                 Entry("Weiter", Game.ContinueMission);
-                Entry("Neue Kampagne", () => Ask(
-                    "Neue Kampagne", "Die bisherige Akte wird überschrieben: " + Game.CampaignLine + ".",
-                    "Neu beginnen", Game.NewCampaign));
             }
             else
             {
                 Entry("Kampagne beginnen", Game.NewCampaign);
             }
+            Entry("Akten", ShowFiles);
             Entry("Einstellungen", ShowSettings);
             Entry("Bedienung", ShowControls);
             Entry("Beenden", Game.QuitGame);
@@ -212,6 +210,37 @@ namespace Messingstadt
                 row.AddChild(MakeEntry("Nein, zurück", Back, true));
                 row.AddChild(MakeEntry(yes, action, true));
             });
+        }
+
+        private void ShowFiles() => Open("Akten", BuildFiles);
+
+        /// <summary>Drei Aktenordner: eine belegte Akte laden oder neu beginnen, eine leere anlegen.</summary>
+        private void BuildFiles()
+        {
+            Heading("ROTER HAMMER   AKTENSCHRANK", "", SheetWidth);
+            _body.AddChild(PaperUi.Text("Akten", 26, PaperUi.Ink, PaperUi.Serif));
+            _body.AddChild(Rule());
+            for (int slot = 1; slot <= SaveFolder.Slots; slot++)
+            {
+                int s = slot;
+                var row = new HBoxContainer();
+                row.AddThemeConstantOverride("separation", 12);
+                _body.AddChild(row);
+                if (!Game.SlotExists(s))
+                {
+                    row.AddChild(MakeEntry($"Akte {s}: leer, neu beginnen", () => Game.OpenSlot(s, true), true));
+                    continue;
+                }
+                string line = Game.SlotLine(s);
+                string mark = s == Game.CurrentSlot ? "  *" : "";
+                row.AddChild(MakeEntry($"Akte {s}: {line}{mark}", () => Game.OpenSlot(s, false), true));
+                var fresh = MakeEntry("Neu", () => Ask(
+                    $"Akte {s} neu beginnen", $"Die Akte wird überschrieben: {line}.", "Neu beginnen", () => Game.OpenSlot(s, true)), false);
+                fresh.CustomMinimumSize = new Vector2(70, 0);
+                row.AddChild(fresh);
+            }
+            _body.AddChild(PaperUi.Text("* zuletzt geöffnet", 13, new Color(PaperUi.Ink, 0.7f), PaperUi.Typewriter));
+            Entry("Zurück", Back);
         }
 
         private void ShowSettings() => Open("Einstellungen", BuildSettings, Game.SaveSettings);

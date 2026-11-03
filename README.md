@@ -65,7 +65,7 @@ Grafik neu erzeugen: `python tools/art/generate_concept.py`
 | `Esc` | Pausenmappe mit Einstellungen und Bedienung, im Menü eine Ebene zurück |
 | `R` | Einsatz abbrechen, mit Rückfrage. Nach dem ersten Schuss gilt der Trupp dann als gefallen |
 
-In den Menüs wählen Pfeiltasten und Maus dasselbe, Enter oder Klick bestätigt. Lautstärken, Ton, Vollbild und Bildwackeln liegen getrennt vom Spielstand in `user://einstellungen.json`.
+In den Menüs wählen Pfeiltasten und Maus dasselbe, Enter oder Klick bestätigt. Lautstärken, Ton, Vollbild und Bildwackeln liegen getrennt vom Spielstand in `user://einstellungen.json`. Unter „Akten“ liegen drei Kampagnen: `user://kampagne.json` ist Akte 1, dazu `kampagne_2.json` und `kampagne_3.json`.
 
 ## Prüfläufe für die Bedienung
 
