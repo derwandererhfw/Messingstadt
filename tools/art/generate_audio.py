@@ -3,8 +3,10 @@
 Aufruf: python tools/art/generate_audio.py
 Schreibt game/assets/audio/*.wav. Gleicher Zufall, gleiche Dateien.
 Schleifen enden und beginnen gleich, damit beim Wiederholen kein Knacken entsteht.
+Neue Geräusche holen ihren Zufall aus own_rng. So bleiben alle anderen Dateien bytegleich.
 """
 import wave
+import zlib
 from pathlib import Path
 
 import numpy as np
@@ -18,8 +20,13 @@ def time(seconds):
     return np.arange(int(seconds * RATE)) / RATE
 
 
-def noise(seconds):
-    return RNG.standard_normal(int(seconds * RATE))
+def own_rng(name):
+    """Eigener Zufall je Geräusch: Der gemeinsame hängt an der Reihenfolge, jede Einfügung änderte alles dahinter."""
+    return np.random.default_rng(zlib.crc32(name.encode()))
+
+
+def noise(seconds, rng=None):
+    return (rng or RNG).standard_normal(int(seconds * RATE))
 
 
 def lowpass(x, cutoff):
@@ -86,27 +93,71 @@ def save(name, x, peak=0.9):
         f.writeframes(data.tobytes())
 
 
-def rain():
+def save_stereo(name, left, right, rate=RATE):
+    data = (np.clip(np.stack((left, right), axis=1), -1, 1) * 32767).astype("<i2")
+    with wave.open(str(OUT / f"{name}.wav"), "wb") as f:
+        f.setnchannels(2)
+        f.setsampwidth(2)
+        f.setframerate(rate)
+        f.writeframes(data.tobytes())
+
+
+def widen(name, mid, side, rate=RATE, width=0.6):
+    """Legt eine unabhängige Seitenspur um die Mitte. Jeder Kanal behält den Pegel der Mitte, der Regen wird also nicht lauter."""
+    side = side * np.sqrt(np.mean(mid ** 2) / np.mean(side ** 2))
+    keep = np.sqrt(1 - width ** 2)
+    save_stereo(name, keep * mid + width * side, keep * mid - width * side, rate)
+
+
+def peak_to(x, peak):
+    return x / np.abs(x).max() * peak
+
+
+def rain_bed(rng):
     t = 12.5
-    body = highpass(lowpass(noise(t), 6500), 900)
+    body = highpass(lowpass(noise(t, rng), 6500), 900)
     swell = 1 + 0.15 * np.sin(2 * np.pi * time(t) * 0.17)
     x = body * swell
     # Einzelne Tropfen: weiche Tupfer aus Rauschen. Reine Töne klängen hier wie Metall.
     for _ in range(60):
-        at = RNG.integers(0, int((t - 0.1) * RATE))
+        at = rng.integers(0, int((t - 0.1) * RATE))
         d = time(0.04)
-        x[at:at + len(d)] += lowpass(noise(0.04), 1800)[:len(d)] * decay(d, 0.009) * RNG.uniform(0.5, 1.6)
-    save("rain", loopable(x), 0.6)
+        x[at:at + len(d)] += lowpass(noise(0.04, rng), 1800)[:len(d)] * decay(d, 0.009) * rng.uniform(0.5, 1.6)
+    return peak_to(loopable(x), 0.6)
 
 
-def wind():
+def rain():
+    mid = rain_bed(RNG)
+    widen("rain", mid, rain_bed(own_rng("rain")))
+
+
+def wind_bed(rng):
     t = 16.5
-    x = lowpass(noise(t), 260)
+    x = lowpass(noise(t, rng), 260)
     tt = time(t)
     x *= 0.65 + 0.35 * np.sin(2 * np.pi * tt * 0.11) * np.sin(2 * np.pi * tt * 0.07 + 1)
     # Fernes Grollen der Fabriken
-    x += 0.5 * lowpass(noise(t), 60)
-    save("wind", loopable(x), 0.7)
+    x += 0.5 * lowpass(noise(t, rng), 60)
+    return peak_to(loopable(x), 0.7)
+
+
+def wind():
+    mid = wind_bed(RNG)
+    widen("wind", mid, wind_bed(own_rng("wind")))
+
+
+def wind_gust():
+    """Böe: Rauschen in den Mitten, das langsam auf und ab zieht. Der tiefe Wind allein trüge auf kleinen Lautsprechern nicht."""
+    rng = own_rng("wind_gust")
+    t = 16.5
+    tt = time(t)
+
+    def bed():
+        slow = highpass(lowpass(noise(t, rng), 900), 240)
+        return peak_to(loopable(slow * (0.6 + 0.4 * np.sin(2 * np.pi * tt * 0.37 + rng.uniform(0, 6.28)))), 0.5)
+
+    mid = bed()
+    widen("wind_gust", mid, bed())
 
 
 def hum(base, seconds, harmonics, wobble=0.0):
@@ -281,13 +332,13 @@ def place(buffer, start, sound):
     np.add.at(buffer, index, sound)
 
 
-def tone(note, seconds, attack, release, partials, detune=0.0):
+def tone(note, seconds, attack, release, partials, detune=0.0, rng=None):
     t = np.arange(int(seconds * MUSIC_RATE)) / MUSIC_RATE
     out = np.zeros_like(t)
     for h, gain in enumerate(partials, start=1):
         for cents in (-detune, detune) if detune else (0.0,):
             f = midi(note) * h * 2 ** (cents / 1200)
-            out += gain * np.sin(2 * np.pi * f * t + RNG.uniform(0, 6.28))
+            out += gain * np.sin(2 * np.pi * f * t + (rng or RNG).uniform(0, 6.28))
     env = np.minimum(1, t / attack) * np.minimum(1, (seconds - t) / release)
     return out * np.sin(env * np.pi / 2) ** 2
 
@@ -302,10 +353,10 @@ def spectrum_filter(x, cutoff, low=0.0):
     return np.fft.irfft(spec * gain, len(x))
 
 
-def hall(x, seconds, mix):
+def hall(x, seconds, mix, rng=None):
     """Großer dunkler Raum: Faltung mit abklingendem Rauschen, ebenfalls nahtlos."""
     t = np.arange(len(x)) / MUSIC_RATE
-    impulse = RNG.standard_normal(len(x)) * np.exp(-t / (seconds / 3))
+    impulse = (rng or RNG).standard_normal(len(x)) * np.exp(-t / (seconds / 3))
     impulse = spectrum_filter(impulse, 1400)
     wet = np.fft.irfft(np.fft.rfft(x) * np.fft.rfft(impulse), len(x))
     wet *= np.abs(x).max() / max(np.abs(wet).max(), 1e-9)
@@ -325,9 +376,16 @@ THEME = (
 PAD_PARTIALS = (1, 0.42, 0.2, 0.1, 0.05)
 BASS_PATTERN = (0, 0, 12, 0, 7, 0, 12, 7)
 PULSE_SECONDS = 0.5
+DARK_PAD_CUTOFF = 380
+DARK_PAD_GAIN = 0.95
+TREMOLO_PER_LOOP = 384
+SUSPECT_GAIN = 0.6
+FIGHT_UPPER_PEAK = 0.3
 
 
 def music():
+    """Vier Lagen gleicher Länge und Harmonie: Ruhe, Dunkel, Verdacht, Gefecht. Das Spiel blendet sie gegeneinander."""
+    rng = own_rng("music")
     size = MUSIC_SECONDS * MUSIC_RATE
     pad = np.zeros(size)
     for i, chord in enumerate(CHORDS):
@@ -348,8 +406,29 @@ def music():
         place(theme, start, tone(note, 4.5, 0.5, 3.5, (1, 0.28, 0.08), detune=3))
     theme = spectrum_filter(theme, 1300)
 
-    calm = hall(pad, 7.0, 0.45) * 1.0 + drone * 0.5 + breath * 0.25 + hall(theme, 8.0, 0.7) * 0.42
-    save_music("music_calm", calm, 0.7)
+    pad_room = hall(pad, 7.0, 0.45)
+    theme_room = hall(theme, 8.0, 0.7)
+    calm = pad_room * 1.0 + drone * 0.5 + breath * 0.25 + theme_room * 0.42
+    gain = 0.7 / np.abs(calm).max()
+    # Die Seitenspur ist nur Raum: Die Summe beider Kanäle ergibt wieder die bisherige Musik, je Kanal gleich laut wie bisher.
+    room = hall(pad, 7.0, 1.0, rng) * 0.4 + hall(theme, 8.0, 1.0, rng) * 0.3
+    widen("music_calm", calm * gain, room, MUSIC_RATE, 0.45)
+
+    # Dunkel: ohne Thema, die Fläche nur noch als Schatten.
+    shadow = spectrum_filter(pad_room, DARK_PAD_CUTOFF)
+    dark = shadow * DARK_PAD_GAIN + drone * 0.5 + breath * 0.25
+    save_layer("music_dark", dark * gain, spectrum_filter(room, DARK_PAD_CUTOFF) * DARK_PAD_GAIN * gain)
+
+    # Verdacht: zitternde Streicher in den Mitten über derselben Harmonie, je Takt ein Halbton Reibung.
+    strings = np.zeros(size)
+    for i, chord in enumerate(CHORDS):
+        for note in chord[2:4]:
+            place(strings, i * CHORD_SECONDS, tone(note, CHORD_SECONDS + 3, 1.5, 3.0, (1, 0.35, 0.1), detune=9, rng=rng))
+        place(strings, i * CHORD_SECONDS, tone(chord[3] + 1, CHORD_SECONDS + 3, 4.0, 3.0, (1, 0.2), detune=6, rng=rng) * 0.3)
+    strings *= 0.55 + 0.45 * np.sin(2 * np.pi * TREMOLO_PER_LOOP * t / MUSIC_SECONDS)
+    strings = spectrum_filter(strings, 950, 130)
+    suspect = hall(strings, 3.0, 0.3, rng)
+    save_layer("music_suspect", suspect * SUSPECT_GAIN * gain, hall(strings, 3.0, 1.0, rng) * 0.4 * SUSPECT_GAIN * gain)
 
     tension = np.zeros(size)
     steps = int(MUSIC_SECONDS / PULSE_SECONDS)
@@ -362,8 +441,23 @@ def music():
     kick = np.sin(2 * np.pi * np.cumsum(46 + 70 * np.exp(-kick_t / 0.03)) / MUSIC_RATE) * np.exp(-kick_t / 0.1)
     for step in range(0, steps, 4):
         place(tension, step * PULSE_SECONDS, kick * 1.6)
-    tension = hall(spectrum_filter(tension, 650), 2.5, 0.25)
-    save_music("music_tension", tension, 0.7)
+    bass = hall(spectrum_filter(tension, 650), 2.5, 0.25)
+
+    # Die Bassfigur zwei Oktaven höher, damit das Gefecht auch aus kleinen Lautsprechern kommt.
+    upper = np.zeros(size)
+    for step in range(steps):
+        when = step * PULSE_SECONDS
+        root = CHORDS[int(when // CHORD_SECONDS)][0]
+        note = root + 24 + BASS_PATTERN[step % len(BASS_PATTERN)]
+        place(upper, when, tone(note, 0.46, 0.02, 0.3, (1, 0.4, 0.12), detune=7, rng=rng) * (1.0 if step % 2 == 0 else 0.65))
+    upper = spectrum_filter(upper, 850, 140)
+    fight = peak_to(bass, 0.7) + peak_to(hall(upper, 2.5, 0.3, rng), FIGHT_UPPER_PEAK)
+    save_layer("music_tension", fight, peak_to(hall(upper, 2.5, 1.0, rng), 0.12))
+
+
+def save_layer(name, mid, side):
+    """Die Lagen über Ruhe tragen nichts über 2 kHz: Die halbe Abtastrate reicht und spart die Hälfte der Datei."""
+    save_stereo(name, (mid + side)[::2], (mid - side)[::2], MUSIC_RATE // 2)
 
 
 def save_music(name, x, peak):
@@ -426,6 +520,42 @@ def dog():
     save("dog", fade(echo(lowpass(x, 1100), (0.2, 0.45), 0.3), 0.002, 0.2), 0.8)
 
 
+def fresh_random():
+    """Hundekampf und Laufbursche entstanden mit frischem Zufall. So bleiben sie bytegleich, wenn alles neu erzeugt wird."""
+    global RNG
+    RNG = np.random.default_rng(1927)
+
+
+def dog_fight():
+    """Biss, Fehlbiss, Tritt und Kette: alles kurz und aus der Nähe."""
+    t = time(0.28)
+    snarl = np.sin(2 * np.pi * (210 + 60 * np.sin(2 * np.pi * 38 * t)) * t) * decay(t, 0.09)
+    crunch = lowpass(noise(0.28), 2600) * decay(t, 0.03)
+    save("dog_bite", fade(snarl * 0.8 + crunch * 1.2 + 0.6 * lowpass(noise(0.28), 500) * decay(t, 0.08)), 0.8)
+    t = time(0.12)
+    click = lowpass(noise(0.12), 3800) * decay(t, 0.007)
+    save("dog_snap", fade(click + 0.3 * np.sin(2 * np.pi * 330 * t) * decay(t, 0.02)), 0.6)
+    t = time(0.2)
+    thud = np.sin(2 * np.pi * 95 * t * (1 - t)) * decay(t, 0.04)
+    yelp = np.sin(2 * np.pi * np.cumsum(1250 - 2400 * t) / RATE) * decay(np.maximum(t - 0.03, 0), 0.05) * (t > 0.03)
+    save("kick", fade(thud + 0.35 * lowpass(noise(0.2), 1000) * decay(t, 0.02) + 0.3 * yelp), 0.7)
+    t = time(0.22)
+    x = np.zeros_like(t)
+    for at, pitch in ((0.0, 3400), (0.07, 4100), (0.13, 3000)):
+        tt = np.maximum(t - at, 0)
+        x += sum(np.sin(2 * np.pi * pitch * r * tt) for r in (1.0, 1.47, 2.09)) * decay(tt, 0.012) * (t >= at)
+    save("chain", fade(highpass(x, 1500)), 0.4)
+
+
+def boy_whistle():
+    """Der Laufbursche pfeift durch die Finger: steigend, dann fallend, zweimal."""
+    t = time(0.34)
+    glide = 1900 + 1400 * np.sin(np.pi * t / 0.34)
+    tone = np.sin(2 * np.pi * np.cumsum(glide) / RATE) + 0.25 * lowpass(noise(0.34), 6000)
+    gap = np.zeros(int(0.06 * RATE))
+    save("boy_whistle", echo(np.concatenate((fade(tone, 0.015, 0.05), gap, fade(tone, 0.015, 0.05))), (0.12, 0.27), 0.25), 0.5)
+
+
 def siren():
     """Werkssirene weit weg: langsam auf- und abschwellend, stark gedämpft."""
     t = time(9.0)
@@ -480,7 +610,8 @@ def heartbeat():
         for offset, gain in ((0.0, 1.0), (0.17, 0.7)):
             at = int((k * period + offset) * RATE)
             d = time(0.14)
-            beat = np.sin(2 * np.pi * 52 * d) * decay(d, 0.04) * gain
+            # Der Grundton allein fehlt auf kleinen Lautsprechern, die Obertöne tragen ihn dort.
+            beat = (np.sin(2 * np.pi * 52 * d) + 0.7 * np.sin(2 * np.pi * 156 * d) + 0.4 * np.sin(2 * np.pi * 260 * d) * decay(d, 0.03)) * decay(d, 0.04) * gain
             end = min(len(x), at + len(d))
             x[at:end] += beat[:end - at]
     save("heartbeat", loopable(x, 0.2), 0.85)
@@ -502,9 +633,129 @@ def stingers():
     save("lose", fade(lose * swell + lowpass(noise(3.0), 140) * decay(t, 0.5)), 0.65)
 
 
+def distant_shots():
+    """Schüsse viele Straßen weiter: nur noch dumpfe Stöße mit langem Echo."""
+    rng = own_rng("distant_shots")
+    x = np.zeros(int(5.0 * RATE))
+    for at in (0.3, 0.72, 0.95, 2.2, 3.1):
+        d = time(0.25)
+        pop = lowpass(noise(0.25, rng), 600) * decay(d, 0.03) + np.sin(2 * np.pi * 90 * d) * decay(d, 0.05)
+        i = int(at * RATE)
+        x[i:i + len(d)] += pop * rng.uniform(0.5, 1.0)
+    save("distant_shots", fade(echo(x, (0.38, 0.85), 0.42), 0.002, 0.3), 0.7)
+
+
+def tram():
+    """Straßenbahn in der Ferne: Rollen, Schienenstöße und eine erstickte Klingel, nichts Helles."""
+    rng = own_rng("tram")
+    t = time(11.0)
+    roll = lowpass(noise(11.0, rng), 240)
+    joints = np.zeros_like(t)
+    for at in np.arange(0.4, 10.6, 0.62):
+        d = time(0.1)
+        i = int(at * RATE)
+        joints[i:i + len(d)] += np.sin(2 * np.pi * 95 * d) * decay(d, 0.03)
+    ring = np.zeros_like(t)
+    for at in (3.4, 3.72):
+        tt = np.maximum(t - at, 0)
+        ring += (np.sin(2 * np.pi * 620 * tt) + 0.4 * np.sin(2 * np.pi * 930 * tt)) * decay(tt, 0.1) * (t >= at)
+    x = peak_to(roll, 1) + 0.4 * joints + 0.1 * lowpass(ring, 800)
+    save("tram", fade(x * np.sin(np.pi * t / 11.0) ** 2, 0.1, 0.5), 0.8)
+
+
+def foghorn():
+    """Nebelhorn vom Hafen: ein Ton, mit Echo über dem Wasser."""
+    t = time(3.6)
+    tone_ = sum(g * np.sin(2 * np.pi * f * t) for f, g in ((92, 1), (184, 0.5), (276, 0.2)))
+    env = np.minimum(t / 0.6, 1) * np.minimum((3.6 - t) / 0.9, 1)
+    save("foghorn", fade(echo(lowpass(tone_ * env, 420), (1.2, 2.6), 0.32), 0.05, 0.6), 0.8)
+
+
+def church_bell():
+    """Kirche weit weg: langsame Schläge, stark gedämpft. Ohne die hohen Teiltöne klingt sie nicht nach Blech."""
+    t = time(11.0)
+    x = np.zeros_like(t)
+    for at in (0.0, 2.8, 5.6):
+        tt = np.maximum(t - at, 0)
+        strike = sum(g * np.sin(2 * np.pi * f * tt) for f, g in ((165, 1), (196, 0.45), (330, 0.5), (415, 0.12)))
+        x += strike * np.minimum(tt / 0.03, 1) * decay(tt, 1.5) * (t >= at)
+    save("church_bell", fade(lowpass(x, 500), 0.02, 0.6), 0.7)
+
+
+def shutter():
+    """Ein Fensterladen schlägt im Wind: zweimal dumpf auf Holz."""
+    rng = own_rng("shutter")
+    x = np.zeros(int(1.0 * RATE))
+    for at, g in ((0.0, 1.0), (0.24, 0.45)):
+        d = time(0.14)
+        i = int(at * RATE)
+        x[i:i + len(d)] += (np.sin(2 * np.pi * 135 * d) * decay(d, 0.03) + 0.7 * lowpass(noise(0.14, rng), 800) * decay(d, 0.015)) * g
+    save("shutter", fade(echo(x, (0.16, 0.34), 0.25), 0.001, 0.2), 0.7)
+
+
+def gutter():
+    """Wasser aus einer Regenrinne: Rinnsal und weiche Tropfen. Reine Töne klängen auch hier wie Metall."""
+    rng = own_rng("gutter")
+    t = 8.5
+    tt = time(t)
+    x = 0.35 * highpass(lowpass(noise(t, rng), 1500), 320) * (0.7 + 0.3 * np.sin(2 * np.pi * tt * 1.3))
+    for _ in range(45):
+        at = rng.integers(0, int((t - 0.1) * RATE))
+        d = time(0.05)
+        x[at:at + len(d)] += lowpass(noise(0.05, rng), 1200)[:len(d)] * decay(d, 0.012) * rng.uniform(0.6, 2.2)
+    save("gutter", loopable(x), 0.5)
+
+
+PIANO_CHORDS = ((50, 62, 65, 69), (46, 62, 65, 70), (43, 62, 67, 70), (45, 61, 64, 69))
+PIANO_MELODY = ((0, 74), (2, 72), (3, 69), (8, 74), (10, 77), (11, 74), (16, 79), (18, 77), (19, 74), (24, 73), (26, 76), (28, 69))
+PIANO_BEAT = 0.75
+
+
+def piano():
+    """Klavier in der Kneipe, hinter der Scheibe: langsam, leicht verstimmt, nur die Mitten kommen durchs Glas."""
+    rng = own_rng("piano")
+    size = int(32 * PIANO_BEAT * MUSIC_RATE)
+    x = np.zeros(size)
+
+    def strike(when, note, gain):
+        s = tone(note, 2.2, 0.004, 0.6, (1, 0.4, 0.14), detune=6, rng=rng)
+        d = np.arange(len(s)) / MUSIC_RATE
+        place(x, when * PIANO_BEAT + rng.uniform(-0.012, 0.012), s * np.exp(-d / 0.6) * gain)
+
+    for bar, chord in enumerate(PIANO_CHORDS):
+        for beat in range(0, 8):
+            at = bar * 8 + beat
+            if beat % 2 == 0:
+                strike(at, chord[0], 0.8)
+            else:
+                for note in chord[1:]:
+                    strike(at, note, 0.28)
+    for at, note in PIANO_MELODY:
+        strike(at, note, 0.7)
+    save_music("piano", spectrum_filter(x, 1000, 170), 0.5)
+
+
+def tram_hum():
+    """Licht in der stehenden Straßenbahn: Brummen der Drossel, kaum hörbar, nichts Helles."""
+    rng = own_rng("tram_hum")
+    t = 4.5
+    x = hum(100, t, (1, 0.3, 0.12), 0.05) + 0.08 * lowpass(noise(t, rng), 500)
+    save("tram_hum", loopable(x), 0.5)
+
+
+def match():
+    """Streichholz: kurzes Reiben, dann Aufflammen. Weich gefiltert, damit es nicht klackert."""
+    rng = own_rng("match")
+    t = time(0.9)
+    rub = highpass(lowpass(noise(0.9, rng), 2800), 900) * np.exp(-((t - 0.07) / 0.045) ** 2)
+    rub *= 0.6 + 0.4 * np.abs(np.sin(2 * np.pi * 60 * t))
+    flare = lowpass(noise(0.9, rng), 1600) * np.minimum(np.maximum(t - 0.1, 0) / 0.03, 1) * decay(np.maximum(t - 0.1, 0), 0.22)
+    save("match", fade(rub + 0.7 * flare, 0.002, 0.15), 0.6)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld, dog, siren, factory_horn, train, radio, heartbeat, typewriter):
+    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld, dog, siren, factory_horn, train, radio, heartbeat, typewriter, fresh_random, dog_fight, boy_whistle, wind_gust, distant_shots, tram, foghorn, church_bell, shutter, gutter, piano, tram_hum, match):
         make()
     files = list(OUT.glob("*.wav"))
     print(f"{len(files)} Geräusche, {sum(f.stat().st_size for f in files) // 1024} KiB")

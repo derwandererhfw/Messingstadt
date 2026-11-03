@@ -24,14 +24,43 @@ namespace Messingstadt
         private const float ShakeReach = 340f;
         private const float ShotShake = 0.3f;
         private const float MusicDb = -19f;
+        private const float DarkLayerDb = MusicDb - 2f;
         private const float SilentDb = -60f;
         private const float DarkLight = 0.42f;
-        private const float DarkMusicDrop = 5f;
-        private const float MusicFadeDbPerSecond = 2f;
+        private const float RainDb = -27f;
+        private const float RainCurveDb = 16f;
+        private const float RainInAlleyDrop = 2f;
+        private const float WindDb = -30f;
+        private const float GustDb = -24f;
+        private const float GustFromWind = 8f;
+        private const float GustFullWind = 34f;
+        private const float GutterDb = -20f;
+        private const float GutterCurveDb = 14f;
+        private const float GutterReach = 220f;
+        private const float GutterSpacing = 60f;
+        private const int MaxGutters = 12;
+        private const float HushFadePerSecond = 0.6f;
+        private const float TramHumDb = -30f;
+        private const float TramHumReach = 260f;
+        private const int CalmLayer = 0, DarkLayer = 1, SuspectLayer = 2, FightLayer = 3;
+        private const float LayerFadePerSecond = 0.35f;
+        private const float SuspectRisePerSecond = 0.7f;
+        private const float DarkUnderFight = 0.7f;
+        private const int RoomProbeTiles = 6;
+        private const float RoomProbeSeconds = 0.25f;
+        private const float RoomFadePerSecond = 0.5f;
+        private const float OpenWet = 0.05f, AlleyWet = 0.26f;
+        private const float OpenRoomSize = 0.35f, AlleyRoomSize = 0.62f;
+        private const float OpenRainCutoff = 14000f, AlleyRainCutoff = 5000f;
+        private const float LimiterCeilingDb = -0.5f;
         private const float HeartDb = -10f;
         private const float HeartRisePerSecond = 4f;
         private const float HeartFallPerSecond = 0.5f;
-        private const float TensionFadePerSecond = 0.35f;
+        private const string MusicBus = "Musik";
+        private const string EffectsBus = "Geräusche";
+        private const string WeatherBus = "Wetter";
+        private const string WorldBus = "Welt";
+        private static readonly (int X, int Y)[] RoomRays = { (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1) };
 
         private readonly Dictionary<string, AudioStreamWav> _sounds = new();
         private readonly Dictionary<string, float> _lastPlayed = new();
@@ -41,15 +70,26 @@ namespace Messingstadt
         private readonly HashSet<int> _fallen = new();
         private readonly HashSet<int> _bribed = new();
         private readonly HashSet<int> _inCombat = new();
+        private readonly HashSet<int> _reporting = new();
+        private readonly Dictionary<int, int> _kicks = new();
         private readonly Dictionary<int, int> _dogBite = new();
         private float _nextBark;
         private AudioStreamPlayer2D _lockpick = null!;
-        private AudioStreamPlayer _music = null!;
-        private AudioStreamPlayer _tension = null!;
+        private AudioStreamSynchronized _layers = null!;
+        private AudioStreamPlayer _rain = null!;
+        private AudioStreamPlayer _wind = null!;
+        private AudioStreamPlayer _gust = null!;
         private AudioStreamPlayer _heart = null!;
+        private readonly List<AudioStreamPlayer2D> _gutters = new();
+        private readonly List<(AudioStreamPlayer2D Player, float Db)> _hushable = new();
+        private float _hush;
+        private AudioEffectReverb _reverb = null!;
+        private AudioEffectLowPassFilter _rainFilter = null!;
         private float _heartLevel;
-        private float _musicDb = MusicDb;
-        private float _tensionLevel;
+        private float _calmLevel = 1f, _darkLevel, _suspectLevel, _fightLevel;
+        private float _roomWanted;
+        private float _nextRoomProbe;
+        private string? _heldMusic;
         private World? _world;
         private int _lastShot;
         private bool _itemTaken, _lootTaken, _bellRang, _ended;
@@ -57,7 +97,6 @@ namespace Messingstadt
         private float _time;
         private float _nextWhistle;
         private float _nextPages;
-        private bool _muted;
 
         public Main Game = null!;
 
@@ -67,8 +106,27 @@ namespace Messingstadt
         /// <summary>Wie oft welche Art Geräusch lief. Für den Prüflauf, um Dauergeräusche zu finden.</summary>
         public Dictionary<string, int> PlayedByGroup { get; } = new();
 
+        /// <summary>Wie eng es um die Kamera ist, von 0 im Freien bis 1 in der Gasse. Danach richten sich Hall und Regen.</summary>
+        public float Enclosure { get; private set; }
+
         public override void _Ready()
         {
+            AddBus(MusicBus, "Master");
+            AddBus(EffectsBus, "Master");
+            AddBus(WeatherBus, EffectsBus);
+            AddBus(WorldBus, EffectsBus);
+            AudioServer.AddBusEffect(0, new AudioEffectHardLimiter { CeilingDb = LimiterCeilingDb });
+            _reverb = new AudioEffectReverb { Dry = 1f, Wet = OpenWet, RoomSize = OpenRoomSize, Damping = 0.7f, Spread = 1f, Hipass = 0.1f, PredelayMsec = 40f, PredelayFeedback = 0.3f };
+            AudioServer.AddBusEffect(AudioServer.GetBusIndex(WorldBus), _reverb);
+            _rainFilter = new AudioEffectLowPassFilter { CutoffHz = OpenRainCutoff };
+            AudioServer.AddBusEffect(AudioServer.GetBusIndex(WeatherBus), _rainFilter);
+            foreach (string a in OS.GetCmdlineUserArgs())
+            {
+                if (a.StartsWith("--music="))
+                {
+                    _heldMusic = a["--music=".Length..];
+                }
+            }
             string dir = ProjectSettings.GlobalizePath("res://assets/audio");
             foreach (string path in Directory.GetFiles(dir, "*.wav"))
             {
@@ -76,17 +134,62 @@ namespace Messingstadt
             }
             for (int i = 0; i < PoolSize; i++)
             {
-                var player = new AudioStreamPlayer2D();
+                var player = new AudioStreamPlayer2D { Bus = WorldBus };
                 AddChild(player);
                 _pool.Add(player);
             }
-            _lockpick = new AudioStreamPlayer2D { Stream = Looping("lockpick"), MaxDistance = StepReach, VolumeDb = -8f };
+            _lockpick = new AudioStreamPlayer2D { Stream = Looping("lockpick"), MaxDistance = StepReach, VolumeDb = -8f, Bus = WorldBus };
             AddChild(_lockpick);
-            AddBackground("rain", -27f);
-            AddBackground("wind", -30f);
-            _music = AddBackground("music_calm", MusicDb);
-            _tension = AddBackground("music_tension", SilentDb);
-            _heart = AddBackground("heartbeat", SilentDb);
+            _rain = AddBackground("rain", RainDb, WeatherBus);
+            _wind = AddBackground("wind", WindDb, WeatherBus);
+            _gust = AddBackground("wind_gust", SilentDb, WeatherBus);
+            AddMusic();
+            _heart = AddBackground("heartbeat", SilentDb, MusicBus);
+        }
+
+        /// <summary>Alle Lagen laufen in einem Strom. So bleiben sie auf die Abtastung genau im Takt.</summary>
+        private void AddMusic()
+        {
+            _layers = new AudioStreamSynchronized { StreamCount = 4 };
+            _layers.SetSyncStream(CalmLayer, Looping("music_calm"));
+            _layers.SetSyncStream(DarkLayer, Looping("music_dark"));
+            _layers.SetSyncStream(SuspectLayer, Looping("music_suspect"));
+            _layers.SetSyncStream(FightLayer, Looping("music_tension"));
+            SetLayer(CalmLayer, MusicDb, 1f);
+            SetLayer(DarkLayer, DarkLayerDb, 0f);
+            SetLayer(SuspectLayer, MusicDb, 0f);
+            SetLayer(FightLayer, MusicDb, 0f);
+            AddChild(new AudioStreamPlayer { Stream = _layers, Autoplay = true, Bus = MusicBus });
+        }
+
+        // Gleiche Leistung beim Überblenden: Der Sinus hält die Summe zweier Lagen ungefähr gleich laut.
+        private void SetLayer(int layer, float db, float level)
+        {
+            _layers.SetSyncStreamVolume(layer, Faded(db, Mathf.Sin(level * Mathf.Pi / 2f)));
+        }
+
+        private static float Faded(float db, float gain) => Mathf.Max(SilentDb, db + Mathf.LinearToDb(Mathf.Max(gain, 0.001f)));
+
+        private static void AddBus(string name, string sendTo)
+        {
+            int index = AudioServer.BusCount;
+            AudioServer.AddBus(index);
+            AudioServer.SetBusName(index, name);
+            AudioServer.SetBusSend(index, sendTo);
+        }
+
+        /// <summary>Stellt die Regler aus dem Menü ein: Lautstärken von 0 bis 1, stumm schaltet alles ab.</summary>
+        public void SetVolumes(double master, double music, double effects, bool muted)
+        {
+            SetBusVolume(0, master);
+            SetBusVolume(AudioServer.GetBusIndex(MusicBus), music);
+            SetBusVolume(AudioServer.GetBusIndex(EffectsBus), effects);
+            AudioServer.SetBusMute(0, muted);
+        }
+
+        private static void SetBusVolume(int bus, double volume)
+        {
+            AudioServer.SetBusVolumeDb(bus, volume <= 0.0 ? SilentDb * 2f : Mathf.LinearToDb((float)volume));
         }
 
         private AudioStreamWav Looping(string name)
@@ -94,49 +197,160 @@ namespace Messingstadt
             var sound = _sounds[name];
             sound.LoopMode = AudioStreamWav.LoopModeEnum.Forward;
             sound.LoopBegin = 0;
-            sound.LoopEnd = sound.Data.Length / 2;
+            sound.LoopEnd = sound.Data.Length / (sound.Stereo ? 4 : 2);
             return sound;
         }
 
-        private AudioStreamPlayer AddBackground(string name, float volume)
+        private AudioStreamPlayer AddBackground(string name, float volume, string bus)
         {
-            var player = new AudioStreamPlayer { Stream = Looping(name), VolumeDb = volume, Autoplay = true };
+            var player = new AudioStreamPlayer { Stream = Looping(name), VolumeDb = volume, Autoplay = true, Bus = bus };
             AddChild(player);
             return player;
         }
 
-        /// <summary>Die treibende Bassfigur blendet sich ein, solange Wachen alarmiert sind. Beide Spuren laufen gleich lang und bleiben im Takt.</summary>
+        /// <summary>Ruhe, Dunkel, Verdacht und Gefecht überblenden je nach Lage. Alle laufen gleich lang und bleiben im Takt.</summary>
         private void UpdateMusic(World world, float dt)
         {
             bool alarmed = world.State == MissionState.Running && (world.TicksUntilReinforcement >= 0
                 || world.Units.Exists(u => u.Alive && u.Faction == Faction.Guard && u.Alerted));
-            _tensionLevel = Mathf.MoveToward(_tensionLevel, alarmed ? 1f : 0f, TensionFadePerSecond * dt);
-            _tension.VolumeDb = Mathf.Max(SilentDb, MusicDb + Mathf.LinearToDb(Mathf.Max(_tensionLevel, 0.001f)));
             // Schleicht der Agent im Dunkeln, wird die Musik dünner und der Regen rückt nach vorn.
-            float wanted = !alarmed && Game.LeadLight() < DarkLight ? MusicDb - DarkMusicDrop : MusicDb;
-            _musicDb = Mathf.MoveToward(_musicDb, wanted, MusicFadeDbPerSecond * dt);
-            _music.VolumeDb = _musicDb;
+            bool dark = !alarmed && Game.LeadLight() < DarkLight;
+            bool suspicious = !alarmed && world.Units.Exists(u => u.Alive && u.Faction == Faction.Guard
+                && u.GuardState is GuardState.Noticing or GuardState.Investigate or GuardState.Search or GuardState.Report);
+            if (_heldMusic != null)
+            {
+                alarmed = _heldMusic == "gefecht";
+                dark = _heldMusic == "dunkel";
+                suspicious = _heldMusic == "verdacht";
+            }
+            float fade = LayerFadePerSecond * dt;
+            _calmLevel = Mathf.MoveToward(_calmLevel, alarmed || dark ? 0f : 1f, fade);
+            _darkLevel = Mathf.MoveToward(_darkLevel, alarmed ? DarkUnderFight : dark ? 1f : 0f, fade);
+            _fightLevel = Mathf.MoveToward(_fightLevel, alarmed ? 1f : 0f, fade);
+            _suspectLevel = Mathf.MoveToward(_suspectLevel, suspicious ? 1f : 0f, suspicious ? SuspectRisePerSecond * dt : fade);
+            SetLayer(CalmLayer, MusicDb, _calmLevel);
+            SetLayer(DarkLayer, DarkLayerDb, _darkLevel);
+            SetLayer(SuspectLayer, MusicDb, _suspectLevel);
+            SetLayer(FightLayer, MusicDb, _fightLevel);
             // Herzschlag, solange eine Wache gerade etwas bemerkt und noch nicht schießt.
             bool noticed = world.Units.Exists(u => u.Alive && u.Faction == Faction.Guard && u.GuardState == GuardState.Noticing);
             _heartLevel = Mathf.MoveToward(_heartLevel, noticed ? 1f : 0f, (noticed ? HeartRisePerSecond : HeartFallPerSecond) * dt);
-            _heart.VolumeDb = Mathf.Max(SilentDb, HeartDb + Mathf.LinearToDb(Mathf.Max(_heartLevel, 0.001f)));
+            _heart.VolumeDb = Faded(HeartDb, _heartLevel);
+        }
+
+        /// <summary>Regen und Wind folgen dem Wetter. Der Schauer steht auf dem alten festen Pegel, lauter wird der Regen nie.</summary>
+        private void UpdateWeather()
+        {
+            if (Game.Climate is not { } climate)
+            {
+                return;
+            }
+            _rain.VolumeDb = Mathf.Max(SilentDb, RainDb + RainCurveDb * Mathf.Log(Mathf.Max(climate.RainStrength, 0.01f)) / Mathf.Log(10f) - RainInAlleyDrop * Enclosure);
+            float gust = Mathf.Clamp((climate.Wind - GustFromWind) / (GustFullWind - GustFromWind), 0f, 1f);
+            _gust.VolumeDb = Faded(GustDb, gust);
+            float flowDb = GutterDb + GutterCurveDb * Mathf.Log(Mathf.Max(climate.RoofFlow, 0.01f)) / Mathf.Log(10f);
+            foreach (var gutter in _gutters)
+            {
+                gutter.VolumeDb = flowDb;
+            }
+        }
+
+        /// <summary>Radio, Bildfunk und Klavier werden still, so weit die Fenster ringsum dunkel sind.</summary>
+        private void UpdateHush(float dt)
+        {
+            float wanted = Game.Windows?.Hush ?? 0f;
+            _hush = Mathf.MoveToward(_hush, wanted, HushFadePerSecond * dt);
+            foreach (var (player, db) in _hushable)
+            {
+                player.VolumeDb = Faded(db, 1f - _hush);
+            }
+        }
+
+        /// <summary>Der Raum wird aus den Hindernissen ringsum geschätzt: Kurze Wege bis zur nächsten Wand ergeben eine enge Gasse.</summary>
+        private void UpdateRoom(World world, float dt)
+        {
+            if (_time >= _nextRoomProbe)
+            {
+                _nextRoomProbe = _time + RoomProbeSeconds;
+                var at = Game.ScreenToMap(Game.CameraCenter);
+                _roomWanted = MeasureEnclosure(world.Map, Mathf.FloorToInt(at.X), Mathf.FloorToInt(at.Y));
+            }
+            Enclosure = Mathf.MoveToward(Enclosure, _roomWanted, RoomFadePerSecond * dt);
+            _reverb.Wet = Mathf.Lerp(OpenWet, AlleyWet, Enclosure);
+            _reverb.RoomSize = Mathf.Lerp(OpenRoomSize, AlleyRoomSize, Enclosure);
+            // Das Filter klingt gleichmäßig, wenn die Grenzfrequenz in Verhältnissen wandert.
+            _rainFilter.CutoffHz = OpenRainCutoff * Mathf.Pow(AlleyRainCutoff / OpenRainCutoff, Enclosure);
+        }
+
+        private static float MeasureEnclosure(GameMap map, int x, int y)
+        {
+            float closed = 0f;
+            foreach (var (dx, dy) in RoomRays)
+            {
+                for (int i = 1; i <= RoomProbeTiles; i++)
+                {
+                    int nx = x + dx * i, ny = y + dy * i;
+                    if (!map.InBounds(nx, ny))
+                    {
+                        break;
+                    }
+                    if (map.IsBlocked(nx, ny))
+                    {
+                        closed += 1f - (i - 1f) / RoomProbeTiles;
+                        break;
+                    }
+                }
+            }
+            return Mathf.Clamp(closed / RoomRays.Length, 0f, 1f);
+        }
+
+        /// <summary>Eine Regenrinne, deren Wasser dem Dachablauf folgt. Nahe beieinander reicht eine, und alle beginnen an anderer Stelle.</summary>
+        public void AddGutter(Vector2 position)
+        {
+            if (_gutters.Count >= MaxGutters || _gutters.Exists(g => g.Position.DistanceTo(position) < GutterSpacing))
+            {
+                return;
+            }
+            var player = new AudioStreamPlayer2D { Stream = Looping("gutter"), Position = position, VolumeDb = SilentDb, MaxDistance = GutterReach, Attenuation = 1.6f, Bus = EffectsBus };
+            AddChild(player);
+            player.Play((float)_rng.NextDouble() * (float)player.Stream.GetLength());
+            _gutters.Add(player);
         }
 
         /// <summary>Ein Dauergeräusch an einem festen Ort, etwa an einer Laterne. Es ist nur aus der Nähe zu hören.</summary>
-        public void AddLoop(string name, Vector2 position, float volume, float reach = AmbientReach)
+        /// <summary>Mit hushable verstummt es, wenn die Nachbarschaft nach Schüssen die Fenster dunkel macht.</summary>
+        public void AddLoop(string name, Vector2 position, float volume, float reach = AmbientReach, bool hushable = false)
         {
             var player = new AudioStreamPlayer2D
             {
                 Stream = Looping(name), Position = position, VolumeDb = volume, MaxDistance = reach,
-                Attenuation = 1.6f, Autoplay = true,
+                Attenuation = 1.6f, Autoplay = true, Bus = EffectsBus,
             };
             AddChild(player);
+            if (hushable)
+            {
+                _hushable.Add((player, volume));
+            }
         }
+
+        /// <summary>Das Brummen der Lampe in der Straßenbahn. Der Aufrufer stellt die Helligkeit, mit ihr wird es lauter oder leiser.</summary>
+        public AudioStreamPlayer2D AddTramHum(Vector2 position)
+        {
+            var player = new AudioStreamPlayer2D
+            {
+                Stream = Looping("tram_hum"), Position = position, VolumeDb = TramHumDb, MaxDistance = TramHumReach,
+                Attenuation = 1.6f, Autoplay = true, Bus = EffectsBus,
+            };
+            AddChild(player);
+            return player;
+        }
+
+        public static float TramHumAt(float light) => Faded(TramHumDb, light);
 
         /// <summary>Ein Dauergeräusch, das mit etwas mitfliegt. Der Aufrufer startet es und setzt die Lage selbst.</summary>
         public AudioStreamPlayer2D AddMovingLoop(string name, float volume, float reach)
         {
-            var player = new AudioStreamPlayer2D { Stream = Looping(name), VolumeDb = volume, MaxDistance = reach, Attenuation = 1.2f };
+            var player = new AudioStreamPlayer2D { Stream = Looping(name), VolumeDb = volume, MaxDistance = reach, Attenuation = 1.2f, Bus = EffectsBus };
             AddChild(player);
             return player;
         }
@@ -144,7 +358,7 @@ namespace Messingstadt
         /// <summary>Überall gleich laut, etwa Donner.</summary>
         public void PlayEverywhere(string name, float volume)
         {
-            var player = new AudioStreamPlayer { Stream = _sounds[name], VolumeDb = volume, Autoplay = true };
+            var player = new AudioStreamPlayer { Stream = _sounds[name], VolumeDb = volume, Autoplay = true, Bus = EffectsBus };
             player.Finished += player.QueueFree;
             AddChild(player);
             PlayCount++;
@@ -171,12 +385,6 @@ namespace Messingstadt
             PlayedByGroup[group] = PlayedByGroup.GetValueOrDefault(group) + 1;
         }
 
-        public void ToggleMute()
-        {
-            _muted = !_muted;
-            AudioServer.SetBusMute(0, _muted);
-        }
-
         private void Reset(World world)
         {
             _world = world;
@@ -187,6 +395,8 @@ namespace Messingstadt
             _bribed.Clear();
             _dogBite.Clear();
             _inCombat.Clear();
+            _reporting.Clear();
+            _kicks.Clear();
             _doorsOpen = new bool[world.Doors.Count];
         }
 
@@ -205,6 +415,9 @@ namespace Messingstadt
             ListenToShots(world);
             ListenToMission(world);
             UpdateMusic(world, (float)delta);
+            UpdateRoom(world, (float)delta);
+            UpdateWeather();
+            UpdateHush((float)delta);
         }
 
         private void ListenToUnit(World world, Unit u)
@@ -226,6 +439,11 @@ namespace Messingstadt
                     if (u.Type.Bites)
                     {
                         _stepCount[u.Id] = count;
+                        // Die Kette an der Leine verrät das Paar, bevor man es sieht.
+                        if (u.LeashedTo >= 0 && count % 4 == 0)
+                        {
+                            PlayStep("chain", at, -17f, GuardStepReach);
+                        }
                         return;
                     }
                     string kind = u.Sprinting ? "step_run" : u.Faction == Faction.Agent ? "step_soft" : "step_boot";
@@ -249,6 +467,24 @@ namespace Messingstadt
             {
                 ListenToDog(u, at);
             }
+            if (u.GuardState == GuardState.Report)
+            {
+                if (_reporting.Add(u.Id))
+                {
+                    Play("boy_whistle", at, -5f);
+                }
+            }
+            else if (_reporting.Remove(u.Id) && !u.Bribed)
+            {
+                // Die Meldung ist angekommen: Jetzt pfeift die Wache.
+                Play("whistle", at, -3f);
+            }
+            _kicks.TryGetValue(u.Id, out int lastKick);
+            if (u.LastKickTick > lastKick)
+            {
+                _kicks[u.Id] = u.LastKickTick;
+                Play("kick", at, -5f, StepReach);
+            }
         }
 
         private void ListenToDog(Unit dog, Vector2 at)
@@ -263,7 +499,7 @@ namespace Messingstadt
             if (dog.LastFiredTick > last)
             {
                 _dogBite[dog.Id] = dog.LastFiredTick;
-                Play("hit", at, -4f, StepReach);
+                Play(dog.LastBiteHit ? "dog_bite" : "dog_snap", at, -4f, StepReach);
             }
         }
 

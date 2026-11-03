@@ -16,6 +16,12 @@ Voraussetzung: Godot 4.7.2 .NET (`C:\Users\user\.tools\godot\`) und .NET SDK 9.
 
 Spielen: Doppelklick auf `Spielen.bat`.
 
+Branches testen: Doppelklick auf `Branch-Hub.bat`. Das Fenster listet alle Branches mit Ort, Datum und Abstand zu `main`.
+- **Spielen** (oder Doppelklick auf die Zeile) holt den Commit-Stand in die Prüfkopie `work\hub`, baut und startet ihn. `main` und die Ordner der Sessions bleiben unberührt.
+- **Arbeitsstand spielen** startet eine Session direkt aus ihrem Ordner, mit nicht committeten Änderungen.
+- **Tests**, **Im Godot-Editor**, **Commits zeigen**, **Ordner öffnen** und **Von GitHub holen** tun, was sie sagen.
+- Spielstand, Einstellungen und Einstieg werden vor jedem Test gesichert und danach zurückgespielt, außer der Haken „Spielstand behalten“ ist gesetzt.
+
 Die folgenden Befehle gelten für PowerShell im Projektordner.
 
 Tests:
@@ -55,8 +61,15 @@ Grafik neu erzeugen: `python tools/art/generate_concept.py`
 | `Q` halten | Lageplan: bewachte Felder, Wege der Wachen, Wegvorschau. Ein Klick wartet, bis der Weg frei ist |
 | `P` | Pause |
 | `M` | Ton an und aus |
-| `F11` | Vollbild an und aus. Das Fenster lässt sich auch frei ziehen, Oberfläche und Bild passen sich an |
-| `R` | Einsatz abbrechen. Nach dem ersten Schuss zweimal drücken, dann gilt der Trupp als gefallen |
+| `F11` | Vollbild an und aus. Das Fenster lässt sich auch frei ziehen, Oberfläche und Bild passen sich an, kleinstes Fenster 1024x640 |
+| `Esc` | Pausenmappe mit Einstellungen und Bedienung, im Menü eine Ebene zurück |
+| `R` | Einsatz abbrechen, mit Rückfrage. Nach dem ersten Schuss gilt der Trupp dann als gefallen |
+
+In den Menüs wählen Pfeiltasten und Maus dasselbe, Enter oder Klick bestätigt. Lautstärken, Ton, Vollbild und Bildwackeln liegen getrennt vom Spielstand in `user://einstellungen.json`.
+
+## Prüfläufe für die Bedienung
+
+`--script=<datei>` schickt Tasten und Klicks durch den echten Eingabeweg und vergleicht den Zustand, die Befehle stehen in `game/TestScript.cs`. Dazu passen `--menu` (Hauptmenü auch im Prüflauf) und `--fresh` (ohne Spielstand). Prüfläufe schreiben nichts in die Dateien des Spielers. Nur `--script-writes` tut das und gehört in einen eigenen `APPDATA`-Ordner.
 
 ## Grafik und Licht neu berechnen
 
@@ -67,11 +80,19 @@ python tools/art/generate_concept.py
 python tools/art/bake_light.py
 ```
 
+Laternen, Hochbahn und Smog über den Häusern hinter der Karte stehen in deren Straßen, nach dem Verschieben der Blöcke also auch das:
+
+```bash
+python tools/art/skyline.py
+```
+
 Die Geräusche entstehen unabhängig davon:
 
 ```bash
 python tools/art/generate_audio.py
 ```
+
+`python tools/art/check_audio.py --neu` misst Pegel, Spektrum und Schleifen und vergleicht alles Byte für Byte mit einem neuen Lauf. `python tools/art/hoerproben.py` schreibt Hörproben mit den Pegeln des Spiels nach `work/hoerproben`. Im Prüflauf hält `--music=ruhe|dunkel|verdacht|gefecht` eine Musiklage fest.
 
 ## Aufbau
 
@@ -82,5 +103,6 @@ python tools/art/generate_audio.py
 | `data/` | Missions- und Kartendaten als JSON |
 | `game/` | Godot-Projekt: Darstellung und Eingabe |
 | `tools/art/` | Grafikerzeugung |
+| `game/assets/fonts` | Courier Prime und Old Standard, beide unter der SIL Open Font License, Quelle `github.com/google/fonts` |
 | `tools/Messingstadt.Balance` | misst die Spielweisen einer Mission |
 | `docs/` | Konzept und Architektur |

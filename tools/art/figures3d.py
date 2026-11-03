@@ -88,16 +88,17 @@ def build_dog(motion, phase):
     p = Pose()
     t = phase * math.tau
     moving = motion in ("walk", "run", "aimwalk")
-    size = {"run": 0.75, "walk": 0.42, "aimwalk": 0.42}.get(motion, 0.0)
+    size = {"run": 0.6, "walk": 0.42, "aimwalk": 0.42}.get(motion, 0.0)
     bob = 0.5 * abs(math.sin(t)) if moving else (0.25 * math.sin(t) if motion == "idle" else 0.0)
     lunge = 3.0 if motion == "recoil" else 1.5 if motion == "aim" else 0.0
     height = 12.0 + bob
-    chest = np.array((5.0 + lunge, 0.0, height + 1.5))
+    # Wer rennt, streckt sich flach. Sonst sieht er von hinten schräg aus, als stiege er hoch.
+    chest = np.array((5.0 + lunge, 0.0, height + (0.3 if motion == "run" else 1.5)))
     rump = np.array((-8.0 + lunge, 0.0, height))
     p.capsule(chest, rump, 4.3, 3.5, COAT)
     p.capsule(chest + (0, 0, 2.0), rump + (0, 0, 2.0), 2.6, 2.2, COAT_D)
     neck = chest + (3.0, 0, 3.0)
-    head = chest + (7.5, 0, 7.0 if not motion in ("aim", "recoil") else 3.5)
+    head = chest + (7.5, 0, {"aim": 3.5, "recoil": 3.5, "run": 4.5}.get(motion, 7.0))
     p.capsule(neck, head, 2.7, 2.3, COAT)
     p.capsule(head, head + (4.5, 0, -1.2), 1.7, 1.0, COAT_L)
     p.ball(head + (5.0, 0, -1.2), 0.85, SHOE)
@@ -191,8 +192,14 @@ def build(spec, motion, phase):
         p.capsule(lean_up((2.6, 2.0, shoulder_z - 3.0)), lean_up((2.6, -2.0, shoulder_z - 3.0)), 2.0, 2.0, TRIM)
         for side in (1, -1):
             p.ball(lean_up((0.1, side * 6.4, shoulder_z - 0.2)), 2.4, TRIM)
-    aiming_now = motion in ("aim", "recoil", "aimwalk")
-    if gun != "pistol" and not aiming_now and not dying:
+    if spec.get("strap"):
+        # Lederriemen quer über die Brust
+        p.capsule(lean_up((2.0 * bulk, 2.9, shoulder_z - 1.0)), lean_up((2.2 * bulk, -3.2, waist + 0.5)), 0.65, 0.65, TRIM)
+    if spec.get("satchel"):
+        # Umhängetasche an der Hüfte
+        p.capsule(lean_up((-1.6, -5.1, waist - 2.6)), lean_up((1.9, -5.1, waist - 2.6)), 2.7, 2.7, TRIM)
+    aiming_now = motion in ("aim", "recoil", "aimwalk") and gun != "none"
+    if gun not in ("pistol", "none") and not aiming_now and not dying:
         # Lange Waffe quer vor dem Körper getragen
         p.capsule(lean_up((3.3 * bulk, -4.5, waist + 1.5)), lean_up((3.0 * bulk, 3.5, shoulder_z + (2.5 if gun == "rifle" else 0.5))), 0.85, 0.75, GUN)
 
@@ -225,7 +232,7 @@ def build(spec, motion, phase):
         p.capsule(head + (2.7, 1.5, 1.4), head + (2.7, -1.5, 1.4), 0.8, 0.8, SHOE)
 
     # Arme. Die rechte Hand führt die Waffe, sobald gezielt wird.
-    aiming = motion in ("aim", "recoil", "aimwalk")
+    aiming = aiming_now
     kick = 0.32 if motion == "recoil" else 0.0
     for side, swing in ((1, -swing_l), (-1, -swing_r)):
         shoulder = lean_up((0.1, side * 5.9, shoulder_z - 0.9))
@@ -256,9 +263,15 @@ def build(spec, motion, phase):
         p.capsule(shoulder, elbow_p, 1.8, 1.5, COAT_D if side < 0 else COAT_L)
         p.capsule(elbow_p, hand, 1.5, 1.2, COAT_D if side < 0 else COAT_L)
         p.ball(hand, 1.25, SKIN)
+        if spec.get("leash") and side > 0 and not dying:
+            # Aufgerolltes Ende der Leine in der freien Hand
+            p.capsule(hand + (0.4, 0.4, -0.5), hand + (1.2, 1.2, -4.5), 0.75, 0.55, TRIM)
 
     if dying:
         collapse(p, dying)
+    scale = spec.get("scale", 1.0)
+    if scale != 1.0:
+        p.parts = [(a * scale, b * scale, r1 * scale, r2 * scale, m) for a, b, r1, r2, m in p.parts]
     return p
 
 

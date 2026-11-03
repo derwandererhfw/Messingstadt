@@ -58,6 +58,8 @@ namespace Messingstadt
         private static readonly string[] Fighting = { "Halt! Stehen bleiben!", "Alarm! Hierher!", "Da drüben! Schießt!" };
         private static readonly string[] Searching = { "Wo ist er hin?", "Ausschwärmen!", "Der kann nicht weit sein." };
         private static readonly string[] Bribed = { "Ich hab nichts gesehen.", "Kein Wort zu niemandem." };
+        private static readonly string[] Reporting = { "Wache! Wache!", "Da ist wer! Ich hol die Wache!" };
+        private static readonly string[] Bitten = { "Der Hund! Ein Schuss, und alle hören es.", "Weg, du Mistvieh! Soll ich schießen?" };
 
         private sealed class Speech
         {
@@ -71,6 +73,7 @@ namespace Messingstadt
         private readonly List<Speech> _speeches = new();
         private readonly Dictionary<int, GuardState> _lastState = new();
         private readonly HashSet<int> _bribedSpoken = new();
+        private readonly HashSet<int> _bittenSpoken = new();
         private World? _world;
         private float _time;
         private float _nextTalk = 5f;
@@ -106,6 +109,7 @@ namespace Messingstadt
                 _world = world;
                 _lastState.Clear();
                 _bribedSpoken.Clear();
+                _bittenSpoken.Clear();
                 _speeches.Clear();
             }
             foreach (var u in world.Units)
@@ -113,6 +117,10 @@ namespace Messingstadt
                 if (u.Faction == Faction.Guard && u.Alive && !u.Type.Bites)
                 {
                     ListenToGuard(world, u);
+                }
+                else if (u.Alive && u.Type.Bites && u.Faction == Faction.Guard && u.LastBiteHit && _bittenSpoken.Add(u.Id))
+                {
+                    AgentCriesOut(world, u);
                 }
             }
             if (_time > _nextTalk)
@@ -122,6 +130,22 @@ namespace Messingstadt
             }
             _speeches.RemoveAll(s => _time > s.Until || s.Where() == null);
             QueueRedraw();
+        }
+
+        private void AgentCriesOut(World world, Unit dog)
+        {
+            Unit? bitten = null;
+            foreach (var a in world.Units)
+            {
+                if (a.Alive && a.Faction == Faction.Agent && (bitten == null || World.Distance(a, dog) < World.Distance(bitten, dog)))
+                {
+                    bitten = a;
+                }
+            }
+            if (bitten != null)
+            {
+                Say(() => bitten.Alive ? Game.UnitPos(bitten) : null, Pick(_rng, Bitten), ShoutSeconds, new Color(0.95f, 0.9f, 0.75f));
+            }
         }
 
         private void ListenToGuard(World world, Unit u)
@@ -135,9 +159,10 @@ namespace Messingstadt
             {
                 string[]? lines = u.GuardState switch
                 {
-                    GuardState.Noticing => Noticed,
+                    GuardState.Noticing when !u.Type.Reports => Noticed,
                     GuardState.Combat => Fighting,
                     GuardState.Investigate => Searching,
+                    GuardState.Report => Reporting,
                     _ => null,
                 };
                 if (lines != null)

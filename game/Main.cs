@@ -32,6 +32,13 @@ uniform float stutter = 1.0;
 uniform float unrest = 1.0;
 uniform float fire = 1.0;
 uniform float lightning = 0.0;
+uniform vec2 cuts[6];
+uniform int cut_count = 0;
+uniform float cut_open = 0.0;
+varying vec2 world;
+void vertex() {
+    world = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
+}
 void fragment() {
     vec3 a = texture(light_a, UV).rgb;
     vec4 b = texture(light_b, UV);
@@ -45,8 +52,19 @@ void fragment() {
         vec4 state = texture(pane_states, vec2((pane * 255.0 + 0.5) / 256.0, 0.5));
         COLOR.rgb = mix(COLOR.rgb, state.rgb * (0.35 + shade * 1.3) / night, state.a);
     }
+    // Durchblick auf verdeckte Agenten: innen frei, zum Rand hin gerastert, im Raster der Stadtgrafik.
+    vec2 cell = floor(world);
+    for (int i = 0; i < cut_count; i++) {
+        float reach = length((cell + 0.5 - cuts[i]) / vec2(21.0, 33.0));
+        if (reach < cut_open * 0.72 || (reach < cut_open && mod(cell.x + cell.y, 2.0) < 1.0)) {
+            COLOR.a = 0.0;
+        }
+    }
 }";
         private const float LightMax = 4f;
+        private const int MaxCuts = 6;
+        private const float CutOpenPerSecond = 6f;
+        private const float CutRise = 21f;
         private static readonly Color LampColor = new(1f, 0.74f, 0.42f);
         private static readonly Color FireColor = new(1f, 0.45f, 0.15f);
 
@@ -64,7 +82,7 @@ void fragment() {
         // Im Lageplan: So lange bleibt eine Figur am Ziel stehen, das muss noch unbemerkt gehen.
         private const int ArrivalHoldTicks = 40;
         private const int MaxPlanWaitTicks = 60 * World.TickRate;
-        private const float AbandonWarningSeconds = 4f;
+        private static readonly Vector2I MinWindow = new(1024, 640);
 
         // Lebendige Kamera
         private const float CameraFollow = 7f;
@@ -103,6 +121,8 @@ void fragment() {
 
         private readonly List<ThingInfo> _things = new();
         private readonly List<Sprite2D> _thingSprites = new();
+        private readonly List<float> _thingCuts = new();
+        private readonly Vector2[] _cutPoints = new Vector2[MaxCuts];
         private readonly List<Image> _thingImages = new();
         private readonly List<ShaderMaterial> _litMaterials = new();
         private readonly WindowLife _windowLife = new();
@@ -119,6 +139,7 @@ void fragment() {
         private Image _lightGrid = null!;
         private readonly List<Color> _unitGlow = new();
         private readonly Ambience _ambience = new();
+        private PuddleMirror _puddleMirror = null!;
         private readonly List<Sprite2D> _unitSprites = new();
         private readonly Dictionary<string, int> _figureRows = new();
         private readonly Dictionary<int, float> _fallStarted = new();
@@ -143,8 +164,14 @@ void fragment() {
         private Campaign _campaign = new();
         private bool _finished;
         private bool _abandoned;
-        private float _abandonWarning;
         private Label _planLegend = null!;
+        private Label _help = null!;
+        private Menus _menus = null!;
+        private CanvasLayer _overlayLayer = null!;
+        private Settings _settings = new();
+        private bool _hadSave;
+        private Button? _panelFocus;
+        private string _upgradeFocus = "";
         private ColorRect _planBand = null!;
         private int _queuedX, _queuedY, _queuedTick;
         private int _lastReward;
@@ -159,7 +186,17 @@ void fragment() {
         // Mit --shot-on-fire=<n> entsteht das Bild im Moment des ersten Schusses ab Takt n.
         // --plan zeigt den Lageplan, --look=<x>,<y> hält die Kamera auf einem Feld.
         // --flash=<stärke> hält einen Blitz an, --ship=<x>,<y> stellt das Luftschiff über dieses Feld.
+        // --rain=<stärke> hält den Regen, von 0 bis 1. --smoke lässt alle ruhigen Wachen gleich rauchen.
+        // --menu öffnet auch im Prüflauf das Hauptmenü, --fresh tut so, als gäbe es keinen Spielstand.
+        // --script=<datei> spielt Tasten und Klicks ab, siehe TestScript. Mit --script-writes schreibt er auch Dateien,
+        // das gehört nur in einen eigenen APPDATA-Ordner.
+        private bool _forceMenu;
+        private bool _fresh;
+        private string? _scriptPath;
+        private bool _scriptWrites;
         private float _testFlash = -1f;
+        private float _testRain = -1f;
+        private bool _testSmoke;
         private Vector2? _testShip;
         private bool _forcePlan;
         private bool _forceIntro;
@@ -178,12 +215,22 @@ void fragment() {
         public SoundScape Sound => _sound;
         public List<double[]> LampSpots => _mission.Lamps;
         public Color NightColor => Night;
+        public float Lightning => _lightning;
+        public WindowLife Windows => _windowLife;
+        public IReadOnlyList<Sprite2D> UnitSprites => _unitSprites;
+
+        /// <summary>Die Karte, schon bevor der Einsatz beginnt.</summary>
+        public MapData Map => _map;
+
+
+        /// <summary>Regen, Wind und woher das Blitzlicht kommt.</summary>
+        public Weather Climate { get; private set; } = null!;
 
         /// <summary>Wann die Wachen welches Feld im Blick haben. Grundlage für Lageplan und Wegvorschau.</summary>
         public WatchMap Watch { get; private set; } = null!;
 
         /// <summary>Q gehalten: Lageplan und Wegvorschau anzeigen.</summary>
-        public bool PlanHeld => _forcePlan || Input.IsPhysicalKeyPressed(Key.Q);
+        public bool PlanHeld => _forcePlan || (!ControlsLocked && Input.IsPhysicalKeyPressed(Key.Q));
         public List<(int X, int Y)> PreviewPath { get; } = new();
         public int PreviewRisk { get; private set; } = -1;
         public string PreviewText { get; private set; } = "";
@@ -195,6 +242,7 @@ void fragment() {
         public override void _Ready()
         {
             ParseArgs();
+            LoadSettings();
             // Gleiche Farbe wie der Himmel in ground.png, damit außerhalb der Karte kein Streifen sichtbar ist.
             RenderingServer.SetDefaultClearColor(new Color(52 / 255f, 56 / 255f, 78 / 255f) * Night);
             AddChild(new CanvasModulate { Color = Night });
@@ -212,11 +260,11 @@ void fragment() {
             _camera.MakeCurrent();
             AddEnvironment();
             // Eigene Ebene, die der Kamera folgt: Ringe und Balken bleiben auch in der Nacht gut lesbar.
-            var overlayLayer = new CanvasLayer { Layer = 1, FollowViewportEnabled = true };
-            AddChild(overlayLayer);
-            overlayLayer.AddChild(new Overlay { Game = this });
+            _overlayLayer = new CanvasLayer { Layer = 1, FollowViewportEnabled = true };
+            AddChild(_overlayLayer);
+            _overlayLayer.AddChild(new Overlay { Game = this });
             _chatter = new Chatter { Game = this };
-            overlayLayer.AddChild(_chatter);
+            _overlayLayer.AddChild(_chatter);
             BuildUi();
             StartMission();
             _sound.Game = this;
@@ -230,8 +278,177 @@ void fragment() {
                 Gullies = _ambience.Steam.ConvertAll(ScreenToMap),
                 WorkerSpot = WorkerTile, WorkerDoor = WorkerDoorTile,
             });
+            _menus = new Menus { Game = this };
+            AddChild(_menus);
+            ApplySound();
+            ApplyWindow();
+            if (!Testing || _forceMenu)
+            {
+                OpenMainMenu();
+            }
+            else
+            {
+                MaybeStartIntro();
+            }
+            if (_scriptPath != null)
+            {
+                AddChild(new TestScript { Game = this, FilePath = _scriptPath });
+            }
+        }
+
+        /// <summary>Prüfläufe schreiben nichts in die Dateien des Spielers.</summary>
+        private bool Testing => _shotPath != null || _auto || _look != null || _scriptPath != null;
+        private bool WritesFiles => !Testing || _scriptWrites;
+
+        /// <summary>Menü offen, Einstieg läuft oder Einsatz vorbei: Das Spiel nimmt keine Befehle an.</summary>
+        private bool ControlsLocked => _introRunning || _finished || (_menus != null && _menus.IsOpen);
+
+        public Settings Settings => _settings;
+        public bool HasSave => _hadSave;
+        public bool AbandonCostsSquad => Campaign.AbandonCostsSquad(World);
+        public string CampaignLine => $"Kasse {_campaign.Money}, {_campaign.Missions} Einsätze";
+
+        private static string SettingsPath => ProjectSettings.GlobalizePath("user://einstellungen.json");
+
+        private void LoadSettings()
+        {
+            if (WritesFiles && File.Exists(SettingsPath))
+            {
+                _settings = Settings.FromJson(File.ReadAllText(SettingsPath));
+            }
+        }
+
+        public void SaveSettings()
+        {
+            if (WritesFiles)
+            {
+                File.WriteAllText(SettingsPath, _settings.ToJson());
+            }
+        }
+
+        public void ApplySound() => _sound.SetVolumes(_settings.MasterVolume, _settings.MusicVolume, _settings.EffectsVolume, _settings.Muted);
+
+        private void ApplyWindow()
+        {
+            // Prüfläufe dürfen kleinere Fenster und --resolution behalten.
+            if (!WritesFiles)
+            {
+                return;
+            }
+            DisplayServer.WindowSetMinSize(MinWindow);
+            if (_settings.Fullscreen)
+            {
+                DisplayServer.WindowSetMode(DisplayServer.WindowMode.Fullscreen);
+            }
+        }
+
+        public void ToggleMute()
+        {
+            _settings.Muted = !_settings.Muted;
+            ApplySound();
+            SaveSettings();
+            _menus.Refresh();
+        }
+
+        public void ToggleFullscreen()
+        {
+            bool full = DisplayServer.WindowGetMode() == DisplayServer.WindowMode.Fullscreen;
+            DisplayServer.WindowSetMode(full ? DisplayServer.WindowMode.Windowed : DisplayServer.WindowMode.Fullscreen);
+            _settings.Fullscreen = !full;
+            SaveSettings();
+            _menus.Refresh();
+        }
+
+        private void OpenMainMenu()
+        {
+            _paper.Visible = false;
+            _overlayLayer.Visible = false;
+            _menus.ShowMain();
+        }
+
+        /// <summary>Vom Hauptmenü in den Einsatz, beim Betreten läuft der Einstieg.</summary>
+        public void ContinueMission()
+        {
+            _hadSave = true;
+            _paper.Visible = true;
+            _overlayLayer.Visible = true;
+            _menus.CloseAll();
             MaybeStartIntro();
         }
+
+        public void NewCampaign()
+        {
+            _campaign = new Campaign();
+            SaveCampaign();
+            _mission = LoadMission();
+            StartMission();
+            ContinueMission();
+        }
+
+        /// <summary>Verlässt einen laufenden Einsatz, das zählt wie ein Abbruch. Danach steht das Hauptmenü wieder am Anfang.</summary>
+        public void ToMainMenu()
+        {
+            BookLeaving();
+            _menus.CloseAll();
+            StartMission();
+            _showIntro = true;
+            OpenMainMenu();
+        }
+
+        public void QuitGame()
+        {
+            BookLeaving();
+            SaveSettings();
+            GetTree().Quit();
+        }
+
+        private void BookLeaving()
+        {
+            if (!_finished)
+            {
+                _campaign.Abandon(World);
+                SaveCampaign();
+            }
+        }
+
+        /// <summary>Nach dem Schließen eines Blatts bekommt der Ergebnis-Bildschirm die Tasten zurück.</summary>
+        public void MenusClosed()
+        {
+            if (_panel.Visible)
+            {
+                _panelFocus?.GrabFocus();
+            }
+        }
+
+        /// <summary>Wo im Prüflauf nach Knöpfen gesucht wird: im offenen Blatt, sonst überall.</summary>
+        public Node ActiveUi() => _menus.IsOpen ? _menus : this;
+
+        /// <summary>Zustand für den Prüflauf.</summary>
+        public Dictionary<string, string> Probe() => new()
+        {
+            ["screen"] = _menus.ScreenName,
+            ["focus"] = GetViewport().GuiGetFocusOwner() is Button button ? button.Text : GetViewport().GuiGetFocusOwner()?.GetClass() ?? "",
+            ["tick"] = World.Tick.ToString(),
+            ["paused"] = _paused.ToString(),
+            ["finished"] = _finished.ToString(),
+            ["panel"] = _panel.Visible.ToString(),
+            ["hud"] = _paper.Visible.ToString(),
+            ["help"] = _help.Visible.ToString(),
+            ["camera"] = _camera.Position.ToString(),
+            ["selected"] = string.Join(",", Selected.OrderBy(id => id)),
+            ["moving"] = World.Units.Count(u => u.Faction == Faction.Agent && u.Moving).ToString(),
+            ["plan"] = _planBand.Visible.ToString(),
+            ["master"] = _settings.MasterVolume.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+            ["music"] = _settings.MusicVolume.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+            ["musicdb"] = AudioServer.GetBusVolumeDb(AudioServer.GetBusIndex("Musik")).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture),
+            ["muted"] = AudioServer.IsBusMute(0).ToString(),
+            ["shake"] = _settings.ScreenShake.ToString(),
+            ["fullscreen"] = (DisplayServer.WindowGetMode() == DisplayServer.WindowMode.Fullscreen).ToString(),
+            ["window"] = DisplayServer.WindowGetSize().ToString(),
+            ["money"] = _campaign.Money.ToString(),
+            ["rating"] = World.Rating.ToString(),
+            ["cash"] = World.Money.ToString(),
+        };
 
         private MissionData LoadMission()
         {
@@ -251,10 +468,9 @@ void fragment() {
         /// <summary>Der Einstieg läuft einmal beim Programmstart. Prüfläufe überspringen ihn, außer mit --intro.</summary>
         private void MaybeStartIntro()
         {
-            bool testing = _shotPath != null || _auto || _look != null;
-            if (!_showIntro || (testing && !_forceIntro))
+            if (!_showIntro || (Testing && !_forceIntro))
             {
-                _camera.PositionSmoothingEnabled = !testing;
+                _camera.PositionSmoothingEnabled = !Testing;
                 _camera.PositionSmoothingSpeed = CameraFollow;
                 return;
             }
@@ -282,7 +498,7 @@ void fragment() {
         public void EndIntro()
         {
             _introRunning = false;
-            if (_shotPath == null)
+            if (WritesFiles)
             {
                 File.WriteAllText(IntroSeenPath, "");
             }
@@ -293,7 +509,13 @@ void fragment() {
         }
 
         /// <summary>Lässt das Bild kurz zittern, etwa bei Donner oder nahen Schüssen. Stärke von 0 bis 1.</summary>
-        public void ShakeCamera(float amount) => _trauma = Mathf.Min(1f, Mathf.Max(_trauma, amount));
+        public void ShakeCamera(float amount)
+        {
+            if (_settings.ScreenShake)
+            {
+                _trauma = Mathf.Min(1f, Mathf.Max(_trauma, amount));
+            }
+        }
 
         /// <summary>Lebendige Kamera: leichtes Atmen, Zittern und ein kurzes Heranrücken, wenn ein Agent fällt.</summary>
         private void UpdateCameraLife(float dt)
@@ -338,12 +560,20 @@ void fragment() {
         {
             var weather = new Weather
             {
-                Game = this, Night = Night, LampColor = LampColor, HeldFlash = _testFlash,
+                Game = this, Night = Night, LampColor = LampColor, HeldFlash = _testFlash, HeldRain = _testRain, Glow = _critterGlow,
+                ManifestPath = ProjectSettings.GlobalizePath("res://assets/manifest.json"),
                 GroundLight = LoadTexture("res://assets/light/ground_a.png"), FogNoise = LoadTexture("res://assets/light/fog.png"),
                 GroundSize = LoadTexture("res://assets/ground.png").GetSize(), GroundOrigin = new Vector2(_ox, _oy),
             };
+            Climate = weather;
             AddChild(weather);
             weather.AddLampCones(_mission.Lamps, StutterLamp);
+            AddChild(new Water { Game = this, ManifestPath = ProjectSettings.GlobalizePath("res://assets/manifest.json") });
+            AddChild(new GunSmoke { Game = this });
+            var tram = new Tram { Game = this, ManifestPath = ProjectSettings.GlobalizePath("res://assets/manifest.json") };
+            AddChild(tram);
+            _puddleMirror.Tram = tram;
+            AddChild(new Breath { Game = this, Glow = _critterGlow, HeldSmoke = _testSmoke });
             AddChild(new Airship { Game = this, Glow = _critterGlow, Night = Night, ShipTexture = LoadTexture("res://assets/airship.png"), HeldAt = _testShip });
             AddChild(new Strikers
             {
@@ -377,21 +607,22 @@ void fragment() {
             {
                 if (kind == "tv")
                 {
-                    _sound.AddLoop("television", center, -32f, 180f);
+                    _sound.AddLoop("television", center, -32f, 180f, hushable: true);
                 }
             }
             if (_windowLife.SignCenter is { } sign)
             {
                 _sound.AddLoop("neon", sign, -34f, 260f);
             }
-            // Ein Radio spielt hinter einem Fenster des Hotels, ganz leise.
-            foreach (var (kind, center) in _windowLife.PaneSpots)
+            // Ein Radio spielt hinter einem Fenster des Hotels, ganz leise. Hinter dem letzten Fenster klimpert ein Klavier.
+            var windows = _windowLife.PaneSpots.Where(s => s.Item1 == "window").Select(s => s.Item2).ToList();
+            if (windows.Count > 0)
             {
-                if (kind == "window")
-                {
-                    _sound.AddLoop("radio", center, -24f, 230f);
-                    break;
-                }
+                _sound.AddLoop("radio", windows[0], -24f, 230f, hushable: true);
+            }
+            if (windows.Count > 1)
+            {
+                _sound.AddLoop("piano", windows[^1], -26f, 230f, hushable: true);
             }
         }
 
@@ -408,6 +639,33 @@ void fragment() {
                 Gradient = gradient, Width = 256, Height = 256, Fill = GradientTexture2D.FillEnum.Radial,
                 FillFrom = new Vector2(0.5f, 0.5f), FillTo = new Vector2(1f, 0.5f),
             };
+            var fogNoise = LoadTexture("res://assets/light/fog.png");
+            // Smog, Laternen und Hochbahn stehen in den Straßen der Häuser hinter der Karte, ohne diese hingen sie in der Luft.
+            if (File.Exists(ProjectSettings.GlobalizePath("res://assets/backdrop.png")))
+            {
+                AddChild(new Skyline
+                {
+                    Game = this, ZIndex = -1, Backdrop = LoadTexture("res://assets/skyline.png"), Effects = LoadTexture("res://assets/skyline_fx.png"), Noise = fogNoise,
+                    DataPath = ProjectSettings.GlobalizePath("res://assets/skyline.json"),
+                });
+            }
+            var wet = new WetGround
+            {
+                Game = this, ZIndex = 0, Windows = _windowLife, Noise = fogNoise, GroundSize = LoadTexture("res://assets/ground.png").GetSize(),
+                ManifestPath = ProjectSettings.GlobalizePath("res://assets/manifest.json"),
+                LampColor = LampColor, FireColor = FireColor, StutterLamp = StutterLamp, Lamps = _mission.Lamps, Fires = _ambience.Fires,
+                ExtraFires = new[] { ToScreen((int)(Strikers.BarrelTile.X * World.TileUnits), (int)(Strikers.BarrelTile.Y * World.TileUnits)) },
+                Puddles = _ambience.Puddles,
+            };
+            AddChild(wet);
+            _puddleMirror = new PuddleMirror
+            {
+                Game = this, ZIndex = 0, Wet = wet, Windows = _windowLife, Noise = fogNoise,
+                GroundPath = ProjectSettings.GlobalizePath("res://assets/ground.png"), GroundLight = LoadTexture("res://assets/light/ground_a.png"), GroundLightB = LoadTexture("res://assets/light/ground_b.png"),
+                LampColor = LampColor, FireColor = FireColor, StutterLamp = StutterLamp, Lamps = _mission.Lamps,
+                ManifestPath = ProjectSettings.GlobalizePath("res://assets/manifest.json"), Puddles = _ambience.Puddles,
+            };
+            AddChild(_puddleMirror);
             // Unter den Gebäuden gezeichnet: Was hinter einem Haus liegt, bleibt auch im Bild verdeckt.
             AddChild(new GroundMarks { Game = this, ZIndex = 0 });
             _ambience.Game = this;
@@ -418,9 +676,10 @@ void fragment() {
             _windowLife.Glow = glow;
             _windowLife.LightParent = this;
             _windowLife.Sound = _sound;
+            _windowLife.Game = this;
             AddChild(_windowLife);
             _critterGlow = glow;
-            AddChild(new RainLayer { ZIndex = 3900 });
+            AddChild(new RainLayer { Game = this, ZIndex = 3900 });
         }
 
         private void ParseArgs()
@@ -443,6 +702,14 @@ void fragment() {
                 {
                     _testFlash = float.Parse(a["--flash=".Length..], System.Globalization.CultureInfo.InvariantCulture);
                 }
+                else if (a == "--smoke")
+                {
+                    _testSmoke = true;
+                }
+                else if (a.StartsWith("--rain="))
+                {
+                    _testRain = float.Parse(a["--rain=".Length..], System.Globalization.CultureInfo.InvariantCulture);
+                }
                 else if (a.StartsWith("--ship="))
                 {
                     var ship = a["--ship=".Length..].Split(',');
@@ -451,6 +718,22 @@ void fragment() {
                 else if (a == "--intro")
                 {
                     _forceIntro = true;
+                }
+                else if (a == "--menu")
+                {
+                    _forceMenu = true;
+                }
+                else if (a == "--fresh")
+                {
+                    _fresh = true;
+                }
+                else if (a == "--script-writes")
+                {
+                    _scriptWrites = true;
+                }
+                else if (a.StartsWith("--script="))
+                {
+                    _scriptPath = a["--script=".Length..];
                 }
                 else if (a.StartsWith("--panel="))
                 {
@@ -496,6 +779,7 @@ void fragment() {
         /// <summary>Helligkeit der Laternen gerade jetzt, für die Lichtkegel.</summary>
         public float UnrestLevel { get; private set; } = 1f;
         public float StutterLevel { get; private set; } = 1f;
+        public float FireLevel { get; private set; } = 1f;
 
         /// <summary>Blitzlicht: blendet den vorberechneten Blitzanteil ein und hellt kurz den Himmel auf.</summary>
         public void SetLightning(float strength)
@@ -518,6 +802,7 @@ void fragment() {
         {
             UnrestLevel = unrest;
             StutterLevel = stutter;
+            FireLevel = fire;
             foreach (var material in _litMaterials)
             {
                 material.SetShaderParameter("stutter", stutter);
@@ -537,6 +822,16 @@ void fragment() {
             using var manifest = JsonDocument.Parse(File.ReadAllText(ProjectSettings.GlobalizePath("res://assets/manifest.json")));
             _ox = manifest.RootElement.GetProperty("ox").GetInt32();
             _oy = manifest.RootElement.GetProperty("oy").GetInt32();
+            var backdrop = manifest.RootElement.GetProperty("backdrop");
+            AddChild(new Sprite2D
+            {
+                Texture = LoadTexture("res://assets/" + backdrop.GetProperty("file").GetString()),
+                Centered = false,
+                Position = new Vector2(backdrop.GetProperty("px").GetInt32(), backdrop.GetProperty("py").GetInt32()),
+                ZIndex = -2,
+                LightMask = 3,
+                Material = LitMaterial("backdrop"),
+            });
             int index = 0;
             foreach (var t in manifest.RootElement.GetProperty("things").EnumerateArray())
             {
@@ -555,6 +850,7 @@ void fragment() {
                 };
                 AddChild(sprite);
                 _thingSprites.Add(sprite);
+                _thingCuts.Add(0f);
                 index++;
             }
             _ambience.Smoke = ReadPoints(manifest.RootElement, "smoke");
@@ -611,7 +907,7 @@ void fragment() {
             _planBand = new ColorRect
             {
                 AnchorRight = 1f, OffsetLeft = 10f, OffsetTop = 62f, OffsetRight = -18f, OffsetBottom = 108f, Visible = false,
-                Color = PaperUi.PaperDark, MouseFilter = Control.MouseFilterEnum.Ignore,
+                Color = PaperUi.PaperDark, MouseFilter = Control.MouseFilterEnum.Stop,
             };
             layer.AddChild(_planBand);
             _planLegend = PaperUi.Text(
@@ -621,14 +917,14 @@ void fragment() {
             _planLegend.Position = new Vector2(20, 65);
             _planLegend.Visible = false;
             layer.AddChild(_planLegend);
-            var help = PaperUi.Text(
-                "Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen, Otto: Tür   Q halten: Lageplan   1-4 Leertaste   WASD F P M   F11: Vollbild   R: abbrechen",
+            _help = PaperUi.Text(
+                "Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen, Otto: Tür   Q halten: Lageplan   1-4 Leertaste   WASD F P M   Esc: Menü",
                 12, new Color(0.75f, 0.72f, 0.65f, 0.75f), PaperUi.Typewriter);
-            help.AnchorTop = 1f;
-            help.AnchorBottom = 1f;
-            help.OffsetLeft = 12f;
-            help.OffsetTop = -23f;
-            layer.AddChild(help);
+            _help.AnchorTop = 1f;
+            _help.AnchorBottom = 1f;
+            _help.OffsetLeft = 12f;
+            _help.OffsetTop = -23f;
+            layer.AddChild(_help);
             _banner = PaperUi.Text("", 34, new Color(1f, 0.85f, 0.4f), PaperUi.Serif);
             _banner.AnchorRight = 1f;
             _banner.AnchorTop = 0.45f;
@@ -654,13 +950,14 @@ void fragment() {
 
         private void LoadCampaign()
         {
-            _campaign = File.Exists(SavePath) ? Campaign.FromJson(File.ReadAllText(SavePath)) : new Campaign();
+            _hadSave = !_fresh && File.Exists(SavePath);
+            _campaign = _hadSave ? Campaign.FromJson(File.ReadAllText(SavePath)) : new Campaign();
         }
 
         private void SaveCampaign()
         {
             // Prüfläufe dürfen den echten Spielstand nicht verändern.
-            if (_shotPath == null)
+            if (WritesFiles)
             {
                 File.WriteAllText(SavePath, _campaign.ToJson());
             }
@@ -669,41 +966,40 @@ void fragment() {
         public override void _Notification(int what)
         {
             // Fenster schließen ist derselbe Abbruch wie R, sonst wäre es der Ausweg vor dem Tod eines Agenten.
-            if (what == NotificationWMCloseRequest && World != null && !_finished && Campaign.AbandonCostsSquad(World))
+            // Auch ohne Schuss, sonst käme bezahltes Bestechungsgeld zurück.
+            if (what == NotificationWMCloseRequest && World != null)
             {
-                _campaign.Abandon(World);
-                SaveCampaign();
+                BookLeaving();
+                SaveSettings();
             }
         }
 
-        /// <summary>R: Vor dem ersten Schuss ist der Rückzug frei, danach kostet er nach einer Warnung den Trupp.</summary>
-        private void PressRestart()
+        /// <summary>R: fragt nach, was der Abbruch kostet. Vor dem ersten Schuss ist der Rückzug frei, danach kostet er den Trupp.</summary>
+        private void PressRestart() => _menus.ConfirmAbandon();
+
+        /// <summary>Verbucht den Abbruch: ohne Schuss neu antreten, sonst zeigt die Zeitung den verlorenen Trupp.</summary>
+        public void AbandonMission()
         {
-            if (_finished)
+            bool costs = Campaign.AbandonCostsSquad(World);
+            _campaign.Abandon(World);
+            SaveCampaign();
+            _menus.CloseAll();
+            if (!costs)
             {
                 StartMission();
+                return;
             }
-            else if (!Campaign.AbandonCostsSquad(World))
-            {
-                _campaign.Abandon(World);
-                SaveCampaign();
-                StartMission();
-            }
-            else if (_abandonWarning <= 0f)
-            {
-                _abandonWarning = AbandonWarningSeconds;
-            }
-            else
-            {
-                _campaign.Abandon(World);
-                SaveCampaign();
-                _finished = true;
-                _abandoned = true;
-                _abandonWarning = 0f;
-                _lastReward = 0;
-                RefreshPanel();
-                _panel.Visible = true;
-            }
+            _finished = true;
+            _abandoned = true;
+            _lastReward = 0;
+            ShowPanel();
+        }
+
+        private void ShowPanel()
+        {
+            RefreshPanel();
+            _panel.Visible = true;
+            _panelFocus?.GrabFocus();
         }
 
         private void FinishMission()
@@ -712,8 +1008,7 @@ void fragment() {
             _lastReward = World.State == MissionState.Won ? Campaign.Reward(World.Rating) : 0;
             _campaign.Finish(World);
             SaveCampaign();
-            RefreshPanel();
-            _panel.Visible = true;
+            ShowPanel();
         }
 
         private static Label PanelLabel(string text, int size = 15) => PaperUi.Text(text, size, PaperUi.Ink, PaperUi.Typewriter);
@@ -723,8 +1018,10 @@ void fragment() {
         {
             foreach (var child in _panelBody.GetChildren())
             {
+                _panelBody.RemoveChild(child);
                 child.QueueFree();
             }
+            _panelFocus = null;
             bool won = World.State == MissionState.Won;
             var (headline, line) = Headlines.For(World, _abandoned);
             _panelBody.AddChild(PaperUi.Text(Headlines.Paper.ToUpperInvariant(), 14, PaperUi.StampRed, PaperUi.Serif));
@@ -756,7 +1053,7 @@ void fragment() {
                 var row = new HBoxContainer();
                 row.AddThemeConstantOverride("separation", 12);
                 var name = PanelLabel($"{u.Name}: Beine {record.Legs}, Herz {record.Heart}{(u.Alive && !_abandoned ? "" : "  (gefallen)")}");
-                name.CustomMinimumSize = new Vector2(280, 0);
+                name.CustomMinimumSize = new Vector2(340, 0);
                 row.AddChild(name);
                 row.AddChild(UpgradeButton("Beine", record.Name, record.Legs, true));
                 row.AddChild(UpgradeButton("Herz", record.Name, record.Heart, false));
@@ -766,16 +1063,11 @@ void fragment() {
             PaperUi.InkButton(next);
             next.Pressed += StartMission;
             _panelBody.AddChild(next);
-            var reset = new Button { Text = "Neue Kampagne" };
-            PaperUi.InkButton(reset);
-            reset.Pressed += () =>
-            {
-                _campaign = new Campaign();
-                SaveCampaign();
-                _mission = LoadMission();
-                StartMission();
-            };
-            _panelBody.AddChild(reset);
+            var menu = new Button { Text = "Zum Hauptmenü" };
+            PaperUi.InkButton(menu);
+            menu.Pressed += ToMainMenu;
+            _panelBody.AddChild(menu);
+            _panelFocus ??= next;
         }
 
         private Button UpgradeButton(string label, string agent, int level, bool legs)
@@ -788,13 +1080,21 @@ void fragment() {
                 Disabled = full || _campaign.Money < cost,
                 CustomMinimumSize = new Vector2(130, 0),
             };
+            button.FocusMode = button.Disabled ? Control.FocusModeEnum.None : Control.FocusModeEnum.All;
             PaperUi.InkButton(button);
+            // Nach dem Kauf wird die Liste neu gebaut. Die Tastenwahl bleibt auf diesem Knopf, solange er noch geht.
+            string key = agent + label;
+            if (key == _upgradeFocus && !button.Disabled)
+            {
+                _panelFocus = button;
+            }
             button.Pressed += () =>
             {
                 if (_campaign.TryUpgrade(agent, legs))
                 {
                     SaveCampaign();
-                    RefreshPanel();
+                    _upgradeFocus = key;
+                    ShowPanel();
                 }
             };
             return button;
@@ -814,7 +1114,7 @@ void fragment() {
             SaveCampaign();
             _finished = false;
             _abandoned = false;
-            _abandonWarning = 0f;
+            _upgradeFocus = "";
             WaitingIds.Clear();
             _panel.Visible = false;
             World = new World(_map, _mission);
@@ -851,7 +1151,7 @@ void fragment() {
 
         public override void _Process(double delta)
         {
-            if (!_introRunning)
+            if (!ControlsLocked)
             {
                 HandleCamera((float)delta);
             }
@@ -860,13 +1160,11 @@ void fragment() {
             {
                 _abandoned = true;
                 _finished = true;
-                RefreshPanel();
-                _panel.Visible = true;
+                ShowPanel();
             }
             MarkerTime = Mathf.Max(0f, MarkerTime - (float)delta);
-            _abandonWarning = Mathf.Max(0f, _abandonWarning - (float)delta);
             Selected.RemoveWhere(id => !World.Units[id].Alive);
-            if (!_paused && !_finished && !_introRunning)
+            if (!_paused && !ControlsLocked)
             {
                 _accumulator += (float)delta;
                 while (_accumulator >= TickSeconds)
@@ -901,7 +1199,7 @@ void fragment() {
             }
             if (_shotPath != null && _frame == _shotFrame)
             {
-                GD.Print($"Geräusche abgespielt: {_sound.PlayCount}  " + string.Join(", ", _sound.PlayedByGroup.Select(g => $"{g.Key} {g.Value}")));
+                GD.Print($"Raum {_sound.Enclosure:0.00}, Stille {_windowLife.Hush:0.00}, Geräusche abgespielt: {_sound.PlayCount}  " + string.Join(", ", _sound.PlayedByGroup.Select(g => $"{g.Key} {g.Value}")));
                 GetViewport().GetTexture().GetImage().SavePng(_shotPath);
                 GetTree().Quit();
             }
@@ -1166,8 +1464,8 @@ void fragment() {
             }
             if (u.Moving)
             {
-                // Ein alarmierter Hund rennt, er kennt kein Gehen mehr.
-                bool running = u.Sprinting || (u.Type.Bites && u.Alerted);
+                // Ein alarmierter Hund rennt, er kennt kein Gehen mehr. Der Laufbursche auch.
+                bool running = u.Sprinting || ((u.Type.Bites || u.Type.Reports) && u.Alerted);
                 float stride = running ? RunStrideUnits : StrideUnits;
                 float speed = World.WalkSpeed(u) * (u.Sprinting ? 1.4f : 1f);
                 int frame = (int)(u.WalkTick * speed / stride * CycleFrames) % CycleFrames;
@@ -1227,36 +1525,45 @@ void fragment() {
             return g;
         }
 
-        /// <summary>Macht Objekte durchscheinend, die einen lebenden Agenten verdecken.</summary>
+        /// <summary>Öffnet in Objekten, die einen lebenden Agenten verdecken, einen Durchblick um die Figur.</summary>
         private void UpdateOcclusion()
         {
+            float step = CutOpenPerSecond * (float)GetProcessDeltaTime();
             for (int i = 0; i < _things.Count; i++)
             {
                 var sprite = _thingSprites[i];
                 var rect = new Rect2(sprite.Position, sprite.Texture.GetSize());
-                bool covers = false;
+                int count = 0;
                 foreach (var u in World.Units)
                 {
-                    if (u.Faction != Faction.Agent || !u.Alive)
+                    if (u.Faction != Faction.Agent || !u.Alive || count == MaxCuts)
                     {
                         continue;
                     }
-                    if (IsInside(_things[i], u))
+                    var body = new Rect2(ToScreen(u.X, u.Y) + new Vector2(-12, -46), new Vector2(24, 48));
+                    if (IsInside(_things[i], u) || (IsInFront(_things[i], u) && rect.Intersects(body)))
                     {
-                        covers = true;
-                        break;
-                    }
-                    if (!IsInFront(_things[i], u))
-                    {
-                        continue;
-                    }
-                    if (rect.HasPoint(ToScreen(u.X, u.Y) + new Vector2(0, -20)))
-                    {
-                        covers = true;
-                        break;
+                        _cutPoints[count++] = UnitPos(u) + new Vector2(0, -CutRise);
                     }
                 }
-                sprite.Modulate = new Color(1, 1, 1, covers ? 0.45f : 1f);
+                float open = Mathf.MoveToward(_thingCuts[i], count > 0 ? 1f : 0f, step);
+                if (count == 0 && _thingCuts[i] == 0f)
+                {
+                    continue;
+                }
+                _thingCuts[i] = open;
+                var material = (ShaderMaterial)sprite.Material;
+                material.SetShaderParameter("cut_open", open);
+                // Beim Schließen bleiben die letzten Stellen stehen, bis der Durchblick zu ist.
+                if (count > 0)
+                {
+                    material.SetShaderParameter("cuts", _cutPoints);
+                    material.SetShaderParameter("cut_count", count);
+                }
+                else if (open == 0f)
+                {
+                    material.SetShaderParameter("cut_count", 0);
+                }
             }
         }
 
@@ -1266,7 +1573,7 @@ void fragment() {
             var foot = ToScreen(u.X, u.Y);
             for (int i = 0; i < _things.Count; i++)
             {
-                if (_thingSprites[i].Modulate.A >= 1f && IsInFront(_things[i], u)
+                if (IsInFront(_things[i], u)
                     && IsOpaqueAt(i, foot + new Vector2(0, -40)) && IsOpaqueAt(i, foot + new Vector2(0, -20)))
                 {
                     return true;
@@ -1329,7 +1636,8 @@ void fragment() {
                 info += $"   ALARM: VERSTÄRKUNG IN {World.TicksUntilReinforcement / World.TickRate + 1} S";
             }
             _paper.Refresh(World, Selected, telegram, info);
-            _banner.Text = _abandonWarning > 0f ? "R nochmal: aufgeben, Trupp verloren" : _paused ? "PAUSE" : "";
+            _banner.Text = _paused && !ControlsLocked ? "PAUSE" : "";
+            _help.Visible = _paper.Visible && !_finished;
         }
 
         private string RatingText() => World.Rating switch
@@ -1341,6 +1649,32 @@ void fragment() {
 
         public override void _UnhandledInput(InputEvent e)
         {
+            if (e is InputEventKey { Pressed: true, Echo: false } global)
+            {
+                // Diese Tasten gelten auch in den Menüs.
+                if (global.PhysicalKeycode == Key.F11)
+                {
+                    ToggleFullscreen();
+                    GetViewport().SetInputAsHandled();
+                    return;
+                }
+                if (global.PhysicalKeycode == Key.M)
+                {
+                    ToggleMute();
+                    GetViewport().SetInputAsHandled();
+                    return;
+                }
+                if (global.PhysicalKeycode == Key.Escape && !_menus.IsOpen && !_introRunning)
+                {
+                    _menus.ShowPause();
+                    GetViewport().SetInputAsHandled();
+                    return;
+                }
+            }
+            if (ControlsLocked)
+            {
+                return;
+            }
             if (e is InputEventKey { Pressed: true, Echo: false } key)
             {
                 switch (key.PhysicalKeycode)
@@ -1357,8 +1691,6 @@ void fragment() {
                         break;
                     case Key.F: CenterOnSelection(); break;
                     case Key.P: _paused = !_paused; break;
-                    case Key.M: _sound.ToggleMute(); break;
-                    case Key.F11: ToggleFullscreen(); break;
                     case Key.R: PressRestart(); break;
                 }
             }
@@ -1409,12 +1741,6 @@ void fragment() {
                     }
                 }
             }
-        }
-
-        private static void ToggleFullscreen()
-        {
-            bool full = DisplayServer.WindowGetMode() == DisplayServer.WindowMode.Fullscreen;
-            DisplayServer.WindowSetMode(full ? DisplayServer.WindowMode.Windowed : DisplayServer.WindowMode.Fullscreen);
         }
 
         public void SelectAgent(int index, bool add)

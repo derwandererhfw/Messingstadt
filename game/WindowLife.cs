@@ -1,13 +1,15 @@
 using System;
 using System.Collections.Generic;
 using Godot;
+using Messingstadt.Core;
 
 namespace Messingstadt
 {
     /// <summary>
     /// Leben hinter den Scheiben: Fenster gehen an und aus, jemand läuft vorbei, in manchen flimmert der Bildfunk,
-    /// und das Hotelschild hat einen Wackelkontakt. Jedes Fenster und jeder Buchstabe hat in der Grafik eine Kennung
-    /// (Lichtkarte _w), sein Zustand steht in einer kleinen Textur, die der Shader liest. Reine Darstellung.
+    /// und das Hotelschild hat einen Wackelkontakt. Bei Schüssen löscht die Nachbarschaft ihr Licht und lugt hinaus.
+    /// Jedes Fenster und jeder Buchstabe hat in der Grafik eine Kennung (Lichtkarte _w), sein Zustand steht in einer
+    /// kleinen Textur, die der Shader liest. Reine Darstellung, das Licht für die Wachen bleibt unverändert.
     /// </summary>
     public partial class WindowLife : Node
     {
@@ -23,6 +25,13 @@ namespace Messingstadt
         private const float PasserChancePerSecond = 0.02f;
         private const float BrokenLetterStutterPerSecond = 0.5f;
         private const float SignDropoutPerSecond = 0.03f;
+        private const float HushRadius = 520f;
+        private const float HushSpreadSpeed = 280f;
+        private const float HushShare = 0.85f;
+        private const float PeekShare = 0.4f;
+        private const float MinQuietSeconds = 30f;
+        private const float MaxQuietSeconds = 60f;
+        private static readonly Color PeekPane = new(0.26f, 0.17f, 0.09f, 1f);
         private static readonly Color DarkPane = new(0.09f, 0.12f, 0.16f, 1f);
         private static readonly Color PasserPane = new(0.13f, 0.09f, 0.06f, 1f);
         private static readonly Color CandleColor = new(0.62f, 0.36f, 0.15f);
@@ -55,6 +64,11 @@ namespace Messingstadt
             public PointLight2D? Light;
             public CpuParticles2D? Sparks;
             public bool Crackling;
+            public bool StaysLit;
+            public float DarkAt = -1f;
+            public float BackAt;
+            public float PeekAt = -1f;
+            public float PeekUntil;
         }
 
         private readonly Random _rng = new();
@@ -66,11 +80,46 @@ namespace Messingstadt
         private float _stutterUntil;
         private float _dropoutUntil;
         private float _nextStutter;
+        private World? _seenWorld;
+        private int _lastShotTick;
+        private bool _alarmRunning;
+        private int _hushCount;
+        private int _hushable;
+
+        public Main? Game;
+
+        /// <summary>Wie still die Nachbarschaft gerade ist, von 0 bis 1. Auch für Geräusche gedacht.</summary>
+        public float Hush => _hushable == 0 ? 0f : (float)_hushCount / _hushable;
 
         public ImageTexture States { get; }
 
         /// <summary>Art und Lage aller Fenster und Buchstaben, etwa für Geräusche.</summary>
         public List<(string Kind, Vector2 Center)> PaneSpots { get; } = new();
+
+        /// <summary>Kennung, Art und Lage aller Fenster und Buchstaben, etwa für die Spiegelung im Pflaster.</summary>
+        public IEnumerable<(int Id, string Kind, Vector2 Center)> AllPanes
+        {
+            get
+            {
+                for (int i = 0; i < _panes.Count; i++)
+                {
+                    yield return (_panes[i].Id, PaneSpots[i].Kind, _panes[i].Center);
+                }
+            }
+        }
+
+        /// <summary>Wie ein Fenster gerade aussieht. Alpha 0 heißt: wie im vorberechneten Bild.</summary>
+        public Color PaneLook(int id) => _states.GetPixel(id, 0);
+
+        /// <summary>Wo das Schweißlicht der Halle steht und wie hell es gerade ist. Energie 0, wenn nicht geschweißt wird.</summary>
+        public (Vector2 At, float Energy) WeldLight
+        {
+            get
+            {
+                var weld = _panes.Find(p => p.Kind == PaneKind.Weld && p.Light != null);
+                return weld == null ? (Vector2.Zero, 0f) : (weld.Light!.Position, weld.Light.Energy);
+            }
+        }
 
         /// <summary>Mitte des Leuchtschilds, null ohne Schild.</summary>
         public Vector2? SignCenter
@@ -121,6 +170,7 @@ namespace Messingstadt
                 },
                 On = _rng.NextDouble() < SomeoneHomeShare,
                 NextToggle = Rand(MinToggleSeconds, MaxToggleSeconds),
+                StaysLit = _rng.NextDouble() >= HushShare,
             };
             _panes.Add(pane);
         }
@@ -182,9 +232,12 @@ namespace Messingstadt
             float dt = (float)delta;
             _time += dt;
             UpdateSign(dt);
+            WatchForTrouble();
+            _hushCount = 0;
+            _hushable = 0;
             foreach (var pane in _panes)
             {
-                _states.SetPixel(pane.Id, 0, pane.Kind switch
+                var look = pane.Kind switch
                 {
                     PaneKind.Screen => UpdateScreen(pane, dt),
                     PaneKind.Dark => DarkPane,
@@ -192,9 +245,98 @@ namespace Messingstadt
                     PaneKind.Candle => UpdateCandle(pane),
                     PaneKind.Letter => pane == _brokenLetter && _time < _stutterUntil && _rng.NextDouble() < 0.5 || _time < _dropoutUntil ? DeadLetter : NeonColor,
                     _ => UpdateWindow(pane, dt),
-                });
+                };
+                _states.SetPixel(pane.Id, 0, Hushable(pane) ? Hushed(pane, look) : look);
             }
             States.Update(_states);
+        }
+
+        // Geschweißt wird weiter, und das Schild brennt weiter: Nur hinter den gewöhnlichen Fenstern geht das Licht aus.
+        private static bool Hushable(Pane pane) => pane.Kind is PaneKind.Window or PaneKind.Toggle or PaneKind.Screen or PaneKind.Candle;
+
+        /// <summary>Hört die Nachbarschaft Schüsse oder Alarm? Beides lässt dort das Licht ausgehen.</summary>
+        private void WatchForTrouble()
+        {
+            if (Game == null)
+            {
+                return;
+            }
+            var world = Game.World;
+            if (world != _seenWorld)
+            {
+                _seenWorld = world;
+                _lastShotTick = 0;
+                _alarmRunning = false;
+                foreach (var pane in _panes)
+                {
+                    pane.DarkAt = -1f;
+                    pane.PeekAt = -1f;
+                }
+            }
+            if (world.Shots.Count > 0 && world.Shots[^1].Tick > _lastShotTick)
+            {
+                var shot = world.Shots[^1];
+                _lastShotTick = shot.Tick;
+                Alarmed(Game.ToScreen(shot.FromX, shot.FromY));
+            }
+            bool running = false;
+            foreach (var u in world.Units)
+            {
+                if (u.Alive && u.AlarmTick > 0)
+                {
+                    running = true;
+                    if (!_alarmRunning)
+                    {
+                        Alarmed(Game.ToScreen(u.AlarmX, u.AlarmY));
+                    }
+                    break;
+                }
+            }
+            _alarmRunning = running;
+        }
+
+        private void Alarmed(Vector2 at)
+        {
+            foreach (var pane in _panes)
+            {
+                if (!Hushable(pane) || pane.StaysLit)
+                {
+                    continue;
+                }
+                float distance = pane.Center.DistanceTo(at);
+                if (pane.DarkAt >= 0f)
+                {
+                    // Wer schon im Dunkeln sitzt, wartet länger, solange es weiter knallt.
+                    pane.BackAt = Mathf.Max(pane.BackAt, _time + Rand(MinQuietSeconds, MaxQuietSeconds));
+                }
+                else if (distance < HushRadius)
+                {
+                    pane.DarkAt = _time + distance / HushSpreadSpeed + Rand(0.1f, 1.2f);
+                    pane.BackAt = _time + Rand(MinQuietSeconds, MaxQuietSeconds);
+                    pane.PeekAt = _rng.NextDouble() < PeekShare ? pane.DarkAt + Rand(2f, 7f) : -1f;
+                    pane.PeekUntil = pane.PeekAt + Rand(1.2f, 3f);
+                }
+            }
+        }
+
+        private Color Hushed(Pane pane, Color look)
+        {
+            _hushable++;
+            if (pane.DarkAt < 0f || _time < pane.DarkAt)
+            {
+                return look;
+            }
+            if (_time >= pane.BackAt)
+            {
+                pane.DarkAt = -1f;
+                return look;
+            }
+            _hushCount++;
+            if (pane.Light != null)
+            {
+                pane.Light.Energy = 0f;
+            }
+            return pane.PeekAt >= 0f && _time >= pane.PeekAt && _time < pane.PeekUntil ? PeekPane : DarkPane;
         }
 
         private Color UpdateWindow(Pane pane, float dt)

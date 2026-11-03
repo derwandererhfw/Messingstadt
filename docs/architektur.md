@@ -16,7 +16,10 @@ Eingabe (Godot) -> Befehle -> World.Tick() -> Zustand -> Darstellung (Godot)
 - **`data/`:** Karten und Missionen als JSON, unabhängig von der Engine.
 - **`game/`:** Godot-Projekt. Zeichnet Boden, Objekte und Figuren, wandelt Klicks in Befehle um.
 - **`tools/art/`:** erzeugt Boden, Objektgrafiken samt Liste (`game/assets/manifest.json`) und Figurenblatt.
-  Die Liste enthält Standfläche und Zeichenreihenfolge, die Karte die gesperrten Felder.
+  Die Liste enthält Standfläche und Zeichenreihenfolge, die Karte die gesperrten Felder. Dazu kommt die Kulisse
+  `backdrop.png` jenseits der Karte. `generate_concept.py --city` lässt das langsame Figurenrendern aus.
+  Die Lichtwerte in `data/light_01.json` kommen aus `bake_light.py`: Der Mond dort trifft nur Oberseiten von Objekten
+  und zählt nicht fürs Schleichen.
 
 ## Zeichenreihenfolge
 
