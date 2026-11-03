@@ -1,0 +1,7 @@
+{
+  "id": "rueckzug",
+  "beats": [
+    { "seconds": 1.5, "fade": [0, 0.7], "camera": { "from": "@trupp", "to": "@trupp", "zoomFrom": 2, "zoomTo": 2.2 } },
+    { "show": "telegram", "head": "TELEGRAMM", "body": "{telegram}", "seconds": 0.8, "hold": true }
+  ]
+}

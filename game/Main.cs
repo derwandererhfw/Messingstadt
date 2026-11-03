@@ -86,6 +86,7 @@ void fragment() {
 
         // Lebendige Kamera
         private const float CameraFollow = 7f;
+        private const float ResultFocusDelay = 0.8f;
         private const float DriftPixels = 1.2f;
         private const float ShakePixels = 7f;
         private const float TraumaFadePerSecond = 1.4f;
@@ -151,8 +152,11 @@ void fragment() {
         private PaperUi _paper = null!;
         private Chatter _chatter = null!;
         private Label _banner = null!;
+        // Eine Zwischensequenz läuft, das Spiel steht still.
         private bool _introRunning;
         private bool _showIntro = true;
+        private SequencePlayer? _sequence;
+        private Vector2 _cameraStart;
         private LightData _lightData = null!;
         private float _trauma;
         private float _focusLeft;
@@ -201,7 +205,12 @@ void fragment() {
         private bool _testSmoke;
         private Vector2? _testShip;
         private bool _forcePlan;
+        // --intro zeigt im Prüflauf alle Sequenzen, --seq=<id> beginnt mit dieser, --seq-time=<s> springt in ihr vor.
         private bool _forceIntro;
+        private string? _forceSequence;
+        private bool _sequencesForced;
+        private bool _introSeen;
+        private float _sequenceTime;
         private Vector2? _look;
         private int _shotOnFireTick = -1;
         private string? _shotPath;
@@ -451,6 +460,8 @@ void fragment() {
             ["hud"] = _paper.Visible.ToString(),
             ["help"] = _help.Visible.ToString(),
             ["camera"] = _camera.Position.ToString(),
+            ["sequence"] = _sequence?.Id ?? "",
+            ["beat"] = _sequence?.Beat.ToString() ?? "",
             ["selected"] = string.Join(",", Selected.OrderBy(id => id)),
             ["moving"] = World.Units.Count(u => u.Faction == Faction.Agent && u.Moving).ToString(),
             ["plan"] = _planBand.Visible.ToString(),
@@ -483,28 +494,85 @@ void fragment() {
             return level <= World.DarkLevel ? "im Dunkeln" : level >= World.BrightLevel ? "im Licht" : "";
         }
 
-        /// <summary>Der Einstieg läuft einmal beim Programmstart. Prüfläufe überspringen ihn, außer mit --intro.</summary>
+        /// <summary>Prüfläufe zeigen keine Sequenzen, außer mit --intro oder --seq.</summary>
+        private bool SequencesOn => !Testing || _forceIntro || _sequencesForced;
+
+        /// <summary>Beim Betreten des Einsatzes: der ganze Einstieg beim ersten Mal, danach nur der Übergang.</summary>
         private void MaybeStartIntro()
         {
-            if (!_showIntro || (Testing && !_forceIntro))
+            if (!_showIntro || !SequencesOn)
             {
                 _camera.PositionSmoothingEnabled = !Testing;
                 _camera.PositionSmoothingSpeed = CameraFollow;
                 return;
             }
             _showIntro = false;
-            _introRunning = true;
-            _paper.Visible = false;
-            var target = _camera.Position;
-            AddChild(new Intro
+            bool seen = _introSeen || (File.Exists(IntroSeenPath) && !_forceIntro);
+            string id = _forceSequence ?? (seen ? "uebergang" : "einstieg");
+            _forceSequence = null;
+            PlaySequence(id, () =>
             {
-                Game = this, Briefing = _mission.Briefing, MissionTitle = _mission.Title,
-                Short = File.Exists(IntroSeenPath) && !_forceIntro,
-                CameraFrom = new Vector2(_ox, _oy + _map.Height * 12f), CameraTo = target,
+                _introSeen = true;
+                if (WritesFiles)
+                {
+                    File.WriteAllText(IntroSeenPath, "");
+                }
             });
         }
 
-        /// <summary>Kamerafahrt des Einstiegs.</summary>
+        /// <summary>
+        /// Spielt eine Sequenz aus data/sequences und ruft danach genau einmal done. Der Spielstand ist vorher verbucht,
+        /// die Sequenz schreibt nichts. Fehlt die Datei oder ist sie kaputt, geht es ohne sie weiter.
+        /// </summary>
+        public void PlaySequence(string id, Action? done = null)
+        {
+            SequenceData data;
+            try
+            {
+                data = SequencePlayer.Load(id);
+            }
+            catch (Exception e) when (e is IOException or System.Text.Json.JsonException)
+            {
+                GD.PushError($"Sequenz {id}: {e.Message}");
+                done?.Invoke();
+                return;
+            }
+            if (!SequencesOn || data.Problems().Any())
+            {
+                foreach (string problem in data.Problems())
+                {
+                    GD.PushError($"Sequenz {id}: {problem}");
+                }
+                done?.Invoke();
+                return;
+            }
+            _introRunning = true;
+            _paper.Visible = false;
+            _overlayLayer.Visible = false;
+            _camera.PositionSmoothingEnabled = false;
+            _camera.Offset = Vector2.Zero;
+            _sequence = new SequencePlayer
+            {
+                Game = this, Data = data, Texts = SequenceTexts.For(_mission, World, _abandoned),
+                OnDone = () =>
+                {
+                    EndSequence();
+                    done?.Invoke();
+                },
+            };
+            AddChild(_sequence);
+            if (_sequenceTime > 0f)
+            {
+                _sequence.FastForward(_sequenceTime);
+                _sequenceTime = 0f;
+            }
+        }
+
+        /// <summary>Kameraziel einer Sequenz im Bild. @start ist der Blick, mit dem der Einsatz beginnt.</summary>
+        public Vector2 SequenceAnchor(string target) =>
+            SequenceData.Locate(target, World) is { } p ? ToScreen(p.X, p.Y) : _cameraStart;
+
+        /// <summary>Kamerafahrt einer Sequenz.</summary>
         public void SetIntroCamera(Vector2 position, float zoom)
         {
             _camera.Position = position;
@@ -513,16 +581,14 @@ void fragment() {
 
         private static string IntroSeenPath => ProjectSettings.GlobalizePath("user://einstieg_gesehen");
 
-        public void EndIntro()
+        private void EndSequence()
         {
             _introRunning = false;
-            if (WritesFiles)
-            {
-                File.WriteAllText(IntroSeenPath, "");
-            }
+            _sequence = null;
             _paper.Visible = true;
+            _overlayLayer.Visible = true;
             _camera.Zoom = new Vector2(_baseZoom, _baseZoom);
-            _camera.PositionSmoothingEnabled = true;
+            _camera.PositionSmoothingEnabled = !Testing;
             _camera.PositionSmoothingSpeed = CameraFollow;
         }
 
@@ -736,6 +802,15 @@ void fragment() {
                 else if (a == "--intro")
                 {
                     _forceIntro = true;
+                }
+                else if (a.StartsWith("--seq="))
+                {
+                    _forceSequence = a["--seq=".Length..];
+                    _sequencesForced = true;
+                }
+                else if (a.StartsWith("--seq-time="))
+                {
+                    _sequenceTime = float.Parse(a["--seq-time=".Length..], System.Globalization.CultureInfo.InvariantCulture);
                 }
                 else if (a == "--menu")
                 {
@@ -994,22 +1069,23 @@ void fragment() {
         /// <summary>R: fragt nach, was der Abbruch kostet. Vor dem ersten Schuss ist der Rückzug frei, danach kostet er den Trupp.</summary>
         private void PressRestart() => _menus.ConfirmAbandon();
 
-        /// <summary>Verbucht den Abbruch: ohne Schuss neu antreten, sonst zeigt die Zeitung den verlorenen Trupp.</summary>
+        /// <summary>Verbucht den Abbruch: ohne Schuss telegrafiert K. und es geht neu los, sonst zeigt die Zeitung den verlorenen Trupp.</summary>
         public void AbandonMission()
         {
             bool costs = Campaign.AbandonCostsSquad(World);
             _campaign.Abandon(World);
             SaveCampaign();
             _menus.CloseAll();
-            if (!costs)
-            {
-                StartMission();
-                return;
-            }
+            // Verbucht ist alles. Fenster schließen während der Sequenz bucht nichts mehr.
             _finished = true;
             _abandoned = true;
             _lastReward = 0;
-            ShowPanel();
+            if (!costs)
+            {
+                PlaySequence("rueckzug", NextMission);
+                return;
+            }
+            PlaySequence("niederlage", ShowResult);
         }
 
         private void ShowPanel()
@@ -1019,13 +1095,32 @@ void fragment() {
             _panelFocus?.GrabFocus();
         }
 
+        /// <summary>Ergebnis nach einer Sequenz. Die Tasten kommen erst kurz danach an, sonst löst eine wiederholte Leertaste gleich "Nochmal" aus.</summary>
+        private void ShowResult()
+        {
+            if (!SequencesOn)
+            {
+                ShowPanel();
+                return;
+            }
+            RefreshPanel();
+            _panel.Visible = true;
+            GetTree().CreateTimer(ResultFocusDelay).Timeout += () =>
+            {
+                if (_panel.Visible && !_menus.IsOpen)
+                {
+                    _panelFocus?.GrabFocus();
+                }
+            };
+        }
+
         private void FinishMission()
         {
             _finished = true;
             _lastReward = World.State == MissionState.Won ? Campaign.Reward(World.Rating) : 0;
             _campaign.Finish(World);
             SaveCampaign();
-            ShowPanel();
+            PlaySequence(World.State == MissionState.Won ? "sieg" : "niederlage", ShowResult);
         }
 
         private static Label PanelLabel(string text, int size = 15) => PaperUi.Text(text, size, PaperUi.Ink, PaperUi.Typewriter);
@@ -1092,7 +1187,7 @@ void fragment() {
             buttons.AddChild(menu);
             var next = new Button { Text = won ? "Nächster Einsatz" : "Nochmal", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
             PaperUi.InkButton(next);
-            next.Pressed += StartMission;
+            next.Pressed += NextMission;
             buttons.AddChild(next);
             _panelBody.AddChild(buttons);
             _panelFocus ??= next;
@@ -1128,6 +1223,13 @@ void fragment() {
             return button;
         }
 
+        /// <summary>Neuer Anlauf nach dem Ergebnis: Ort und Uhrzeit, dann geht es los.</summary>
+        private void NextMission()
+        {
+            StartMission();
+            PlaySequence("uebergang");
+        }
+
         private void StartMission()
         {
             foreach (var s in _unitSprites)
@@ -1161,6 +1263,7 @@ void fragment() {
             _accumulator = 0;
             var first = World.Units[0];
             _camera.Position = ToScreen(first.X, first.Y) + new Vector2(0, -60);
+            _cameraStart = _camera.Position;
             if (_auto)
             {
                 MoveSelected((int)_mission.Item[0], (int)_mission.Item[1]);

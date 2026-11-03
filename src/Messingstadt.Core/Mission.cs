@@ -141,6 +141,18 @@ namespace Messingstadt.Core
         public string? Loot { get; set; }
     }
 
+    /// <summary>Telegramme von K. nach dem Einsatz. Fehlende nehmen einen allgemeinen Text.</summary>
+    public sealed class TelegramData
+    {
+        public string? Lost { get; set; }
+
+        /// <summary>Abbruch nach dem ersten Schuss.</summary>
+        public string? Abandoned { get; set; }
+
+        /// <summary>Rückzug, bevor ein Schuss fiel.</summary>
+        public string? Retreat { get; set; }
+    }
+
     public sealed class MissionData
     {
         public string Title { get; set; } = "";
@@ -157,6 +169,12 @@ namespace Messingstadt.Core
 
         /// <summary>Zeitungstexte nach dem Einsatz. Ohne Angabe allgemeine Texte.</summary>
         public HeadlineData? Headlines { get; set; }
+
+        /// <summary>Ort und Uhrzeit für die Karte vor dem Einsatz.</summary>
+        public string Place { get; set; } = "";
+        public string Time { get; set; } = "";
+
+        public TelegramData? Telegrams { get; set; }
 
         /// <summary>Helligkeit der Karte. Ohne Angabe gilt überall dieselbe Reichweite beim Bemerken.</summary>
         public LightData? Light { get; set; }

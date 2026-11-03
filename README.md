@@ -71,6 +71,14 @@ In den Menüs wählen Pfeiltasten und Maus dasselbe, Enter oder Klick bestätigt
 
 `--script=<datei>` schickt Tasten und Klicks durch den echten Eingabeweg und vergleicht den Zustand, die Befehle stehen in `game/TestScript.cs`. Dazu passen `--menu` (Hauptmenü auch im Prüflauf) und `--fresh` (ohne Spielstand). Prüfläufe schreiben nichts in die Dateien des Spielers. Nur `--script-writes` tut das und gehört in einen eigenen `APPDATA`-Ordner.
 
+Prüfläufe zeigen keine Zwischensequenzen. `--intro` schaltet sie ein, `--seq=<id>` beginnt mit einer bestimmten aus `data/sequences`, `--seq-time=<s>` springt darin vor. Die Abläufe in `tests/prueflaeufe/sequenz_*.txt` prüfen Überspringen, Weiterschalten, Abbruch und den Weg aus dem Hauptmenü, etwa:
+
+```powershell
+& "C:\Users\user\.tools\godot\Godot_v4.7.2-stable_mono_win64\Godot_v4.7.2-stable_mono_win64_console.exe" --path game -- --intro --script=tests/prueflaeufe/sequenz_abbruch.txt
+```
+
+`sequenz_menue.txt` braucht zusätzlich `--menu --fresh`.
+
 ## Grafik und Licht neu berechnen
 
 Nach Änderungen an der Stadt, dauert etwa zwei Minuten. Der erste Befehl rendert auch die Figuren, für Figuren allein reicht `python tools/art/figures3d.py`.

@@ -1,6 +1,8 @@
 {
   "title": "Das Kontobuch",
   "briefing": "Brandt zahlt den Streikbrechern Schwarzgeld, und nicht nur ihnen. Ein Kurier hat das Kontobuch am Mietshaus abgelegt, am Morgen holt es ein Bote ab. Holt es vorher und bringt es zum Fluchtwagen am Ostende der Querstraße. Kein Blut, wenn es sich vermeiden lässt. K.",
+  "place": "Querstraße, hinter dem Mietshaus",
+  "time": "Dienstag, 22. November 1927, 2:40 Uhr",
   "seed": 1927,
   "itemName": "Kontobuch",
   "item": [6.5, 3.5],
