@@ -24,12 +24,12 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 | 2026-11-03 | Etappe 1 committen, mit `main` zusammenführen, pushen | Nutzer über die Hauptsession |
 | 2026-11-06 | Arbeitsweise des „Story Studio“ für Messingstadt übernommen, ohne Syndicate-Bezug | Nutzer |
 | 2026-11-06 | Dauertod beim zweiten Fall. Das Spiel erklärt das selbst | Nutzer |
+| 2026-11-06 | Auch bei einer Niederlage stirbt nur, wer zum zweiten Mal fällt. Alle anderen kommen in die Krankenstube | Nutzer |
 
 ## Offene Entscheidungen
 
 | Frage | Wer entscheidet | Folgen |
 |---|---|---|
-| Stirbt bei einer Niederlage der ganze Trupp, auch wer noch nie gefallen war? Vorschlag der Kampagne: ja | Nutzer | Mit ja ist nach jeder Niederlage ein neuer Trupp da, und die Geschichte verliert ihre vier Figuren auf einen Schlag |
 | Texte zur Erklärung des Dauertods freigeben (`texte/dauertod.md`) | Nutzer | Danach gehen sie an Kampagne und Menüs |
 | Eigene Fähigkeiten für Greta und Hanna? | Nutzer mit Mechanik | Vorschlag Story: Greta fälscht Papiere, Hanna bringt Beute schneller weg |
 | Wann erfährt der Trupp vom Plan mit dem Notstand? | Nutzer | Siehe `wissen.md`, betrifft Einsatz 2 bis 4 |
@@ -37,6 +37,6 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 
 ## Nächste Schritte
 
-1. Niederlage-Regel klären und Texte zum Dauertod freigeben.
+1. Texte zum Dauertod freigeben.
 2. Einsatz 2 „Die Wachstube“ im Modus Missionsdesign planen und vorlegen.
 3. Recherche zum Zeitkolorit für die offenen Fragen in `kanon.md`.

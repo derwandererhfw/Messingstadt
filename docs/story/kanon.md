@@ -44,7 +44,6 @@ Nachnamen und Vornamen der Mächte stehen bisher nur in `../story.md`, nicht im 
 |---|---|---|
 | Untertitel „Die Stadt gehört den Brandt-Werken“ gegen drei Mächte im Konzept | `data/sequences/einstieg.json`, `../konzept.md` | ABLEITUNG: Brandts Selbstbild, bewusst so belassen |
 | Rückzug ohne Schuss: Schlagzeile und Telegramm erscheinen nie, weil der Einsatz dann neu beginnt | `src/Messingstadt.Core/Headlines.cs`, `src/Messingstadt.Core/Sequence.cs`, Auskunft Menüs 2026-11-03 | OFFEN: Texte bleiben als Rückfall |
-| Niederlage tötet laut Vorschlag der Kampagne den ganzen Trupp, die Regel des Nutzers nennt nur den zweiten Fall | Vorschlag Kampagne, `steuerung.md` | OFFEN |
 | Währung ohne Namen, „Groschen“ in einem Satz | `game/Chatter.cs`, Kasse in `../konzept.md` | OFFEN |
 
 ## Offene Fragen zur Recherche
@@ -60,7 +59,7 @@ Ergebnisse werden als HISTORISCH mit Quelle eingetragen.
 ## Kontinuitätsregeln
 
 - Kein Text setzt voraus, dass ein bestimmter Agent lebt oder dabei ist.
-- Der erste Fall heißt schwer verwundet, der zweite tot (Nutzer, 2026-11-06). Tote werden später nicht mehr genannt.
+- Der erste Fall heißt schwer verwundet, der zweite tot, auch bei einer Niederlage (Nutzer, 2026-11-06). Tote werden später nicht mehr genannt.
 - Keine Wendung hängt an einer einzelnen Figur, für jede gibt es einen Ersatzweg.
 - Kolb nennt in Telegrammen keine Namen.
 - Die Zeitung druckt, was die Wache sagt. Sie weiß nichts von Abteilung K.

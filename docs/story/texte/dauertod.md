@@ -1,6 +1,6 @@
 # Entwurf: Dauertod im Spiel erklären
 
-Stand 2026-11-06. VORSCHLAG, noch nicht freigegeben. Entscheidung des Nutzers: Wer zweimal fällt, ist tot, und das Spiel erklärt es selbst.
+Stand 2026-11-06. VORSCHLAG, noch nicht freigegeben. Entscheidung des Nutzers: Wer zweimal fällt, ist tot, auch bei einer Niederlage nur dann. Das Spiel erklärt es selbst.
 
 Die Texte erklären die Regel in der Welt, nicht als Spielregel: Eine Ärztin flickt jeden einmal zusammen, ein zweites Mal nicht. Wer sie wo einbaut, entscheiden Kampagne und Menüs. Hier stehen nur die Texte.
 
@@ -77,5 +77,4 @@ Willis Satz wird nur verwendet, wenn Otto lebt, sonst nur „Lehrling“.
 
 ## Offen
 
-- Stirbt bei einer Niederlage der ganze Trupp? Davon hängt ab, wie oft die Telegramme für Tote und Neue erscheinen.
 - Ob die Ärztin eine Figur im Menü wird oder nur ein Satz bleibt, entscheiden Menüs und Kampagne.
