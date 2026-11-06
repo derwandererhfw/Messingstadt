@@ -1,6 +1,6 @@
 # Story
 
-Grundlage für alle Spieltexte: Aufträge, Telegramme, Zeitung, Gespräche, Akten. Wer neue Texte schreibt, hält sich an diese Datei. Spielregeln stehen in `konzept.md`.
+Grundlage für alle Spieltexte: Aufträge, Telegramme, Zeitung, Gespräche, Akten. Wer neue Texte schreibt, hält sich an diese Datei. Spielregeln stehen in `konzept.md`. Stand, Entscheidungen, Kanon mit Quellen und Wissensstand des Trupps stehen in `story/`, der Arbeitsablauf im Skill `.claude/skills/messingstadt-story`.
 
 ## Ausgangslage
 
