@@ -1,6 +1,6 @@
-# Einstieg läuft, Spiel steht, Esc überspringt alles
+# Beim ersten Mal: Prolog, dann Kamerafahrt mit Auftrag. Spiel steht, Esc überspringt jede Sequenz
 wait 20
-expect sequence einstieg
+expect sequence prolog
 expect hud False
 remember tick
 wait 30
@@ -9,8 +9,11 @@ key R
 key P
 key Key1
 wait 5
-expect sequence einstieg
+expect sequence prolog
 expect screen 
+key Escape
+wait 10
+expect sequence einstieg_nach_prolog
 key Escape
 wait 10
 expect sequence 

@@ -23,17 +23,21 @@ Sin City dient nur als Beispiel für abstrakte Techniken: Silhouette vor hellem 
 ### 2.1 Perspektive
 
 - Jede Szene hat genau eine Perspektive. Wechsel nur an einem Szenen- oder Panelbruch, nie mitten im Absatz.
-- Erlaubt sind Ich-Erzählung und personale Er/Sie-Perspektive. Kein allwissender Erzähler.
-- Die Perspektivfigur weiß nur, was sie laut `wissen.md` bis zu diesem Zeitpunkt wissen kann. Die Erzählung darf dem Spieler nichts verraten, was die Figur nicht sieht. Dramatische Ironie entsteht nur über das Bild (siehe 3.6), nie über den Erzähltext.
-- Wer erzählt, ist eine offene Entscheidung (siehe 9, Frage 1). Bis dahin gilt: personale Perspektive einer Figur, die in der Szene sicher dabei ist.
+- Kein allwissender Erzähler. Erzählt wird in der Ich-Form der Erzählstimme (siehe unten), alles andere zeigt das Bild von außen.
+- Die Erzählstimme sagt nur, was sie laut `wissen.md` bis zu diesem Zeitpunkt sagen darf. Die Erzählung darf dem Spieler nichts verraten, was die Figur nicht sieht. Dramatische Ironie entsteht nur über das Bild (siehe 3.6), nie über den Erzähltext.
+- Die Erzählstimme der Sequenzen ist Martha Kolb aus dem Off, in Ich-Form und im Präteritum (KANON, Nutzer 2026-11-06). Sie spricht in Erzählkästen, nie im Bild, und man sieht nie ihr Gesicht.
+- Kolb erzählt, was ihr berichtet wurde und was sie selbst weiß. Sie war bei keinem Einsatz dabei. Ihre Sätze können sich deshalb irren, weglassen oder zu knapp sein: Das ist die unzuverlässige Wahrnehmung dieser Erzählung (siehe 2.7).
+- Kolb wusste von Rehm (KANON, `../story.md`, Ende). Sie verschweigt das bis zum letzten Telegramm, leugnet es aber nie. Vor Einsatz 4 verrät sie nichts von dem, was sie mehr weiß als der Trupp (Hinweis Story, 2026-11-06).
+- Innerer Monolog gehört nur Kolb. Die Agenten zeigen wir von außen: Handlung, Haltung, Dialog.
 - Kein Text setzt voraus, dass ein bestimmter Agent lebt oder dabei ist (KANON, `kanon.md`, Kontinuitätsregeln). Eine Szene mit Perspektive eines Agenten braucht eine Ersatzfassung oder steht vor dem ersten Einsatz.
 
 ### 2.2 Innerer Monolog
 
 - Höchstens drei Sätze am Stück. Danach ein Bild, eine Handlung oder ein Dialogsatz.
 - Der Monolog beobachtet und urteilt knapp. Er erklärt keine Welt, keine Vorgeschichte, keine Gefühle beim Namen.
-- Gedacht wird in der Sprache der Figur: Greta denkt in Dienstplänen und Rundgängen, Otto in Werkzeug und Schicht, Emil in Zahlen und Zeilen, Hanna in Wegen und Wut (ABLEITUNG aus `../story.md`, Der Trupp).
-- Im Satz steht Präsens, in der Rückblende Präteritum.
+- Kolb denkt, wie sie schreibt: knapp, trocken, kühl (KANON, `../story.md`, Der Trupp). Sie denkt in Akten, Wochen, Kosten und Namen, die sie nicht nennt.
+- Die Agenten bekommen keinen inneren Monolog. Was sie denken, zeigen Haltung, Blick und ein Satz Dialog: Greta in Dienstplänen und Rundgängen, Otto in Werkzeug und Schicht, Emil in Zahlen, Hanna in Wegen und Wut (ABLEITUNG aus `../story.md`, Der Trupp).
+- Kolbs Erzählkästen stehen im Präteritum. Dialog im Bild ist Gegenwart.
 
 ### 2.3 Dialog
 
@@ -54,7 +58,7 @@ Sin City dient nur als Beispiel für abstrakte Techniken: Silhouette vor hellem 
 ### 2.5 Spannung
 
 - Informationsdosierung: Pro Szene wird höchstens eine neue Tatsache gesichert. Alles andere bleibt Andeutung.
-- Der Leser erfährt Dinge gleichzeitig mit der Perspektivfigur, nie vorher durch den Text.
+- Der Spieler erfährt Dinge nie früher, als Kolb sie laut `wissen.md` sagen darf.
 - Schnitt vor der Auflösung. Eine Szene endet auf einer Handlung oder einem Bild, nicht auf einer Erklärung.
 - Gewalt kostet etwas (KANON, Ton). Sie wird kurz gezeigt und lange nachgewirkt.
 
@@ -62,7 +66,7 @@ Sin City dient nur als Beispiel für abstrakte Techniken: Silhouette vor hellem 
 
 - Fragmente sind erlaubt, wenn jedes Fragment für sich ein klares Bild oder eine klare Handlung hat.
 - Rückblenden sind kurz, höchstens eine pro Szene, und immer an ein Ding im Jetzt gebunden (ein Geruch, eine Narbe, ein Stempel).
-- Rückblenden stehen im Präteritum und sind im Bild farblich markiert (siehe 4, Rot).
+- Rückblenden beginnen in Kolbs Erzählkasten mit dem Plusquamperfekt und sind im Bild farblich markiert (siehe 4, Rot).
 - Rückblenden zeigen nur, was die Figur erlebt hat. Sie verraten keine späteren Wendungen.
 
 ### 2.7 Unzuverlässige Wahrnehmung
@@ -148,7 +152,11 @@ Dramatische Ironie geht nur über diese Bilder. Beispiel: Ein Umschlag wechselt 
 
 Gemischte Szenen sind erlaubt. Dann steht die Prosa zwischen den Panels und nie im Panel.
 
+Eine Prosa-Fassung als Roman oder Begleitheft gibt es nicht (KANON, Nutzer 2026-11-06). „Prosa“ meint hier den Text der Erzählkästen und das Drehbuch einer Sequenz, nicht ein eigenes Buch.
+
 ## 4. Farbdramaturgie
+
+Die Farbdramaturgie gilt nur für Zwischensequenzen. Die Spielgrafik im Einsatz bleibt farbig und warm (KANON, Nutzer 2026-11-06).
 
 Schwarzweiß ist die Regel. Farbe ist die Ausnahme und hat immer einen Grund. Pro Bild höchstens eine Akzentfarbe. Zwei Farben in einem Bild nur, wenn genau dieser Zusammenstoß die Aussage ist.
 
@@ -163,7 +171,7 @@ Schwarzweiß ist die Regel. Farbe ist die Ausnahme und hat immer einen Grund. Pr
 Regeln:
 
 - Rot ist selten. Rot erscheint nur, wenn Blut fließt oder eine Figur sich an einen Verlust erinnert. Rückblenden haben einen roten Stich.
-- Das Rot im Namen des Roten Hammers ist kein Freibrief: Fahne und Stempel des Hammers bleiben schwarzweiß, bis die Gewerkschaft Blut kostet. Dann dürfen sie rot werden. So zeigt die Farbe, dass auch der Hammer an Gewalt hängt (VORSCHLAG).
+- Das Rot im Namen des Roten Hammers ist kein Freibrief: Fahne und Stempel des Hammers bleiben schwarzweiß, bis die Gewerkschaft Blut kostet. Dann dürfen sie rot werden. So zeigt die Farbe, dass auch der Hammer an Gewalt hängt (KANON, Nutzer 2026-11-06). Menüs, Auftrag und Akte behalten ihre roten Stempel.
 - Blau gehört den Mächtigen. Der Trupp hat nie blaues Licht auf sich, außer wenn er gesehen wird.
 - Bernstein ist das einzige warme Licht, das den Leuten selbst gehört. Wenn es erlischt, ist etwas verloren.
 - Die braunen Mäntel des Trupps (KANON, Konzept) bleiben ein gedämpftes Braun, keine Akzentfarbe. Sie heben den Trupp ab, ohne eine Aussage zu tragen.
@@ -243,14 +251,14 @@ Zwischensequenzen liegen als Daten in `data/sequences/*.json` (IM SPIEL, Sequenz
 Jede Frage mit Ja beantworten können, sonst überarbeiten.
 
 **Perspektive**
-- [ ] Hat die Szene genau eine Perspektive, und bleibt sie bis zum Schnitt?
-- [ ] Weiß die Perspektivfigur nur, was sie laut `wissen.md` wissen kann?
+- [ ] Spricht nur Kolb aus dem Off, und zeigt das Bild alle anderen von außen?
+- [ ] Sagt Kolb nur, was sie laut `wissen.md` sagen darf, und verschweigt Rehm, ohne zu lügen?
 - [ ] Setzt die Szene keinen bestimmten lebenden Agenten voraus, oder gibt es eine Ersatzfassung?
 
 **Innerer Monolog**
 - [ ] Höchstens drei Sätze am Stück?
 - [ ] Beobachtet er, statt zu erklären?
-- [ ] Klingt er nach der Figur (Beruf, Herkunft)?
+- [ ] Gehört er Kolb und klingt nach ihr: knapp, trocken, kühl?
 
 **Dialog**
 - [ ] Hat jeder Wortwechsel Subtext?
@@ -283,8 +291,8 @@ Jede Frage mit Ja beantworten können, sonst überarbeiten.
 
 | Nr. | Frage | Wer entscheidet | Empfehlung |
 |---|---|---|---|
-| 1 | Wer erzählt die Zwischensequenzen? Kolb aus dem Off, wechselnde Agenten oder personale Perspektive ohne Ich | Nutzer mit Story | Kolb als Stimme aus dem Off: Sie überlebt jeden Ausgang, man sieht sie nie, und sie weiß mehr, als sie sagt. Das ergibt eine unzuverlässige Erzählerin, ohne den Kanon zu brechen. Achtung: Sie wusste von Rehm (KANON, Ende). Ihre Erzählung darf das bis zum letzten Telegramm nur verschweigen, nie leugnen. Ihre Sätze passen zu `wissen.md`: Sie weiß mehr als der Trupp, verrät davon vor Einsatz 4 aber nichts (Hinweis Story, 2026-11-06) |
-| 2 | Gilt die Farbdramaturgie auch für die Spielgrafik im Einsatz oder nur für Sequenzen | Nutzer mit Grafik und Atmosphäre | Nur für Sequenzen. Die Spielgrafik bleibt farbig und warm |
-| 3 | Wird Rot für Fahne und Stempel des Roten Hammers zurückgehalten (Abschnitt 4) | Nutzer mit Story | Ja. Heute stehen im Spiel rote Stempel auf Auftrag und Akte (IM SPIEL, `game/PaperUi.cs`). Für Sequenzen schwarzweiß, im Menü bleibt es, wie es ist |
-| 4 | Wie entstehen Bilder für Panel-Sequenzen | Nutzer mit Grafik | OFFEN. Higgsfield hat kein Guthaben, ein Blender-Weg wurde am 2026-11-06 verworfen |
-| 5 | Kommt eine Prosa-Fassung (Roman, Begleitheft) überhaupt vor oder nur Zwischensequenzen | Nutzer | OFFEN |
+| 1 | Wer erzählt die Zwischensequenzen? | Nutzer | ENTSCHIEDEN 2026-11-06: Kolb aus dem Off, siehe 2.1 |
+| 2 | Gilt die Farbdramaturgie auch für die Spielgrafik im Einsatz? | Nutzer | ENTSCHIEDEN 2026-11-06: nur für Sequenzen, siehe 4 |
+| 3 | Wird Rot für Fahne und Stempel des Roten Hammers zurückgehalten? | Nutzer | ENTSCHIEDEN 2026-11-06: ja, in Sequenzen. Menüs, Auftrag und Akte bleiben rot |
+| 4 | Wie entstehen Bilder für Panel-Sequenzen? | Nutzer mit Grafik | OFFEN. Higgsfield hat kein Guthaben, ein Blender-Weg wurde am 2026-11-06 verworfen. Vorschläge der Sequenzen-Session liegen beim Nutzer |
+| 5 | Gibt es eine Prosa-Fassung (Roman, Begleitheft)? | Nutzer | ENTSCHIEDEN 2026-11-06: nein, siehe 3.8 |

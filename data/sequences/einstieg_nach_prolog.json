@@ -1,0 +1,52 @@
+{
+  "id": "einstieg_nach_prolog",
+  "beats": [
+    {
+      "seconds": 6.5,
+      "fade": [
+        1,
+        0
+      ],
+      "fadeSeconds": 2.2,
+      "camera": {
+        "from": "@ausgang",
+        "to": "@start",
+        "zoomFrom": 1.5,
+        "zoomTo": 2
+      },
+      "sounds": [
+        {
+          "at": 0.4,
+          "name": "factory_horn",
+          "volume": -20
+        },
+        {
+          "at": 3.8,
+          "name": "thunder_2",
+          "volume": -16
+        }
+      ]
+    },
+    {
+      "show": "paper",
+      "head": "ROTER HAMMER   ABTEILUNG K   VERTRAULICH",
+      "title": "Einsatz: {title}",
+      "body": "{briefing}",
+      "seconds": 0.5,
+      "hold": true,
+      "fade": [
+        0,
+        0.3
+      ],
+      "fadeSeconds": 0.6,
+      "camera": {
+        "from": "@start",
+        "to": "@start",
+        "offset": [
+          110,
+          0
+        ]
+      }
+    }
+  ]
+}

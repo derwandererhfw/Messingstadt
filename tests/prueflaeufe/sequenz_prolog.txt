@@ -1,0 +1,24 @@
+# Prolog: Leertaste schreibt Kolbs Kasten fertig und schaltet weiter, Esc springt in die Kamerafahrt
+wait 20
+expect sequence prolog
+expect beat 0
+key Space
+expect beat 0
+key Space
+expect beat 1
+key Space
+key Space
+expect beat 2
+key Space
+expect beat 3
+key Escape
+wait 10
+expect sequence einstieg_nach_prolog
+expect hud False
+key Escape
+wait 10
+expect sequence 
+expect hud True
+remember tick
+wait 60
+changed tick

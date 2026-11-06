@@ -1,0 +1,25 @@
+{
+  "id": "prolog",
+  "beats": [
+    { "show": "image", "image": "sequences/prolog/p1.jpg", "zoom": [1.0, 1.06], "seconds": 3.0, "fade": [1, 0], "fadeSeconds": 1.6,
+      "body": "November 1927. Seit drei Wochen standen in den Brandt-Werken die Maschinen still.\nDer Alte sah von oben zu. Er hatte Zeit.",
+      "sounds": [{ "at": 0.2, "name": "thunder_1", "volume": -12 }, { "at": 0.8, "name": "airship", "volume": -16 }] },
+    { "show": "image", "image": "sequences/prolog/p2.jpg", "zoom": [1.04, 1.0], "seconds": 2.6,
+      "body": "Die Familien hungerten. Die Mieten liefen auf. Keiner gab nach.",
+      "speech": ["Arbeiter: „Noch eine Woche.“"],
+      "sounds": [{ "at": 0.0, "name": "fire", "volume": -14 }] },
+    { "show": "image", "image": "sequences/prolog/p3.jpg", "zoom": [1.0, 1.05], "seconds": 2.4 },
+    { "show": "image", "image": "sequences/prolog/p4.jpg", "inset": true, "seconds": 2.6,
+      "body": "In dieser Stadt wechselte jede Nacht Geld die Hand. Ich fragte selten, woher." },
+    { "show": "image", "image": "sequences/prolog/p5.jpg", "zoom": [1.0, 1.05], "seconds": 2.4,
+      "body": "Unter meinen Aufträgen stand nie ein Name. Nur ein Buchstabe." },
+    { "show": "image", "image": "sequences/prolog/p6.jpg", "seconds": 3.0,
+      "body": "Vier Leute. Eine Wachtmeisterin ohne Dienst. Ein Schlosser mit acht Fingern. Ein Buchhalter ohne Kontor. Eine Kurierin mit kaputter Lunge.",
+      "captions": ["GRETA LENZ\nTruppführerin", "OTTO BRENNER\nSchlosser", "EMIL SANDER\nBuchhalter", "HANNA ROTH\nKurierin"] },
+    { "show": "image", "image": "sequences/prolog/p7.jpg", "zoom": [1.0, 1.07], "seconds": 3.4,
+      "body": "Brandt zahlte den Streikbrechern Schwarzgeld. In dieser Nacht sollten sie mir den Beweis holen.",
+      "speech": ["Hanna: „Ich nehm die Pistole trotzdem mit.“", "Greta: „Nimm sie. Und lass sie stecken.“"],
+      "fade": [0, 1], "fadeStart": 4.5, "fadeSeconds": 1.0 },
+    { "show": "card", "body": "{place}\n{time}", "seconds": 1.6, "fade": [1, 1] }
+  ]
+}

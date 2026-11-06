@@ -1,5 +1,8 @@
 # Rückzug ohne Schuss: Telegramm, Übergang, neuer Anlauf
 wait 20
+# Prolog und Kamerafahrt überspringen
+key Escape
+wait 10
 key Escape
 wait 10
 remember money

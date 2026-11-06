@@ -74,10 +74,10 @@ In den Menüs wählen Pfeiltasten und Maus dasselbe, Enter oder Klick bestätigt
 Prüfläufe zeigen keine Zwischensequenzen. `--intro` schaltet sie ein, `--seq=<id>` beginnt mit einer bestimmten aus `data/sequences`, `--seq-time=<s>` springt darin vor. Die Abläufe in `tests/prueflaeufe/sequenz_*.txt` prüfen Überspringen, Weiterschalten, Abbruch und den Weg aus dem Hauptmenü, etwa:
 
 ```powershell
-& "C:\Users\user\.tools\godot\Godot_v4.7.2-stable_mono_win64\Godot_v4.7.2-stable_mono_win64_console.exe" --path game -- --intro --script=tests/prueflaeufe/sequenz_abbruch.txt
+& "C:\Users\user\.tools\godot\Godot_v4.7.2-stable_mono_win64\Godot_v4.7.2-stable_mono_win64_console.exe" --path game -- --intro --script=$PWD/tests/prueflaeufe/sequenz_abbruch.txt
 ```
 
-`sequenz_menue.txt` braucht zusätzlich `--menu --fresh`.
+`sequenz_menue.txt` braucht zusätzlich `--menu --fresh`, `sequenz_weiter.txt` statt `--intro` den Schalter `--seq=einstieg`. Der Pfad zum Skript muss absolut sein, weil Godot im Ordner `game` startet. Beim ersten Mal spielt `--intro` den Prolog (`data/sequences/prolog.json`) und danach die Kamerafahrt mit dem Auftrag.
 
 ## Grafik und Licht neu berechnen
 

@@ -26,8 +26,9 @@ namespace Messingstadt.Core
     }
 
     /// <summary>
-    /// Ein Abschnitt einer Sequenz. Show sagt, was auf dem Bild liegt: title, card, paper, telegram, newspaper oder nichts.
-    /// Bei card, paper und telegram tippt die Schreibmaschine den Body, die Dauer zählt erst danach.
+    /// Ein Abschnitt einer Sequenz. Show sagt, was auf dem Bild liegt: title, card, paper, telegram, newspaper, image oder nichts.
+    /// Bei card, paper, telegram und image tippt die Schreibmaschine den Body, die Dauer zählt erst danach.
+    /// Bei image ist der Body Kolbs Erzählkasten (docs/story/NOIR_STYLE_GUIDE.md).
     /// </summary>
     public sealed class SequenceBeat
     {
@@ -53,13 +54,28 @@ namespace Messingstadt.Core
         public SequenceCamera? Camera { get; set; }
         public List<SequenceSound> Sounds { get; set; } = new();
 
-        public bool Typed => Show is "card" or "paper" or "telegram";
+        /// <summary>Bild für show "image", Pfad unter game/assets.</summary>
+        public string Image { get; set; } = "";
+
+        /// <summary>Bild als kleiner Einschub über dem vorigen Bild statt bildschirmfüllend.</summary>
+        public bool Inset { get; set; }
+
+        /// <summary>Langsames Heranfahren an das Bild: Vergrößerung von, bis.</summary>
+        public double[]? Zoom { get; set; }
+
+        /// <summary>Sprechblasen, erscheinen, wenn der Erzählkasten fertig getippt ist. Form „Name: Satz“.</summary>
+        public List<string> Speech { get; set; } = new();
+
+        /// <summary>Beschriftungen nebeneinander am unteren Bildrand, etwa Namen unter Silhouetten.</summary>
+        public List<string> Captions { get; set; } = new();
+
+        public bool Typed => Show is "card" or "paper" or "telegram" or "image";
     }
 
     /// <summary>Eine Zwischensequenz aus data/sequences. Sie läuft in der Spielgrafik und lässt sich jederzeit überspringen.</summary>
     public sealed class SequenceData
     {
-        public static readonly string[] Shows = { "", "title", "card", "paper", "telegram", "newspaper" };
+        public static readonly string[] Shows = { "", "title", "card", "paper", "telegram", "newspaper", "image" };
         public static readonly string[] Anchors = { "@start", "@trupp", "@ziel", "@ausgang", "@beute", "@gefallen" };
 
         private static readonly JsonSerializerOptions Options = new() { PropertyNameCaseInsensitive = true };
@@ -90,6 +106,14 @@ namespace Messingstadt.Core
                 if (!Shows.Contains(b.Show))
                 {
                     yield return $"Abschnitt {i}: unbekannte Anzeige {b.Show}";
+                }
+                if (b.Show == "image" && b.Image.Length == 0)
+                {
+                    yield return $"Abschnitt {i}: Bild fehlt";
+                }
+                if (b.Zoom is { Length: not 2 })
+                {
+                    yield return $"Abschnitt {i}: Zoom braucht zwei Werte";
                 }
                 if (b.Fade is { Length: not 2 })
                 {
