@@ -44,6 +44,8 @@ namespace Messingstadt
         private const float TramHumReach = 260f;
         private const int CalmLayer = 0, DarkLayer = 1, SuspectLayer = 2, FightLayer = 3;
         private const float LayerFadePerSecond = 0.35f;
+        private const float TitleDb = MusicDb;
+        private const float TitleFadePerSecond = 0.5f;
         private const float SuspectRisePerSecond = 0.7f;
         private const float DarkUnderFight = 0.7f;
         private const int RoomProbeTiles = 6;
@@ -80,6 +82,9 @@ namespace Messingstadt
         private AudioStreamPlayer _wind = null!;
         private AudioStreamPlayer _gust = null!;
         private AudioStreamPlayer _heart = null!;
+        private AudioStreamPlayer _title = null!;
+        private bool _titleWanted;
+        private float _titleLevel;
         private readonly List<AudioStreamPlayer2D> _gutters = new();
         private readonly List<(AudioStreamPlayer2D Player, float Db)> _hushable = new();
         private float _hush;
@@ -125,6 +130,7 @@ namespace Messingstadt
                 if (a.StartsWith("--music="))
                 {
                     _heldMusic = a["--music=".Length..];
+                    _titleWanted = _heldMusic == "titel";
                 }
             }
             string dir = ProjectSettings.GlobalizePath("res://assets/audio");
@@ -145,7 +151,12 @@ namespace Messingstadt
             _gust = AddBackground("wind_gust", SilentDb, WeatherBus);
             AddMusic();
             _heart = AddBackground("heartbeat", SilentDb, MusicBus);
+            _title = new AudioStreamPlayer { Stream = Looping("music_title"), VolumeDb = SilentDb, Bus = MusicBus };
+            AddChild(_title);
         }
+
+        /// <summary>Titelthema für den Startbildschirm. Es blendet in etwa zwei Sekunden über und drückt dabei die Einsatzmusik weg.</summary>
+        public void SetTitleMusic(bool on) => _titleWanted = on;
 
         /// <summary>Alle Lagen laufen in einem Strom. So bleiben sie auf die Abtastung genau im Takt.</summary>
         private void AddMusic()
@@ -165,7 +176,7 @@ namespace Messingstadt
         // Gleiche Leistung beim Überblenden: Der Sinus hält die Summe zweier Lagen ungefähr gleich laut.
         private void SetLayer(int layer, float db, float level)
         {
-            _layers.SetSyncStreamVolume(layer, Faded(db, Mathf.Sin(level * Mathf.Pi / 2f)));
+            _layers.SetSyncStreamVolume(layer, Faded(db, Mathf.Sin(level * Mathf.Pi / 2f) * (1f - _titleLevel)));
         }
 
         private static float Faded(float db, float gain) => Mathf.Max(SilentDb, db + Mathf.LinearToDb(Mathf.Max(gain, 0.001f)));
@@ -223,6 +234,7 @@ namespace Messingstadt
                 dark = _heldMusic == "dunkel";
                 suspicious = _heldMusic == "verdacht";
             }
+            UpdateTitle(dt);
             float fade = LayerFadePerSecond * dt;
             _calmLevel = Mathf.MoveToward(_calmLevel, alarmed || dark ? 0f : 1f, fade);
             _darkLevel = Mathf.MoveToward(_darkLevel, alarmed ? DarkUnderFight : dark ? 1f : 0f, fade);
@@ -236,6 +248,20 @@ namespace Messingstadt
             bool noticed = world.Units.Exists(u => u.Alive && u.Faction == Faction.Guard && u.GuardState == GuardState.Noticing);
             _heartLevel = Mathf.MoveToward(_heartLevel, noticed ? 1f : 0f, (noticed ? HeartRisePerSecond : HeartFallPerSecond) * dt);
             _heart.VolumeDb = Faded(HeartDb, _heartLevel);
+        }
+
+        private void UpdateTitle(float dt)
+        {
+            if (_titleWanted && !_title.Playing)
+            {
+                _title.Play();
+            }
+            _titleLevel = Mathf.MoveToward(_titleLevel, _titleWanted ? 1f : 0f, TitleFadePerSecond * dt);
+            _title.VolumeDb = Faded(TitleDb, Mathf.Sin(_titleLevel * Mathf.Pi / 2f));
+            if (!_titleWanted && _titleLevel <= 0f && _title.Playing)
+            {
+                _title.Stop();
+            }
         }
 
         /// <summary>Regen und Wind folgen dem Wetter. Der Schauer steht auf dem alten festen Pegel, lauter wird der Regen nie.</summary>
