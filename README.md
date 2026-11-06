@@ -38,6 +38,8 @@ Spielweisen messen, optional mit Feldern als Argument, etwa `-- 6,9 6,8`, für d
 dotnet run -c Release --project tools/Messingstadt.Balance
 ```
 
+Kampagne über mehrere Einsätze messen: dieselbe Zeile mit `-- --kampagne`.
+
 Grafik neu erzeugen: `python tools/art/generate_concept.py`
 
 ## Steuerung

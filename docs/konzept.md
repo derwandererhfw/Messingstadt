@@ -96,16 +96,40 @@ Lohnkasse (300). Beute zählt nur, wenn der Trupp entkommt. Papiere fälschen is
 
 ### Kampagne
 
+Die Logik steht in `src/Messingstadt.Core/Campaign.cs`. Sie liest am Ende eines Einsatzes nur, was die Spielregeln ergeben haben: Wertung, Lebenspunkte und Stürze der Agenten, tote und bestochene Wachen, Beute.
+
 | Regel | Wert |
 |---|---|
 | Startgeld | 300 |
 | Lohn pro Sieg | 300, bei Leise 450, bei Unentdeckt 600 |
 | Ausbau | 150 von Stufe 1 auf 2, 300 von Stufe 2 auf 3 |
 | Niederlage | Kein Lohn, Beute verloren, ausgegebenes Geld bleibt ausgegeben |
-| Gefallene Agenten | Kommen zurück, Beine und Herz fallen auf Stufe 1, auch bei einer Niederlage |
+| Erster Sturz | Krankenstube: Beine und Herz fallen auf Stufe 1, der Agent setzt einen Einsatz aus. Gilt auch bei einer Niederlage |
+| Zweiter Sturz | Tot. Der Platz bleibt leer, bis jemand angeworben wird |
+| Angeschlagen | Wer unter der Hälfte der Lebenspunkte entkommt, setzt einen Einsatz aus |
+| Arzt | 100, der Agent ist sofort wieder einsatzbereit, auch aus der Krankenstube |
+| Anwerben | 250 für einen leeren Platz. Der Rekrut beginnt auf Stufe 1 und übernimmt die Fähigkeit des Platzes |
+| Neue | In fester Reihenfolge nach der Fähigkeit des Platzes: Karl Hoffmann, Frieda Kranz, Willi Saß, Erwin Pohl (Schlosser und Buchhalter), Lotte Becker, Max Kühn (ohne Fähigkeit). Danach „Rekrut“ mit Nummer. Texte von Story in `CampaignTexts` |
+| Notbesetzung | Sind weniger als 2 Agenten einsatzbereit, kommen Rekruten umsonst, danach Ruhende trotzdem mit. Die Kampagne hängt nie fest |
+| Abbrechen nach dem ersten Schuss | Jeder im Trupp gilt als gestürzt |
+| Fahndung 0 bis 4 | Unentdeckt −1, Leise mit Bestechung −1, Laut +1, ab 3 toten Wachen nochmal +1. Je angefangene zwei Stufen eine Wache mehr in der Verstärkung |
+| Rückhalt 0 bis 5 | Sieg +1, Niederlage −1. Nach jedem zählenden Einsatz 50 Beitrag je Stufe, auch nach einer Niederlage |
+| Merker | Je Einsatz Versuche und für den Sieg Wertung, tote und bestochene Wachen, tote Agenten und Beute. Für die Story |
 
-Der Stand wird im Benutzerordner des Spiels gespeichert (`kampagne.json`). Es gibt bisher nur eine
-Mission, „Nächster Einsatz“ spielt sie erneut.
+Ein Abbruch vor dem ersten Schuss zählt nicht: Nur das Geld für Bestechungen bleibt ausgegeben.
+
+Der Stand wird im Benutzerordner des Spiels gespeichert (`kampagne.json`, Version 2). Stände ohne Versionsnummer werden übernommen: Kasse, Einsätze und Stufen bleiben, alle Agenten sind gesund. Unlesbare oder neuere Stände werden verworfen und als `kampagne.alt.json` beiseitegelegt. Es gibt bisher nur eine Mission, „Nächster Einsatz“ spielt sie erneut.
+
+Gemessen mit `tools/Messingstadt.Balance -- --kampagne`, je 100 Kampagnen mit 6 Einsätzen derselben Mission. Zwischen den Einsätzen erst Arzt, dann Anwerben, der Rest geht in den Ausbau:
+
+| Spielweise | Siege | Tote je Kampagne | Einsätze ohne vollen Trupp | Kasse am Ende |
+|---|---|---|---|---|
+| Alle angreifen | 69 % | 4,3 | 9 % | 205 |
+| Feuer bündeln | 59 % | 5,0 | 14 % | 162 |
+| Zum Buch gehen | 31 % | 6,8 | 33 % | 65 |
+| Stehen und schießen | 2 % | 8,0 | 64 % | 0 |
+
+Mit einer Wache mehr je Stufe Fahndung und früherer Verstärkung gewann „Alle angreifen“ nur 38 %. Das war eine Abwärtsspirale, deshalb ist die Folge schwächer. Laute Spielweisen enden immer bei Fahndung 4.
 
 ### Umgebung
 
@@ -227,8 +251,8 @@ Der Schleichplan ist als Test abgesichert. Eine frühere Fassung mit Klick 7 bei
 | 55 s | 18,18 | 20 s | hinter der Lagerhalle nach Osten |
 | 63 s | 18,11 | 2,7 s | zum Fluchtwagen, 1 s einsteigen |
 
-Rennen ist also riskant und kostet mehr als die Hälfte des Trupps, wer aktiv kämpft, fährt besser. Die Wertung hat noch keine Folgen
-über den Einsatz hinaus, das kommt erst mit einer Kampagne.
+Rennen ist also riskant und kostet mehr als die Hälfte des Trupps, wer aktiv kämpft, fährt besser. Über den Einsatz
+hinaus wirkt die Wertung über Lohn und Fahndung, siehe Kampagne.
 
 Gewonnen ist der Einsatz, wenn ein Agent das Kontobuch trägt und den Fluchtwagen erreicht. Verloren
 ist er, wenn alle Agenten ausgeschaltet sind.

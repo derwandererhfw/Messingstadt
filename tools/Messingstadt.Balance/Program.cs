@@ -2,6 +2,7 @@ using Messingstadt.Core;
 
 // Misst die Spielweisen einer Mission in der echten Spiellogik.
 // Aufruf: dotnet run -c Release --project tools/Messingstadt.Balance
+// Kampagne über mehrere Einsätze: ... -- --kampagne
 
 const int Runs = 300;
 const int MaxTicks = 20 * 300;
@@ -242,6 +243,75 @@ void Sneak((int X, int Y)[] stops, int runs, int lag)
         ticks += w.Tick;
     }
     Console.WriteLine($"Nach Lageplan schleichen, Reaktion bis {lag / 20.0:0.0} s: Sieg {100 * won / runs}%, unentdeckt {100 * unseen / runs}%, Dauer {ticks / runs / 20} s");
+}
+
+// Kampagne: Viele Kampagnen über mehrere Einsätze mit einer Spielweise. Zwischen den Einsätzen erst Arzt, dann Anwerben, Rest in Ausbau.
+void CampaignRun(string name, Func<Action<World>> make, int campaigns, int missions)
+{
+    int won = 0, played = 0, deaths = 0, recruits = 0, shortSquads = 0, heat = 0, money = 0;
+    for (int run = 1; run <= campaigns; run++)
+    {
+        var c = new Campaign();
+        for (int m = 0; m < missions; m++)
+        {
+            var mission = LitMission();
+            mission.Seed = (run * 31 + m) * 7919;
+            c.Prepare(mission, "mission_01");
+            shortSquads += mission.Agents.Count < 4 ? 1 : 0;
+            var w = new World(Loader.ParseMap(mapJson), mission);
+            var strategy = make();
+            for (int i = 0; i < MaxTicks && w.State == MissionState.Running; i++)
+            {
+                if (i % 10 == 0)
+                {
+                    strategy(w);
+                }
+                w.Step();
+            }
+            if (w.State == MissionState.Running)
+            {
+                c.Abandon(w);
+            }
+            else
+            {
+                c.Finish(w);
+            }
+            played++;
+            won += w.State == MissionState.Won ? 1 : 0;
+            foreach (var a in c.Roster().Where(a => a.Rest > 0).ToList())
+            {
+                c.TryDoctor(a.Name);
+            }
+            foreach (var a in c.Roster().Where(a => a.Dead).ToList())
+            {
+                c.TryRecruit(a.Slot);
+            }
+            foreach (var a in c.Roster().Where(a => !a.Dead).OrderBy(a => a.Legs + a.Heart).ToList())
+            {
+                bool legs = a.Legs <= a.Heart;
+                if (c.Money - Campaign.UpgradeCost(legs ? a.Legs : a.Heart) >= Campaign.RecruitCost)
+                {
+                    c.TryUpgrade(a.Name, legs);
+                }
+            }
+        }
+        deaths += c.Agents.Count(a => a.Dead);
+        recruits += c.Agents.Count(a => a.Job != "");
+        heat += c.Heat;
+        money += c.Money;
+    }
+    Console.WriteLine($"{name,-18} Sieg {100 * won / played,3}%  Tote je Kampagne {(double)deaths / campaigns:0.0}  Rekruten {(double)recruits / campaigns:0.0}  "
+        + $"Einsätze ohne vollen Trupp {100 * shortSquads / played,3}%  Fahndung am Ende {(double)heat / campaigns:0.0}  Kasse am Ende {money / campaigns}");
+}
+
+if (args.Length > 0 && args[0] == "--kampagne")
+{
+    Console.WriteLine("Je 100 Kampagnen mit 6 Einsätzen derselben Mission:");
+    CampaignRun("Zum Buch gehen", Rush, 100, 6);
+    CampaignRun("Alle angreifen", AttackAll, 100, 6);
+    CampaignRun("Feuer bündeln", FocusFire, 100, 6);
+    CampaignRun("Stehen und schießen", HoldThenRush, 100, 6);
+    return;
 }
 
 // Lageplan als Text: . nie bewacht, 1-9 Anteil in Zehnteln, # gesperrt, ein großes W auf dem Weg einer Wache.
