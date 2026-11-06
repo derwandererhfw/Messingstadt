@@ -62,6 +62,7 @@ Ergebnisse werden als HISTORISCH mit Quelle eingetragen.
 - Der erste Fall heißt schwer verwundet, der zweite tot, auch bei einer Niederlage (Nutzer, 2026-11-06). Tote werden später nicht mehr genannt.
 - Keine Wendung hängt an einer einzelnen Figur, für jede gibt es einen Ersatzweg.
 - Kolb nennt in Telegrammen keine Namen.
+- Kolb erzählt die Sequenzen. Sie weiß mehr als der Trupp, sagt aber nichts über `wissen.md` hinaus und lügt nie.
 - Die Zeitung druckt, was die Wache sagt. Sie weiß nichts von Abteilung K.
 - Wachen sind arme Leute, keine Monster.
 - Brandt erscheint nie selbst im Einsatz, nur über Werkschutz, Luftschiff und Geld.
