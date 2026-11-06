@@ -32,12 +32,13 @@ Dieser Skill ändert keine Story-Inhalte. Er entscheidet nicht, was passiert, so
 
 Die vollständigen Regeln stehen im Styleguide. Diese Liste ist nur zum Merken.
 
-- Eine Perspektive pro Szene. Keine allwissende Erzählung.
-- Innerer Monolog höchstens drei Sätze am Stück.
+- Erzählstimme ist Martha Kolb aus dem Off, Ich-Form, Präteritum, in Erzählkästen. Keine allwissende Erzählung.
+- Kolb verschweigt Rehm bis zum letzten Telegramm, leugnet aber nie.
+- Innerer Monolog nur für Kolb, höchstens drei Sätze am Stück. Agenten zeigen wir von außen.
 - Dialog: ein Satz, Subtext, nur „sagt“.
 - Kurze Sätze, Verben vor Adjektiven, höchstens eine Metapher pro Szene.
 - Höchstens eine neue gesicherte Tatsache pro Szene. Schnitt vor der Erklärung.
-- Schwarzweiß, eine Akzentfarbe pro Bild: Rot für Blut und Erinnerung, Blau für die Kontrolle der Mächtigen, Bernstein für Wärme und Zusammenhalt.
+- Nur in Sequenzen: Schwarzweiß, eine Akzentfarbe pro Bild. Rot für Blut und Erinnerung, Blau für die Kontrolle der Mächtigen, Bernstein für Wärme und Zusammenhalt. Das Rot des Hammers erst, wenn er Blut kostet.
 - Nach Gewalt und vor Entscheidungen eine Bildpause.
 - Kolb ohne Gesicht, Brandt unsichtbar, Wachen menschlich, Hammer nicht verklärt.
 - Kein Text setzt einen bestimmten lebenden Agenten voraus.

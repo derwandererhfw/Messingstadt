@@ -54,6 +54,10 @@ namespace Messingstadt.Core.Tests
                 var data = SequenceData.Parse(File.ReadAllText(file));
                 Assert.Equal(Path.GetFileNameWithoutExtension(file), data.Id);
                 Assert.Empty(data.Problems());
+                foreach (var beat in data.Beats.Where(b => b.Image.Length > 0))
+                {
+                    Assert.True(File.Exists(Path.Combine(root, "game", "assets", beat.Image)), $"{data.Id}: Bild {beat.Image} fehlt");
+                }
                 foreach (var sound in data.Beats.SelectMany(b => b.Sounds))
                 {
                     Assert.True(File.Exists(Path.Combine(root, "game", "assets", "audio", sound.Name + ".wav")), $"{data.Id}: {sound.Name} fehlt");
@@ -64,7 +68,7 @@ namespace Messingstadt.Core.Tests
         [Fact]
         public void SequencesUsedByTheGameExist()
         {
-            foreach (string id in new[] { "einstieg", "uebergang", "sieg", "niederlage", "rueckzug" })
+            foreach (string id in new[] { "prolog", "einstieg_nach_prolog", "einstieg", "uebergang", "sieg", "niederlage", "rueckzug" })
             {
                 Assert.True(File.Exists(Path.Combine(RepoRoot(), "data", "sequences", id + ".json")), id);
             }
@@ -78,7 +82,7 @@ namespace Messingstadt.Core.Tests
             {
                 foreach (var beat in SequenceData.Parse(File.ReadAllText(file)).Beats)
                 {
-                    foreach (string text in new[] { beat.Head, beat.Title, beat.Body })
+                    foreach (string text in new[] { beat.Head, beat.Title, beat.Body }.Concat(beat.Speech).Concat(beat.Captions))
                     {
                         Assert.DoesNotContain("{", SequenceTexts.Fill(text, texts));
                     }
@@ -94,6 +98,8 @@ namespace Messingstadt.Core.Tests
             Assert.NotEmpty(Data(new SequenceBeat { Show = "film" }).Problems());
             Assert.NotEmpty(Data(new SequenceBeat { Seconds = -1 }).Problems());
             Assert.NotEmpty(Data(new SequenceBeat { Fade = new[] { 1.0 } }).Problems());
+            Assert.NotEmpty(Data(new SequenceBeat { Show = "image" }).Problems());
+            Assert.NotEmpty(Data(new SequenceBeat { Show = "image", Image = "a.jpg", Zoom = new[] { 1.0 } }).Problems());
             Assert.NotEmpty(Data(new SequenceBeat { Camera = new SequenceCamera { From = "@mond", To = "@trupp" } }).Problems());
             Assert.Empty(Data(new SequenceBeat { Camera = new SequenceCamera { From = "3.5,4", To = "@trupp" } }).Problems());
         }
@@ -205,6 +211,17 @@ namespace Messingstadt.Core.Tests
         public void UnknownPlaceholdersStayVisible()
         {
             Assert.Equal("Querstraße {nirgends}", SequenceTexts.Fill("{place} {nirgends}", Texts));
+        }
+
+        [Fact]
+        public void ImageBeatsTypeTheNarration()
+        {
+            var run = new SequenceRun(Data(new SequenceBeat { Show = "image", Image = "a.jpg", Body = "{briefing}", Seconds = 1 }), Texts);
+            run.Advance(0.05);
+            Assert.True(run.Typing);
+            run.Press();
+            Assert.False(run.Typing);
+            Assert.Equal(0, run.Beat);
         }
     }
 }

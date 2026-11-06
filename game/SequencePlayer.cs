@@ -7,7 +7,7 @@ using Messingstadt.Core;
 namespace Messingstadt
 {
     /// <summary>
-    /// Spielt eine Zwischensequenz aus data/sequences in der Spielgrafik ab: Kamerafahrt, Schwarzblende, Papier und Ton.
+    /// Spielt eine Zwischensequenz aus data/sequences ab: Kamerafahrt in der Spielgrafik oder Bild-Panels, Schwarzblende, Papier und Ton.
     /// Esc überspringt alles, Klick, Leertaste oder Enter schreiben den Text fertig und gehen weiter.
     /// Liegt unter dem Filmbild, damit Korn und Ränder auch auf Titel und Papier liegen. Schreibt keine Dateien.
     /// </summary>
@@ -16,11 +16,16 @@ namespace Messingstadt
         private const float BarHeight = 56f;
         private const float BarSeconds = 0.6f;
         private static readonly Color TelegramColor = new(0.78f, 0.72f, 0.52f);
+        private static readonly Color CaptionColor = new(0.9f, 0.87f, 0.79f);
 
         private SequenceRun _run = null!;
         private ColorRect _black = null!;
         private ColorRect _barTop = null!, _barBottom = null!;
         private Control _sheet = null!;
+        private Control _picture = null!;
+        private TextureRect? _zooming;
+        private Control? _speech;
+        private readonly Dictionary<string, Texture2D> _textures = new();
         private Label? _typed;
         private Label _hint = null!;
         private int _shownChanges = -1;
@@ -52,6 +57,10 @@ namespace Messingstadt
             _black = new ColorRect { Color = Colors.Black, MouseFilter = Control.MouseFilterEnum.Ignore };
             AddChild(_black);
             _black.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+            // Bild-Panels liegen über der Schwarzblende. Die Blende dunkelt sie über ihre Helligkeit ab.
+            _picture = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
+            AddChild(_picture);
+            _picture.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
             _barTop = Bar(0f);
             _barBottom = Bar(1f);
             _sheet = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
@@ -151,7 +160,20 @@ namespace Messingstadt
                 _shownChanges = _run.Changes;
                 BuildBeat();
             }
-            _black.Color = new Color(0f, 0f, 0f, (float)_run.Fade);
+            bool image = _run.Current.Show == "image";
+            _black.Color = new Color(0f, 0f, 0f, image ? 1f : (float)_run.Fade);
+            float light = 1f - (float)_run.Fade;
+            _picture.Modulate = new Color(light, light, light);
+            if (_zooming != null && _run.Current.Zoom is { Length: 2 } zoom)
+            {
+                float z = Mathf.Lerp((float)zoom[0], (float)zoom[1], (float)_run.Progress);
+                _zooming.PivotOffset = _zooming.Size / 2f;
+                _zooming.Scale = new Vector2(z, z);
+            }
+            if (_speech != null)
+            {
+                _speech.Visible = !_run.Typing;
+            }
             float bars = Mathf.Clamp(_age / BarSeconds, 0f, 1f) * BarHeight;
             _barTop.OffsetBottom = bars;
             _barBottom.OffsetTop = -bars;
@@ -178,8 +200,13 @@ namespace Messingstadt
                 child.QueueFree();
             }
             _typed = null;
+            _speech = null;
             _shownLetters = -1;
             var beat = _run.Current;
+            if (beat.Show != "image")
+            {
+                ClearPicture();
+            }
             if (beat.Camera is { } camera)
             {
                 var offset = camera.Offset is { Length: 2 } o ? new Vector2((float)o[0], (float)o[1]) : Vector2.Zero;
@@ -193,6 +220,115 @@ namespace Messingstadt
                 case "paper": BuildSheet(PaperUi.PaperColor, 0.72f, 600f, 17); break;
                 case "telegram": BuildSheet(TelegramColor, 0.5f, 640f, 16); break;
                 case "newspaper": BuildNewspaper(); break;
+                case "image": BuildImage(beat); break;
+            }
+        }
+
+        private void ClearPicture()
+        {
+            foreach (var child in _picture.GetChildren())
+            {
+                child.QueueFree();
+            }
+            _zooming = null;
+        }
+
+        private Texture2D Texture(string path)
+        {
+            if (!_textures.TryGetValue(path, out var texture))
+            {
+                texture = ImageTexture.CreateFromImage(Godot.Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/" + path)));
+                _textures[path] = texture;
+            }
+            return texture;
+        }
+
+        /// <summary>Bild-Panel: bildschirmfüllend oder als Einschub, dazu Kolbs Erzählkasten, Sprechblasen und Beschriftungen.</summary>
+        private void BuildImage(SequenceBeat beat)
+        {
+            var rect = new TextureRect
+            {
+                Texture = Texture(beat.Image), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered, MouseFilter = Control.MouseFilterEnum.Ignore,
+            };
+            if (beat.Inset)
+            {
+                // Einschub unten rechts mit schwarzem Rand, das vorige Bild bleibt dahinter stehen
+                var frame = new ColorRect
+                {
+                    Color = Colors.Black, MouseFilter = Control.MouseFilterEnum.Ignore,
+                    AnchorLeft = 0.5f, AnchorRight = 0.96f, AnchorTop = 0.36f, AnchorBottom = 0.84f,
+                };
+                _picture.AddChild(frame);
+                frame.AddChild(rect);
+                rect.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect, Control.LayoutPresetMode.KeepSize, 6);
+                frame.Modulate = new Color(1f, 1f, 1f, 0f);
+                frame.CreateTween().TweenProperty(frame, "modulate:a", 1f, 0.25f);
+            }
+            else
+            {
+                ClearPicture();
+                _picture.AddChild(rect);
+                rect.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+                _zooming = rect;
+            }
+            if (_run.Body.Length > 0)
+            {
+                var box = new PanelContainer
+                {
+                    OffsetLeft = 36f, OffsetTop = BarHeight + 18f, OffsetRight = 36f + 560f,
+                    MouseFilter = Control.MouseFilterEnum.Ignore,
+                };
+                box.AddThemeStyleboxOverride("panel", PaperUi.PaperBox(CaptionColor));
+                _sheet.AddChild(box);
+                _typed = PaperUi.Text(_run.Body, 17, PaperUi.Ink, PaperUi.Typewriter);
+                _typed.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+                _typed.CustomMinimumSize = new Vector2(530f, 0f);
+                _typed.VisibleCharactersBehavior = TextServer.VisibleCharactersBehavior.CharsAfterShaping;
+                _typed.VisibleCharacters = 0;
+                box.AddChild(_typed);
+            }
+            if (beat.Speech.Count > 0)
+            {
+                var column = new VBoxContainer
+                {
+                    AnchorLeft = 1f, AnchorRight = 1f, AnchorTop = 1f, AnchorBottom = 1f,
+                    OffsetLeft = -470f, OffsetRight = -36f, OffsetTop = -BarHeight - 24f, OffsetBottom = -BarHeight - 24f,
+                    GrowVertical = Control.GrowDirection.Begin, MouseFilter = Control.MouseFilterEnum.Ignore,
+                };
+                column.AddThemeConstantOverride("separation", 10);
+                column.Alignment = BoxContainer.AlignmentMode.End;
+                _sheet.AddChild(column);
+                foreach (string line in beat.Speech)
+                {
+                    var bubble = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+                    var style = PaperUi.PaperBox(new Color(0.97f, 0.96f, 0.93f));
+                    style.SetCornerRadiusAll(18);
+                    bubble.AddThemeStyleboxOverride("panel", style);
+                    var text = PaperUi.Text(SequenceTexts.Fill(line, Texts), 16, PaperUi.Ink, PaperUi.Typewriter);
+                    text.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+                    text.CustomMinimumSize = new Vector2(400f, 0f);
+                    bubble.AddChild(text);
+                    column.AddChild(bubble);
+                }
+                _speech = column;
+                _speech.Visible = false;
+            }
+            if (beat.Captions.Count > 0)
+            {
+                var row = new HBoxContainer
+                {
+                    AnchorLeft = 0.235f, AnchorRight = 0.745f, AnchorTop = 1f, AnchorBottom = 1f,
+                    OffsetTop = -BarHeight - 62f, OffsetBottom = -BarHeight - 8f, MouseFilter = Control.MouseFilterEnum.Ignore,
+                };
+                _sheet.AddChild(row);
+                foreach (string caption in beat.Captions)
+                {
+                    var label = PaperUi.Text(caption, 15, CaptionColor, PaperUi.Typewriter);
+                    label.HorizontalAlignment = HorizontalAlignment.Center;
+                    label.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+                    row.AddChild(label);
+                }
             }
         }
 

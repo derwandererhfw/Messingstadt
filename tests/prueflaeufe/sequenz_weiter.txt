@@ -1,4 +1,4 @@
-# Leertaste: Titel weiter, Karte erst fertig tippen, dann weiter
+# Mit --seq=einstieg: Leertaste schaltet den Titel weiter, die Karte wird erst fertig getippt, dann geht es weiter
 wait 20
 expect beat 0
 key Space

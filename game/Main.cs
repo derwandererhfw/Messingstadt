@@ -508,16 +508,23 @@ void fragment() {
             }
             _showIntro = false;
             bool seen = _introSeen || (File.Exists(IntroSeenPath) && !_forceIntro);
-            string id = _forceSequence ?? (seen ? "uebergang" : "einstieg");
-            _forceSequence = null;
-            PlaySequence(id, () =>
+            void MarkSeen()
             {
                 _introSeen = true;
                 if (WritesFiles)
                 {
                     File.WriteAllText(IntroSeenPath, "");
                 }
-            });
+            }
+            // Beim ersten Mal erzählt Kolb den Prolog, danach folgen Kamerafahrt und Auftrag ohne Titel und Ortskarte.
+            if (_forceSequence == null && !seen)
+            {
+                PlaySequence("prolog", () => PlaySequence("einstieg_nach_prolog", MarkSeen));
+                return;
+            }
+            string id = _forceSequence ?? "uebergang";
+            _forceSequence = null;
+            PlaySequence(id, MarkSeen);
         }
 
         /// <summary>
