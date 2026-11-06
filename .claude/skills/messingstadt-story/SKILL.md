@@ -16,6 +16,7 @@ Dieser Skill steuert die Story-Arbeit. Er ändert nichts an Spielregeln, Sequenz
 | `docs/story/kanon.md` | Was gilt, mit Kennzeichnung und Quelle. Widersprüche, offene Fragen, Kontinuitätsregeln |
 | `docs/story/wissen.md` | Was der Trupp vor und nach jedem Einsatz weiß |
 | `docs/story/texte/` | Entwürfe und Redaktionsnotizen zu Spieltexten |
+| `docs/story/NOIR_STYLE_GUIDE.md` | Erzählweise, Bildsprache und Farben für Sequenzen und längere Erzähltexte. Dazu gehört der Skill `messingstadt-noir`, der sich diesem Skill unterordnet |
 | `docs/konzept.md` | Spielregeln. Lesen, nicht ändern, außer in Absprache |
 
 Wo die Texte im Spiel liegen, steht in `docs/story/texte/README.md`.
