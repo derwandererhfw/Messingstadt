@@ -18,8 +18,8 @@ Was in der Welt von Messingstadt gilt, mit Kennzeichen und Quelle. Kennzeichen s
 | Emil Sander | Buchhalter, früher Kontorbank | KANON | wie oben |
 | Hanna Roth | Kurierin, Bruder Paul in Haft | KANON | wie oben |
 | Anton Weiß | Drucker, in Haft | KANON | `../story.md`, Einsatz 2 |
-| Ilse Marquardt | Ärztin der Krankenstube, erklärt den Dauertod | VORSCHLAG Story 2026-11-06 | `texte/dauertod.md` |
-| Karl Hoffmann, Frieda Kranz, Willi Saß, Erwin Pohl, Lotte Becker, Max Kühn | Namen für Neue | VORSCHLAG Story 2026-11-06 | `texte/dauertod.md` |
+| Ilse Marquardt | Ärztin der Krankenstube, erklärt den Dauertod | KANON, freigegeben 2026-11-06 | `texte/dauertod.md` |
+| Karl Hoffmann, Frieda Kranz, Willi Saß, Erwin Pohl, Lotte Becker, Max Kühn | Namen für Neue | KANON, freigegeben 2026-11-06 | `texte/dauertod.md` |
 | Messingstädter Anzeiger | Zeitung, druckt die Sicht der Wache | KANON | `src/Messingstadt.Core/Headlines.cs` |
 | Hotel Adler | Hotel an der Querstraße | IM SPIEL | `tools/art/generate_concept.py` (Dachschild) |
 | Kurt | Laufbursche der Wache, in einem Arbeiter-Satz | IM SPIEL | `game/Chatter.cs` |

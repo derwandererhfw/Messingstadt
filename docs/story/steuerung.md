@@ -24,19 +24,19 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 | 2026-11-03 | Etappe 1 committen, mit `main` zusammenführen, pushen | Nutzer über die Hauptsession |
 | 2026-11-06 | Arbeitsweise des „Story Studio“ für Messingstadt übernommen, ohne Syndicate-Bezug | Nutzer |
 | 2026-11-06 | Dauertod beim zweiten Fall. Das Spiel erklärt das selbst | Nutzer |
+| 2026-11-06 | Texte zum Dauertod freigegeben: Ärztin Ilse Marquardt, Akte, Ergebnisfenster, Telegramme, Namen für Neue (`texte/dauertod.md`) | Nutzer |
 | 2026-11-06 | Auch bei einer Niederlage stirbt nur, wer zum zweiten Mal fällt. Alle anderen kommen in die Krankenstube | Nutzer |
 
 ## Offene Entscheidungen
 
 | Frage | Wer entscheidet | Folgen |
 |---|---|---|
-| Texte zur Erklärung des Dauertods freigeben (`texte/dauertod.md`) | Nutzer | Danach gehen sie an Kampagne und Menüs |
 | Eigene Fähigkeiten für Greta und Hanna? | Nutzer mit Mechanik | Vorschlag Story: Greta fälscht Papiere, Hanna bringt Beute schneller weg |
 | Wann erfährt der Trupp vom Plan mit dem Notstand? | Nutzer | Siehe `wissen.md`, betrifft Einsatz 2 bis 4 |
 | Welche Währung gilt in Messingstadt? | Nutzer | Im Spiel stehen nur Zahlen (200, 300). Ein Arbeiter sagt „Groschen“ |
 
 ## Nächste Schritte
 
-1. Texte zum Dauertod freigeben.
+1. Einbau der Dauertod-Texte durch Kampagne und Menüs begleiten.
 2. Einsatz 2 „Die Wachstube“ im Modus Missionsdesign planen und vorlegen.
 3. Recherche zum Zeitkolorit für die offenen Fragen in `kanon.md`.

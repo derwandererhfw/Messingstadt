@@ -1,6 +1,6 @@
-# Entwurf: Dauertod im Spiel erklären
+# Dauertod im Spiel erklären
 
-Stand 2026-11-06. VORSCHLAG, noch nicht freigegeben. Entscheidung des Nutzers: Wer zweimal fällt, ist tot, auch bei einer Niederlage nur dann. Das Spiel erklärt es selbst.
+Stand 2026-11-06. Vom Nutzer freigegeben am 2026-11-06, übergeben an Kampagne und Menüs, noch nicht im Spiel. Entscheidung des Nutzers: Wer zweimal fällt, ist tot, auch bei einer Niederlage nur dann. Das Spiel erklärt es selbst.
 
 Die Texte erklären die Regel in der Welt, nicht als Spielregel: Eine Ärztin flickt jeden einmal zusammen, ein zweites Mal nicht. Wer sie wo einbaut, entscheiden Kampagne und Menüs. Hier stehen nur die Texte.
 
