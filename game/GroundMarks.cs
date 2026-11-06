@@ -22,6 +22,9 @@ namespace Messingstadt
         private const float ShadowMaxTiles = 2.2f;
         private const float ShadowHalfWidth = 0.14f;
         private const float ShadowAlpha = 0.75f;
+        private const float FlashShadowMinLight = 0.2f;
+        private const float FlashShadowTiles = 3.2f;
+        private const float FlashShadowAlpha = 0.6f;
 
         public Main Game = null!;
 
@@ -70,6 +73,7 @@ namespace Messingstadt
                 }
                 var at = Game.ScreenToMap(Game.UnitPos(u));
                 float x = at.X, y = at.Y;
+                DrawFlashShadow(x, y);
                 foreach (var lamp in Game.LampSpots)
                 {
                     var away = new Vector2(x - (float)lamp[0], y - (float)lamp[1]);
@@ -93,6 +97,26 @@ namespace Messingstadt
                     }, new[] { dark, dark, clear, clear });
                 }
             }
+        }
+
+        /// <summary>Im Blitz wirft jede Figur für einen Augenblick einen langen, harten Schatten vom Einschlag weg.</summary>
+        private void DrawFlashShadow(float x, float y)
+        {
+            float flash = Mathf.Min(1f, Game.Lightning);
+            if (flash < FlashShadowMinLight)
+            {
+                return;
+            }
+            var dir = (new Vector2(x, y) - Game.Climate.FlashFrom).Normalized();
+            var side = new Vector2(-dir.Y, dir.X) * ShadowHalfWidth;
+            var far = new Vector2(x, y) + dir * FlashShadowTiles;
+            var dark = new Color(0f, 0f, 0f, FlashShadowAlpha * flash);
+            var clear = new Color(0f, 0f, 0f, 0f);
+            DrawPolygon(new[]
+            {
+                Map(x + side.X, y + side.Y), Map(x - side.X, y - side.Y),
+                Map(far.X - side.X, far.Y - side.Y), Map(far.X + side.X, far.Y + side.Y),
+            }, new[] { dark, dark, clear, clear });
         }
 
         private Vector2 Map(float x, float y) => Game.ToScreen((int)(x * World.TileUnits), (int)(y * World.TileUnits));

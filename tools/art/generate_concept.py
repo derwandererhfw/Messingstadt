@@ -11,6 +11,7 @@ Aufruf (aus dem Projektordner):
     python tools/art/generate_concept.py
 """
 import json
+import math
 import random
 import subprocess
 import sys
@@ -22,8 +23,13 @@ OUT = Path(__file__).resolve().parents[2] / "assets" / "concept"
 RNG = random.Random(1923)
 LIT_ROOMS = random.Random(1933)  # was hinter erleuchteten Fenstern zu sehen ist
 WEAR = random.Random(1931)  # eigener Zufall für die Abnutzung, damit RNG die Fenster nicht verschiebt
+LITTER = random.Random(1941)
 AMBIENT = {"smoke": [], "steam": [], "fires": [], "puddles": [], "lights": [], "fireLights": []}  # Bildpositionen für die Animationen im Spiel
 HW, HH = 32, 16  # halbe Tile-Breite und -Höhe
+COBBLE_ROWS, COBBLE_STONES = 5, 3  # Pflastersteine je Feld
+BACKDROP_W, BACKDROP_H = 3400, 2200
+BACKDROP_STREETS = 9  # so viele Felder weit laufen die Straßen, bevor sie im Dunst verschwinden
+BACKDROP_DARK = 0.62
 
 # Palette: Abenddämmerung statt Nacht, deutlich heller als die erste Fassung
 C = {
@@ -403,6 +409,8 @@ SPECS = {
     "Schuetze": dict(coat=("wood_d", "wood", "brass_d"), legs="iron", hat="peak", hat_c="wood_d", shirt="ash", hair="hair", hem=24, belt=19, gun="rifle"),
     "Hund": dict(coat=("soot", "wood_d", "wood"), legs="wood_d", hat="peak", hat_c="soot", shirt="soot", hair="soot", hem=26, belt=19, dog=True),
     "Arbeiter": dict(coat=("grey_d", "grey", "grey_l"), legs="iron", hat="peak", hat_c="grime", shirt="ash", hair="hair", hem=25, belt=20),
+    "Hundefuehrer": dict(coat=("uni_d", "uni", "uni_l"), legs="uni", hat="peak", hat_c="wood_d", shirt="uni_d", hair="hair", hem=26, belt=19, trim="wood_d", strap=True, leash=True),
+    "Laufbursche": dict(coat=("iron", "grey_d", "grey"), legs="wood_d", hat="peak", hat_c="wood", shirt="ash", hair="hair", hem=22, belt=20, trim="wood", gun="none", strap=True, satchel=True, scale=0.86),
 }
 
 
@@ -610,23 +618,35 @@ def box(s, x0, y0, x1, y1, z0, h, left=None, right=None, top=None, base="iron"):
 
 
 def roof_color(a, b, w, d):
-    edge = min(a, b, w - a, d - b) < 0.12
+    """Dachpappe in Bahnen hinter einer hellen Mauerkrone. Das Licht dazu kommt vom Mond, siehe bake_light.py."""
+    rim = min(a, b, w - a, d - b)
     seed = int(w * 13 + d * 7)
     n = noise(a * 3.2, b * 3.2, seed)
-    if edge:
-        c = C["stone"] if (int(a * 12) + int(b * 12)) % 2 else C["stone_d"]
-        return blend(c, 0.55 + 0.4 * n)
-    seam = (a * 2) % 1 < 0.05
-    c = C["tar_l"] if seam else (C["gravel"] if RNG.random() < 0.07 else C["tar"])
+    # Der Zufall läuft genau wie früher mit: Davon hängt ab, welche Fenster leuchten, und damit das Licht im Spiel.
+    gritty = rim >= 0.12 and (a * 2) % 1 >= 0.05 and RNG.random() < 0.07
+    if rim < 0.15:
+        c = C["stone_l"] if (int(a * 7) + int(b * 7)) % 2 else C["stone"]
+        return blend(c, 0.72 + 0.34 * n)
+    if rim < 0.23:
+        return blend(C["soot"], 0.7 + 0.3 * n)  # Schatten innen an der Brüstung
+    lane = int(a * 2)
+    c = blend(mix(C["tar_l"], C["gravel"], 0.45), 0.84 + 0.3 * hash01(lane, seed, 5))
+    if (a * 2) % 1 < 0.07:
+        c = C["soot"]  # Naht zwischen zwei Bahnen
+    elif gritty:
+        c = blend(c, 1.12)
     # Geflickte Dachpappe in schiefen Rechtecken
-    if hash01(int(a * 2.5), int(b * 2.5), seed) > 0.86:
-        c = mix(c, C["soot"], 0.6)
+    patch = hash01(int(a * 2.5), int(b * 2.5), seed)
+    if patch > 0.84:
+        c = mix(c, C["soot"], 0.55)
+    elif patch < 0.08:
+        c = mix(c, C["plaster"], 0.3)
     fine = noise(a * 14, b * 14, seed + 1)
     if n > 0.74 and fine > 0.3:
         return mix(c, C["puddle"], 0.75)  # stehendes Wasser
     if n < 0.27 and fine > 0.5:
         return mix(c, C["moss"], 0.45)  # nur Sprenkel, keine zusammenhängenden Flächen
-    return blend(c, 0.66 + 0.34 * n)
+    return blend(c, 0.74 + 0.34 * n)
 
 
 def building(x0, y0, w, d, h, left, right, s, things, roof_items=()):
@@ -876,59 +896,64 @@ def crate(x, y, s, things):
 
 
 # ---------- Boden ----------
-def ground_color(fx, fy, solids):
+def paving(along, across):
+    """Reihenpflaster: Die Steine liegen quer zur Fahrbahn, jede zweite Reihe versetzt. Gibt Farbe, Reihe und Stein zurück."""
+    row = math.floor(along * COBBLE_ROWS)
+    shift = across * COBBLE_STONES + 0.5 * (row % 2)
+    stone = math.floor(shift)
+    if (along * COBBLE_ROWS) % 1 < 0.17 or shift % 1 < 0.1:
+        return C["cobble_d"], row, stone
+    return blend(mix(C["cobble"], C["cobble_l"], hash01(row, stone, 6) * 0.5), 0.94 + 0.1 * hash01(row, stone, 3)), row, stone
+
+
+def ground_color(fx, fy, solids, bounded=True):
     n = 20
-    if not (0 <= fx < n and 0 <= fy < n):
+    if bounded and not (0 <= fx < n and 0 <= fy < n):
         return None
-    tx, ty = int(fx), int(fy)
     road_y = 9 <= fy < 12
     road_x = 8 <= fx < 10
     if road_x or road_y:
-        cell = (int(fx * 7), int(fy * 7))
-        r = random.Random(cell[0] * 131 + cell[1] * 977)
-        c = r.choice(["cobble", "cobble", "cobble_l", "cobble"])
-        if (fx * 7) % 1 < 0.12 or (fy * 7) % 1 < 0.12:
-            c = "cobble_d"
         if road_x and not road_y:
             for rail in (8.42, 8.58, 9.42, 9.58):
                 if abs(fx - rail) < 0.018:
-                    return C["rust_l"] if noise(fy * 4, rail, 9) > 0.45 else C["rust"]
+                    return C["rust_d"] if noise(fy * 4, rail, 9) > 0.62 else mix(C["iron"], C["steel"], 0.35)
                 if abs(fx - rail - 0.03) < 0.012:
                     return C["black"]
-        # Herausgebrochene Steine und nasser Dreck in den Rinnen
-        if hash01(cell[0], cell[1], 3) < 0.06:
+        c, row, stone = paving(fy, fx) if road_x else paving(fx, fy)
+        # Ausgebrochene Steine liegen beieinander, nicht gleichmäßig verstreut.
+        if noise(fx * 2.3, fy * 2.3, 41) > 0.8 and hash01(row, stone, 5) < 0.5:
             return C["dirt"]
         n = noise(fx * 1.6, fy * 1.6, 11)
-        gutter = road_y and not road_x and min(fy - 9, 12 - fy) < 0.3
-        return blend(C[c], (0.55 if gutter else 0.68) + 0.4 * n)
+        gutter = (road_y and not road_x and min(fy - 9, 12 - fy) < 0.3) or (road_x and not road_y and min(fx - 8, 10 - fx) < 0.22)
+        return blend(c, (0.55 if gutter else 0.68) + 0.4 * n)
     if 6 <= fx < 12 or 7 <= fy < 14:
         kerb = fx >= 7.88 and fx < 8 or 10 <= fx < 10.12 or 8.88 <= fy < 9 or 12 <= fy < 12.12
         n = noise(fx * 1.4, fy * 1.4, 21)
         if kerb:
-            return blend(C["stone"], 0.55 + 0.4 * n)
-        cx, cy = int(fx * 2), int(fy * 2)
+            return blend(C["stone"], 0.66 + 0.4 * n)
+        cx, cy = math.floor(fx * 2), math.floor(fy * 2)
         ax, ay = (fx * 2) % 1, (fy * 2) % 1
         roll = hash01(cx, cy, 7)
-        if roll < 0.05 and noise(fx * 9, fy * 9, 22) > 0.35:
+        if roll < 0.03 and noise(fx * 9, fy * 9, 22) > 0.35:
             return C["dirt"]  # Platte weggebrochen, mit unregelmäßigem Rand
-        edge = ax < 0.05 or ay < 0.05
-        tone = 0.8 + 0.2 * hash01(cx, cy, 8)
+        edge = ax < 0.06 or ay < 0.06
+        tone = 0.91 + 0.09 * hash01(cx, cy, 8)
         c = C["stone_d"] if edge else blend(C["stone"], tone)
         # Gesprungene Platte: Der Sprung läuft schräg und krumm, nicht von Ecke zu Ecke.
-        if roll < 0.3:
+        if roll < 0.14:
             slope = 0.35 + 1.3 * hash01(cx, cy, 9)
             line = ay - slope * ax - (hash01(cx, cy, 10) - 0.4) + (noise(fx * 16, fy * 16, 23) - 0.5) * 0.35
-            if abs(line) < 0.022:
-                c = C["grime"]
+            if abs(line) < 0.04:
+                c = mix(c, C["grime"], 0.65)
         return blend(c, 0.56 + 0.42 * n)
-    # Hof
-    cell = (int(fx * 3), int(fy * 3))
-    r = random.Random(cell[0] * 31 + cell[1] * 17)
-    c = C[r.choice(["tar_l", "tar", "gravel"])] if (fx * 3) % 1 > 0.05 and (fy * 3) % 1 > 0.05 else C["tar"]
+    # Hof: festgefahrener Teer und Schotter, die Flächen gehen ineinander über
     n = noise(fx * 1.8, fy * 1.8, 31)
+    c = mix(C["tar"], C["gravel"], round(noise(fx * 3.1, fy * 3.1, 33) * 4) / 4 * 0.7)
+    if abs(noise(fx * 2.2, fy * 2.2, 34) - 0.5) < 0.012:
+        c = C["soot"]  # Risse im Teer
     if n < 0.27 and noise(fx * 12, fy * 12, 32) > 0.5:
         return mix(c, C["moss"], 0.45)
-    return blend(c, 0.56 + 0.45 * n)
+    return blend(c, (0.56 + 0.45 * n) * (0.97 + 0.06 * hash01(math.floor(fx * 28), math.floor(fy * 28), 35)))
 
 
 def scatter_dirt(s, solids):
@@ -957,12 +982,14 @@ def scatter_dirt(s, solids):
         if free(x, y):
             rx = WEAR.randint(5, 13)
             blot(x, y, rx, rx * 0.5, C["black"], 0.5)
-    for _ in range(420):  # Papier, Scherben, Dreck
-        x, y = WEAR.uniform(0, 20), WEAR.uniform(0, 20)
-        if free(x, y):
-            sx, sy = s.to_screen(x, y)
-            c = C[WEAR.choice(["ash", "plaster", "wood_d", "grime", "rust", "glass_d"])]
-            s.rect(sx, sy, WEAR.randint(1, 3), WEAR.randint(1, 2), c)
+    for _ in range(46):  # Papier, Scherben, Dreck: vom Wind in kleine Haufen getrieben
+        x, y = LITTER.uniform(0, 20), LITTER.uniform(0, 20)
+        for k in range(LITTER.randint(3, 8)):
+            px, py = x + LITTER.uniform(-0.22, 0.22), y + LITTER.uniform(-0.22, 0.22)
+            if free(px, py):
+                sx, sy = s.to_screen(px, py)
+                c = C[LITTER.choice(["ash", "plaster", "wood_d", "grime", "rust", "glass_d"])]
+                s.rect(sx, sy, LITTER.randint(1, 3), LITTER.randint(1, 2), c)
     for _ in range(70):  # Unkraut in den Fugen
         x, y = WEAR.uniform(0, 20), WEAR.uniform(0, 20)
         if free(x, y):
@@ -975,7 +1002,7 @@ def scatter_dirt(s, solids):
             x, y = (WEAR.uniform(a, c), d + WEAR.uniform(0.03, 0.3)) if WEAR.random() < 0.5 else (c + WEAR.uniform(0.03, 0.3), WEAR.uniform(b, d))
             if free(x, y):
                 sx, sy = s.to_screen(x, y)
-                for k in range(WEAR.randint(4, 14)):
+                for k in range(WEAR.randint(2, 7)):
                     s.rect(sx + WEAR.randint(-6, 6), sy + WEAR.randint(-3, 3), WEAR.randint(1, 3), WEAR.randint(1, 2),
                            C[WEAR.choice(["wood_d", "grime", "dirt", "plaster", "soot", "rust_d"])])
 
@@ -1125,7 +1152,12 @@ def export_game():
     assets = root / "game" / "assets"
     (assets / "things").mkdir(parents=True, exist_ok=True)
     s, things = build_scene(with_people=False)
+    # Außerhalb der Karte bleibt der Boden durchsichtig, dort liegt die Umgebung.
+    mask = Image.new("L", s.img.size)
+    mask.putdata([255 if 0 <= fx < 20 and 0 <= fy < 20 else 0 for fx, fy in (s.to_map(x + 0.5, y + 0.5) for y in range(s.h) for x in range(s.w))])
+    s.img.putalpha(mask)
     s.img.save(assets / "ground.png")
+    backdrop = {"file": "backdrop.png", "px": s.ox - BACKDROP_W // 2, "py": s.oy + 20 * HH - BACKDROP_H // 2}
     manifest, solids = [], []
     for i, t in enumerate(things):
         s.img = Image.new("RGBA", (s.w, s.h), (0, 0, 0, 0))
@@ -1139,12 +1171,15 @@ def export_game():
         manifest.append({"file": name, "px": bbox[0], "py": bbox[1], "x0": t.x0, "y0": t.y0, "x1": t.x1, "y1": t.y1, "z0": t.z0, "z1": t.z1, "kind": t.kind, "panes": t.panes})
         if t.solid:
             solids.append({"x0": t.x0, "y0": t.y0, "x1": t.x1, "y1": t.y1, "opaque": t.opaque})
-    (assets / "manifest.json").write_text(json.dumps({"ox": s.ox, "oy": s.oy, "things": manifest, **AMBIENT}), encoding="utf-8")
+    (assets / "manifest.json").write_text(json.dumps({"ox": s.ox, "oy": s.oy, "things": manifest, "backdrop": backdrop, **AMBIENT}), encoding="utf-8")
     (root / "data" / "map_01.json").write_text(json.dumps({"width": 20, "height": 20, "solids": solids}, indent=1), encoding="utf-8")
 
     export_critters(assets)
-    subprocess.run([sys.executable, str(Path(__file__).with_name("figures3d.py"))], check=True)
+    if "--city" not in sys.argv:  # Die Figuren brauchen einige Minuten und hängen nicht an der Stadt.
+        subprocess.run([sys.executable, str(Path(__file__).with_name("figures3d.py"))], check=True)
     subprocess.run([sys.executable, str(Path(__file__).with_name("props.py"))], check=True)
+
+    export_backdrop(assets)
 
     # Kontobuch
     book = Image.new("RGBA", (14, 10), (0, 0, 0, 0))
@@ -1155,6 +1190,50 @@ def export_game():
     d.point((7, 3), fill=C["brass_l"])
     book.save(assets / "book.png")
     print(f"{len(manifest)} Objekte, {len(solids)} Blockaden exportiert nach {assets}")
+
+
+def export_backdrop(assets):
+    """Die Stadt jenseits der Karte: Die Straßen laufen weiter und verlieren sich zwischen Häuserblocks im Dunst.
+
+    Reine Kulisse ohne Lichtberechnung und ohne Einfluss aufs Spiel. Läuft zuletzt, weil sie den Zufall der Fassaden mitbenutzt.
+    """
+    s = Scene(20)
+    s.w, s.h = BACKDROP_W, BACKDROP_H
+    s.ox, s.oy = BACKDROP_W // 2, BACKDROP_H // 2 - 20 * HH
+    s.img = Image.new("RGBA", (s.w, s.h), C["sky"] + (255,))
+    s.px = s.img.load()
+    for sy in range(s.h):
+        for sx in range(s.w):
+            fx, fy = s.to_map(sx + 0.5, sy + 0.5)
+            dist = max(-fx, fx - 20, -fy, fy - 20)
+            if 0 <= dist < BACKDROP_STREETS:
+                c = blend(ground_color(fx, fy, (), bounded=False), BACKDROP_DARK)
+                s.px[sx, sy] = mix(c, C["sky"], (dist / BACKDROP_STREETS) ** 0.7) + (255,)
+    canvas = s.img
+    things = []
+    # Vor der Karte (x oder y über 20) bleiben die Blocks weit genug weg und flach, damit sie nichts verdecken.
+    blocks = [(x, y, 6, 6, 170 if ring else 128) for ring, x in ((0, -7), (1, -15)) for y in (-15, -7, 0, 14.5, 21, 28)]
+    blocks += [(x, y, 5.5 if x == 0 else 6, 6, 170 if ring else 128) for ring, y in ((0, -7), (1, -15)) for x in (0, 12.5, 19, 26)]
+    blocks += [(24, y, 6, 6, 86) for y in (-7, 0, 14.5, 21, 28)] + [(x, 24, 5.5 if x == 0 else 6, 6, 86) for x in (-7, 0, 12.5, 19)]
+    for x, y, w, d, h in blocks:
+        material = ("stone",) if hash01(int(x), int(y), 4) < 0.3 else ("brick",)
+        left = tenement(int(w * HW), h, material=material, lit_rate=0.22)
+        right = tenement(int(d * HW), h, material=material, lit_rate=0.22)
+        building(x, y, w, d, h, left, right, s, things, [chimney(0.2, 0.3, 24, False), vent(0.6, 0.6)])
+    for t in sort_things(things):
+        s.img = Image.new("RGBA", (s.w, s.h), (0, 0, 0, 0))
+        s.px = s.img.load()
+        t.draw()
+        bbox = s.img.getbbox()
+        if not bbox:
+            continue
+        part = s.img.crop(bbox)
+        away = max(-t.x1, t.x0 - 20, -t.y1, t.y0 - 20)
+        haze = min(0.85, 0.3 + away / 22)
+        dimmed = Image.blend(part, Image.new("RGBA", part.size, (0, 0, 0, 255)), 0.28)
+        fogged = Image.blend(dimmed, Image.new("RGBA", part.size, C["sky"] + (255,)), haze)
+        canvas.paste(fogged, bbox[:2], part.getchannel("A"))
+    canvas.save(assets / "backdrop.png", optimize=True)
 
 
 def export_critters(assets):

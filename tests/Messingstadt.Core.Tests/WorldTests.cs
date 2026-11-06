@@ -61,6 +61,14 @@ namespace Messingstadt.Core.Tests
             Exit = new ZoneData { X0 = 0, Y0 = 8, X1 = 2, Y1 = 10 },
         };
 
+        // Wie im Spiel, mit Licht: Im Dunkeln bemerken die Wachen später, davon hängen die Zeitfenster ab.
+        private static World LitRealMission()
+        {
+            var mission = Loader.ParseMission(File.ReadAllText(DataPath("mission_01.json")));
+            mission.Light = Loader.ParseLight(File.ReadAllText(DataPath("light_01.json")));
+            return new World(Loader.ParseMap(File.ReadAllText(DataPath("map_01.json"))), mission);
+        }
+
         private static string DataPath(string file)
         {
             var dir = new DirectoryInfo(System.AppContext.BaseDirectory);
@@ -205,13 +213,11 @@ namespace Messingstadt.Core.Tests
         [Fact]
         public void RealMissionCanBeWonUnseen()
         {
-            var w = new World(
-                Loader.ParseMap(File.ReadAllText(DataPath("map_01.json"))),
-                Loader.ParseMission(File.ReadAllText(DataPath("mission_01.json"))));
+            var w = LitRealMission();
             // Greta allein, sieben Klicks. Zeiten und Fenster liefert tools/Messingstadt.Balance.
             var clicks = new (int Tick, int X, int Y)[]
             {
-                (200, 6, 15), (302, 6, 5), (592, 6, 3), (684, 6, 5), (812, 6, 14), (1100, 18, 18), (1576, 18, 11),
+                (36, 6, 15), (176, 6, 5), (352, 6, 3), (444, 6, 5), (560, 6, 14), (848, 18, 18), (1050, 18, 11),
             };
             int next = 0;
             for (int i = 0; i < 20 * 120 && w.State == MissionState.Running; i++)
@@ -268,9 +274,7 @@ namespace Messingstadt.Core.Tests
         [Fact]
         public void RealMissionGuardsCalmDownAndResumePatrol()
         {
-            var w = new World(
-                Loader.ParseMap(File.ReadAllText(DataPath("map_01.json"))),
-                Loader.ParseMission(File.ReadAllText(DataPath("mission_01.json"))));
+            var w = LitRealMission();
             // Ein Alarm auf der Straße, der Trupp bleibt in Deckung: Die Wachen suchen und beruhigen sich wieder.
             w.RaiseAlarm(9500, 10500);
             bool searched = false;

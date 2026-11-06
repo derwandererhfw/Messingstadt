@@ -1,0 +1,54 @@
+# Rückzug ohne Schuss: Telegramm, Übergang, neuer Anlauf
+wait 20
+key Escape
+wait 10
+remember money
+key R
+wait 10
+click Abbrechen
+wait 10
+expect sequence rueckzug
+expect finished True
+key Escape
+wait 5
+expect sequence uebergang
+expect finished False
+key Escape
+wait 5
+expect sequence 
+same money
+remember tick
+wait 60
+changed tick
+# Nach dem ersten Schuss: Niederlage mit Telegramm und Zeitung, dann Ergebnis
+attack
+waitfor rating Loud
+key R
+wait 10
+click Abbrechen
+wait 10
+expect sequence niederlage
+expect panel False
+close
+expect sequence niederlage
+key Space
+key Space
+key Space
+key Space
+wait 5
+expect sequence 
+expect panel True
+# Eine weitere Leertaste gleich danach darf nicht schon Nochmal auslösen
+key Space
+wait 5
+expect panel True
+expect finished True
+wait 60
+expect focus Nochmal
+click Nochmal
+wait 5
+expect sequence uebergang
+key Escape
+wait 5
+expect panel False
+expect finished False

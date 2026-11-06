@@ -25,19 +25,22 @@ namespace Messingstadt
         private static readonly string[] GuardTalk =
         {
             "Noch drei Stunden Schicht.", "Sauwetter. Und das für den Lohn.", "Hast du was gehört? Nein? Gut.",
-            "Der Alte will das Buch heute Nacht zurück.", "Meine Stiefel sind durch.", "Wenn die Streikenden kommen, bin ich weg.",
+            "Der Alte will das Buch morgen früh zurück.", "Meine Stiefel sind durch.", "Wenn die Streikenden kommen, bin ich weg.",
             "Sag dem Brandt, er soll selbst Wache schieben.", "Mir ist kalt bis in die Knochen.", "Drei Kinder, und der Lohn kommt zu spät.",
             "Das Luftschiff sieht auch nicht mehr als wir.", "Hörst du den Donner? Das wird noch schlimmer.", "Wer hat schon wieder die Zigaretten?",
             "Die Ratten werden auch immer dreister.", "Bei dem Regen kommt doch keiner.", "Ich hätte zur Bahn gehen sollen.",
             "Mein Schwager streikt auch. Reden wir nicht drüber.", "Der Kaffee war wieder nur heißes Wasser.", "Noch ein Winter hier, und ich hau ab.",
+            "Pieper sagt, bald kommt der Notstand.", "Kriegt der Werkschutz die Straße, sind wir die Nächsten, die gehen.", "Die Bank kauft schon die Häuser in der Altstadt.",
             // Stimmt: Posten am Wagen und am Buch drehen sich alle 3 Sekunden.
             "Der Posten am Wagen dreht sich alle paar Sekunden.", "Der am Buch schaut reihum, wie ein Uhrzeiger.",
             // Stimmt: Die Tür des Lagers ist verschlossen, dahinter liegt die Lohnkasse.
             "Die Hintertür vom Lager bleibt zu. Da liegt die Lohnkasse.",
             // Stimmt: Hinter dem Lager gibt es keinen Rundgang, der Lageplan zeigt das Feld grün.
             "Hinter dem Lager läuft sowieso keiner Streife.",
-            // Stimmt: Am Wagen steht der Werkschutz, oben auf der Straße der Schütze, im Westen der Hund.
+            // Stimmt: Am Wagen steht der Werkschutz, oben auf der Straße der Schütze, der Hund läuft im Hof an der Fabrik.
             "Der Werkschutz am Wagen nimmt kein Geld.", "Oben an der Straße hat einer ein Gewehr.", "Der Hund im Fabrikhof riecht dich auch im Dunkeln.",
+            // Stimmt: Der Hundeführer ist für 300 käuflich, sein Hund gibt dann mit Ruhe. Der Laufbursche am Hotel rennt zur nächsten Wache.
+            "Der mit dem Hund verkauft seine Mutter. Den Hund gleich mit.", "Der Junge am Hotel rennt sofort zu uns, wenn er was sieht.",
             // Stimmt: So wirkt die Lichtregel beim Bemerken.
             "Unter den Laternen erkenn ich dich sofort.", "Im Dunkeln siehst du die Hand vor Augen nicht.", "Halt dich ans Licht, im Schatten sieht man nichts.",
         };
@@ -50,12 +53,15 @@ namespace Messingstadt
             "Meine Frau näht jetzt für die Bank.", "Heute Nacht bleibt keiner allein.", "Sechzehn Stunden am Kessel, und wofür?",
             "Im Hotel brennt Licht, für die reicht es immer.", "Hörst du? Das Schichthorn. Ohne uns.", "Noch hält die Kasse vom Hammer.",
             "Mach die Augen auf, die Wache ist nervös.", "Einer hat den Roten Hammer in der Gasse gesehen.", "Gestern haben sie wieder einen abgeholt.",
+            "Den jungen Roth haben sie auch geholt.", "Der kleine Kurt läuft für die Wache. Für zwei Groschen.", "Rehm sagt, wir halten durch. Der hat leicht reden.", "Woher hat die Streikkasse eigentlich das Geld?",
         };
 
         private static readonly string[] Noticed = { "Moment. War da was?", "He! Wer da?", "Hab ich was gesehen?" };
         private static readonly string[] Fighting = { "Halt! Stehen bleiben!", "Alarm! Hierher!", "Da drüben! Schießt!" };
         private static readonly string[] Searching = { "Wo ist er hin?", "Ausschwärmen!", "Der kann nicht weit sein." };
         private static readonly string[] Bribed = { "Ich hab nichts gesehen.", "Kein Wort zu niemandem." };
+        private static readonly string[] Reporting = { "Wache! Wache!", "Da ist wer! Ich hol die Wache!" };
+        private static readonly string[] Bitten = { "Der Hund! Ein Schuss, und alle hören es.", "Weg, du Mistvieh! Soll ich schießen?" };
 
         private sealed class Speech
         {
@@ -69,6 +75,7 @@ namespace Messingstadt
         private readonly List<Speech> _speeches = new();
         private readonly Dictionary<int, GuardState> _lastState = new();
         private readonly HashSet<int> _bribedSpoken = new();
+        private readonly HashSet<int> _bittenSpoken = new();
         private World? _world;
         private float _time;
         private float _nextTalk = 5f;
@@ -104,6 +111,7 @@ namespace Messingstadt
                 _world = world;
                 _lastState.Clear();
                 _bribedSpoken.Clear();
+                _bittenSpoken.Clear();
                 _speeches.Clear();
             }
             foreach (var u in world.Units)
@@ -111,6 +119,10 @@ namespace Messingstadt
                 if (u.Faction == Faction.Guard && u.Alive && !u.Type.Bites)
                 {
                     ListenToGuard(world, u);
+                }
+                else if (u.Alive && u.Type.Bites && u.Faction == Faction.Guard && u.LastBiteHit && _bittenSpoken.Add(u.Id))
+                {
+                    AgentCriesOut(world, u);
                 }
             }
             if (_time > _nextTalk)
@@ -120,6 +132,22 @@ namespace Messingstadt
             }
             _speeches.RemoveAll(s => _time > s.Until || s.Where() == null);
             QueueRedraw();
+        }
+
+        private void AgentCriesOut(World world, Unit dog)
+        {
+            Unit? bitten = null;
+            foreach (var a in world.Units)
+            {
+                if (a.Alive && a.Faction == Faction.Agent && (bitten == null || World.Distance(a, dog) < World.Distance(bitten, dog)))
+                {
+                    bitten = a;
+                }
+            }
+            if (bitten != null)
+            {
+                Say(() => bitten.Alive ? Game.UnitPos(bitten) : null, Pick(_rng, Bitten), ShoutSeconds, new Color(0.95f, 0.9f, 0.75f));
+            }
         }
 
         private void ListenToGuard(World world, Unit u)
@@ -133,9 +161,10 @@ namespace Messingstadt
             {
                 string[]? lines = u.GuardState switch
                 {
-                    GuardState.Noticing => Noticed,
+                    GuardState.Noticing when !u.Type.Reports => Noticed,
                     GuardState.Combat => Fighting,
                     GuardState.Investigate => Searching,
+                    GuardState.Report => Reporting,
                     _ => null,
                 };
                 if (lines != null)

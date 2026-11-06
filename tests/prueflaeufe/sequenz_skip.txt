@@ -1,0 +1,22 @@
+# Einstieg läuft, Spiel steht, Esc überspringt alles
+wait 20
+expect sequence einstieg
+expect hud False
+remember tick
+wait 30
+same tick
+key R
+key P
+key Key1
+wait 5
+expect sequence einstieg
+expect screen 
+key Escape
+wait 10
+expect sequence 
+expect hud True
+expect screen 
+expect paused False
+remember tick
+wait 60
+changed tick

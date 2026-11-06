@@ -1,6 +1,8 @@
 {
   "title": "Das Kontobuch",
-  "briefing": "Die Brandt-Werke zahlen den Streikbrechern Schwarzgeld. Ein Kurier hat das Kontobuch am Mietshaus abgelegt. Holt es und erreicht den Fluchtwagen am Ostende der Querstraße.",
+  "briefing": "Brandt zahlt den Streikbrechern Schwarzgeld, und nicht nur ihnen. Ein Kurier hat das Kontobuch am Mietshaus abgelegt, am Morgen holt es ein Bote ab. Holt es vorher und bringt es zum Fluchtwagen am Ostende der Querstraße. Kein Blut, wenn es sich vermeiden lässt. K.",
+  "place": "Querstraße, hinter dem Mietshaus",
+  "time": "Dienstag, 22. November 1927, 2:40 Uhr",
   "seed": 1927,
   "itemName": "Kontobuch",
   "item": [6.5, 3.5],
@@ -10,12 +12,21 @@
     { "name": "Hintertür der Lagerhalle", "tiles": [[14, 17], [14, 16], [14, 15], [14, 14], [14, 13], [14, 12]], "mark": [14.5, 18] }
   ],
   "loot": { "name": "Lohnkasse", "x": 14.5, "y": 14.5, "value": 300 },
+  "headlines": {
+    "unseen": { "head": "Kontobuch der Brandt-Werke spurlos verschwunden", "line": "Niemand will etwas bemerkt haben. In den Fabriken tuschelt man schon von Schwarzgeld.{loot}{paid}" },
+    "quiet": { "head": "Einbruch bei Nacht: Wache sah Schatten", "line": "Ein Wachmann will Gestalten in der Gasse gesehen haben, gefasst wurde niemand. Das Kontobuch der Brandt-Werke fehlt.{loot}{paid}" },
+    "loud": { "head": "Blutige Nacht am Mietshaus", "line": "Schüsse hallten durch die Querstraße.{dead} Ein Wagen entkam Richtung Osten.{fallen}{loot}{paid}" },
+    "lost": { "head": "Roter Hammer zerschlagen?", "line": "Die Stadtwache meldet einen vereitelten Überfall am Mietshaus und mehrere Festnahmen. Namen nennt sie nicht. Die Gewerkschaft schweigt.{dead}" },
+    "abandoned": { "head": "Schießerei in der Nacht, Täter flüchtig", "line": "Bewaffnete lieferten sich am Mietshaus ein Gefecht mit der Stadtwache und zogen sich ohne Beute zurück.{dead}" },
+    "retreat": { "head": "Unruhe am Mietshaus", "line": "Anwohner meldeten Gestalten in der Querstraße. Als die Wache kam, war niemand mehr da." },
+    "loot": "Auch die Lohnkasse der Brandt-Werke fehlt."
+  },
   "lamps": [[7.5, 2], [7.5, 5.5], [10.5, 3.5], [10.5, 6.9], [5.6, 10.5], [12.6, 10.5], [7.5, 13.5], [10.5, 13.5]],
   "agents": [
-    { "name": "Greta", "sprite": "Agent", "x": 8.5, "y": 18.5, "legs": 2, "heart": 2 },
-    { "name": "Otto", "sprite": "Agent", "x": 9.5, "y": 18.5, "legs": 1, "heart": 3, "skill": "schlosser" },
-    { "name": "Emil", "sprite": "Agent", "x": 10.5, "y": 18.5, "legs": 1, "heart": 1, "skill": "buchhalter" },
-    { "name": "Hanna", "sprite": "Agent", "x": 11.5, "y": 18.5, "legs": 3, "heart": 1 }
+    { "name": "Greta", "role": "Truppführerin", "sprite": "Agent", "x": 8.5, "y": 18.5, "legs": 2, "heart": 2 },
+    { "name": "Otto", "role": "Schlosser", "sprite": "Agent", "x": 9.5, "y": 18.5, "legs": 1, "heart": 3, "skill": "schlosser" },
+    { "name": "Emil", "role": "Buchhalter", "sprite": "Agent", "x": 10.5, "y": 18.5, "legs": 1, "heart": 1, "skill": "buchhalter" },
+    { "name": "Hanna", "role": "Kurierin", "sprite": "Agent", "x": 11.5, "y": 18.5, "legs": 3, "heart": 1 }
   ],
   "guards": [
     { "name": "Wache 1", "sprite": "Wachmann", "x": 12.5, "y": 9.5, "patrol": [[14, 9], [9, 9]] },
@@ -25,6 +36,8 @@
     { "name": "Wache 5", "sprite": "Wachmann", "x": 11.5, "y": 8.5, "patrol": [[11, 8], [11, 10], [16, 10], [16, 11]] },
     { "name": "Offizier", "sprite": "Offizier", "type": "offizier", "x": 7.5, "y": 0.5, "facing": [0, 1] },
     { "name": "Werkschutz", "sprite": "Werkschutz", "type": "werkschutz", "x": 18.5, "y": 7.5, "facing": [0, 1] },
-    { "name": "Hund", "sprite": "Hund", "type": "hund", "x": 18.5, "y": 2.5, "patrol": [[18, 0], [19, 0], [19, 3], [18, 3]] }
+    { "name": "Hundeführer", "sprite": "Hundefuehrer", "type": "hundefuehrer", "x": 18.5, "y": 1.5, "patrol": [[18, 0], [19, 0], [19, 3], [18, 3]] },
+    { "name": "Hund", "sprite": "Hund", "type": "hund", "handler": "Hundeführer", "x": 18.5, "y": 2.5 },
+    { "name": "Laufbursche", "sprite": "Laufbursche", "type": "laufbursche", "x": 0.5, "y": 14.5, "patrol": [[0, 14], [0, 18], [3, 18], [0, 18]] }
   ]
 }

@@ -1,0 +1,10 @@
+{
+  "id": "sieg",
+  "beats": [
+    { "seconds": 3.5, "fade": [0, 0.75], "fadeStart": 1.5,
+      "camera": { "from": "@trupp", "to": "@trupp", "zoomFrom": 2, "zoomTo": 2.5 },
+      "sounds": [{ "at": 0.6, "name": "factory_horn", "volume": -14 }] },
+    { "show": "newspaper", "head": "{paper}", "title": "{headline}", "body": "{line}", "seconds": 0.8, "hold": true,
+      "sounds": [{ "at": 0, "name": "pages", "volume": -8 }] }
+  ]
+}

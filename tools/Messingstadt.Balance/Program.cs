@@ -78,6 +78,24 @@ Action<World> RushWith(bool sprint)
     };
 }
 
+// Wie Zum Buch gehen, aber der nächste Agent schießt auf einen Hund, der angreift, wie es ein Spieler befehlen würde.
+Action<World> RushShootDog()
+{
+    var rush = Rush();
+    return w =>
+    {
+        rush(w);
+        foreach (var dog in w.Units.Where(u => u.Alive && u.Type.Bites && u.GuardState == GuardState.Combat))
+        {
+            var shooter = w.Units.Where(a => a.Faction == Faction.Agent && a.Alive && w.CanSee(a, dog, 6 * World.TileUnits)).OrderBy(a => World.Distance(a, dog)).FirstOrDefault();
+            if (shooter != null && shooter.TargetId != dog.Id)
+            {
+                w.OrderAttack(shooter.Id, dog.Id);
+            }
+        }
+    };
+}
+
 Action<World> AttackAll()
 {
     var rush = Rush();
@@ -363,6 +381,7 @@ if (args.Length > 0)
 }
 
 Report("Zum Buch gehen", Rush);
+Report("Zum Buch, Hund ab", RushShootDog);
 Report("Zum Buch sprinten", RushSprint);
 Report("Alle angreifen", AttackAll);
 Report("Feuer bündeln", FocusFire);

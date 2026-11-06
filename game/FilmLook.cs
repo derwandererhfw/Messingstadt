@@ -2,17 +2,21 @@ using Godot;
 
 namespace Messingstadt
 {
-    /// <summary>Bindet das Bild wie einen alten Film zusammen: dunkle Ränder, feines Korn, leichte Farbstimmung.</summary>
+    /// <summary>Bindet das Bild wie einen alten Film zusammen: Lichthöfe, dunkle Ränder, feines Korn, leichte Farbstimmung.</summary>
     public partial class FilmLook : CanvasLayer
     {
         private const string Code = @"
 shader_type canvas_item;
 uniform sampler2D screen : hint_screen_texture, filter_nearest;
+uniform sampler2D soft_screen : hint_screen_texture, filter_linear_mipmap;
 float grain(vec2 p) {
     return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
 }
 void fragment() {
     vec3 c = texture(screen, SCREEN_UV).rgb;
+    // Lichthof: Helles strahlt warm in die Umgebung, wie auf altem Filmmaterial
+    vec3 halo = textureLod(soft_screen, SCREEN_UV, 2.5).rgb * 0.45 + textureLod(soft_screen, SCREEN_UV, 4.0).rgb * 0.55;
+    c += min(max(halo - vec3(0.42), vec3(0.0)), vec3(0.4)) * vec3(0.95, 0.68, 0.44) * 0.6;
     float lum = dot(c, vec3(0.3, 0.59, 0.11));
     // Etwas weniger Farbe, Schatten leicht kühl, Lichter leicht warm
     c = mix(c, vec3(lum), 0.12);

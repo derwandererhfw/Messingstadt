@@ -48,6 +48,9 @@ STUTTER_LAMP = (5.6, 10.5)
 FLASH_DIRECTION = (0.72, -0.28, 0.62)  # Blitz: von der Seite und hoch, damit Schatten quer über die Straßen fallen
 FLASH_AMBIENT = 0.2
 VOID_FLASH = 0.3
+BACKDROP_FLASH = 1.3  # die Kulisse ist dunkler gemalt, beim Blitz soll die Kartengrenze trotzdem nicht auffallen
+MOON_DIRECTION = (-0.45, -0.25, 0.85)  # von hinten und oben: Nur Dächer und Oberseiten sehen ihn, nicht Fassaden und Straßen
+MOON_COLOR = (0.2, 0.225, 0.3)
 FOG_SIZE = 256
 EMISSIVE = ((255, 232, 160), (226, 170, 90))
 EMISSIVE_REACH = 45
@@ -239,6 +242,7 @@ def main():
         "windowTypes": [{"color": t["color"], "power": t["power"]} for t in WINDOW_TYPES.values()],
         "specStrength": SPEC_STRENGTH, "puddleSpec": PUDDLE_SPEC,
         "flashDirection": FLASH_DIRECTION, "flashAmbient": FLASH_AMBIENT,
+        "moonDirection": MOON_DIRECTION, "moonColor": MOON_COLOR,
         "boxes": boxes, "lights": lights, "puddles": manifest["puddles"],
         "sprites": [{k: s[k] for k in ("box", "left", "top", "w", "h")} for s in sprites],
         "gridRes": GRID_RES, "gridZ": GRID_Z,
@@ -293,6 +297,9 @@ def main():
     # Für die Spielregeln: Helligkeit in Prozent, im Stand von Figuren gemessen.
     levels = (filled[..., :3].mean(axis=-1) * 100).round().astype(int).ravel().tolist()
     (ROOT / "data" / "light_01.json").write_text(json.dumps({"cells": GRID_RES, "size": size, "levels": levels}), encoding="utf-8")
+    # Die Kulisse hat kein eigenes Licht, sondern trägt überall das des Nachthimmels.
+    Image.fromarray(encode(np.array([[VOID_LIGHT]]))).save(OUT / "backdrop_a.png")
+    Image.fromarray(encode(np.array([[(0, 0, 0, BACKDROP_FLASH)]])), "RGBA").save(OUT / "backdrop_b.png")
     fog_noise()
     print(f"Lichtkarten in {OUT}")
 
