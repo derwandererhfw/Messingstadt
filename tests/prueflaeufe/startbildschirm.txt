@@ -1,0 +1,47 @@
+# Startbildschirm: nur "Neues Spiel" wirkt, der Rest ist sichtbar, ausgegraut und mit Tasten nicht erreichbar.
+# Aufruf mit --menu --fresh.
+wait 20
+expect screen Startbildschirm
+expect focus Neues Spiel
+expect hud False
+expect help False
+remember tick
+wait 30
+same tick
+# Pfeiltasten bleiben auf dem einzigen wählbaren Eintrag
+key Down
+expect focus Neues Spiel
+key Up
+expect focus Neues Spiel
+# Klicks auf ausgegraute Einträge bewirken nichts
+clickany Spiel laden  (bald)
+expect screen Startbildschirm
+clickany Einstellungen  (bald)
+expect screen Startbildschirm
+clickany Mitwirkende  (bald)
+expect screen Startbildschirm
+clickany Beenden  (bald)
+expect screen Startbildschirm
+# Esc verlässt den Startbildschirm nicht
+key Escape
+expect screen Startbildschirm
+print
+# Enter startet das Spiel
+key Enter
+wait 10
+expect screen
+expect hud True
+remember tick
+wait 30
+changed tick
+# Über die Pausenmappe zurück, dann mit der Maus wieder hinein
+key Escape
+click Zum Hauptmenü
+click Zum Hauptmenü
+wait 10
+expect screen Startbildschirm
+expect focus Neues Spiel
+click Neues Spiel
+wait 10
+expect screen
+expect hud True

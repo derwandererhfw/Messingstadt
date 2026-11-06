@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using Messingstadt.Core;
 
 namespace Messingstadt
 {
     /// <summary>
-    /// Hauptmenü, Pausenmappe, Einstellungen, Bedienung und Rückfragen: ein Blatt Papier mitten im Bild.
+    /// Startbildschirm, Pausenmappe, Einstellungen, Bedienung und Rückfragen: ein Blatt Papier mitten im Bild,
+    /// der Startbildschirm als eigene Seite über die ganze Fläche (TitleScreen).
     /// Pfeiltasten wählen, Enter bestätigt, Esc geht eine Ebene zurück. Die Maus wählt dasselbe wie die Tasten.
     /// Solange ein Blatt offen ist, steht das Spiel still und nimmt keine Befehle an.
     /// </summary>
@@ -23,6 +25,7 @@ namespace Messingstadt
         private sealed class Page
         {
             public string Name = "";
+            public bool Title;
             public Action Build = null!;
             public int Focus;
             public Action? OnBack;
@@ -33,6 +36,8 @@ namespace Messingstadt
         private ColorRect _dim = null!;
         private PanelContainer _sheet = null!;
         private VBoxContainer _body = null!;
+        private VBoxContainer _sheetBody = null!;
+        private TitleScreen _title = null!;
         private float _lastSample;
 
         public Main Game = null!;
@@ -55,9 +60,26 @@ namespace Messingstadt
             _body = new VBoxContainer();
             _body.AddThemeConstantOverride("separation", 8);
             _sheet.AddChild(_body);
+            _sheetBody = _body;
+            // Der Startbildschirm liegt unter dem Blatt, damit Rückfragen über ihm erscheinen.
+            _title = new TitleScreen { Game = Game };
+            _dim.AddChild(_title);
+            _dim.MoveChild(_title, 0);
         }
 
         public void ShowMain() => Open("Hauptmenü", BuildMain);
+
+        /// <summary>Startbildschirm: Nur "Neues Spiel" wirkt bisher, der Rest ist sichtbar und ausgegraut.</summary>
+        public void ShowTitle()
+        {
+            Remember();
+            var page = new Page { Name = "Startbildschirm", Build = BuildTitle, Title = true };
+            _pages.Push(page);
+            Show(page);
+        }
+
+        /// <summary>Für den Prüflauf: welche Zutaten der Startbildschirm gefunden hat.</summary>
+        public string TitleParts => _title.Parts;
 
         public void ShowPause() => Open("Pausenmappe", BuildPause);
 
@@ -66,6 +88,7 @@ namespace Messingstadt
             _pages.Clear();
             Clear();
             _dim.Visible = false;
+            _title.Visible = false;
             Game.MenusClosed();
         }
 
@@ -102,7 +125,7 @@ namespace Messingstadt
         /// <summary>Eine Ebene zurück. Das Hauptmenü ist die unterste Ebene und bleibt offen.</summary>
         private void Back()
         {
-            if (_pages.Peek().Name == "Hauptmenü")
+            if (_pages.Peek().Name is "Hauptmenü" or "Startbildschirm")
             {
                 return;
             }
@@ -128,6 +151,12 @@ namespace Messingstadt
         {
             Clear();
             _dim.Visible = true;
+            bool overTitle = _pages.Any(p => p.Title);
+            _title.Visible = overTitle;
+            _title.ShowColumn = page.Title;
+            _sheet.Visible = !page.Title;
+            _dim.Color = overTitle ? Colors.Transparent : Dim;
+            _body = page.Title ? _title.Entries : _sheetBody;
             page.Build();
             if (_focusable.Count > 0)
             {
@@ -138,10 +167,13 @@ namespace Messingstadt
         private void Clear()
         {
             _focusable.Clear();
-            foreach (var child in _body.GetChildren())
+            foreach (var box in new[] { _sheetBody, _title.Entries })
             {
-                _body.RemoveChild(child);
-                child.QueueFree();
+                foreach (var child in box.GetChildren())
+                {
+                    box.RemoveChild(child);
+                    child.QueueFree();
+                }
             }
         }
 
@@ -164,6 +196,46 @@ namespace Messingstadt
             Entry("Einstellungen", ShowSettings);
             Entry("Bedienung", ShowControls);
             Entry("Beenden", Game.QuitGame);
+        }
+
+        /// <summary>
+        /// Einträge des Startbildschirms. Laden, Einstellungen, Mitwirkende und Beenden kommen später dazu,
+        /// Akten und Einstellungen sind schon gebaut (ShowFiles, ShowSettings) und werden dann nur freigeschaltet.
+        /// </summary>
+        private void BuildTitle()
+        {
+            TitleEntry("Neues Spiel", NewGame);
+            TitleEntry("Spiel laden", null);
+            TitleEntry("Einstellungen", null);
+            TitleEntry("Mitwirkende", null);
+            TitleEntry("Beenden", null);
+        }
+
+        /// <summary>Ein neues Spiel beginnt in der zuletzt offenen Akte. Liegt dort schon eine Kampagne, wird vorher gefragt.</summary>
+        private void NewGame()
+        {
+            int slot = Game.CurrentSlot;
+            if (!Game.SlotExists(slot))
+            {
+                Game.NewCampaign();
+                return;
+            }
+            Ask("Neues Spiel", $"In Akte {slot} liegt schon eine Kampagne: {Game.SlotLine(slot)}. Sie wird überschrieben.", "Neu beginnen", Game.NewCampaign);
+        }
+
+        private void TitleEntry(string text, Action? action)
+        {
+            var button = TitleScreen.Entry(text, action != null);
+            if (action != null)
+            {
+                button.Pressed += () =>
+                {
+                    Game.Sound.PlayEverywhere("click", -18f);
+                    action();
+                };
+                _focusable.Add(button);
+            }
+            _body.AddChild(button);
         }
 
         private void BuildPause()
