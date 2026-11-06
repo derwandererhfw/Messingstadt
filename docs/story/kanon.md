@@ -18,6 +18,8 @@ Was in der Welt von Messingstadt gilt, mit Kennzeichen und Quelle. Kennzeichen s
 | Emil Sander | Buchhalter, früher Kontorbank | KANON | wie oben |
 | Hanna Roth | Kurierin, Bruder Paul in Haft | KANON | wie oben |
 | Anton Weiß | Drucker, in Haft | KANON | `../story.md`, Einsatz 2 |
+| Ilse Marquardt | Ärztin der Krankenstube, erklärt den Dauertod | VORSCHLAG Story 2026-11-06 | `texte/dauertod.md` |
+| Karl Hoffmann, Frieda Kranz, Willi Saß, Erwin Pohl, Lotte Becker, Max Kühn | Namen für Neue | VORSCHLAG Story 2026-11-06 | `texte/dauertod.md` |
 | Messingstädter Anzeiger | Zeitung, druckt die Sicht der Wache | KANON | `src/Messingstadt.Core/Headlines.cs` |
 | Hotel Adler | Hotel an der Querstraße | IM SPIEL | `tools/art/generate_concept.py` (Dachschild) |
 | Kurt | Laufbursche der Wache, in einem Arbeiter-Satz | IM SPIEL | `game/Chatter.cs` |
@@ -42,7 +44,7 @@ Nachnamen und Vornamen der Mächte stehen bisher nur in `../story.md`, nicht im 
 |---|---|---|
 | Untertitel „Die Stadt gehört den Brandt-Werken“ gegen drei Mächte im Konzept | `data/sequences/einstieg.json`, `../konzept.md` | ABLEITUNG: Brandts Selbstbild, bewusst so belassen |
 | Rückzug ohne Schuss: Schlagzeile und Telegramm erscheinen nie, weil der Einsatz dann neu beginnt | `src/Messingstadt.Core/Headlines.cs`, `src/Messingstadt.Core/Sequence.cs`, Auskunft Menüs 2026-11-03 | OFFEN: Texte bleiben als Rückfall |
-| Dauertod geplant gegen „gefallen heißt verwundet“ | Vorschlag Kampagne, `../story.md` | OFFEN, siehe `steuerung.md` |
+| Niederlage tötet laut Vorschlag der Kampagne den ganzen Trupp, die Regel des Nutzers nennt nur den zweiten Fall | Vorschlag Kampagne, `steuerung.md` | OFFEN |
 | Währung ohne Namen, „Groschen“ in einem Satz | `game/Chatter.cs`, Kasse in `../konzept.md` | OFFEN |
 
 ## Offene Fragen zur Recherche
@@ -58,7 +60,8 @@ Ergebnisse werden als HISTORISCH mit Quelle eingetragen.
 ## Kontinuitätsregeln
 
 - Kein Text setzt voraus, dass ein bestimmter Agent lebt oder dabei ist.
-- „Gefallen“ heißt schwer verwundet, bis anders entschieden.
+- Der erste Fall heißt schwer verwundet, der zweite tot (Nutzer, 2026-11-06). Tote werden später nicht mehr genannt.
+- Keine Wendung hängt an einer einzelnen Figur, für jede gibt es einen Ersatzweg.
 - Kolb nennt in Telegrammen keine Namen.
 - Die Zeitung druckt, was die Wache sagt. Sie weiß nichts von Abteilung K.
 - Wachen sind arme Leute, keine Monster.

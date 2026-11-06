@@ -36,7 +36,11 @@ Martha Kolb schreibt die Aufträge und Telegramme, unterschrieben mit „K.“. 
 
 ### Wenn ein Agent fällt
 
-„Gefallen“ heißt im Spiel schwer verwundet. Die anderen schaffen ihn raus, er liegt Wochen in der Krankenstube im Keller einer Wäscherei und kommt geschwächt zurück. Deshalb sinken Beine und Herz auf Stufe 1. Kein Text darf behaupten, ein Agent sei tot, solange die Kampagne das nicht vorsieht. Kein Text darf voraussetzen, dass ein bestimmter Agent dabei ist.
+Wer zum ersten Mal fällt, ist schwer verwundet. Die anderen schaffen ihn raus, er liegt in der Krankenstube im Keller einer Wäscherei und kommt geschwächt zurück. Deshalb sinken Beine und Herz auf Stufe 1. Wer ein zweites Mal fällt, ist tot. So erklärt es auch die Ärztin der Krankenstube: Einmal flickt sie jemanden zusammen, ein zweites Mal hält der Körper nicht durch.
+
+Fehlen Leute, schickt der Hammer Neue nach. Sie übernehmen einen freien Beruf und fangen von vorn an. Die Toten bleiben tot und werden in späteren Texten nicht mehr genannt, außer in Kolbs Nachruf-Telegramm.
+
+Deshalb darf keine Wendung an einer einzelnen Figur hängen. Wo der Verlauf eine Figur nennt, gibt es einen Ersatzweg: Ist Emil tot, liest der Buchhalter des Trupps oder Kolb selbst das Zweitbuch. Ist Hanna tot, wird Paul Roth trotzdem befreit, nur ohne Schwester, die auf ihn wartet. Ist Greta tot, kennt niemand mehr die Dienstpläne der Wache, und der Auftrag sagt das.
 
 ## Verlauf der Kampagne
 
@@ -47,7 +51,7 @@ Sechs Einsätze zwischen dem 22. November und dem 5. Dezember 1927. Ort und Uhrz
 | 1 | Das Kontobuch | Diebstahl | Querstraße, hinter dem Mietshaus. Di, 22. Nov., 2:40 | Ein Kurier hat das Kontobuch der Brandt-Werke im Mietshaus abgelegt, weil es dort am nächsten Morgen ein Bote abholt. Der Trupp holt es. Emil findet darin Zahlungen an Streikbrecher, die Stadtwache und an einen „Sperling“ |
 | 2 | Die Wachstube | Befreiung | Wachstube Nord. Do, 24. Nov., 4:10 | Die Wache hat Paul Roth und den Drucker Anton Weiß festgesetzt. Greta kennt den Dienstplan. Bestechen lohnt sich hier besonders |
 | 3 | Der Güterbahnhof | Sabotage | Güterbahnhof Ost. So, 27. Nov., 23:15 | Ein Zug bringt Streikbrecher aus dem Umland. Der Hinweis kam von Rehm. Die Wachen wissen erstaunlich gut Bescheid |
-| 4 | Das Schließfach | Einbruch | Kontorbank, Hintereingang. Mi, 30. Nov., 1:30 | In Valks Schließfach liegt das Zweitbuch mit den Klarnamen. Emil kehrt an seinen alten Arbeitsplatz zurück und liest: Sperling ist Rehm |
+| 4 | Das Schließfach | Einbruch | Kontorbank, Hintereingang. Mi, 30. Nov., 1:30 | In Valks Schließfach liegt das Zweitbuch mit den Klarnamen. Emil kehrt an seinen alten Arbeitsplatz zurück und liest: Sperling ist Rehm. Ersatzweg siehe „Wenn ein Agent fällt“ |
 | 5 | Die Falle | Flucht | Altstadt, das Versteck. Fr, 2. Dez., 3:00 | Rehm verrät das Versteck. Der Trupp muss mit Buch und Verwundeten durch die eigene Stadt. In der Nacht wird der Notstand ausgerufen |
 | 6 | Der Anzeiger | Finale | Druckhaus des Anzeigers. Mo, 5. Dez., 0:20 | Generalstreik. Der Trupp besetzt die Druckerei für eine Nacht. Der Spieler entscheidet, was gedruckt wird |
 

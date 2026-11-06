@@ -13,7 +13,7 @@ Vor jedem neuen Einsatz und vor jeder Übernahme von Texten ins Spiel durchgehen
 - Passt das Verhalten zu Herkunft und Antrieb in `docs/story.md`?
 - Setzt der Text voraus, dass ein bestimmter Agent lebt oder dabei ist? Das ist nicht erlaubt.
 - Stimmen Beruf und Fähigkeit mit den Missionsdaten überein (`role`, `skill`)?
-- „Gefallen“ heißt schwer verwundet, solange nichts anderes entschieden ist.
+- Erster Fall schwer verwundet, zweiter Fall tot. Nennt ein Text einen Toten? Hat jede Wendung einen Ersatzweg?
 
 ## Zeit
 
