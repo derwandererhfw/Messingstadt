@@ -403,7 +403,7 @@ void fragment() {
             _slot = SaveFolder.ClampSlot(slot);
             _settings.LastSlot = _slot;
             SaveSettings();
-            _campaign = fresh || !SlotExists(_slot) ? new Campaign() : _saves.Load(_slot);
+            _campaign = fresh || !SlotExists(_slot) ? new Campaign() : LoadSlot(_slot);
             SaveCampaign();
             _mission = LoadMission();
             StartMission();
@@ -1046,11 +1046,25 @@ void fragment() {
             layer.AddChild(_panel);
         }
 
+        private const string MissionId = "mission_01";
+
         private void LoadCampaign()
         {
             _slot = _settings.LastSlot;
             _hadSave = SlotExists(_slot);
-            _campaign = _hadSave ? _saves.Load(_slot) : new Campaign();
+            _campaign = _hadSave ? LoadSlot(_slot) : new Campaign();
+        }
+
+        /// <summary>Lädt eine Akte. Ein unlesbarer oder zu neuer Stand wird nicht stillschweigend überschrieben, sondern beiseitegelegt.</summary>
+        private Campaign LoadSlot(int slot)
+        {
+            var campaign = _saves.Load(slot, out var status);
+            if (status == SaveStatus.Discarded && WritesFiles)
+            {
+                _saves.SetAside(slot);
+                GD.PushWarning($"Akte {slot} unlesbar oder zu neu, neue Kampagne. Der alte Stand liegt in {_saves.AsidePathOf(slot)}.");
+            }
+            return campaign;
         }
 
         private void SaveCampaign()
@@ -1170,18 +1184,29 @@ void fragment() {
             _panelBody.AddChild(result);
             if (World.Units.Any(u => u.Faction == Faction.Agent && (!u.Alive || _abandoned)))
             {
-                _panelBody.AddChild(PanelLabel("Verwundete kommen aus der Krankenstube zurück, aber Beine und Herz fallen auf Stufe 1.", 13));
+                _panelBody.AddChild(PanelLabel(CampaignTexts.RuleHint, 13));
             }
-            foreach (var u in World.Units.Where(u => u.Faction == Faction.Agent))
+            _panelBody.AddChild(PanelLabel($"Fahndung {_campaign.Heat}/{Campaign.MaxHeat}   Rückhalt {_campaign.Support}/{Campaign.MaxSupport}, Beitrag {_campaign.Dues} je Einsatz"));
+            foreach (var record in _campaign.Roster())
             {
-                var record = _campaign.Agent(u.Name);
                 var row = new HBoxContainer();
                 row.AddThemeConstantOverride("separation", 12);
-                var name = PanelLabel($"{u.Name}: Beine {record.Legs}, Herz {record.Heart}{(u.Alive && !_abandoned ? "" : "  (Krankenstube)")}");
-                name.CustomMinimumSize = new Vector2(360, 0);
+                var name = PanelLabel($"{record.Name}: Beine {record.Legs}, Herz {record.Heart}{AgentStatus(record)}");
+                name.CustomMinimumSize = new Vector2(380, 0);
                 row.AddChild(name);
-                row.AddChild(UpgradeButton("Beine", record.Name, record.Legs, true));
-                row.AddChild(UpgradeButton("Herz", record.Name, record.Heart, false));
+                if (record.Dead)
+                {
+                    row.AddChild(CampaignButton($"Anwerben ({Campaign.RecruitCost})", _campaign.Money >= Campaign.RecruitCost, () => _campaign.TryRecruit(record.Slot)));
+                }
+                else
+                {
+                    row.AddChild(UpgradeButton("Beine", record.Name, record.Legs, true));
+                    row.AddChild(UpgradeButton("Herz", record.Name, record.Heart, false));
+                    if (record.Rest > 0)
+                    {
+                        row.AddChild(CampaignButton($"Arzt ({Campaign.DoctorCost})", _campaign.Money >= Campaign.DoctorCost, () => _campaign.TryDoctor(record.Name)));
+                    }
+                }
                 _panelBody.AddChild(row);
             }
             _panelBody.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 1), Color = PaperUi.PaperDark, MouseFilter = Control.MouseFilterEnum.Ignore });
@@ -1198,6 +1223,28 @@ void fragment() {
             buttons.AddChild(next);
             _panelBody.AddChild(buttons);
             _panelFocus ??= next;
+        }
+
+        private static string AgentStatus(AgentRecord record) =>
+            record.Dead ? "  (tot)"
+            : record.Infirmary ? "  (Krankenstube, setzt aus)"
+            : record.Rest > 0 ? "  (angeschlagen, setzt aus)"
+            : record.Falls > 0 ? "  (einmal geflickt)"
+            : "";
+
+        private Button CampaignButton(string text, bool enabled, System.Func<bool> act)
+        {
+            var button = new Button { Text = text, Disabled = !enabled, CustomMinimumSize = new Vector2(130, 0) };
+            PaperUi.InkButton(button);
+            button.Pressed += () =>
+            {
+                if (act())
+                {
+                    SaveCampaign();
+                    RefreshPanel();
+                }
+            };
+            return button;
         }
 
         private Button UpgradeButton(string label, string agent, int level, bool legs)
@@ -1247,7 +1294,9 @@ void fragment() {
             _unitGlow.Clear();
             _fallStarted.Clear();
             _tickFrom.Clear();
-            _campaign.Prepare(_mission);
+            // Prepare verändert die Missionsdaten, deshalb jedes Mal frisch laden.
+            _mission = LoadMission();
+            _campaign.Prepare(_mission, MissionId);
             SaveCampaign();
             _finished = false;
             _abandoned = false;
@@ -1883,7 +1932,7 @@ void fragment() {
 
         public void SelectAgent(int index, bool add)
         {
-            if (!World.Units[index].Alive) return;
+            if (index >= _mission.Agents.Count || !World.Units[index].Alive) return;
             if (!add) Selected.Clear();
             Selected.Add(index);
         }

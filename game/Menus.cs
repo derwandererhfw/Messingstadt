@@ -190,7 +190,7 @@ namespace Messingstadt
                 return;
             }
             string text = Game.AbandonCostsSquad
-                ? "Es ist geschossen worden. Wer jetzt geht, verliert den Trupp: Beine und Herz aller Agenten fallen auf Stufe 1."
+                ? "Es ist geschossen worden. Wer jetzt geht, lässt den Trupp liegen: Jeder gilt als gefallen, wer schon einmal geflickt wurde, stirbt."
                 : "Noch ist kein Schuss gefallen. Der Trupp zieht sich unbeschadet zurück, ausgegebenes Geld bleibt weg.";
             Ask(title, text, yes, action);
         }

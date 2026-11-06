@@ -35,6 +35,21 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void BrokenSlot_CanBeSetAsideWithoutTouchingOthers()
+        {
+            var folder = new SaveFolder(_dir);
+            folder.Save(1, new Campaign { Money = 600 });
+            File.WriteAllText(folder.PathOf(2), "kaputt");
+            var loaded = folder.Load(2, out var status);
+            Assert.Equal(SaveStatus.Discarded, status);
+            Assert.Equal(new Campaign().Money, loaded.Money);
+            folder.SetAside(2);
+            Assert.Equal("kaputt", File.ReadAllText(Path.Combine(_dir, "kampagne_2.alt.json")));
+            Assert.Equal(600, folder.Load(1, out var first).Money);
+            Assert.Equal(SaveStatus.Loaded, first);
+        }
+
+        [Fact]
         public void Saving_LeavesNoTemporaryFile()
         {
             var folder = new SaveFolder(_dir);

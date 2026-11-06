@@ -21,7 +21,16 @@ namespace Messingstadt.Core
 
         public bool Exists(int slot) => File.Exists(PathOf(slot));
 
-        public Campaign Load(int slot) => Exists(slot) ? Campaign.FromJson(File.ReadAllText(PathOf(slot))) : new Campaign();
+        public Campaign Load(int slot) => Load(slot, out _);
+
+        /// <summary>Lädt eine Akte. Ein unlesbarer oder zu neuer Stand ergibt eine neue Kampagne, siehe Campaign.Load.</summary>
+        public Campaign Load(int slot, out SaveStatus status) =>
+            Campaign.Load(Exists(slot) ? File.ReadAllText(PathOf(slot)) : null, out status);
+
+        /// <summary>Wohin ein verworfener Stand beiseitegelegt wird, etwa kampagne.alt.json.</summary>
+        public string AsidePathOf(int slot) => Path.ChangeExtension(PathOf(slot), ".alt.json");
+
+        public void SetAside(int slot) => File.Copy(PathOf(slot), AsidePathOf(slot), true);
 
         public void Save(int slot, Campaign campaign)
         {

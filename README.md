@@ -44,6 +44,10 @@ Spielweisen messen, optional mit Feldern als Argument, etwa `-- 6,9 6,8`, für d
 dotnet run -c Release --project tools/Messingstadt.Balance
 ```
 
+Kampagne über mehrere Einsätze messen: dieselbe Zeile mit `-- --kampagne`.
+
+Den Ergebnis-Bildschirm mit Krankenstube, Arzt und Aktenwechsel prüft `tests/prueflaeufe/kampagne_akten.txt`, aufgerufen mit `--menu --fresh --script=../tests/prueflaeufe/kampagne_akten.txt`.
+
 Grafik neu erzeugen: `python tools/art/generate_concept.py`
 
 ## Steuerung

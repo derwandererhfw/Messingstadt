@@ -1,0 +1,27 @@
+# Kampagne: Abbruch nach dem ersten Schuss, Ergebnis-Bildschirm mit Krankenstube und Arzt, dann Aktenwechsel.
+# Aufruf mit --menu --fresh, damit kein echter Spielstand gelesen wird. Prüfläufe schreiben nichts.
+wait 20
+expect screen Hauptmenü
+click Kampagne beginnen
+wait 20
+expect slot 1
+expect money 300
+key Space
+attack
+wait 300
+key R
+click Abbrechen
+wait 20
+expect panel True
+remember money
+click Arzt (100)
+changed money
+click Zum Hauptmenü
+wait 20
+expect screen Hauptmenü
+click Akten
+click Akte 2: leer, neu beginnen
+wait 20
+expect slot 2
+expect money 300
+expect panel False

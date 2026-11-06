@@ -231,7 +231,7 @@ namespace Messingstadt.Core.Tests
             c.Prepare(m);
             int before = c.Money;
             c.Finish(Won(m));
-            Assert.Equal(before + Campaign.Reward(MissionRating.Unseen), c.Money);
+            Assert.Equal(before + Campaign.Reward(MissionRating.Unseen) + Campaign.DuesPerSupport, c.Money);
             Assert.Equal(1, c.Missions);
         }
 
