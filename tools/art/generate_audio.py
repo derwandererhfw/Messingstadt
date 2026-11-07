@@ -753,9 +753,62 @@ def match():
     save("match", fade(rub + 0.7 * flare, 0.002, 0.15), 0.6)
 
 
+TITLE_CHORDS = (
+    (38, 50, 57, 62, 65), (34, 50, 58, 62, 65), (31, 50, 55, 62, 67),
+    (39, 51, 58, 63, 67), (41, 50, 57, 62, 65), (33, 49, 57, 64, 67),
+)
+TITLE_CHORD_SECONDS = 12
+TITLE_MELODY = (
+    (3, 57, 6), (9, 58, 3), (13, 57, 8), (27, 55, 5), (33, 58, 4), (39, 63, 7),
+    (47, 62, 4), (51, 60, 3), (55, 57, 6), (63, 61, 4), (67, 57, 5),
+)
+TITLE_DRUM_SECONDS = 6
+
+
+def title_theme():
+    """Titelthema: langsame Fläche in d-Moll, ein tiefes Cello darüber, ferne Pauke. Leise und ohne Helles."""
+    rng = own_rng("title_theme")
+    seconds = len(TITLE_CHORDS) * TITLE_CHORD_SECONDS
+    size = seconds * MUSIC_RATE
+    t = np.arange(size) / MUSIC_RATE
+    pad = np.zeros(size)
+    for i, chord in enumerate(TITLE_CHORDS):
+        for note in chord:
+            place(pad, i * TITLE_CHORD_SECONDS, tone(note, TITLE_CHORD_SECONDS + 6, 5.0, 5.5, PAD_PARTIALS, detune=8, rng=rng))
+    pad = spectrum_filter(pad, 650)
+    pad *= 0.8 + 0.2 * np.sin(2 * np.pi * 6 * t / seconds)
+    cello = np.zeros(size)
+    for start, note, length in TITLE_MELODY:
+        place(cello, start, tone(note, length + 2.5, 0.9, 2.5, (1, 0.45, 0.2, 0.08), detune=4, rng=rng))
+    # Langsames Vibrato über die Lautstärke, ganze Schwingungen je Durchlauf.
+    cello = spectrum_filter(cello * (0.85 + 0.15 * np.sin(2 * np.pi * 360 * t / seconds)), 1100, 90)
+    drum = np.zeros(size)
+    hit_t = np.arange(int(1.2 * MUSIC_RATE)) / MUSIC_RATE
+    hit = np.sin(2 * np.pi * np.cumsum(55 + 25 * np.exp(-hit_t / 0.05)) / MUSIC_RATE) * np.exp(-hit_t / 0.45)
+    for k in range(seconds // TITLE_DRUM_SECONDS):
+        place(drum, k * TITLE_DRUM_SECONDS, hit * (1.0 if k % 2 == 0 else 0.6))
+    drum = spectrum_filter(drum, 260)
+    air = spectrum_filter(rng.standard_normal(size), 450, 110) * (0.5 + 0.5 * np.sin(2 * np.pi * 3 * t / seconds)) ** 2
+    mix = hall(pad, 9.0, 0.5, rng) + hall(cello, 8.0, 0.55, rng) * 0.55 + drum * 0.35 + air * 0.2
+    room = hall(pad, 9.0, 1.0, rng) * 0.4 + hall(cello, 8.0, 1.0, rng) * 0.25
+    widen("music_title", peak_to(mix, 0.7), room, MUSIC_RATE, 0.45)
+
+
+def menu_sounds():
+    """Menü: ein weiches Tippen beim Wandern, beim Wählen ein Stempel auf die Akte. Nichts Klickendes."""
+    rng = own_rng("menu_sounds")
+    t = time(0.09)
+    tap = lowpass(noise(0.09, rng), 1200) * decay(t, 0.008) + 0.3 * np.sin(2 * np.pi * 300 * t) * decay(t, 0.012)
+    save("menu_move", fade(tap, 0.001, 0.03), 0.4)
+    t = time(0.45)
+    thud = np.sin(2 * np.pi * 190 * t * (1 - t)) * decay(t, 0.04) + 0.9 * lowpass(noise(0.45, rng), 1100) * decay(t, 0.025)
+    paper = highpass(lowpass(noise(0.45, rng), 3000), 1500) * decay(np.maximum(t - 0.02, 0), 0.06) * (t >= 0.02)
+    save("menu_select", fade(thud + 0.45 * paper, 0.001, 0.1), 0.55)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld, dog, siren, factory_horn, train, radio, heartbeat, typewriter, fresh_random, dog_fight, boy_whistle, wind_gust, distant_shots, tram, foghorn, church_bell, shutter, gutter, piano, tram_hum, match):
+    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld, dog, siren, factory_horn, train, radio, heartbeat, typewriter, fresh_random, dog_fight, boy_whistle, wind_gust, distant_shots, tram, foghorn, church_bell, shutter, gutter, piano, tram_hum, match, title_theme, menu_sounds):
         make()
     files = list(OUT.glob("*.wav"))
     print(f"{len(files)} Geräusche, {sum(f.stat().st_size for f in files) // 1024} KiB")

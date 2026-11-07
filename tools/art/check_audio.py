@@ -20,7 +20,7 @@ AUDIO = ROOT / "game" / "assets" / "audio"
 SOUNDSCAPE = (ROOT / "game" / "SoundScape.cs").read_text(encoding="utf-8")
 
 MUSIC_LAYERS = ("music_calm", "music_dark", "music_suspect", "music_tension")
-LOOPS = ("rain", "wind", "wind_gust", "lamp", "neon", "steam", "fire", "diesel", "machine", "television", "airship", "weld", "radio", "heartbeat", "lockpick", "gutter", "piano", "tram_hum") + MUSIC_LAYERS
+LOOPS = ("rain", "wind", "wind_gust", "lamp", "neon", "steam", "fire", "diesel", "machine", "television", "airship", "weld", "radio", "heartbeat", "lockpick", "gutter", "piano", "tram_hum", "music_title") + MUSIC_LAYERS
 STEPS = tuple(f"step_{kind}_{i}" for kind in ("soft", "boot", "run") for i in range(4))
 CITY = ("distant_shots", "tram", "foghorn", "church_bell", "shutter")
 
@@ -31,6 +31,9 @@ MAX_MUSIC_ABOVE_2K = 0.1
 MAX_CITY_ABOVE_2K = 1.0
 MAX_SEAM = 6.0
 MAX_MATCH_ABOVE_4K = 10.0
+MAX_MENU_ABOVE_4K = 5.0
+MAX_MENU_BELOW_120 = 50.0
+TITLE_SECONDS = 72
 MAX_FIGHT_BELOW_120 = 60.0
 MAX_HEART_BELOW_120 = 75.0
 MUSIC_SECONDS = 96
@@ -113,6 +116,16 @@ def main():
     for name in CITY:
         x, rate = load(name)
         check(share(x, rate, 2000, 1e9) <= MAX_CITY_ABOVE_2K, f"{name}: über 2 kHz {share(x, rate, 2000, 1e9):.2f} %")
+
+    x, rate = load("music_title")
+    level = dba(x, rate) + music_db
+    check(abs(len(x) / rate - TITLE_SECONDS) < 1e-9, f"music_title: Länge {len(x) / rate:.3f} s")
+    check(share(x, rate, 2000, 1e9) <= MAX_MUSIC_ABOVE_2K, f"music_title: über 2 kHz {share(x, rate, 2000, 1e9):.3f} %")
+    check(level <= MAX_MUSIC_GAME_DBA, f"music_title: {level:.1f} dB(A), Grenze {MAX_MUSIC_GAME_DBA}")
+    for name in ("menu_move", "menu_select"):
+        x, rate = load(name)
+        check(share(x, rate, 4000, 1e9) <= MAX_MENU_ABOVE_4K, f"{name}: über 4 kHz {share(x, rate, 4000, 1e9):.1f} %")
+        check(share(x, rate, 0, 120) <= MAX_MENU_BELOW_120, f"{name}: unter 120 Hz {share(x, rate, 0, 120):.0f} %")
 
     x, rate = load("match")
     check(share(x, rate, 4000, 1e9) <= MAX_MATCH_ABOVE_4K, f"Streichholz über 4 kHz: {share(x, rate, 4000, 1e9):.1f} %")

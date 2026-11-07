@@ -168,6 +168,22 @@ def tram_light():
     return looped("tram_hum", seconds) * env[:, None] + weather(seconds, DRIZZLE)
 
 
+def title():
+    seconds = 40
+    return looped("music_title", seconds) * gain(MUSIC_DB) + weather(seconds, DRIZZLE)
+
+
+def menu():
+    """Wandern durch fünf Einträge, dann Wählen, dreimal."""
+    parts = []
+    for _ in range(3):
+        for _ in range(5):
+            parts += [load("menu_move") * gain(-18), np.zeros((int(RATE * 0.35), 2))]
+        parts += [load("menu_select") * gain(-10), np.zeros((RATE * 2, 2))]
+    x = np.concatenate(parts)
+    return x + looped("music_title", len(x) / RATE)[:len(x)] * gain(MUSIC_DB)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     seconds = 30
@@ -184,6 +200,8 @@ def main():
     save("11_streichholz", match())
     save("12_fenster_gehen_aus_stadt_verstummt", hushed())
     save("13_strassenbahnlicht_stottert_und_geht_aus", tram_light())
+    save("14_titelthema", title())
+    save("15_menue_wandern_und_waehlen", menu())
 
 
 if __name__ == "__main__":
