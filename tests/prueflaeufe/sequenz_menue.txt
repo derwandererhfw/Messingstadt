@@ -1,4 +1,5 @@
 # Vom Startbildschirm in den Einsatz, Einstieg läuft, zurück zum Startbildschirm und wieder hinein: dann der Übergang
+# Aufruf mit --menu --fresh --intro: Startbildschirm im Prüflauf, kein echter Spielstand, Sequenzen an.
 wait 20
 expect screen Startbildschirm
 click Neues Spiel

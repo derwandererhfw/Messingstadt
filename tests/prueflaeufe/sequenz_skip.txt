@@ -1,4 +1,5 @@
 # Beim ersten Mal: Prolog, dann Kamerafahrt mit Auftrag. Spiel steht, Esc überspringt jede Sequenz
+# Aufruf mit --intro, damit beim ersten Mal der Prolog läuft.
 wait 20
 expect sequence prolog
 expect hud False
