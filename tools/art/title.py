@@ -9,7 +9,7 @@ Das nasse Pflaster spiegelt die Szene, gerechnet als Strahl von einem Auge unter
 so fein und dann auf das Pixelraster der Spielgrafik gebracht: ein Bildpunkt der Stadt sind zwei Pixel auf dem Schirm.
 
 Aufruf: python tools/art/title.py   (etwa eine halbe Minute)
-Schreibt game/assets/title/title_bg.png (1920 × 1080) und title_logo.png (durchsichtiger Grund).
+Schreibt game/assets/title/title.png (1920 × 1080) und title_logo.png (durchsichtiger Grund).
 """
 import math
 import random
@@ -380,7 +380,7 @@ SIGN_MASK = sign_mask()
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     gray, blue = render()
-    finish(gray, blue).save(OUT / "title_bg.png", optimize=True)
+    finish(gray, blue).save(OUT / "title.png", optimize=True)
     logo().save(OUT / "title_logo.png", optimize=True)
     print(f"Titelbild und Schriftzug in {OUT}")
 

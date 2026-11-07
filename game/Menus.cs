@@ -175,7 +175,7 @@ namespace Messingstadt
             {
                 if (!_building)
                 {
-                    Game.Sound.PlayEverywhere("menu_move", -18f);
+                    Game.Sound.PlayEverywhere("menu_move", -20f);
                 }
             };
             _focusable.Add(control);
@@ -247,7 +247,7 @@ namespace Messingstadt
             {
                 button.Pressed += () =>
                 {
-                    Game.Sound.PlayEverywhere("menu_select", -10f);
+                    Game.Sound.PlayEverywhere("menu_select", -14f);
                     action();
                 };
                 Choosable(button);
@@ -430,7 +430,7 @@ namespace Messingstadt
             }
             button.Pressed += () =>
             {
-                Game.Sound.PlayEverywhere("menu_select", -10f);
+                Game.Sound.PlayEverywhere("menu_select", -14f);
                 action();
             };
             Choosable(button);

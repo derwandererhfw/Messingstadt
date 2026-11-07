@@ -12,7 +12,7 @@ namespace Messingstadt
     /// </summary>
     public partial class TitleScreen : Control
     {
-        private const string ImagePath = "res://assets/title/title_bg.png";
+        private const string ImagePath = "res://assets/title/title.png";
         private const string LogoPath = "res://assets/title/title_logo.png";
         private const float ShadeWithoutImage = 0.82f;
         private const float ShadeWithImage = 0.15f;
@@ -21,7 +21,7 @@ namespace Messingstadt
         public static readonly Color Brass = new(0.82f, 0.68f, 0.38f);
         public static readonly Color Ash = new(0.66f, 0.63f, 0.56f);
 
-        // Laterne und Schlote im Titelbild, in Bildpunkten von title_bg.png (1920 x 1080).
+        // Laterne und Schlote im Titelbild, in Bildpunkten von title.png (1920 x 1080).
         // Die rechte Laterne, damit links hinter dem Menü Ruhe bleibt.
         private static readonly Vector2 ImageLamp = new(1694, 458);
         private static readonly Vector2[] ImageSmoke = { new(1157, 62), new(1422, 192) };
