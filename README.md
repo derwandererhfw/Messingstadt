@@ -104,7 +104,7 @@ Die Geräusche entstehen unabhängig davon:
 python tools/art/generate_audio.py
 ```
 
-`python tools/art/check_audio.py --neu` misst Pegel, Spektrum und Schleifen und vergleicht alles Byte für Byte mit einem neuen Lauf. `python tools/art/hoerproben.py` schreibt Hörproben mit den Pegeln des Spiels nach `work/hoerproben`. Im Prüflauf hält `--music=ruhe|dunkel|verdacht|gefecht` eine Musiklage fest.
+`python tools/art/check_audio.py --neu` misst Pegel, Spektrum und Schleifen und vergleicht alles Byte für Byte mit einem neuen Lauf. `python tools/art/hoerproben.py` schreibt Hörproben mit den Pegeln des Spiels nach `work/hoerproben`. Im Prüflauf hält `--music=ruhe|dunkel|verdacht|gefecht|titel` eine Musiklage fest.
 
 ## Aufbau
 
