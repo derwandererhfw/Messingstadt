@@ -46,7 +46,7 @@ dotnet run -c Release --project tools/Messingstadt.Balance
 
 Kampagne über mehrere Einsätze messen: dieselbe Zeile mit `-- --kampagne`.
 
-Den Ergebnis-Bildschirm mit Krankenstube, Arzt und Aktenwechsel prüft `tests/prueflaeufe/kampagne_akten.txt`, aufgerufen mit `--menu --fresh --script=../tests/prueflaeufe/kampagne_akten.txt`.
+Den Ergebnis-Bildschirm mit Krankenstube und Arzt prüft `tests/prueflaeufe/kampagne_akten.txt`, aufgerufen mit `--menu --fresh --script=../tests/prueflaeufe/kampagne_akten.txt`.
 
 Grafik neu erzeugen: `python tools/art/generate_concept.py`
 
@@ -73,15 +73,15 @@ In den Menüs wählen Pfeiltasten und Maus dasselbe, Enter oder Klick bestätigt
 
 ## Prüfläufe für die Bedienung
 
-`--script=<datei>` schickt Tasten und Klicks durch den echten Eingabeweg und vergleicht den Zustand, die Befehle stehen in `game/TestScript.cs`. Dazu passen `--menu` (Hauptmenü auch im Prüflauf) und `--fresh` (ohne Spielstand). Prüfläufe schreiben nichts in die Dateien des Spielers. Nur `--script-writes` tut das und gehört in einen eigenen `APPDATA`-Ordner.
+`--script=<datei>` schickt Tasten und Klicks durch den echten Eingabeweg und vergleicht den Zustand, die Befehle stehen in `game/TestScript.cs`. Dazu passen `--menu` (Startbildschirm auch im Prüflauf) und `--fresh` (ohne Spielstand). Prüfläufe schreiben nichts in die Dateien des Spielers. Nur `--script-writes` tut das und gehört in einen eigenen `APPDATA`-Ordner.
 
-Prüfläufe zeigen keine Zwischensequenzen. `--intro` schaltet sie ein, `--seq=<id>` beginnt mit einer bestimmten aus `data/sequences`, `--seq-time=<s>` springt darin vor. Die Abläufe in `tests/prueflaeufe/sequenz_*.txt` prüfen Überspringen, Weiterschalten, Abbruch und den Weg aus dem Hauptmenü, etwa:
+Prüfläufe zeigen keine Zwischensequenzen. `--intro` schaltet sie ein, `--seq=<id>` beginnt mit einer bestimmten aus `data/sequences`, `--seq-time=<s>` springt darin vor. Die Abläufe in `tests/prueflaeufe/sequenz_*.txt` prüfen Überspringen, Weiterschalten, Abbruch und den Weg vom Startbildschirm, etwa:
 
 ```powershell
 & "C:\Users\user\.tools\godot\Godot_v4.7.2-stable_mono_win64\Godot_v4.7.2-stable_mono_win64_console.exe" --path game -- --intro --script=$PWD/tests/prueflaeufe/sequenz_abbruch.txt
 ```
 
-`sequenz_menue.txt` braucht zusätzlich `--menu --fresh`, `sequenz_weiter.txt` statt `--intro` den Schalter `--seq=einstieg`. Der Pfad zum Skript muss absolut sein, weil Godot im Ordner `game` startet. Beim ersten Mal spielt `--intro` den Prolog (`data/sequences/prolog.json`) und danach die Kamerafahrt mit dem Auftrag.
+`sequenz_menue.txt` braucht zusätzlich `--menu --fresh`, ebenso `startbildschirm.txt`, `sequenz_weiter.txt` statt `--intro` den Schalter `--seq=einstieg`. Der Pfad zum Skript muss absolut sein, weil Godot im Ordner `game` startet. Beim ersten Mal spielt `--intro` den Prolog (`data/sequences/prolog.json`) und danach die Kamerafahrt mit dem Auftrag.
 
 ## Grafik und Licht neu berechnen
 

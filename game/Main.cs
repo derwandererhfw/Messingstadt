@@ -193,7 +193,7 @@ void fragment() {
         // --plan zeigt den Lageplan, --look=<x>,<y> hält die Kamera auf einem Feld.
         // --flash=<stärke> hält einen Blitz an, --ship=<x>,<y> stellt das Luftschiff über dieses Feld.
         // --rain=<stärke> hält den Regen, von 0 bis 1. --smoke lässt alle ruhigen Wachen gleich rauchen.
-        // --menu öffnet auch im Prüflauf das Hauptmenü, --fresh tut so, als gäbe es keinen Spielstand.
+        // --menu öffnet auch im Prüflauf den Startbildschirm, --fresh tut so, als gäbe es keinen Spielstand.
         // --script=<datei> spielt Tasten und Klicks ab, siehe TestScript. Mit --script-writes schreibt er auch Dateien,
         // das gehört nur in einen eigenen APPDATA-Ordner.
         private bool _forceMenu;
@@ -382,10 +382,10 @@ void fragment() {
         {
             _paper.Visible = false;
             _overlayLayer.Visible = false;
-            _menus.ShowMain();
+            _menus.ShowTitle();
         }
 
-        /// <summary>Vom Hauptmenü in den Einsatz, beim Betreten läuft der Einstieg.</summary>
+        /// <summary>Vom Startbildschirm in den Einsatz, beim Betreten läuft der Einstieg.</summary>
         public void ContinueMission()
         {
             _hadSave = true;
@@ -410,7 +410,7 @@ void fragment() {
             ContinueMission();
         }
 
-        /// <summary>Verlässt einen laufenden Einsatz, das zählt wie ein Abbruch. Danach steht das Hauptmenü wieder am Anfang.</summary>
+        /// <summary>Verlässt einen laufenden Einsatz, das zählt wie ein Abbruch. Danach steht der Startbildschirm wieder am Anfang.</summary>
         public void ToMainMenu()
         {
             BookLeaving();
@@ -452,6 +452,7 @@ void fragment() {
         public Dictionary<string, string> Probe() => new()
         {
             ["screen"] = _menus.ScreenName,
+            ["title"] = _menus.TitleParts,
             ["focus"] = GetViewport().GuiGetFocusOwner() is Button button ? button.Text : GetViewport().GuiGetFocusOwner()?.GetClass() ?? "",
             ["tick"] = World.Tick.ToString(),
             ["paused"] = _paused.ToString(),

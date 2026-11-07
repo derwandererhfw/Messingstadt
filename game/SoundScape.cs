@@ -76,6 +76,7 @@ namespace Messingstadt
         private float _nextBark;
         private AudioStreamPlayer2D _lockpick = null!;
         private AudioStreamSynchronized _layers = null!;
+        private AudioStreamPlayer _musicPlayer = null!;
         private AudioStreamPlayer _rain = null!;
         private AudioStreamPlayer _wind = null!;
         private AudioStreamPlayer _gust = null!;
@@ -159,7 +160,8 @@ namespace Messingstadt
             SetLayer(DarkLayer, DarkLayerDb, 0f);
             SetLayer(SuspectLayer, MusicDb, 0f);
             SetLayer(FightLayer, MusicDb, 0f);
-            AddChild(new AudioStreamPlayer { Stream = _layers, Autoplay = true, Bus = MusicBus });
+            _musicPlayer = new AudioStreamPlayer { Stream = _layers, Autoplay = true, Bus = MusicBus };
+            AddChild(_musicPlayer);
         }
 
         // Gleiche Leistung beim Überblenden: Der Sinus hält die Summe zweier Lagen ungefähr gleich laut.
@@ -179,6 +181,9 @@ namespace Messingstadt
         }
 
         /// <summary>Stellt die Regler aus dem Menü ein: Lautstärken von 0 bis 1, stumm schaltet alles ab.</summary>
+        /// <summary>Der Startbildschirm hat sein eigenes Thema. So lange schweigen die Musiklagen des Einsatzes.</summary>
+        public void HushMusic(bool hushed) => _musicPlayer.VolumeDb = hushed ? SilentDb * 2f : 0f;
+
         public void SetVolumes(double master, double music, double effects, bool muted)
         {
             SetBusVolume(0, master);

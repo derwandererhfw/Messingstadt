@@ -1,7 +1,7 @@
-# Aus dem Hauptmenü in den Einsatz, Einstieg läuft, zurück ins Menü und wieder hinein: dann der Übergang
+# Vom Startbildschirm in den Einsatz, Einstieg läuft, zurück zum Startbildschirm und wieder hinein: dann der Übergang
 wait 20
-expect screen Hauptmenü
-click Kampagne beginnen
+expect screen Startbildschirm
+click Neues Spiel
 wait 10
 expect screen 
 expect sequence prolog
@@ -18,9 +18,9 @@ click Zum Hauptmenü
 wait 5
 click Zum Hauptmenü
 wait 10
-expect screen Hauptmenü
+expect screen Startbildschirm
 expect sequence 
-click Weiter
+click Neues Spiel
 wait 10
 expect sequence uebergang
 key Escape

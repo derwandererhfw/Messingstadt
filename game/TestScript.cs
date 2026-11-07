@@ -84,6 +84,17 @@ namespace Messingstadt
                 case "hold": SendKey(arg, true); break;
                 case "release": SendKey(arg, false); break;
                 case "click": Click(arg); break;
+                case "clickany":
+                    // Auch ausgegraute Knöpfe: Der Klick darf dann nichts bewirken.
+                    if (FindButton(Game.ActiveUi(), arg, true) is { } any)
+                    {
+                        ClickAt(any.GetGlobalRect().GetCenter());
+                    }
+                    else
+                    {
+                        Check(line, false, "kein solcher Knopf");
+                    }
+                    break;
                 case "clickat":
                     var at = arg.Split(' ');
                     ClickAt(new Vector2(float.Parse(at[0]), float.Parse(at[1])));
@@ -145,15 +156,15 @@ namespace Messingstadt
             ClickAt(button.GetGlobalRect().GetCenter());
         }
 
-        private static Button? FindButton(Node node, string text)
+        private static Button? FindButton(Node node, string text, bool disabledToo = false)
         {
-            if (node is Button { Disabled: false } button && button.Text == text && button.IsVisibleInTree())
+            if (node is Button button && (disabledToo || !button.Disabled) && button.Text == text && button.IsVisibleInTree())
             {
                 return button;
             }
             foreach (var child in node.GetChildren())
             {
-                if (FindButton(child, text) is { } found)
+                if (FindButton(child, text, disabledToo) is { } found)
                 {
                     return found;
                 }
