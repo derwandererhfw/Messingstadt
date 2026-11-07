@@ -282,6 +282,19 @@ namespace Messingstadt.Core
         }
     }
 
+    /// <summary>Welche Sequenzen beim Betreten des Einsatzes laufen.</summary>
+    public static class SequenceEntry
+    {
+        /// <summary>
+        /// Jedes neue Spiel beginnt mit Kolbs Prolog, danach Kamerafahrt und Auftrag.
+        /// Fortsetzen, Neustart und nächster Einsatz zeigen nur den Übergang. forced kommt aus --seq.
+        /// </summary>
+        public static string[] For(bool newCampaign, string? forced) =>
+            forced != null ? new[] { forced }
+            : newCampaign ? new[] { "prolog", "einstieg_nach_prolog" }
+            : new[] { "uebergang" };
+    }
+
     /// <summary>Texte für die Platzhalter einer Sequenz, aus Mission und Ausgang des Einsatzes.</summary>
     public static class SequenceTexts
     {
