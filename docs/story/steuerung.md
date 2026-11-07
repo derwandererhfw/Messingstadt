@@ -32,6 +32,7 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 | 2026-11-06 | Fahne und Stempel des Hammers bleiben in Sequenzen schwarzweiß, bis er Blut kostet. Menüs, Auftrag und Akte bleiben rot | Nutzer über die Sequenzen-Session („3. ja“) |
 | 2026-11-06 | Keine Prosa-Fassung (Roman, Begleitheft) | Nutzer über die Sequenzen-Session („5. Nein“) |
 | 2026-11-06 | Prolog „Drei Wochen“ vor Einsatz 1 freigegeben (`texte/prolog.md`, Branch `claude/sequenzen-95d8ec`). Panel 7: Hanna „Ich nehm die Pistole trotzdem mit.“, Greta „Nimm sie. Und lass sie stecken.“ Kolbs Zimmer ohne Farbakzent. Nicht wiederholbar, weil Panel 6 alle vier nennt | Nutzer über die Sequenzen-Session („Ja, freigeben“) |
+| 2026-11-07 | Ersetzt „nicht wiederholbar“: Der Prolog läuft bei jedem „Neuen Spiel“, nicht beim Fortsetzen und nicht bei jedem Programmstart. Ein neues Spiel beginnt mit allen vieren, Panel 6 stimmt also immer | Nutzer über die Hauptsession („jedes „Neue Spiel“, also meine Empfehlung“) |
 
 ## Offene Entscheidungen
 
