@@ -1,4 +1,4 @@
-# Startbildschirm: nur "Neues Spiel" wirkt, der Rest ist sichtbar, ausgegraut und mit Tasten nicht erreichbar.
+# Startbildschirm: "Neues Spiel" und "Beenden" wirken, der Rest ist sichtbar, ausgegraut und mit Tasten nicht erreichbar.
 # Aufruf mit --menu --fresh.
 wait 20
 expect screen Startbildschirm
@@ -10,9 +10,9 @@ expect title bild,schriftzug,szene
 remember tick
 wait 30
 same tick
-# Pfeiltasten bleiben auf dem einzigen wählbaren Eintrag
+# Pfeiltasten springen über die ausgegrauten Einträge zwischen Neues Spiel und Beenden
 key Down
-expect focus Neues Spiel
+expect focus Beenden
 key Up
 expect focus Neues Spiel
 # Klicks auf ausgegraute Einträge bewirken nichts
@@ -21,8 +21,6 @@ expect screen Startbildschirm
 clickany Einstellungen  (bald)
 expect screen Startbildschirm
 clickany Mitwirkende  (bald)
-expect screen Startbildschirm
-clickany Beenden  (bald)
 expect screen Startbildschirm
 # Esc verlässt den Startbildschirm nicht
 key Escape

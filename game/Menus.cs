@@ -70,7 +70,7 @@ namespace Messingstadt
 
         public void ShowMain() => Open("Hauptmenü", BuildMain);
 
-        /// <summary>Startbildschirm: Nur "Neues Spiel" wirkt bisher, der Rest ist sichtbar und ausgegraut.</summary>
+        /// <summary>Startbildschirm: "Neues Spiel" und "Beenden" wirken, der Rest ist sichtbar und ausgegraut.</summary>
         public void ShowTitle()
         {
             Remember();
@@ -216,7 +216,7 @@ namespace Messingstadt
         }
 
         /// <summary>
-        /// Einträge des Startbildschirms. Laden, Einstellungen, Mitwirkende und Beenden kommen später dazu,
+        /// Einträge des Startbildschirms. Laden, Einstellungen und Mitwirkende kommen später dazu,
         /// Akten und Einstellungen sind schon gebaut (ShowFiles, ShowSettings) und werden dann nur freigeschaltet.
         /// </summary>
         private void BuildTitle()
@@ -225,7 +225,7 @@ namespace Messingstadt
             TitleEntry("Spiel laden", null);
             TitleEntry("Einstellungen", null);
             TitleEntry("Mitwirkende", null);
-            TitleEntry("Beenden", null);
+            TitleEntry("Beenden", Game.QuitGame);
         }
 
         /// <summary>Ein neues Spiel beginnt in der zuletzt offenen Akte. Liegt dort schon eine Kampagne, wird vorher gefragt.</summary>
