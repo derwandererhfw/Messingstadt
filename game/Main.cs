@@ -209,7 +209,8 @@ void fragment() {
         private bool _forceIntro;
         private string? _forceSequence;
         private bool _sequencesForced;
-        private bool _introSeen;
+        // Die Akte beginnt gerade von vorn: Beim Betreten läuft der Prolog. Eine alte Datei einstieg_gesehen zählt nicht mehr.
+        private bool _newCampaign;
         private float _sequenceTime;
         private Vector2? _look;
         private int _shotOnFireTick = -1;
@@ -403,7 +404,8 @@ void fragment() {
             _slot = SaveFolder.ClampSlot(slot);
             _settings.LastSlot = _slot;
             SaveSettings();
-            _campaign = fresh || !SlotExists(_slot) ? new Campaign() : LoadSlot(_slot);
+            _newCampaign = fresh || !SlotExists(_slot);
+            _campaign = _newCampaign ? new Campaign() : LoadSlot(_slot);
             SaveCampaign();
             _mission = LoadMission();
             StartMission();
@@ -498,7 +500,7 @@ void fragment() {
         /// <summary>Prüfläufe zeigen keine Sequenzen, außer mit --intro oder --seq.</summary>
         private bool SequencesOn => !Testing || _forceIntro || _sequencesForced;
 
-        /// <summary>Beim Betreten des Einsatzes: der ganze Einstieg beim ersten Mal, danach nur der Übergang.</summary>
+        /// <summary>Beim Betreten des Einsatzes: nach einem neuen Spiel der ganze Einstieg, sonst nur der Übergang.</summary>
         private void MaybeStartIntro()
         {
             if (!_showIntro || !SequencesOn)
@@ -508,24 +510,18 @@ void fragment() {
                 return;
             }
             _showIntro = false;
-            bool seen = _introSeen || (File.Exists(IntroSeenPath) && !_forceIntro);
-            void MarkSeen()
+            // Bei jedem neuen Spiel erzählt Kolb den Prolog, danach folgen Kamerafahrt und Auftrag ohne Titel und Ortskarte.
+            string[] ids = SequenceEntry.For(_newCampaign, _forceSequence);
+            _newCampaign = false;
+            _forceSequence = null;
+            void Play(int i)
             {
-                _introSeen = true;
-                if (WritesFiles)
+                if (i < ids.Length)
                 {
-                    File.WriteAllText(IntroSeenPath, "");
+                    PlaySequence(ids[i], () => Play(i + 1));
                 }
             }
-            // Beim ersten Mal erzählt Kolb den Prolog, danach folgen Kamerafahrt und Auftrag ohne Titel und Ortskarte.
-            if (_forceSequence == null && !seen)
-            {
-                PlaySequence("prolog", () => PlaySequence("einstieg_nach_prolog", MarkSeen));
-                return;
-            }
-            string id = _forceSequence ?? "uebergang";
-            _forceSequence = null;
-            PlaySequence(id, MarkSeen);
+            Play(0);
         }
 
         /// <summary>
@@ -586,8 +582,6 @@ void fragment() {
             _camera.Position = position;
             _camera.Zoom = new Vector2(zoom, zoom);
         }
-
-        private static string IntroSeenPath => ProjectSettings.GlobalizePath("user://einstieg_gesehen");
 
         private void EndSequence()
         {
@@ -1054,6 +1048,7 @@ void fragment() {
             _slot = _settings.LastSlot;
             _hadSave = SlotExists(_slot);
             _campaign = _hadSave ? LoadSlot(_slot) : new Campaign();
+            _newCampaign = !_hadSave;
         }
 
         /// <summary>Lädt eine Akte. Ein unlesbarer oder zu neuer Stand wird nicht stillschweigend überschrieben, sondern beiseitegelegt.</summary>

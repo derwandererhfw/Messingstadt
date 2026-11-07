@@ -1,17 +1,17 @@
-# Vom Startbildschirm in den Einsatz, Einstieg läuft, zurück zum Startbildschirm und wieder hinein: dann der Übergang
+# Vom Startbildschirm in den Einsatz, zurück zum Startbildschirm und noch ein neues Spiel: Jedes neue Spiel zeigt den Prolog
 # Aufruf mit --menu --fresh --intro: Startbildschirm im Prüflauf, kein echter Spielstand, Sequenzen an.
 wait 20
 expect screen Startbildschirm
 click Neues Spiel
 wait 10
-expect screen 
+expect screen
 expect sequence prolog
 key Escape
 wait 10
 expect sequence einstieg_nach_prolog
 key Escape
 wait 10
-expect sequence 
+expect sequence
 key Escape
 wait 5
 expect screen Pausenmappe
@@ -20,11 +20,14 @@ wait 5
 click Zum Hauptmenü
 wait 10
 expect screen Startbildschirm
-expect sequence 
+expect sequence
 click Neues Spiel
 wait 10
-expect sequence uebergang
+expect sequence prolog
 key Escape
 wait 10
-expect sequence 
+expect sequence einstieg_nach_prolog
+key Escape
+wait 10
+expect sequence
 expect hud True

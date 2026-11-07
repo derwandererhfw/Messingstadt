@@ -214,6 +214,14 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void EveryNewGameStartsWithThePrologAndContinuingDoesNot()
+        {
+            Assert.Equal(new[] { "prolog", "einstieg_nach_prolog" }, SequenceEntry.For(true, null));
+            Assert.Equal(new[] { "uebergang" }, SequenceEntry.For(false, null));
+            Assert.Equal(new[] { "einstieg" }, SequenceEntry.For(true, "einstieg"));
+        }
+
+        [Fact]
         public void ImageBeatsTypeTheNarration()
         {
             var run = new SequenceRun(Data(new SequenceBeat { Show = "image", Image = "a.jpg", Body = "{briefing}", Seconds = 1 }), Texts);

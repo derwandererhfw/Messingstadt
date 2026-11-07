@@ -1,0 +1,11 @@
+# Fortsetzen einer Akte: kein Prolog, nur der Übergang
+# Aufruf mit --intro in einem eigenen APPDATA-Ordner, in dem Akte 1 schon liegt (etwa nach sequenz_menue.txt mit --script-writes).
+wait 20
+expect sequence uebergang
+key Escape
+wait 10
+expect sequence
+expect hud True
+remember tick
+wait 60
+changed tick
