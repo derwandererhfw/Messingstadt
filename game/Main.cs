@@ -93,27 +93,6 @@ void fragment() {
         private const float FocusSeconds = 2.2f;
         private const float FocusPull = 0.3f;
         private const float FocusZoom = 0.2f;
-        private const int AimTicksStanding = 12;
-        private const int AimTicksWalking = 5;
-
-        // Spalten im Figurenblatt, siehe tools/art/figures3d.py
-        private const int WalkColumn = 0;
-        private const int RunColumn = 8;
-        private const int IdleColumn = 16;
-        private const int AimColumn = 20;
-        private const int RecoilColumn = 21;
-        private const int AimWalkColumn = 22;
-        private const int FallColumn = 30;
-        private const int FallFrames = 8;
-        private const int FallVariants = 2;
-        private const int CycleFrames = 8;
-        private const int IdleFrames = 4;
-        private const float IdleFramesPerSecond = 1.6f;
-        private const float FallSeconds = 1f;
-
-        // Weg für einen Doppelschritt in Einheiten, damit die Füße zum Tempo passen und nicht rutschen.
-        private const float StrideUnits = 1150f;
-        private const float RunStrideUnits = 1700f;
 
         /// <summary>Farbe für Ring und Nummer. Alle Agenten tragen dasselbe, nur die Nummer unterscheidet sie.</summary>
         public static readonly Color AgentColor = new(1f, 0.8f, 0.45f);
@@ -143,7 +122,7 @@ void fragment() {
         private PuddleMirror _puddleMirror = null!;
         private readonly List<Sprite2D> _unitSprites = new();
         private readonly Dictionary<string, int> _figureRows = new();
-        private readonly Dictionary<int, float> _fallStarted = new();
+        private readonly FigureAnimator _animator = new();
         private readonly List<Vector2> _tickFrom = new();
         private int _figureViews, _footX, _footY;
         private float _figureRes = 1f;
@@ -189,6 +168,7 @@ void fragment() {
         private bool _paused;
 
         // Automatischer Prüflauf: --shot=<datei> --frames=<n> --auto
+        // --shots=<anzahl>,<abstand> macht daraus eine Bildfolge: datei_00.png, datei_01.png und so fort.
         // Mit --shot-on-fire=<n> entsteht das Bild im Moment des ersten Schusses ab Takt n.
         // --plan zeigt den Lageplan, --look=<x>,<y> hält die Kamera auf einem Feld.
         // --flash=<stärke> hält einen Blitz an, --ship=<x>,<y> stellt das Luftschiff über dieses Feld.
@@ -215,6 +195,7 @@ void fragment() {
         private int _shotOnFireTick = -1;
         private string? _shotPath;
         private int _shotFrame = -1;
+        private int _shotCount = 1, _shotEvery = 1;
         private bool _auto;
         private int _frame;
 
@@ -786,6 +767,12 @@ void fragment() {
                 {
                     _shotFrame = int.Parse(a["--frames=".Length..]);
                 }
+                else if (a.StartsWith("--shots="))
+                {
+                    var series = a["--shots=".Length..].Split(',');
+                    _shotCount = Mathf.Max(1, int.Parse(series[0]));
+                    _shotEvery = series.Length > 1 ? Mathf.Max(1, int.Parse(series[1])) : 1;
+                }
                 else if (a.StartsWith("--shot-on-fire="))
                 {
                     _shotOnFireTick = int.Parse(a["--shot-on-fire=".Length..]);
@@ -981,6 +968,7 @@ void fragment() {
             {
                 _figureRows[n.GetString()!] = row++;
             }
+            _animator.Load(figures.RootElement);
             _figures = LoadTexture("res://assets/figures.png");
             _book = new Sprite2D { Texture = LoadTexture("res://assets/book.png") };
             AddChild(_book);
@@ -1293,7 +1281,7 @@ void fragment() {
             }
             _unitSprites.Clear();
             _unitGlow.Clear();
-            _fallStarted.Clear();
+            _animator.Clear();
             _tickFrom.Clear();
             // Prepare verändert die Missionsdaten, deshalb jedes Mal frisch laden.
             _mission = LoadMission();
@@ -1385,11 +1373,17 @@ void fragment() {
                 _shotFrame = _frame + 1;
                 _shotOnFireTick = -1;
             }
-            if (_shotPath != null && _frame == _shotFrame)
+            int shot = _shotFrame >= 0 ? _frame - _shotFrame : -1;
+            if (_shotPath != null && shot >= 0 && shot % _shotEvery == 0)
             {
-                GD.Print($"Raum {_sound.Enclosure:0.00}, Stille {_windowLife.Hush:0.00}, Geräusche abgespielt: {_sound.PlayCount}  " + string.Join(", ", _sound.PlayedByGroup.Select(g => $"{g.Key} {g.Value}")));
-                GetViewport().GetTexture().GetImage().SavePng(_shotPath);
-                GetTree().Quit();
+                int index = shot / _shotEvery;
+                string path = _shotCount > 1 ? _shotPath.Replace(".png", $"_{index:00}.png") : _shotPath;
+                GetViewport().GetTexture().GetImage().SavePng(path);
+                if (index >= _shotCount - 1)
+                {
+                    GD.Print($"Raum {_sound.Enclosure:0.00}, Stille {_windowLife.Hush:0.00}, Geräusche abgespielt: {_sound.PlayCount}  " + string.Join(", ", _sound.PlayedByGroup.Select(g => $"{g.Key} {g.Value}")));
+                    GetTree().Quit();
+                }
             }
         }
 
@@ -1526,23 +1520,30 @@ void fragment() {
                 _unitSprites.Add(added);
             }
             var order = World.Units.OrderBy(u => u.X + u.Y).ToList();
+            float delta = (float)GetProcessDeltaTime(), now = Time.GetTicksMsec() / 1000f;
             for (int rank = 0; rank < order.Count; rank++)
             {
                 var u = order[rank];
                 var s = _unitSprites[u.Id];
                 var foot = UnitPos(u);
-                // Nach einem Schuss hält die Figur die Waffe kurz aufs Ziel, auch wenn sie dabei weitergeht.
-                int sinceShot = World.Tick - u.LastFiredTick;
-                bool aiming = u.Alive && sinceShot <= (u.Moving ? AimTicksWalking : AimTicksStanding);
+                _animator.Track(u, foot);
+                int column = _animator.Column(World, u, delta, now, out bool fell);
+                if (fell && u.Faction == Faction.Agent)
+                {
+                    _focusAt = ToScreen(u.X, u.Y);
+                    _focusLeft = FocusSeconds;
+                }
+                // Wer die Waffe hebt, hält oder senkt, blickt aufs Ziel, auch wenn er dabei weitergeht.
+                bool aiming = _animator.Aiming(u);
                 int lookX = aiming ? u.AimX : u.FacingX, lookY = aiming ? u.AimY : u.FacingY;
                 // Am Boden gedacht: x - y läuft im Bild quer, x + y zur Kamera. Der Westen entsteht durch Spiegeln.
                 float across = lookX - lookY, toward = lookX + lookY;
                 float angle = Mathf.RadToDeg(Mathf.Atan2(toward, Mathf.Abs(across)));
                 int view = Mathf.Clamp(Mathf.RoundToInt((90f - angle) / 45f), 0, _figureViews - 1);
-                s.RegionRect = FigureRegion(u.Sprite, view, FigureColumn(u, aiming, sinceShot));
+                s.RegionRect = FigureRegion(u.Sprite, view, column);
                 s.FlipH = across < 0;
                 s.Modulate = FigureGlow(u);
-                s.Position = foot - FigureFoot;
+                s.Position = foot - FigureFoot + _animator.BiteOffset(World, u, this);
                 int depth = ThingZ(InsertIndex(u.X / (float)World.TileUnits, u.Y / (float)World.TileUnits) - 1);
                 s.ZIndex = u.Alive ? depth + rank + 2 : depth + 1;
             }
@@ -1607,8 +1608,10 @@ void fragment() {
             var guard = UnitUnderCursor(GetGlobalMousePosition(), Faction.Guard);
             return guard != null && World.IsSpottedByAgents(guard) ? guard : null;
         }
-        public const int IdleFirstColumn = IdleColumn;
-        public const int WalkFirstColumn = WalkColumn;
+        public static int IdleFirstColumn => FigureAnimator.IdleFirst;
+        public static int IdleFrameCount => FigureAnimator.IdleCount;
+        public static int WalkFirstColumn => FigureAnimator.WalkFirst;
+        public static int WalkFrameCount => FigureAnimator.WalkCount;
 
         /// <summary>Einfärbung einer Figur: das Licht am Ort, nicht dunkler als minLight und nur gedämpft farbig.</summary>
         private static Color LightFor(Color light, float minLight)
@@ -1622,49 +1625,9 @@ void fragment() {
         }
 
         /// <summary>Zählt die Schritte einer gehenden Figur, damit das Geräusch zum Aufsetzen der Füße passt.</summary>
-        public int StepsTaken(Unit u)
-        {
-            float stride = u.Sprinting ? RunStrideUnits : StrideUnits;
-            float speed = World.WalkSpeed(u) * (u.Sprinting ? 1.4f : 1f);
-            return (int)(u.WalkTick * speed / stride * 2f);
-        }
+        public int StepsTaken(Unit u) => _animator.StepsTaken(u);
 
         public Vector2 CameraCenter => _camera.Position;
-
-        /// <summary>Welches Bild der Bewegung gerade dran ist. Schrittlänge und Tempo passen zusammen, damit die Füße nicht rutschen.</summary>
-        private int FigureColumn(Unit u, bool aiming, int sinceShot)
-        {
-            float now = Time.GetTicksMsec() / 1000f;
-            if (!u.Alive)
-            {
-                if (!_fallStarted.TryGetValue(u.Id, out float started))
-                {
-                    started = now;
-                    _fallStarted[u.Id] = now;
-                    if (u.Faction == Faction.Agent)
-                    {
-                        _focusAt = ToScreen(u.X, u.Y);
-                        _focusLeft = FocusSeconds;
-                    }
-                }
-                // Nicht alle sterben gleich: Die Id bestimmt, ob die Figur nach vorn oder zur Seite sackt.
-                return FallColumn + u.Id % FallVariants * FallFrames + Mathf.Min(FallFrames - 1, (int)((now - started) / FallSeconds * FallFrames));
-            }
-            if (u.Moving)
-            {
-                // Ein alarmierter Hund rennt, er kennt kein Gehen mehr. Der Laufbursche auch.
-                bool running = u.Sprinting || ((u.Type.Bites || u.Type.Reports) && u.Alerted);
-                float stride = running ? RunStrideUnits : StrideUnits;
-                float speed = World.WalkSpeed(u) * (u.Sprinting ? 1.4f : 1f);
-                int frame = (int)(u.WalkTick * speed / stride * CycleFrames) % CycleFrames;
-                return (aiming ? AimWalkColumn : running ? RunColumn : WalkColumn) + frame;
-            }
-            if (aiming)
-            {
-                return sinceShot <= 1 ? RecoilColumn : AimColumn;
-            }
-            return IdleColumn + (int)(now * IdleFramesPerSecond + u.Id * 1.7f) % IdleFrames;
-        }
 
         private Rect2 FigureRegion(string name, int view, int column) =>
             new(column * _cellW, (_figureRows.GetValueOrDefault(name, 0) * _figureViews + view) * _cellH, _cellW, _cellH);
