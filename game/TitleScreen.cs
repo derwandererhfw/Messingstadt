@@ -8,12 +8,12 @@ namespace Messingstadt
     /// <summary>
     /// Startbildschirm: Titel und Einträge links auf dunklem Grund, dahinter Titelbild und bewegte Szene, dazu das Titelthema.
     /// Alle drei Zutaten sind freiwillig. Fehlen sie, liegt die Stadt stark abgedunkelt dahinter und es läuft nur der Regen.
-    /// Titelbild: game/assets/title/title_bg.png (tools/art/title.py). Szene: eine Klasse Messingstadt.TitleAmbience (Control), wird per Reflexion gesucht.
+    /// Titelbild: game/assets/title/title.png (tools/art/title.py). Szene: eine Klasse Messingstadt.TitleAmbience (Control), wird per Reflexion gesucht.
     /// Thema: SoundScape.SetTitleMusic blendet music_title über und drückt die Einsatzmusik weg.
     /// </summary>
     public partial class TitleScreen : Control
     {
-        private const string ImagePath = "res://assets/title/title_bg.png";
+        private const string ImagePath = "res://assets/title/title.png";
         private const string ThemePath = "res://assets/audio/music_title.wav";
         private const string AmbienceType = "Messingstadt.TitleAmbience";
         private const float ShadeWithoutImage = 0.82f;
