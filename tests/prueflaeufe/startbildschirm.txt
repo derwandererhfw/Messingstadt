@@ -5,6 +5,8 @@ expect screen Startbildschirm
 expect focus Neues Spiel
 expect hud False
 expect help False
+# Titelbild, Schriftzug und bewegte Szene sind eingebunden
+expect title bild,schriftzug,szene
 remember tick
 wait 30
 same tick

@@ -39,6 +39,7 @@ namespace Messingstadt
         private VBoxContainer _sheetBody = null!;
         private TitleScreen _title = null!;
         private float _lastSample;
+        private bool _building;
 
         public Main Game = null!;
 
@@ -157,11 +158,27 @@ namespace Messingstadt
             _sheet.Visible = !page.Title;
             _dim.Color = overTitle ? Colors.Transparent : Dim;
             _body = page.Title ? _title.Entries : _sheetBody;
+            // Beim Aufbau wandert die Wahl von selbst, das soll nicht klicken.
+            _building = true;
             page.Build();
             if (_focusable.Count > 0)
             {
                 _focusable[Math.Min(page.Focus, _focusable.Count - 1)].GrabFocus();
             }
+            _building = false;
+        }
+
+        /// <summary>Jede wählbare Stelle meldet sich mit einem leisen Geräusch, wenn die Wahl auf sie wandert.</summary>
+        private void Choosable(Control control)
+        {
+            control.FocusEntered += () =>
+            {
+                if (!_building)
+                {
+                    Game.Sound.PlayEverywhere("menu_move", -18f);
+                }
+            };
+            _focusable.Add(control);
         }
 
         private void Clear()
@@ -230,11 +247,10 @@ namespace Messingstadt
             {
                 button.Pressed += () =>
                 {
-                    Game.Sound.PlayEverywhere("menu_select", -14f);
+                    Game.Sound.PlayEverywhere("menu_select", -10f);
                     action();
                 };
-                button.FocusEntered += () => Game.Sound.PlayEverywhere("menu_move", -20f);
-                _focusable.Add(button);
+                Choosable(button);
             }
             _body.AddChild(button);
         }
@@ -414,10 +430,10 @@ namespace Messingstadt
             }
             button.Pressed += () =>
             {
-                Game.Sound.PlayEverywhere("click", -18f);
+                Game.Sound.PlayEverywhere("menu_select", -10f);
                 action();
             };
-            _focusable.Add(button);
+            Choosable(button);
             return button;
         }
 
@@ -451,7 +467,7 @@ namespace Messingstadt
             // Der Regler selbst zeigt keine Markierung, darum wird beim gewählten Regler die Beschriftung rot.
             slider.FocusEntered += () => label.AddThemeColorOverride("font_color", PaperUi.StampRed);
             slider.FocusExited += () => label.AddThemeColorOverride("font_color", PaperUi.Ink);
-            _focusable.Add(slider);
+            Choosable(slider);
             _body.AddChild(row);
         }
 
