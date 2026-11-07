@@ -192,9 +192,6 @@ namespace Messingstadt
         }
 
         /// <summary>Stellt die Regler aus dem Menü ein: Lautstärken von 0 bis 1, stumm schaltet alles ab.</summary>
-        /// <summary>Der Startbildschirm hat sein eigenes Thema. So lange schweigen die Musiklagen des Einsatzes.</summary>
-        public void HushMusic(bool hushed) => _musicPlayer.VolumeDb = hushed ? SilentDb * 2f : 0f;
-
         public void SetVolumes(double master, double music, double effects, bool muted)
         {
             SetBusVolume(0, master);

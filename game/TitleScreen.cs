@@ -8,24 +8,22 @@ namespace Messingstadt
     /// <summary>
     /// Startbildschirm: Titel und Einträge links auf dunklem Grund, dahinter Titelbild und bewegte Szene, dazu das Titelthema.
     /// Alle drei Zutaten sind freiwillig. Fehlen sie, liegt die Stadt stark abgedunkelt dahinter und es läuft nur der Regen.
-    /// Titelbild: game/assets/title/title.png. Szene: eine Klasse Messingstadt.TitleAmbience (Control), wird per Reflexion gesucht.
-    /// Thema: game/assets/audio/music_title.wav auf dem Bus "Musik", die Einsatzmusik schweigt so lange.
+    /// Titelbild: game/assets/title/title_bg.png (tools/art/title.py). Szene: eine Klasse Messingstadt.TitleAmbience (Control), wird per Reflexion gesucht.
+    /// Thema: SoundScape.SetTitleMusic blendet music_title über und drückt die Einsatzmusik weg.
     /// </summary>
     public partial class TitleScreen : Control
     {
-        private const string ImagePath = "res://assets/title/title.png";
+        private const string ImagePath = "res://assets/title/title_bg.png";
         private const string ThemePath = "res://assets/audio/music_title.wav";
         private const string AmbienceType = "Messingstadt.TitleAmbience";
         private const float ShadeWithoutImage = 0.82f;
         private const float ShadeWithImage = 0.25f;
-        private const float ThemeDb = -14f;
         private const float ColumnWidth = 720f;
         public static readonly Color Brass = new(0.82f, 0.68f, 0.38f);
         public static readonly Color Ash = new(0.66f, 0.63f, 0.56f);
 
         private Texture2D? _image;
         private Control? _ambience;
-        private AudioStreamPlayer? _theme;
         private Control _column = null!;
 
         public Main Game = null!;
@@ -63,7 +61,6 @@ namespace Messingstadt
             AddChild(shade);
             shade.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
             BuildColumn();
-            _theme = LoadTheme();
         }
 
         private void BuildColumn()
@@ -143,8 +140,7 @@ namespace Messingstadt
 
         private void Opened()
         {
-            Game.Sound.HushMusic(true);
-            _theme?.Play();
+            Game.Sound.SetTitleMusic(true);
             if (_ambience == null && Type.GetType(AmbienceType) is { } type && typeof(Control).IsAssignableFrom(type))
             {
                 _ambience = (Control)Activator.CreateInstance(type)!;
@@ -159,8 +155,7 @@ namespace Messingstadt
 
         private void Closed()
         {
-            _theme?.Stop();
-            Game.Sound.HushMusic(false);
+            Game.Sound.SetTitleMusic(false);
             _ambience?.QueueFree();
             _ambience = null;
         }
@@ -171,26 +166,10 @@ namespace Messingstadt
             return File.Exists(path) ? ImageTexture.CreateFromImage(Image.LoadFromFile(path)) : null;
         }
 
-        private AudioStreamPlayer? LoadTheme()
-        {
-            string path = ProjectSettings.GlobalizePath(ThemePath);
-            if (!File.Exists(path))
-            {
-                return null;
-            }
-            var sound = AudioStreamWav.LoadFromFile(path);
-            sound.LoopMode = AudioStreamWav.LoopModeEnum.Forward;
-            sound.LoopBegin = 0;
-            sound.LoopEnd = sound.Data.Length / (sound.Stereo ? 4 : 2);
-            var player = new AudioStreamPlayer { Stream = sound, VolumeDb = ThemeDb, Bus = "Musik" };
-            AddChild(player);
-            return player;
-        }
-
         /// <summary>Für den Prüflauf: welche der drei freiwilligen Zutaten da sind.</summary>
         public string Parts => string.Join(",", new[]
         {
-            _image != null ? "bild" : "", Type.GetType(AmbienceType) != null ? "szene" : "", _theme != null ? "thema" : "",
+            _image != null ? "bild" : "", Type.GetType(AmbienceType) != null ? "szene" : "", File.Exists(ProjectSettings.GlobalizePath(ThemePath)) ? "thema" : "",
         }.Where(p => p.Length > 0));
     }
 }

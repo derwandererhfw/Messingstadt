@@ -230,9 +230,10 @@ namespace Messingstadt
             {
                 button.Pressed += () =>
                 {
-                    Game.Sound.PlayEverywhere("click", -18f);
+                    Game.Sound.PlayEverywhere("menu_select", -14f);
                     action();
                 };
+                button.FocusEntered += () => Game.Sound.PlayEverywhere("menu_move", -20f);
                 _focusable.Add(button);
             }
             _body.AddChild(button);
