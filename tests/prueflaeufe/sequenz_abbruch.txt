@@ -1,4 +1,5 @@
 # Rückzug ohne Schuss: Telegramm, Übergang, neuer Anlauf
+# Aufruf mit --intro, damit die Sequenzen auch im Prüflauf laufen.
 wait 20
 # Prolog und Kamerafahrt überspringen
 key Escape

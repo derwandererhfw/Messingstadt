@@ -1,4 +1,5 @@
 # Mit --seq=einstieg: Leertaste schaltet den Titel weiter, die Karte wird erst fertig getippt, dann geht es weiter
+# Aufruf mit --seq=einstieg, damit der Einstieg mit Titel und Ortskarte läuft.
 wait 20
 expect beat 0
 key Space
