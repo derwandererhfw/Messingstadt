@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using Messingstadt.Core;
 
@@ -51,6 +52,8 @@ namespace Messingstadt
         private Label _telegram = null!;
         private Label _info = null!;
         private Control _cardRow = null!;
+        private PanelContainer _absent = null!;
+        private Label _absentText = null!;
 
         public Main Game = null!;
 
@@ -150,6 +153,19 @@ namespace Messingstadt
             {
                 AddCard(i);
             }
+            // Zettel neben den Akten: wer aussetzt und warum. Refresh schiebt ihn hinter die letzte sichtbare Akte.
+            _absent = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore, Visible = false };
+            var slip = PaperBox(PaperDark);
+            slip.ContentMarginLeft = slip.ContentMarginRight = 8;
+            slip.ContentMarginTop = slip.ContentMarginBottom = 6;
+            _absent.AddThemeStyleboxOverride("panel", slip);
+            var column = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+            column.AddThemeConstantOverride("separation", 2);
+            column.AddChild(Text("SETZT AUS", 11, StampRed, Serif));
+            _absentText = Text("", 12, Ink, Typewriter);
+            column.AddChild(_absentText);
+            _absent.AddChild(column);
+            _cardRow.AddChild(_absent);
         }
 
         /// <summary>Papierstreifen für das Telegramm: läuft über die ganze Breite des Bildes.</summary>
@@ -228,6 +244,11 @@ namespace Messingstadt
         {
             _telegram.Text = telegram;
             _info.Text = info;
+            int shown = world.Units.Count(u => u.Faction == Faction.Agent);
+            string resting = Game.RestingLine.Replace(", setzt aus", "");
+            _absent.Visible = resting.Length > 0;
+            _absentText.Text = resting;
+            _absent.Position = new Vector2(12 + Math.Min(shown, _cards.Count) * (CardWidth + CardGap), 0);
             for (int i = 0; i < _cards.Count; i++)
             {
                 // Wer in der Krankenstube aussetzt, ist nicht im Einsatz. Dann rücken die Wachen in der Liste nach und dürfen keine Akte bekommen.

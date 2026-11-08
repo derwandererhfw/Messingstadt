@@ -329,6 +329,14 @@ namespace Messingstadt
                 any = true;
                 string mark = s == Game.CurrentSlot ? "  *" : "";
                 _body.AddChild(MakeEntry($"Akte {s}: {Game.SlotLine(s)}{mark}", () => Game.OpenSlot(s, false), false));
+                // Wer aussetzt, steht klein unter der Akte, wie auf dem Ergebnis-Bildschirm.
+                foreach (string resting in Game.SlotResting(s))
+                {
+                    var note = new MarginContainer();
+                    note.AddThemeConstantOverride("margin_left", 18);
+                    note.AddChild(PaperUi.Text(resting, 14, PaperUi.StampRed, PaperUi.Typewriter));
+                    _body.AddChild(note);
+                }
             }
             _body.AddChild(any
                 ? PaperUi.Text("* zuletzt geöffnet", 13, new Color(PaperUi.Ink, 0.7f), PaperUi.Typewriter)
