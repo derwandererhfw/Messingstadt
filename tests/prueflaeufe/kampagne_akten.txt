@@ -1,6 +1,6 @@
 # Kampagne: Abbruch nach dem ersten Schuss, Ergebnis-Bildschirm mit Krankenstube und Arzt, zweiter Sturz mit Stempel GEFALLEN.
 # Aufruf mit --menu --fresh, damit kein echter Spielstand gelesen wird. Prüfläufe schreiben nichts.
-# Dazu: Hilfezeile nur mit Lebenden, Leertaste löst auf dem Ergebnis-Bildschirm nichts aus, dann zurück zum Startbildschirm.
+# Dazu: Hilfezeile nur mit Lebenden und den Ziffern der Eingesetzten, Leertaste löst auf dem Ergebnis-Bildschirm nichts aus, dann zurück zum Startbildschirm.
 # Laden und Fortsetzen prüfen erststart_laden.txt und laden_fortsetzen.txt.
 wait 20
 expect screen Startbildschirm
@@ -35,6 +35,8 @@ changed money
 click Nochmal
 wait 30
 expect panel False
+# Hanna liegt noch in der Krankenstube: drei im Einsatz, die Hilfezeile nennt nur ihre Ziffern
+expect helpline Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen, Otto: Tür   Q halten: Lageplan   1-3 Leertaste   WASD F P M   Esc: Menü
 fell Emil
 wait 5
 expect stamps Emil:GEFALLEN

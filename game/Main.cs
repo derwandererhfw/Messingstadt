@@ -1813,7 +1813,10 @@ void fragment() {
             string right = string.Concat(
                 agents.Where(u => u.Skill == World.SkillBookkeeper).Select(u => $", {u.Name}: bestechen")
                 .Concat(agents.Where(u => u.Skill == World.SkillLocksmith).Select(u => $", {u.Name}: Tür")));
-            return $"Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen{right}   Q halten: Lageplan   1-4 Leertaste   WASD F P M   Esc: Menü";
+            // Die Zifferntasten wählen die Agenten im Einsatz, auch Gefallene behalten ihre Ziffer.
+            int squad = World.Units.Count(u => u.Faction == Faction.Agent);
+            string keys = squad <= 1 ? "1" : $"1-{squad}";
+            return $"Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen{right}   Q halten: Lageplan   {keys} Leertaste   WASD F P M   Esc: Menü";
         }
 
         public override void _Input(InputEvent e)
