@@ -17,6 +17,24 @@ namespace Messingstadt
         private const float MarkerSeconds = 0.8f;
         private static readonly Color Night = new(0.34f, 0.37f, 0.55f);
 
+        // Figuren nehmen ihr Licht über Modulate. Gezeichnet wird scharf-bilinear wie die Stadt, siehe sharp_uv unten.
+        private const string FigureShaderCode = @"
+shader_type canvas_item;
+varying vec4 tint;
+void vertex() {
+    tint = COLOR;
+}
+vec2 sharp_uv(vec2 uv, vec2 texel) {
+    vec2 p = uv / texel;
+    vec2 edge = floor(p + 0.5);
+    vec2 reach = max(fwidth(p), vec2(1e-4));
+    return (edge + clamp((p - edge) / reach, -0.5, 0.5)) * texel;
+}
+void fragment() {
+    COLOR = texture(TEXTURE, sharp_uv(UV, TEXTURE_PIXEL_SIZE)) * tint;
+}
+";
+
         // Häuser und Boden tragen vorberechnetes Licht aus dem Pathtracer (tools/art/bake_light.py).
         // Die Nacht von CanvasModulate wird im Shader herausgerechnet, sie gilt nur noch für Rauch, Regen und Marken.
         private const string LitShaderCode = @"
@@ -132,6 +150,7 @@ void fragment() {
         private static readonly Vector2 StutterLamp = new(5.6f, 10.5f);
         private static readonly Vector2 WorkerDoorTile = new(6.04f, 15.8f);
         private Shader _litShader = null!;
+        private ShaderMaterial _figureMaterial = null!;
         private Image _lightGrid = null!;
         private readonly List<Color> _unitGlow = new();
         private readonly Ambience _ambience = new();
@@ -969,6 +988,7 @@ void fragment() {
         private void LoadStatics()
         {
             _litShader = new Shader { Code = LitShaderCode };
+            _figureMaterial = new ShaderMaterial { Shader = new Shader { Code = FigureShaderCode } };
             var blank = Image.CreateEmpty(1, 1, false, Image.Format.Rgba8);
             blank.Fill(Colors.Black);
             _noPanes = ImageTexture.CreateFromImage(blank);
@@ -1385,7 +1405,7 @@ void fragment() {
             World = new World(_map, _mission);
             foreach (var u in World.Units)
             {
-                var sprite = new Sprite2D { Texture = _figures, RegionEnabled = true, Centered = false, Scale = FigureScale };
+                var sprite = NewFigureSprite();
                 AddChild(sprite);
                 _unitSprites.Add(sprite);
             }
@@ -1607,7 +1627,7 @@ void fragment() {
             // Verstärkung kommt erst im Einsatz dazu und braucht dann ein eigenes Bild.
             while (_unitSprites.Count < World.Units.Count)
             {
-                var added = new Sprite2D { Texture = _figures, RegionEnabled = true, Centered = false, Scale = FigureScale };
+                var added = NewFigureSprite();
                 AddChild(added);
                 _unitSprites.Add(added);
             }
@@ -1687,6 +1707,13 @@ void fragment() {
         /// <summary>Figurenblatt und Ausschnitt für eine Figur, Blickrichtung und Spalte.</summary>
         public (Texture2D Sheet, Rect2 Region) FigureFrame(string name, int view, int column) =>
             (_figures, FigureRegion(name, view, column));
+
+        /// <summary>Figur zum Zeichnen: scharf-bilinear wie die Stadt, damit die Pixel bei jeder Bildschirmgröße gleich breit sind.</summary>
+        public Sprite2D NewFigureSprite() => new()
+        {
+            Texture = _figures, RegionEnabled = true, Centered = false, Scale = FigureScale,
+            TextureFilter = TextureFilterEnum.Linear, Material = _figureMaterial,
+        };
 
         /// <summary>Lage der Füße im Figurenbild, in Weltpixeln.</summary>
         public Vector2 FigureFoot => new Vector2(_footX, _footY) / _figureRes;

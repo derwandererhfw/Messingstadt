@@ -21,7 +21,7 @@ import numpy as np
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from generate_concept import C, SPECS  # noqa: E402
+from generate_concept import C, SPECS, bleed  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 RES = 2
@@ -886,7 +886,8 @@ def main():
             row = names.index(name) * len(VIEWS) + VIEWS.index(view)
             sheet[row * CELL_H:(row + 1) * CELL_H, column * CELL_W:(column + 1) * CELL_W] = cell
     assets = ROOT / "game" / "assets"
-    Image.fromarray(sheet).save(assets / "figures.png", optimize=True)
+    # Das Spiel zeichnet scharf-bilinear wie die Stadt: Ränder bekommen die Farbe ihrer Nachbarn, sonst säumt sie Schwarz.
+    bleed(Image.fromarray(sheet), rounds=2).save(assets / "figures.png", optimize=True)
     (assets / "figures.json").write_text(json.dumps({
         "names": names, "w": CELL_W, "h": CELL_H, "footX": FOOT_X, "footY": FOOT_Y, "views": len(VIEWS), "res": RES,
         "columns": columns(), "stride": strides(), "biteReach": bite_reach(),
