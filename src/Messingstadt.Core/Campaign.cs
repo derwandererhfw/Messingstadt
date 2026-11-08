@@ -357,6 +357,16 @@ namespace Messingstadt.Core
             FillRanks(Slots());
         }
 
+        /// <summary>
+        /// Stempel für einen Agenten am Boden: true heißt GEFALLEN, false KRANKENSTUBE. Gilt im Einsatz, wo der Sturz noch nicht verbucht ist,
+        /// und danach, wo ein erster Sturz Falls schon auf 1 gesetzt hat.
+        /// </summary>
+        public bool FallIsFatal(string name)
+        {
+            var record = Agents.Find(a => a.Name == name);
+            return record != null && (record.Dead || (record.Falls >= 1 && !LastFirstFalls.Contains(name)));
+        }
+
         /// <summary>Herkunft eines Neuen in einem Satz, leer bei den Agenten der Mission.</summary>
         public string Origin(AgentRecord record)
         {
