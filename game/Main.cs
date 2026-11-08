@@ -313,13 +313,7 @@ void fragment() {
         public bool SlotBegun(int slot) => !_fresh && _saves.Begun(slot);
 
         /// <summary>Stempel auf der Akte eines gefallenen Agenten: wer schon einmal geflickt wurde, ist tot.</summary>
-        public string FallStamp(Unit unit)
-        {
-            var record = _campaign.Agents.Find(a => a.Name == unit.Name);
-            // Nach dem Verbuchen steht Dead fest, vorher entscheidet der frühere Sturz.
-            bool dies = record != null && (record.Dead || (!_finished && record.Falls > 0));
-            return dies ? "GEFALLEN" : "KRANKENSTUBE";
-        }
+        public string FallStamp(Unit unit) => _campaign.FallIsFatal(unit.Name) ? "GEFALLEN" : "KRANKENSTUBE";
 
         /// <summary>Beruf für die Akte im Einsatz, aus den Missionsdaten.</summary>
         public string AgentRole(int index) => index < _mission.Agents.Count ? _mission.Agents[index].RoleName() : "Agent";
