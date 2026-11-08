@@ -203,15 +203,19 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
-        public void ShootingTheDogBreaksTheDealWithBoth()
+        public void BribedHandlerAndDogCannotBeOrderedUnderFire()
         {
             var w = NewWorld(Pair(Agent(4.5, skill: World.SkillBookkeeper)));
             w.OrderBribe(0, 1);
             Run(w, 2);
-            w.OrderAttack(0, 2);
-            Run(w, 20);
-            Assert.False(w.Units[1].Bribed);
-            Assert.False(w.Units[2].Bribed);
+            Assert.False(w.OrderAttack(0, 2));
+            Assert.False(w.OrderAttack(0, 1));
+            Run(w, 60);
+            Assert.Empty(w.Shots);
+            Assert.True(w.Units[1].Bribed);
+            Assert.True(w.Units[2].Bribed);
+            Assert.Equal(GuardState.Patrol, w.Units[2].GuardState);
+            Assert.Equal(MissionRating.Unseen, w.Rating);
         }
 
         [Fact]

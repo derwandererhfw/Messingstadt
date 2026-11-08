@@ -115,13 +115,14 @@ Action<World> AttackAll()
 }
 
 // Wie ein bedachter Spieler: Der Trupp bleibt zusammen und schießt erst eine Wache aus, dann die nächste.
+// Hund und Laufbursche lässt er aus, die schießen nicht zurück, und ein Schuss auf sie macht den Einsatz nur früher laut.
 Action<World> FocusFire()
 {
     var rush = Rush();
     return w =>
     {
         var squad = w.Units.Where(u => u.Faction == Faction.Agent && u.Alive).ToList();
-        var guards = w.Units.Where(u => u.Faction == Faction.Guard && u.Alive).ToList();
+        var guards = w.Units.Where(u => u.Faction == Faction.Guard && u.Alive && !u.Type.OrderOnly).ToList();
         if (guards.Count == 0 || squad.Count == 0)
         {
             rush(w);
