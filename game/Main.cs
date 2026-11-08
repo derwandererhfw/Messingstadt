@@ -36,10 +36,21 @@ uniform vec2 cuts[6];
 uniform int cut_count = 0;
 uniform float cut_open = 0.0;
 varying vec2 world;
+varying vec4 tint;
 void vertex() {
     world = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
+    tint = COLOR;
+}
+// Scharf-bilinear: innerhalb eines Bildpunkts der Grafik exakt wie nearest, nur an seinem Rand wird über einen
+// Bildschirmpunkt weich überblendet. So bleibt Pixelgrafik bei jedem Vergrößerungsfaktor gleichmäßig und ohne Flimmern.
+vec2 sharp_uv(vec2 uv, vec2 texel) {
+    vec2 p = uv / texel;
+    vec2 edge = floor(p + 0.5);
+    vec2 reach = max(fwidth(p), vec2(1e-4));
+    return (edge + clamp((p - edge) / reach, -0.5, 0.5)) * texel;
 }
 void fragment() {
+    COLOR = texture(TEXTURE, sharp_uv(UV, TEXTURE_PIXEL_SIZE)) * tint;
     vec3 a = texture(light_a, UV).rgb;
     vec4 b = texture(light_b, UV);
     vec3 l = 4.0 * a * a + 4.0 * b.r * b.r * (stutter - 1.0) * lamp_color
@@ -104,6 +115,9 @@ void fragment() {
         private readonly List<float> _thingCuts = new();
         private readonly Vector2[] _cutPoints = new Vector2[MaxCuts];
         private readonly List<Image> _thingImages = new();
+        private readonly HashSet<string> _hdFiles = new();
+        private float _hdRes = 1f;
+        private ulong _loadStaticsMs;
         private readonly List<ShaderMaterial> _litMaterials = new();
         private readonly WindowLife _windowLife = new();
         private readonly SoundScape _sound = new();
@@ -249,7 +263,9 @@ void fragment() {
             Watch = WatchMap.Measure(_map, _mission);
 
             LoadCampaign();
+            ulong loadStart = Time.GetTicksMsec();
             LoadStatics();
+            _loadStaticsMs = Time.GetTicksMsec() - loadStart;
             _camera = new Camera2D { Zoom = new Vector2(2, 2) };
             AddChild(_camera);
             _camera.MakeCurrent();
@@ -860,6 +876,25 @@ void fragment() {
             }
         }
 
+        /// <summary>Bild der Stadt zum Anzeigen: Ränder durchsichtiger Flächen bekommen die Farbe ihrer Nachbarn,
+        /// sonst zeichnet die weiche Überblendung dort einen dunklen Saum.</summary>
+        private static ImageTexture DisplayTexture(Image image)
+        {
+            image.FixAlphaEdges();
+            return ImageTexture.CreateFromImage(image);
+        }
+
+        /// <summary>Feinere Fassung eines Bilds aus assets/hd, falls vorhanden, sonst das einfache Bild.</summary>
+        private (ImageTexture Texture, Vector2 Scale) Display(string file, Image fallback)
+        {
+            if (_hdFiles.Contains(file))
+            {
+                var fine = Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/hd/" + file));
+                return (DisplayTexture(fine), Vector2.One / _hdRes);
+            }
+            return (DisplayTexture((Image)fallback.Duplicate()), Vector2.One);
+        }
+
         private static Texture2D LoadTexture(string resPath)
         {
             var image = Image.LoadFromFile(ProjectSettings.GlobalizePath(resPath));
@@ -923,15 +958,30 @@ void fragment() {
             blank.Fill(Colors.Black);
             _noPanes = ImageTexture.CreateFromImage(blank);
             _lightGrid = Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/light/grid.png"));
-            AddChild(new Sprite2D { Texture = LoadTexture("res://assets/ground.png"), Centered = false, ZIndex = -1, LightMask = 3, Material = LitMaterial("ground") });
             using var manifest = JsonDocument.Parse(File.ReadAllText(ProjectSettings.GlobalizePath("res://assets/manifest.json")));
             _ox = manifest.RootElement.GetProperty("ox").GetInt32();
             _oy = manifest.RootElement.GetProperty("oy").GetInt32();
+            if (manifest.RootElement.TryGetProperty("hd", out var hd))
+            {
+                _hdRes = hd.GetProperty("res").GetSingle();
+                _hdFiles.Add(Path.GetFileName(hd.GetProperty("ground").GetString()!));
+                foreach (var f in hd.GetProperty("things").EnumerateArray())
+                {
+                    _hdFiles.Add("things/" + f.GetString());
+                }
+            }
+            var (groundTexture, groundScale) = Display("ground.png", Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/ground.png")));
+            AddChild(new Sprite2D
+            {
+                Texture = groundTexture, Scale = groundScale, Centered = false, ZIndex = -1, LightMask = 3,
+                TextureFilter = TextureFilterEnum.Linear, Material = LitMaterial("ground"),
+            });
             var backdrop = manifest.RootElement.GetProperty("backdrop");
             AddChild(new Sprite2D
             {
-                Texture = LoadTexture("res://assets/" + backdrop.GetProperty("file").GetString()),
+                Texture = DisplayTexture(Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/" + backdrop.GetProperty("file").GetString()))),
                 Centered = false,
+                TextureFilter = TextureFilterEnum.Linear,
                 Position = new Vector2(backdrop.GetProperty("px").GetInt32(), backdrop.GetProperty("py").GetInt32()),
                 ZIndex = -2,
                 LightMask = 3,
@@ -944,9 +994,12 @@ void fragment() {
                     t.GetProperty("x1").GetSingle(), t.GetProperty("y1").GetSingle(), t.GetProperty("z1").GetSingle()));
                 var image = Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/things/" + t.GetProperty("file").GetString()));
                 _thingImages.Add(image);
+                var (texture, scale) = Display("things/" + t.GetProperty("file").GetString(), image);
                 var sprite = new Sprite2D
                 {
-                    Texture = ImageTexture.CreateFromImage(image),
+                    Texture = texture,
+                    Scale = scale,
+                    TextureFilter = TextureFilterEnum.Linear,
                     Centered = false,
                     Position = new Vector2(t.GetProperty("px").GetInt32(), t.GetProperty("py").GetInt32()),
                     ZIndex = ThingZ(index),
@@ -1400,6 +1453,8 @@ void fragment() {
                 if (index >= _shotCount - 1)
                 {
                     GD.Print($"Raum {_sound.Enclosure:0.00}, Stille {_windowLife.Hush:0.00}, Geräusche abgespielt: {_sound.PlayCount}  " + string.Join(", ", _sound.PlayedByGroup.Select(g => $"{g.Key} {g.Value}")));
+                    GD.Print($"Leistung: {Engine.GetFramesPerSecond():0} fps, Texturen {Performance.GetMonitor(Performance.Monitor.RenderTextureMemUsed) / 1048576:0} MB, "
+                        + $"Speicher {OS.GetStaticMemoryUsage() / 1048576} MB, Stadt geladen in {_loadStaticsMs} ms");
                     GetTree().Quit();
                 }
             }
@@ -1701,7 +1756,7 @@ void fragment() {
             for (int i = 0; i < _things.Count; i++)
             {
                 var sprite = _thingSprites[i];
-                var rect = new Rect2(sprite.Position, sprite.Texture.GetSize());
+                var rect = new Rect2(sprite.Position, _thingImages[i].GetSize());
                 int count = 0;
                 foreach (var u in World.Units)
                 {

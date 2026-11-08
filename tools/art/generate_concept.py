@@ -27,7 +27,9 @@ LITTER = random.Random(1941)
 AMBIENT = {"smoke": [], "steam": [], "fires": [], "puddles": [], "lights": [], "fireLights": []}  # Bildpositionen für die Animationen im Spiel
 HW, HH = 32, 16  # halbe Tile-Breite und -Höhe
 COBBLE_ROWS, COBBLE_STONES = 5, 3  # Pflastersteine je Feld
+MANHOLES = ((9.0, 6.4), (4.0, 10.6), (14.6, 10.7))
 BACKDROP_W, BACKDROP_H = 3400, 2200
+HD = 2  # Anzeige in doppelter Auflösung: Stadt und Boden werden zusätzlich so fein gezeichnet, das Spiel halbiert sie
 BACKDROP_STREETS = 9  # so viele Felder weit laufen die Straßen, bevor sie im Dunst verschwinden
 BACKDROP_DARK = 0.62
 
@@ -84,19 +86,27 @@ def noise(x, y, seed=0):
 
 
 class Scene:
-    def __init__(self, tiles):
+    """Zeichenfläche der Stadt. ox, oy und alle Kartenmaße gelten in einfacher Auflösung, res vergrößert nur das Bild."""
+
+    def __init__(self, tiles, res=1):
         self.tiles = tiles
-        self.w = (tiles * 2) * HW + 200
-        self.h = (tiles * 2) * HH + 320
-        self.ox, self.oy = self.w // 2, 260
+        self.res = res
+        self.w = ((tiles * 2) * HW + 200) * res
+        self.h = ((tiles * 2) * HH + 320) * res
+        self.ox, self.oy = ((tiles * 2) * HW + 200) // 2, 260
         self.img = Image.new("RGBA", (self.w, self.h), C["sky"] + (255,))
         self.px = self.img.load()
 
+    def use(self, res):
+        """Schaltet auf eine andere Auflösung um, für Zeichenfunktionen, die diese Szene schon kennen."""
+        self.w, self.h = self.w // self.res * res, self.h // self.res * res
+        self.res = res
+
     def to_screen(self, mx, my, z=0.0):
-        return self.ox + (mx - my) * HW, self.oy + (mx + my) * HH - z
+        return (self.ox + (mx - my) * HW) * self.res, (self.oy + (mx + my) * HH - z) * self.res
 
     def to_map(self, sx, sy, z=0.0):
-        a, b = (sx - self.ox) / HW, (sy - self.oy + z) / HH
+        a, b = (sx / self.res - self.ox) / HW, (sy / self.res - self.oy + z) / HH
         return (a + b) / 2, (b - a) / 2
 
     def put(self, x, y, c):
@@ -148,10 +158,50 @@ def text(d, x, y, t, color, s=1, worn=0.0):
 
 
 # ---------- Fassaden als flache Bilder ----------
-def wall(w, h, material):
+class DualDraw:
+    """Zeichnet auf eine Fassade und zugleich auf ihre doppelt so große Fassung in img.info["hd"].
+
+    Flächen werden vergrößert, Linien bleiben einen Bildpunkt dünn: Rahmen, Sprossen und Fugen werden dadurch feiner.
+    Der Zufall läuft genau wie beim Zeichnen ohne Feinfassung, das einfache Bild bleibt gleich.
+    """
+
+    def __init__(self, img):
+        self.lo = ImageDraw.Draw(img)
+        self.hi = ImageDraw.Draw(img.info["hd"])
+
+    def rectangle(self, box, fill=None):
+        self.lo.rectangle(box, fill=fill)
+        x0, y0, x1, y1 = box
+        self.hi.rectangle((x0 * HD, y0 * HD, x1 * HD + HD - 1, y1 * HD + HD - 1), fill=fill)
+
+    def line(self, xy, fill=None):
+        self.lo.line(xy, fill=fill)
+        x0, y0, x1, y1 = xy
+        mid = HD // 2
+        if y0 == y1:
+            self.hi.line((min(x0, x1) * HD, y0 * HD + mid, max(x0, x1) * HD + HD - 1, y0 * HD + mid), fill=fill)
+        elif x0 == x1:
+            self.hi.line((x0 * HD + mid, min(y0, y1) * HD, x0 * HD + mid, max(y0, y1) * HD + HD - 1), fill=fill)
+        else:
+            self.hi.line((x0 * HD + mid, y0 * HD + mid, x1 * HD + mid, y1 * HD + mid), fill=fill)
+
+    def point(self, xy, fill=None):
+        self.lo.point(xy, fill=fill)
+        x, y = xy
+        self.hi.rectangle((x * HD, y * HD, x * HD + HD - 1, y * HD + HD - 1), fill=fill)
+
+
+def draw_on(img):
+    return DualDraw(img) if "hd" in img.info else ImageDraw.Draw(img)
+
+
+def wall(w, h, material, hd=False):
     img = Image.new("RGBA", (w, h), C[material[0]] + (255,))
-    d = ImageDraw.Draw(img)
+    if hd:
+        img.info["hd"] = Image.new("RGBA", (w * HD, h * HD), C[material[0]] + (255,))
+    d = draw_on(img)
     if material[0] == "brick":
+        speckles = []
         for v in range(h):
             row = v // 4
             for u in range(w):
@@ -159,6 +209,9 @@ def wall(w, h, material):
                     img.putpixel((u, v), C["mortar"] + (255,))
                 elif RNG.random() < 0.05:
                     img.putpixel((u, v), C[RNG.choice(["brick_d", "brick_l"])] + (255,))
+                    speckles.append((u, v, img.getpixel((u, v))))
+        if hd:
+            fine_bricks(img.info["hd"], w, h, speckles)
     elif material[0] == "stone":
         for v in range(0, h, 10):
             d.line((0, v, w, v), fill=C["stone_d"])
@@ -169,6 +222,20 @@ def wall(w, h, material):
             d.line((u, 0, u, h), fill=C["green_d"])
             d.line((u + 2, 0, u + 2, h), fill=C["green_l"])
     return img, d
+
+
+def fine_bricks(hd, w, h, speckles):
+    """Mauerwerk in doppelter Auflösung: dieselben Steine, aber nur einen Bildpunkt breite Fugen."""
+    d = ImageDraw.Draw(hd)
+    for u, v, c in speckles:
+        d.rectangle((u * HD, v * HD, u * HD + HD - 1, v * HD + HD - 1), fill=c)
+    for v in range(3, h, 4):
+        d.line((0, v * HD + HD - 1, w * HD, v * HD + HD - 1), fill=C["mortar"])
+    for v in range(h):
+        row = v // 4
+        for u in range(w):
+            if v % 4 != 3 and (u + (row % 2) * 4) % 8 == 7:
+                d.line((u * HD + HD - 1, v * HD, u * HD + HD - 1, v * HD + HD - 1), fill=C["mortar"])
 
 
 def lit_room(d, x, y, w, h):
@@ -295,36 +362,59 @@ def poster(d, x, y):
 
 
 def weather(tex):
-    """Gibt eine verschmutzte Kopie einer Fassade zurück: Ruß, Feuchte, Rostfahnen, Risse, Putzschäden."""
+    """Gibt eine verschmutzte Kopie einer Fassade zurück: Ruß, Feuchte, Rostfahnen, Risse, Putzschäden.
+
+    Hat die Fassade eine Feinfassung, wird sie mit denselben Flecken verschmutzt, nur feiner aufgelöst.
+    """
     w, h = tex.size
     if h < 24 or w < 8:
         return tex
+    fine = tex.info.get("hd")
     out = tex.copy()
     pix = out.load()
     seed = WEAR.randrange(1 << 16)
     damp = 14 + int(noise(0.5, 0.5, seed) * 12)
-    for v in range(h):
-        for u in range(w):
-            r, g, b, a = pix[u, v]
-            if not a:
-                continue
-            f = 0.86
-            n = noise(u / 15, v / 15, seed)
-            if n > 0.55:
-                f *= 1 - (n - 0.55) * 0.95
-            if v < h * 0.22:
-                f *= 0.7 + 0.3 * v / (h * 0.22)
-            edge = h - v - noise(u / 6, 0.5, seed + 1) * 12
-            if edge < damp:
-                f *= 0.58 + 0.42 * max(0, edge) / damp
-            if hash01(u, v, seed) > 0.93:
-                f *= 0.82
-            pix[u, v] = mix(blend((r, g, b), f), C["grime"], 0.12) + (a,)
+
+    def grime(img, scale):
+        p = img.load()
+        for y in range(img.height):
+            v = y / scale
+            for x in range(img.width):
+                r, g, b, a = p[x, y]
+                if not a:
+                    continue
+                u = x / scale
+                f = 0.86
+                n = noise(u / 15, v / 15, seed)
+                if n > 0.55:
+                    f *= 1 - (n - 0.55) * 0.95
+                if v < h * 0.22:
+                    f *= 0.7 + 0.3 * v / (h * 0.22)
+                edge = h - v - noise(u / 6, 0.5, seed + 1) * 12
+                if edge < damp:
+                    f *= 0.58 + 0.42 * max(0, edge) / damp
+                if hash01(x, y, seed) > 0.93:
+                    f *= 0.82
+                p[x, y] = mix(blend((r, g, b), f), C["grime"], 0.12) + (a,)
+
+    grime(out, 1)
+    hd = None
+    if fine:
+        hd = fine.copy()
+        grime(hd, HD)
+        hd_pix = hd.load()
+        out.info["hd"] = hd
 
     def darken(u, v, f, tint=None):
         if 0 <= u < w and 0 <= v < h and pix[u, v][3]:
             c = blend(pix[u, v][:3], f)
             pix[u, v] = (mix(c, tint, 0.3) if tint else c) + (255,)
+            if hd:
+                # Fein nur einen Bildpunkt breit: Regenfahnen und Risse werden zu Linien statt Blöcken.
+                x = u * HD + HD // 2
+                for y in range(v * HD, v * HD + HD):
+                    c = blend(hd_pix[x, y][:3], f)
+                    hd_pix[x, y] = (mix(c, tint, 0.3) if tint else c) + (255,)
 
     # Regenfahnen von Simsen und Dachkante
     for _ in range(w // 5):
@@ -349,6 +439,10 @@ def weather(tex):
             for u in range(u0 + WEAR.randint(0, 1), u0 + WEAR.randint(3, 8)):
                 if 0 <= u < w and 0 <= v < h and pix[u, v][3]:
                     pix[u, v] = mix(pix[u, v][:3], c, 0.75) + (255,)
+                    if hd:
+                        for y in range(v * HD, v * HD + HD):
+                            for x in range(u * HD, u * HD + HD):
+                                hd_pix[x, y] = mix(hd_pix[x, y][:3], c, 0.75) + (255,)
     return out
 
 
@@ -541,6 +635,7 @@ class Thing:
         self.solid, self.opaque = solid, opaque
         self.kind = ""
         self.panes = []
+        self.hd = False  # kann sich in doppelter Auflösung zeichnen
 
 
 def behind(a, b):
@@ -576,6 +671,8 @@ def sort_things(things):
 
 
 def shear(s, tex, sx, sy, slope, light=1.0):
+    if s.res > 1:
+        tex = tex.info.get("hd") or tex.resize((tex.width * s.res, tex.height * s.res), Image.NEAREST)
     pix = tex.load()
     for u in range(tex.width):
         off = int(u * slope) if slope > 0 else -int(u * -slope)
@@ -606,10 +703,17 @@ def plain_tex(w, h, c, c2=None):
     return img
 
 
+def weathered(tex):
+    """Verschmutzt eine Fassade einmal. Ein zweites Zeichnen, etwa in doppelter Auflösung, nimmt dieselbe Fassung."""
+    if "weathered" not in tex.info:
+        tex.info["weathered"] = weather(tex)
+    return tex.info["weathered"]
+
+
 def box(s, x0, y0, x1, y1, z0, h, left=None, right=None, top=None, base="iron"):
     wl, wr = int((x1 - x0) * HW), int((y1 - y0) * HW)
-    left = weather(left or plain_tex(wl, int(h), base, "ash"))
-    right = weather(right or plain_tex(wr, int(h), base, "ash"))
+    left = weathered(left or plain_tex(wl, int(h), base, "ash"))
+    right = weathered(right or plain_tex(wr, int(h), base, "ash"))
     west = s.to_screen(x0, y1, z0 + h)
     south = s.to_screen(x1, y1, z0 + h)
     shear(s, left, int(west[0]), int(west[1]), 0.5, 1.0)
@@ -653,6 +757,7 @@ def building(x0, y0, w, d, h, left, right, s, things, roof_items=()):
     def draw():
         box(s, x0, y0, x0 + w, y0 + d, 0, h, left, right, roof_color)
     things.append(Thing(x0, y0, x0 + w, y0 + d, 0, h, draw, solid=True, opaque=True))
+    things[-1].hd = "hd" in left.info and "hd" in right.info
     # Erleuchtete Fenster mit ihrer Lage im Bild, damit das Spiel sie einzeln schalten kann
     west = s.to_screen(x0, y0 + d, h)
     south = s.to_screen(x0 + w, y0 + d, h)
@@ -957,68 +1062,98 @@ def ground_color(fx, fy, solids, bounded=True):
 
 
 def scatter_dirt(s, solids):
-    """Pfützen, Ölflecken, Müll und Unkraut, nur auf den Boden gemalt und ohne Einfluss auf die Spiellogik."""
+    """Pfützen, Ölflecken, Müll und Unkraut, nur auf den Boden gemalt und ohne Einfluss auf die Spiellogik.
+
+    Gibt die Flecken als Liste zurück, damit paint_dirt sie in jeder Auflösung gleich malen kann.
+    """
     def free(x, y):
         return 0 <= x < 20 and 0 <= y < 20 and not any(a <= x < c and b <= y < d for a, b, c, d in solids)
 
-    def blot(x, y, rx, ry, color, strength):
-        cx, cy = s.to_screen(x, y)
-        seed = WEAR.randrange(1 << 16)
-        for j in range(int(cy - ry), int(cy + ry) + 1):
-            for i in range(int(cx - rx), int(cx + rx) + 1):
-                d = (((i - cx) / rx) ** 2 + ((j - cy) / ry) ** 2) ** 0.5
-                if d + noise(i / 5, j / 3, seed) * 0.6 < 1 and 0 <= i < s.w and 0 <= j < s.h:
-                    s.px[i, j] = mix(s.px[i, j][:3], color, strength) + (255,)
-
+    ops = []
     for _ in range(34):  # Pfützen
         x, y = WEAR.uniform(0, 20), WEAR.uniform(0, 20)
         if free(x, y):
             rx = WEAR.randint(10, 30)
-            blot(x, y, rx, rx * 0.5, C["puddle"], 0.8)
+            ops.append(("blot", x, y, rx, rx * 0.5, C["puddle"], 0.8, WEAR.randrange(1 << 16)))
             px, py = s.to_screen(x, y)
             AMBIENT["puddles"].append([int(px), int(py), rx])
     for _ in range(36):  # Ölflecken
         x, y = WEAR.uniform(0, 20), WEAR.uniform(0, 20)
         if free(x, y):
             rx = WEAR.randint(5, 13)
-            blot(x, y, rx, rx * 0.5, C["black"], 0.5)
+            ops.append(("blot", x, y, rx, rx * 0.5, C["black"], 0.5, WEAR.randrange(1 << 16)))
     for _ in range(46):  # Papier, Scherben, Dreck: vom Wind in kleine Haufen getrieben
         x, y = LITTER.uniform(0, 20), LITTER.uniform(0, 20)
         for k in range(LITTER.randint(3, 8)):
             px, py = x + LITTER.uniform(-0.22, 0.22), y + LITTER.uniform(-0.22, 0.22)
             if free(px, py):
-                sx, sy = s.to_screen(px, py)
                 c = C[LITTER.choice(["ash", "plaster", "wood_d", "grime", "rust", "glass_d"])]
-                s.rect(sx, sy, LITTER.randint(1, 3), LITTER.randint(1, 2), c)
+                ops.append(("rect", px, py, 0, 0, LITTER.randint(1, 3), LITTER.randint(1, 2), c))
     for _ in range(70):  # Unkraut in den Fugen
         x, y = WEAR.uniform(0, 20), WEAR.uniform(0, 20)
         if free(x, y):
-            sx, sy = s.to_screen(x, y)
             for k in range(WEAR.randint(2, 4)):
-                s.rect(sx + WEAR.randint(-2, 2), sy - WEAR.randint(0, 3), 1, WEAR.randint(1, 3), C["moss"])
+                dx, dy = WEAR.randint(-2, 2), -WEAR.randint(0, 3)
+                ops.append(("weed", x, y, dx, dy, 1, WEAR.randint(1, 3), C["moss"]))
     # Müllhaufen an den Hauswänden
     for a, b, c, d in solids:
         for _ in range(int((c - a) + (d - b))):
             x, y = (WEAR.uniform(a, c), d + WEAR.uniform(0.03, 0.3)) if WEAR.random() < 0.5 else (c + WEAR.uniform(0.03, 0.3), WEAR.uniform(b, d))
             if free(x, y):
-                sx, sy = s.to_screen(x, y)
                 for k in range(WEAR.randint(2, 7)):
-                    s.rect(sx + WEAR.randint(-6, 6), sy + WEAR.randint(-3, 3), WEAR.randint(1, 3), WEAR.randint(1, 2),
-                           C[WEAR.choice(["wood_d", "grime", "dirt", "plaster", "soot", "rust_d"])])
+                    dx, dy, w, h = WEAR.randint(-6, 6), WEAR.randint(-3, 3), WEAR.randint(1, 3), WEAR.randint(1, 2)
+                    ops.append(("rect", x, y, dx, dy, w, h, C[WEAR.choice(["wood_d", "grime", "dirt", "plaster", "soot", "rust_d"])]))
+    return ops
 
 
-def draw_ground(s, solids, glows):
+def paint_dirt(s, ops):
+    r = s.res
+    for op in ops:
+        if op[0] == "blot":
+            _, x, y, rx, ry, color, strength, seed = op
+            cx, cy = s.to_screen(x, y)
+            rx, ry = rx * r, ry * r
+            for j in range(int(cy - ry), int(cy + ry) + 1):
+                for i in range(int(cx - rx), int(cx + rx) + 1):
+                    d = (((i - cx) / rx) ** 2 + ((j - cy) / ry) ** 2) ** 0.5
+                    if d + noise(i / r / 5, j / r / 3, seed) * 0.6 < 1 and 0 <= i < s.w and 0 <= j < s.h:
+                        s.px[i, j] = mix(s.px[i, j][:3], color, strength) + (255,)
+        else:
+            kind, x, y, dx, dy, w, h, c = op
+            sx, sy = s.to_screen(x, y)
+            # Halme bleiben fein einen Bildpunkt breit, alles andere wächst mit der Auflösung.
+            s.rect(sx + dx * r, sy + dy * r, w if kind == "weed" else w * r, h * r, c)
+
+
+def manhole(s, mx, my):
+    """Gullydeckel: eiserner Rand, Gitter aus Schlitzen."""
+    r = s.res
+    cx, cy = s.to_screen(mx, my)
+    for j in range(-5 * r, 5 * r + 1):
+        for i in range(-10 * r, 10 * r + 1):
+            d = (i / (10 * r)) ** 2 + (j / (5 * r)) ** 2
+            if d < 1:
+                s.put(int(cx) + i, int(cy) + j, C["iron"] if d > 0.6 else (C["black"] if (i + j) % 3 else C["soot"]))
+
+
+def draw_ground(s, solids, glows, dirt=None):
+    """Malt den Boden. Ohne dirt wird der Schmutz neu gestreut, sonst werden die übergebenen Flecken gemalt."""
     for sy in range(s.h):
         for sx in range(s.w):
             fx, fy = s.to_map(sx + 0.5, sy + 0.5)
             c = ground_color(fx, fy, solids)
             if c:
                 s.put(sx, sy, c)
-    scatter_dirt(s, solids)
-    # Kontaktschatten an Gebäudekanten
+    if dirt is None:
+        dirt = scatter_dirt(s, solids)
+    paint_dirt(s, dirt)
+    # Kontaktschatten an Gebäudekanten, nur im Umkreis eines halben Felds um das Gebäude gerechnet
     for x0, y0, x1, y1 in solids:
-        for sy in range(s.h):
-            for sx in range(s.w):
+        corners = [s.to_screen(x, y) for x in (x0 - 0.5, x1 + 0.5) for y in (y0 - 0.5, y1 + 0.5)]
+        left, right = int(min(c[0] for c in corners)) - 2, int(max(c[0] for c in corners)) + 3
+        top, bottom = int(min(c[1] for c in corners)) - 2, int(max(c[1] for c in corners)) + 3
+        for sy in range(max(0, top), min(s.h, bottom)):
+            for sx in range(max(0, left), min(s.w, right)):
                 fx, fy = s.to_map(sx + 0.5, sy + 0.5)
                 if not (0 <= fx < 20 and 0 <= fy < 20):
                     continue
@@ -1028,6 +1163,7 @@ def draw_ground(s, solids, glows):
                 if 0 < dist < 0.5:
                     s.shade(sx, sy, 0.62 + 0.38 * dist / 0.5)
     # Der Lichtschein der Laternen entsteht im Spiel, hier würde er nur als Punktmuster stören.
+    return dirt
 
 
 def build_scene(with_people=True):
@@ -1092,14 +1228,14 @@ def build_scene(with_people=True):
              [chimney(0.15, 0.25, 54), chimney(0.4, 0.25, 54), skylight(0.1, 0.65), skylight(0.45, 0.65), skylight(0.72, 0.65), vent(0.8, 0.2)])
 
     # Lager unten rechts
-    lag_l, ld = wall(160, 70, ("brick",))
+    lag_l, ld = wall(160, 70, ("brick",), hd=True)
     ld.rectangle((0, 0, 160, 3), fill=C["stone_l"])
     # Die Tür sitzt genau vor dem Durchgang in Spalte 14 der Karte.
     door(ld, 66, 69, 28, 40, "wood", True)
     text(ld, 104, 30, "LAGER", C["plaster"], 2, worn=0.2)
     poster(ld, 14, 46)
     poster(ld, 38, 48)
-    lag_r, lr = wall(192, 70, ("brick",))
+    lag_r, lr = wall(192, 70, ("brick",), hd=True)
     lr.rectangle((0, 0, 192, 3), fill=C["stone_l"])
     pipe_h(lr, 0, 191, 20)
     for u in range(20, 170, 40):
@@ -1133,15 +1269,12 @@ def build_scene(with_people=True):
         person(6.7, 9.8, "Agent", "e", 3, s, things)
         person(11.2, 6.1, "Agent", "s", 3, s, things)
 
-    draw_ground(s, solids, glows)
+    s.dirt = draw_ground(s, solids, glows)
+    s.solids, s.glows = solids, glows
     # Gullydeckel, aus denen im Spiel Dampf aufsteigt
-    for mx, my in ((9.0, 6.4), (4.0, 10.6), (14.6, 10.7)):
+    for mx, my in MANHOLES:
+        manhole(s, mx, my)
         cx, cy = s.to_screen(mx, my)
-        for j in range(-5, 6):
-            for i in range(-10, 11):
-                d = (i / 10) ** 2 + (j / 5) ** 2
-                if d < 1:
-                    s.put(int(cx) + i, int(cy) + j, C["iron"] if d > 0.6 else (C["black"] if (i + j) % 3 else C["soot"]))
         AMBIENT["steam"].append([int(cx), int(cy)])
     return s, sort_things(things)
 
@@ -1158,7 +1291,7 @@ def export_game():
     s.img.putalpha(mask)
     s.img.save(assets / "ground.png")
     backdrop = {"file": "backdrop.png", "px": s.ox - BACKDROP_W // 2, "py": s.oy + 20 * HH - BACKDROP_H // 2}
-    manifest, solids = [], []
+    manifest, solids, exported = [], [], []
     for i, t in enumerate(things):
         s.img = Image.new("RGBA", (s.w, s.h), (0, 0, 0, 0))
         s.px = s.img.load()
@@ -1168,10 +1301,13 @@ def export_game():
             continue
         name = f"{i:03d}.png"
         s.img.crop(bbox).save(assets / "things" / name)
+        exported.append((t, name, bbox))
         manifest.append({"file": name, "px": bbox[0], "py": bbox[1], "x0": t.x0, "y0": t.y0, "x1": t.x1, "y1": t.y1, "z0": t.z0, "z1": t.z1, "kind": t.kind, "panes": t.panes})
         if t.solid:
             solids.append({"x0": t.x0, "y0": t.y0, "x1": t.x1, "y1": t.y1, "opaque": t.opaque})
-    (assets / "manifest.json").write_text(json.dumps({"ox": s.ox, "oy": s.oy, "things": manifest, "backdrop": backdrop, **AMBIENT}), encoding="utf-8")
+    (assets / "manifest.json").write_text(json.dumps({"ox": s.ox, "oy": s.oy, "things": manifest, "backdrop": backdrop,
+                                                "hd": {"res": HD, "ground": "hd/ground.png", "things": [n for t, n, _ in exported if t.hd]},
+                                                **AMBIENT}), encoding="utf-8")
     (root / "data" / "map_01.json").write_text(json.dumps({"width": 20, "height": 20, "solids": solids}, indent=1), encoding="utf-8")
 
     export_critters(assets)
@@ -1189,7 +1325,35 @@ def export_game():
     d.polygon([(7, 6), (13, 3), (13, 6), (7, 9)], fill=C["paper"])
     d.point((7, 3), fill=C["brass_l"])
     book.save(assets / "book.png")
+    # Ganz zuletzt: Die feinen Fassungen verbrauchen Zufall, der vorher die einfachen Bilder verändert hätte.
+    export_hd(assets, s, exported)
     print(f"{len(manifest)} Objekte, {len(solids)} Blockaden exportiert nach {assets}")
+
+
+def export_hd(assets, s, exported):
+    """Boden und die dafür vorbereiteten Objekte in doppelter Auflösung, deckungsgleich mit den einfachen Bildern."""
+    out = assets / "hd"
+    (out / "things").mkdir(parents=True, exist_ok=True)
+    for old in (out / "things").glob("*.png"):
+        old.unlink()
+    s.use(HD)
+    s.img = Image.new("RGBA", (s.w, s.h), C["sky"] + (255,))
+    s.px = s.img.load()
+    draw_ground(s, s.solids, s.glows, s.dirt)
+    for mx, my in MANHOLES:
+        manhole(s, mx, my)
+    mask = Image.new("L", s.img.size)
+    mask.putdata([255 if 0 <= fx < 20 and 0 <= fy < 20 else 0 for fx, fy in (s.to_map(x + 0.5, y + 0.5) for y in range(s.h) for x in range(s.w))])
+    s.img.putalpha(mask)
+    s.img.save(out / "ground.png")
+    for t, name, bbox in exported:
+        if not t.hd:
+            continue
+        s.img = Image.new("RGBA", (s.w, s.h), (0, 0, 0, 0))
+        s.px = s.img.load()
+        t.draw()
+        s.img.crop(tuple(v * HD for v in bbox)).save(out / "things" / name)
+    s.use(1)
 
 
 def export_backdrop(assets):

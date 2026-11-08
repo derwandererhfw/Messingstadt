@@ -11,7 +11,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from figures3d import LIGHT, RIGHT, SUPER, TO_CAMERA, UP, sdf  # noqa: E402
+from figures3d import CAPSULE, LIGHT, RIGHT, SUPER, TO_CAMERA, UP, sdf  # noqa: E402
 from generate_concept import C, text, text_size  # noqa: E402
 
 ASSETS = Path(__file__).resolve().parents[2] / "game" / "assets"
@@ -66,7 +66,7 @@ def render_ship():
     ys = (np.arange(h) + 0.5) / SUPER - SHIP_H / 2
     gx, gy = np.meshgrid(xs, ys)
     origin = gx.ravel()[:, None] * RIGHT - gy.ravel()[:, None] * UP + TO_CAMERA * 260
-    parts = [(a, b, r1, r2, i) for i, (a, b, r1, r2, _) in enumerate(ship_parts())]
+    parts = [(a, b, r1, r2, i, CAPSULE) for i, (a, b, r1, r2, _) in enumerate(ship_parts())]
     colors = np.array([c for *_, c in ship_parts()], np.float32)
     position = origin.copy()
     alive = np.ones(len(position), bool)
