@@ -24,10 +24,11 @@ Eingabe (Godot) -> Befehle -> World.Tick() -> Zustand -> Darstellung (Godot)
   und legt Kontaktbögen und GIFs je Bewegung ab.
   Die Lichtwerte in `data/light_01.json` kommen aus `bake_light.py`: Der Mond dort trifft nur Oberseiten von Objekten
   und zählt nicht fürs Schleichen.
-- **Doppelte Auflösung (im Aufbau):** `game/assets/hd/` enthält Boden und Objekte zusätzlich doppelt so fein,
-  deckungsgleich mit den einfachen Bildern. Das Spiel zeigt sie mit halber Skalierung an, wie das Figurenblatt.
-  Welche Dateien es gibt, steht unter `hd` in `manifest.json`. Die einfachen Bilder bleiben die Grundlage für Licht,
-  Pfützen, Verdeckung und Bodengröße. Alle Stadtbilder werden scharf-bilinear gezeichnet (`sharp_uv` im Lichtshader):
+- **Doppelte Auflösung:** `game/assets/hd/` enthält Boden und alle Objekte zusätzlich doppelt so fein,
+  deckungsgleich mit den einfachen Bildern und mit schon aufgefüllten Rändern. Das Spiel zeigt sie mit halber
+  Skalierung an, wie das Figurenblatt, und prüft die Verdeckung an ihnen. Welche Dateien es gibt, steht unter `hd` in
+  `manifest.json`. Die Kulisse bleibt einfach aufgelöst. Die einfachen Bilder bleiben die Grundlage für Licht und
+  Pfützen. Fassaden entstehen über `DualDraw` in beiden Auflösungen zugleich, der feine Boden mit numpy (`ground_np`). Alle Stadtbilder werden scharf-bilinear gezeichnet (`sharp_uv` im Lichtshader):
   innerhalb eines Grafikpunkts wie nearest, an seinem Rand über einen Bildschirmpunkt weich.
 
 ## Zeichenreihenfolge

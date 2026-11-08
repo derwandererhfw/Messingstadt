@@ -115,7 +115,9 @@ void fragment() {
         private readonly List<float> _thingCuts = new();
         private readonly Vector2[] _cutPoints = new Vector2[MaxCuts];
         private readonly List<Image> _thingImages = new();
-        private readonly HashSet<string> _hdFiles = new();
+        private readonly List<float> _thingImageScale = new();
+        private readonly Dictionary<string, Image> _hdImages = new();
+        private Vector2 _groundSize;
         private float _hdRes = 1f;
         private ulong _loadStaticsMs;
         private readonly List<ShaderMaterial> _litMaterials = new();
@@ -669,7 +671,7 @@ void fragment() {
                 Game = this, Night = Night, LampColor = LampColor, HeldFlash = _testFlash, HeldRain = _testRain, Glow = _critterGlow,
                 ManifestPath = ProjectSettings.GlobalizePath("res://assets/manifest.json"),
                 GroundLight = LoadTexture("res://assets/light/ground_a.png"), FogNoise = LoadTexture("res://assets/light/fog.png"),
-                GroundSize = LoadTexture("res://assets/ground.png").GetSize(), GroundOrigin = new Vector2(_ox, _oy),
+                GroundSize = _groundSize, GroundOrigin = new Vector2(_ox, _oy),
             };
             Climate = weather;
             AddChild(weather);
@@ -757,7 +759,7 @@ void fragment() {
             }
             var wet = new WetGround
             {
-                Game = this, ZIndex = 0, Windows = _windowLife, Noise = fogNoise, GroundSize = LoadTexture("res://assets/ground.png").GetSize(),
+                Game = this, ZIndex = 0, Windows = _windowLife, Noise = fogNoise, GroundSize = _groundSize,
                 ManifestPath = ProjectSettings.GlobalizePath("res://assets/manifest.json"),
                 LampColor = LampColor, FireColor = FireColor, StutterLamp = StutterLamp, Lamps = _mission.Lamps, Fires = _ambience.Fires,
                 ExtraFires = new[] { ToScreen((int)(Strikers.BarrelTile.X * World.TileUnits), (int)(Strikers.BarrelTile.Y * World.TileUnits)) },
@@ -884,15 +886,28 @@ void fragment() {
             return ImageTexture.CreateFromImage(image);
         }
 
-        /// <summary>Feinere Fassung eines Bilds aus assets/hd, falls vorhanden, sonst das einfache Bild.</summary>
-        private (ImageTexture Texture, Vector2 Scale) Display(string file, Image fallback)
+        /// <summary>Feinere Fassung eines Bilds aus assets/hd, falls vorhanden, sonst das einfache Bild.
+        /// Die feinen Bilder haben ihre Ränder schon beim Export aufgefüllt bekommen.</summary>
+        private (ImageTexture Texture, Vector2 Scale) Display(string file, Func<Image> fallback)
         {
-            if (_hdFiles.Contains(file))
+            if (_hdImages.TryGetValue(file, out var fine))
             {
-                var fine = Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/hd/" + file));
-                return (DisplayTexture(fine), Vector2.One / _hdRes);
+                return (ImageTexture.CreateFromImage(fine), Vector2.One / _hdRes);
             }
-            return (DisplayTexture((Image)fallback.Duplicate()), Vector2.One);
+            return (DisplayTexture(fallback()), Vector2.One);
+        }
+
+        /// <summary>Lädt alle feinen Bilder gleichzeitig, das Entpacken der PNG-Dateien ist der größte Teil der Ladezeit.</summary>
+        private void LoadHdImages(IEnumerable<string> files)
+        {
+            var list = files.ToList();
+            var images = new Image[list.Count];
+            System.Threading.Tasks.Parallel.For(0, list.Count, i =>
+                images[i] = Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/hd/" + list[i])));
+            for (int i = 0; i < list.Count; i++)
+            {
+                _hdImages[list[i]] = images[i];
+            }
         }
 
         private static Texture2D LoadTexture(string resPath)
@@ -964,13 +979,12 @@ void fragment() {
             if (manifest.RootElement.TryGetProperty("hd", out var hd))
             {
                 _hdRes = hd.GetProperty("res").GetSingle();
-                _hdFiles.Add(Path.GetFileName(hd.GetProperty("ground").GetString()!));
-                foreach (var f in hd.GetProperty("things").EnumerateArray())
-                {
-                    _hdFiles.Add("things/" + f.GetString());
-                }
+                var files = new List<string> { Path.GetFileName(hd.GetProperty("ground").GetString()!) };
+                files.AddRange(hd.GetProperty("things").EnumerateArray().Select(f => "things/" + f.GetString()));
+                LoadHdImages(files);
             }
-            var (groundTexture, groundScale) = Display("ground.png", Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/ground.png")));
+            var (groundTexture, groundScale) = Display("ground.png", () => Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/ground.png")));
+            _groundSize = groundTexture.GetSize() * groundScale;
             AddChild(new Sprite2D
             {
                 Texture = groundTexture, Scale = groundScale, Centered = false, ZIndex = -1, LightMask = 3,
@@ -979,7 +993,8 @@ void fragment() {
             var backdrop = manifest.RootElement.GetProperty("backdrop");
             AddChild(new Sprite2D
             {
-                Texture = DisplayTexture(Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/" + backdrop.GetProperty("file").GetString()))),
+                // Die Kulisse ist deckend, sie braucht keinen Randausgleich.
+                Texture = LoadTexture("res://assets/" + backdrop.GetProperty("file").GetString()),
                 Centered = false,
                 TextureFilter = TextureFilterEnum.Linear,
                 Position = new Vector2(backdrop.GetProperty("px").GetInt32(), backdrop.GetProperty("py").GetInt32()),
@@ -992,9 +1007,12 @@ void fragment() {
             {
                 _things.Add(new ThingInfo(t.GetProperty("x0").GetSingle(), t.GetProperty("y0").GetSingle(),
                     t.GetProperty("x1").GetSingle(), t.GetProperty("y1").GetSingle(), t.GetProperty("z1").GetSingle()));
-                var image = Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/things/" + t.GetProperty("file").GetString()));
+                string file = "things/" + t.GetProperty("file").GetString();
+                // Für die Verdeckung reicht das Bild, das ohnehin angezeigt wird: fein, wenn es eins gibt.
+                var image = _hdImages.TryGetValue(file, out var fineImage) ? fineImage : Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/" + file));
+                var (texture, scale) = Display(file, () => (Image)image.Duplicate());
                 _thingImages.Add(image);
-                var (texture, scale) = Display("things/" + t.GetProperty("file").GetString(), image);
+                _thingImageScale.Add(scale.X);
                 var sprite = new Sprite2D
                 {
                     Texture = texture,
@@ -1011,6 +1029,7 @@ void fragment() {
                 _thingCuts.Add(0f);
                 index++;
             }
+            _hdImages.Clear();
             _ambience.Smoke = ReadPoints(manifest.RootElement, "smoke");
             _ambience.Steam = ReadPoints(manifest.RootElement, "steam");
             using (var panes = JsonDocument.Parse(File.ReadAllText(ProjectSettings.GlobalizePath("res://assets/panes.json"))))
@@ -1756,7 +1775,7 @@ void fragment() {
             for (int i = 0; i < _things.Count; i++)
             {
                 var sprite = _thingSprites[i];
-                var rect = new Rect2(sprite.Position, _thingImages[i].GetSize());
+                var rect = new Rect2(sprite.Position, (Vector2)_thingImages[i].GetSize() * _thingImageScale[i]);
                 int count = 0;
                 foreach (var u in World.Units)
                 {
@@ -1809,7 +1828,7 @@ void fragment() {
         private bool IsOpaqueAt(int thing, Vector2 screen)
         {
             var image = _thingImages[thing];
-            var p = screen - _thingSprites[thing].Position;
+            var p = (screen - _thingSprites[thing].Position) / _thingImageScale[thing];
             return p.X >= 0 && p.Y >= 0 && p.X < image.GetWidth() && p.Y < image.GetHeight()
                 && image.GetPixel((int)p.X, (int)p.Y).A > 0.5f;
         }
