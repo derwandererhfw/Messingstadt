@@ -41,7 +41,8 @@ void vertex() {
     world = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
 }
 void fragment() {
-    vec2 p = floor(world);
+    // Auf halbe Bildpunkte gerastert wie der feine Boden.
+    vec2 p = floor(world * 2.0) * 0.5;
     float wobble = texture(noise_map, vec2(p.x * 0.003, p.y * 0.035 + TIME * 0.22)).r - 0.5;
     float a = texture(TEXTURE, vec2(UV.x + wobble * 0.8, UV.y)).a;
     float grain = texture(noise_map, vec2(p.x * 0.035, p.y * 0.11 - TIME * 0.05)).r;
