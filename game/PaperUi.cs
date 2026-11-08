@@ -35,6 +35,7 @@ namespace Messingstadt
 
         private sealed class Card
         {
+            public Control Root = null!;
             public ColorRect Edge = null!;
             public Label Name = null!;
             public Control Alive = null!;
@@ -170,7 +171,7 @@ namespace Messingstadt
                 }
             };
             _cardRow.AddChild(root);
-            var card = new Card();
+            var card = new Card { Root = root };
             card.Edge = new ColorRect { Position = new Vector2(-2, -2), Size = new Vector2(CardWidth + 4, CardHeight + 4), MouseFilter = MouseFilterEnum.Ignore };
             root.AddChild(card.Edge);
             root.AddChild(new ColorRect { Size = new Vector2(CardWidth, CardHeight), Color = PaperColor, MouseFilter = MouseFilterEnum.Ignore });
@@ -227,10 +228,16 @@ namespace Messingstadt
         {
             _telegram.Text = telegram;
             _info.Text = info;
-            for (int i = 0; i < _cards.Count && i < world.Units.Count; i++)
+            for (int i = 0; i < _cards.Count; i++)
             {
-                var u = world.Units[i];
+                // Wer in der Krankenstube aussetzt, ist nicht im Einsatz. Dann rücken die Wachen in der Liste nach und dürfen keine Akte bekommen.
                 var card = _cards[i];
+                card.Root.Visible = i < world.Units.Count && world.Units[i].Faction == Faction.Agent;
+                if (!card.Root.Visible)
+                {
+                    continue;
+                }
+                var u = world.Units[i];
                 card.Name.Text = $"{i + 1} {u.Name.ToUpperInvariant()}";
                 string skill = Game.AgentRole(i);
                 string doing = u.CarriesItem ? "trägt das Buch" : u.Sprinting ? "rennt" : skill;
