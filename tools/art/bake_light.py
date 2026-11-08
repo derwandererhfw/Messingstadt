@@ -96,6 +96,50 @@ def pane_pixels(pane, sprite_left, sprite_top, rgba):
     return pixels
 
 
+def pane_area(pane, sprite_left, sprite_top, rgba):
+    """Alle deckenden Bildpunkte eines Fensters, auch die dunklen Sprossen. In doppelter Auflösung sind die Sprossen
+    dünner, dort wird ein Teil dieser Fläche zu Glas."""
+    h, w = rgba.shape[:2]
+    pixels = []
+    for u in range(pane["u"], pane["u"] + pane["w"]):
+        off = int(u * pane["slope"]) if pane["slope"] > 0 else -int(u * -pane["slope"])
+        for v in range(pane["v"], pane["v"] + pane["h"]):
+            x, y = pane["x"] + u - sprite_left, pane["y"] + off + v - sprite_top
+            if 0 <= x < w and 0 <= y < h and rgba[y, x, 3] > 128:
+                pixels.append((y, x))
+    return pixels
+
+
+def upscale(values, factor):
+    return np.repeat(np.repeat(values, factor, axis=0), factor, axis=1)
+
+
+def resize_float(values, size):
+    """Weiches Hochrechnen eines Felds mit Fließkommawerten, je Kanal."""
+    channels = [np.asarray(Image.fromarray(values[..., c].astype(np.float32), "F").resize(size, Image.BILINEAR)) for c in range(values.shape[-1])]
+    return np.stack(channels, axis=-1)
+
+
+def write_maps(name, rgba, light, deltas, ids, pane_light, halo, box):
+    """Schreibt Licht (_a), Anteile fürs Flackern (_b) und Fensterkennung (_w) in der Größe des angezeigten Bilds."""
+    size = (rgba.shape[1], rgba.shape[0])
+    a = np.array(Image.fromarray(encode(light)).resize(size, Image.BILINEAR))
+    b = np.array(Image.fromarray(encode(deltas), "RGBA").resize(size, Image.BILINEAR))
+    glow = (is_emissive(rgba) if box >= 0 else np.zeros(rgba.shape[:2], bool)) | (ids > 0)
+    a[glow] = encode(np.array([EMISSIVE_LIGHT] * 3))
+    panes = ids > 0
+    a[panes] = encode(pane_light[panes])
+    if halo is not None:
+        # Schein auf Rahmen und Wand rund ums Fenster. Nur um Fenster, die dauerhaft leuchten.
+        lit = (a[~panes].astype(np.float32) / 255) ** 2 * MAX_LIGHT + halo[~panes] * HALO_STRENGTH
+        a[~panes] = encode(lit)
+    b[glow] = 0
+    Image.fromarray(a).save(OUT / f"{name}_a.png", optimize=True)
+    Image.fromarray(b).save(OUT / f"{name}_b.png", optimize=True)
+    if ids.any():
+        Image.fromarray(ids).convert("RGB").save(OUT / f"{name}_w.png")
+
+
 def room_light(u, v, source):
     """Das Licht im Zimmer kommt von einer Stelle und fällt zum Rand der Scheibe hin ab."""
     return 1.3 - 0.7 * min(1.0, ((u - source[0]) ** 2 + (v - source[1]) ** 2) ** 0.5)
@@ -141,6 +185,10 @@ def main():
     OUT.mkdir(parents=True)
 
     ground = np.array(Image.open(ASSETS / "ground.png").convert("RGBA"))
+    # Objekte mit feiner Fassung bekommen ihre Lichtkarten in deren Größe. Der Boden bleibt einfach, Wetter und
+    # nasser Boden lesen sein Licht in Weltkoordinaten.
+    fine_images = {Path(f).stem: np.array(Image.open(ASSETS / "hd" / "things" / f).convert("RGBA"))
+                   for f in manifest.get("hd", {}).get("things", [])}
     boxes, sprites, images = [], [], []
     groundless = ground[(np.abs(ground[..., :3].astype(int) - ground[0, 0, :3].astype(int)).sum(axis=2) > 8)]
     sprites.append({"name": "ground", "box": -1, "left": 0, "top": 0})
@@ -178,6 +226,8 @@ def main():
     type_names = list(WINDOW_TYPES)
     weights = [WINDOW_TYPES[name]["weight"] for name in type_names]
     for sprite, rgba in zip(sprites, images):
+        sprite["area"] = np.zeros(rgba.shape[:2], np.uint8)
+        sprite["area_light"] = np.zeros(rgba.shape[:2] + (3,), np.float32)
         sprite["ids"] = np.zeros(rgba.shape[:2], np.uint8)
         sprite["lit"] = np.zeros(rgba.shape[:2], np.uint8)
         sprite["pane_light"] = np.zeros(rgba.shape[:2] + (3,), np.float32)
@@ -200,6 +250,14 @@ def main():
                 kind = "weld"
                 welding_placed = True
         source = (picker.uniform(0.25, 0.75), picker.uniform(0.1, 0.55))
+        # Fläche samt Sprossen, mit dem Licht des Zimmers, für die feine Fensterkennung
+        for y, x in pane_area(pane, sprite["left"], sprite["top"], sprite_rgba[id(sprite)]):
+            sprite["area"][y, x] = pane_id
+            sprite["area_light"][y, x] = EMISSIVE_LIGHT
+            if pane["kind"] == "window" and pane_id not in screens:
+                u = (x + sprite["left"] - pane["x"] - pane["u"]) / pane["w"]
+                v = (y + sprite["top"] - pane["y"] - pane["v"] - (int(pane["u"] * pane["slope"]) if pane["slope"] > 0 else -int(pane["u"] * -pane["slope"]))) / pane["h"]
+                sprite["area_light"][y, x] = np.array(WINDOW_TYPES[type_name]["pane"]) * room_light(u, v, source)
         for y, x in pixels:
             sprite["ids"][y, x] = pane_id
             sprite["pane_light"][y, x] = EMISSIVE_LIGHT
@@ -267,26 +325,25 @@ def main():
         # Rand auffüllen, damit beim Hochrechnen keine dunkle Kante aus leeren Punkten entsteht.
         light = fill_empty(light, mask)
         deltas = fill_empty(deltas, mask)
-        size = (rgba.shape[1], rgba.shape[0])
-        a = np.array(Image.fromarray(encode(light)).resize(size, Image.BILINEAR))
-        b = np.array(Image.fromarray(encode(deltas), "RGBA").resize(size, Image.BILINEAR))
-        glow = (is_emissive(rgba) if sprite["box"] >= 0 else np.zeros(rgba.shape[:2], bool)) | (sprite["ids"] > 0)
-        a[glow] = encode(np.array([EMISSIVE_LIGHT] * 3))
-        panes = sprite["ids"] > 0
-        a[panes] = encode(sprite["pane_light"][panes])
+        halo = None
         if sprite["halo"].any():
-            # Schein auf Rahmen und Wand rund ums Fenster. Nur um Fenster, die dauerhaft leuchten.
             halo = sprite["halo"]
             everywhere = np.ones(halo.shape[:2], bool)
             for _ in range(HALO_ROUNDS):
                 halo = blur(halo, everywhere)
-            lit = (a[~panes].astype(np.float32) / 255) ** 2 * MAX_LIGHT + halo[~panes] * HALO_STRENGTH
-            a[~panes] = encode(lit)
-        b[glow] = 0
-        Image.fromarray(a).save(OUT / f"{sprite['name']}_a.png", optimize=True)
-        Image.fromarray(b).save(OUT / f"{sprite['name']}_b.png", optimize=True)
-        if sprite["ids"].any():
-            Image.fromarray(sprite["ids"]).convert("RGB").save(OUT / f"{sprite['name']}_w.png")
+        fine = fine_images.get(sprite["name"])
+        if fine is None:
+            write_maps(sprite["name"], rgba, light, deltas, sprite["ids"], sprite["pane_light"], halo, sprite["box"])
+            continue
+        # Feines Bild: Licht weich hochgerechnet, Selbstleuchten und Fenster aber Bildpunkt für Bildpunkt aus dem feinen
+        # Bild. Glas ist dort, wo die Fensterfläche hell ist, also auch neben den nun dünneren Sprossen.
+        factor = fine.shape[0] // rgba.shape[0]
+        area = upscale(sprite["area"], factor)
+        bright = (fine[..., 3] > 128) & (fine[..., 0] >= 70)
+        ids = np.where(bright, area, 0).astype(np.uint8)
+        size = (fine.shape[1], fine.shape[0])
+        write_maps(sprite["name"], fine, light, deltas, ids, upscale(sprite["area_light"], factor),
+                   None if halo is None else resize_float(halo, size), sprite["box"])
 
     size = 20 * GRID_RES
     grid = np.fromfile(WORK / "grid.bin", dtype="<f4").reshape(size, size, 4)

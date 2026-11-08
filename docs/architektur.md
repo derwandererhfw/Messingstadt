@@ -28,8 +28,11 @@ Eingabe (Godot) -> Befehle -> World.Tick() -> Zustand -> Darstellung (Godot)
   deckungsgleich mit den einfachen Bildern und mit schon aufgefüllten Rändern. Das Spiel zeigt sie mit halber
   Skalierung an, wie das Figurenblatt, und prüft die Verdeckung an ihnen. Welche Dateien es gibt, steht unter `hd` in
   `manifest.json`. Die Kulisse bleibt einfach aufgelöst. Die einfachen Bilder bleiben die Grundlage für Licht und
-  Pfützen. Fassaden entstehen über `DualDraw` in beiden Auflösungen zugleich, der feine Boden mit numpy (`ground_np`). Alle Stadtbilder werden scharf-bilinear gezeichnet (`sharp_uv` im Lichtshader):
-  innerhalb eines Grafikpunkts wie nearest, an seinem Rand über einen Bildschirmpunkt weich.
+  Pfützen. Fassaden entstehen über `DualDraw` in beiden Auflösungen zugleich, der feine Boden mit numpy (`ground_np`).
+  Alle Stadtbilder werden scharf-bilinear gezeichnet (`sharp_uv` im Lichtshader): innerhalb eines Grafikpunkts wie
+  nearest, an seinem Rand über einen Bildschirmpunkt weich. Die Lichtkarten der Objekte (`light/<nr>_a/_b/_w.png`)
+  haben die Größe der feinen Bilder: Gebacken wird in einfacher Auflösung, Selbstleuchten und Fensterkennung kommen
+  Bildpunkt für Bildpunkt aus dem feinen Bild. Das Bodenlicht bleibt einfach.
 
 ## Zeichenreihenfolge
 
