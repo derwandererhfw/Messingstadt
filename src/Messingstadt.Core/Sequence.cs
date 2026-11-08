@@ -314,7 +314,7 @@ namespace Messingstadt.Core
             return text;
         }
 
-        public static Dictionary<string, string> For(MissionData mission, World world, bool abandoned)
+        public static Dictionary<string, string> For(MissionData mission, World world, bool abandoned, Campaign? campaign = null)
         {
             var (head, line) = Headlines.For(world, abandoned);
             return new Dictionary<string, string>
@@ -326,13 +326,21 @@ namespace Messingstadt.Core
                 ["paper"] = Headlines.Paper.ToUpperInvariant(),
                 ["headline"] = head,
                 ["line"] = line,
-                ["telegram"] = Telegram(mission.Telegrams, world, abandoned),
+                ["telegram"] = Telegram(mission.Telegrams, world, abandoned, campaign),
             };
         }
 
-        /// <summary>Was K. nach einem verlorenen oder abgebrochenen Einsatz telegrafiert.</summary>
-        public static string Telegram(TelegramData? telegrams, World world, bool abandoned)
+        /// <summary>
+        /// Was K. nach einem verlorenen oder abgebrochenen Einsatz telegrafiert. Ist dabei jemand zum zweiten Mal gefallen,
+        /// meldet er die Toten statt der Krankenstube. Dafür muss die Kampagne den Einsatz schon verbucht haben.
+        /// </summary>
+        public static string Telegram(TelegramData? telegrams, World world, bool abandoned, Campaign? campaign = null)
         {
+            int deaths = campaign?.LastDeaths.Count ?? 0;
+            if (deaths > 0 && (!abandoned || Campaign.AbandonCostsSquad(world)))
+            {
+                return deaths == 1 ? CampaignTexts.TelegramOneDead : CampaignTexts.TelegramManyDead;
+            }
             if (!abandoned)
             {
                 return telegrams?.Lost ?? LostTelegram;

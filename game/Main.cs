@@ -538,7 +538,7 @@ void fragment() {
             _camera.Offset = Vector2.Zero;
             _sequence = new SequencePlayer
             {
-                Game = this, Data = data, Texts = SequenceTexts.For(_mission, World, _abandoned),
+                Game = this, Data = data, Texts = SequenceTexts.For(_mission, World, _abandoned, _campaign),
                 OnDone = () =>
                 {
                     EndSequence();

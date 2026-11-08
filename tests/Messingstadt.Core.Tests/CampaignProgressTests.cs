@@ -434,5 +434,68 @@ namespace Messingstadt.Core.Tests
             Assert.True(Campaign.Load(c.ToJson(), out _).DeathRuleExplained);
             Assert.False(Campaign.Load("{\"Money\":5}", out _).DeathRuleExplained);
         }
+        [Fact]
+        public void DefeatTelegramReportsTheDeadInsteadOfTheInfirmary()
+        {
+            var c = new Campaign();
+            c.Prepare(Mission());
+            c.Agent("Greta").Falls = 1;
+            var w = Start(c, Mission());
+            Lose(w);
+            c.Finish(w);
+            var own = new TelegramData { Lost = "EIGEN KRANKENSTUBE BEREIT" };
+            Assert.Equal(CampaignTexts.TelegramOneDead, SequenceTexts.Telegram(own, w, false, c));
+            Assert.Equal(CampaignTexts.TelegramOneDead, SequenceTexts.For(Mission(), w, false, c)["telegram"]);
+            Assert.DoesNotContain("KRANKENSTUBE", SequenceTexts.Telegram(null, w, false, c));
+
+            c.Agent("Otto").Rest = 0;
+            c.Agent("Emil").Rest = 0;
+            var again = Start(c, Mission());
+            Lose(again);
+            c.Finish(again);
+            Assert.Equal(CampaignTexts.TelegramManyDead, SequenceTexts.Telegram(null, again, false, c));
+        }
+
+        [Fact]
+        public void DefeatWithoutDeathsKeepsTheInfirmaryTelegram()
+        {
+            var c = new Campaign();
+            var w = Start(c, Mission());
+            Lose(w);
+            c.Finish(w);
+            Assert.Empty(c.LastDeaths);
+            Assert.Contains("KRANKENSTUBE BEREIT", SequenceTexts.Telegram(null, w, false, c));
+            Assert.Equal("EIGEN", SequenceTexts.Telegram(new TelegramData { Lost = "EIGEN" }, w, false, c));
+        }
+
+        [Fact]
+        public void AbandonAfterAShotWithDeathsReportsTheDead()
+        {
+            var c = new Campaign();
+            c.Prepare(Mission());
+            c.Agent("Hanna").Falls = 1;
+            var w = Start(c, Mission(Guard(3.5, 0.5)));
+            MakeLoud(w);
+            c.Abandon(w);
+            Assert.Equal(new[] { "Hanna" }, c.LastDeaths);
+            Assert.Equal(CampaignTexts.TelegramOneDead, SequenceTexts.Telegram(null, w, true, c));
+        }
+        [Fact]
+        public void StampShowsWhetherTheFallIsFatalBeforeAndAfterBooking()
+        {
+            var c = new Campaign();
+            c.Prepare(Mission());
+            c.Agent("Greta").Falls = 1;
+            var w = Start(c, Mission());
+            Agent(w, "Greta").Hp = 0;
+            Agent(w, "Otto").Hp = 0;
+            Assert.True(c.FallIsFatal("Greta"));
+            Assert.False(c.FallIsFatal("Otto"));
+            Win(w);
+            c.Finish(w);
+            Assert.True(c.FallIsFatal("Greta"));
+            Assert.False(c.FallIsFatal("Otto"));
+            Assert.False(c.FallIsFatal("Niemand"));
+        }
     }
 }
