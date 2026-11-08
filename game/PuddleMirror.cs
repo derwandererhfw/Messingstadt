@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using Godot;
 using Messingstadt.Core;
 
@@ -8,7 +9,10 @@ namespace Messingstadt
     /// Die Pfützen als Wasser: eine dunkle, glatte Fläche mit hellem Rand, in der sich Laternen, Fenster, Leuchtschrift,
     /// Feuer und die Figuren spiegeln. Regentropfen lassen das Spiegelbild zittern. Welche Bildpunkte Wasser sind,
     /// steht in ground.png: Dort sind die Pfützen bläulich-dunkel eingefärbt. Dazu kommen Pfützen genau dort, wo ein
-    /// Licht sein Spiegelbild hinwirft, auf freiem Pflaster, das kein Haus von vorn verdeckt. Reine Darstellung.
+    /// Licht sein Spiegelbild hinwirft, auf freiem Pflaster, das kein Haus von vorn verdeckt. Liegt der Boden auch fein
+    /// vor (hd/ground.png), wird die sichtbare Maske in dessen Auflösung gebaut und ihr Rand weich geglättet, damit das
+    /// Wasser genau auf den feinen Pfützen liegt. Welche Lichter sich spiegeln, entscheidet weiter das einfache Raster.
+    /// Reine Darstellung.
     /// </summary>
     public partial class PuddleMirror : Node2D
     {
@@ -42,8 +46,9 @@ namespace Messingstadt
 
         private const string SurfaceShader = @"
 shader_type canvas_item;
-uniform sampler2D ground_light : filter_nearest;
-uniform sampler2D ground_light_b : filter_nearest;
+uniform sampler2D ground_light : filter_linear;
+uniform sampler2D ground_light_b : filter_linear;
+uniform vec2 ground_size;
 uniform vec3 lamp_color;
 uniform vec3 fire_color;
 uniform float stutter = 1.0;
@@ -56,10 +61,13 @@ uniform float lightning = 0.0;
 uniform float rain = 0.3;
 void fragment() {
     vec4 m = texture(TEXTURE, UV);
-    if (m.a < 0.5) {
+    // Die Maske ist weich gefiltert: Die Linie bei halber Deckung ist der Rand, über einen Bildschirmpunkt geglättet.
+    float cover = clamp((m.a - 0.5) / max(fwidth(m.a), 0.001) + 0.5, 0.0, 1.0);
+    if (cover <= 0.0) {
         discard;
     }
-    vec2 px = floor(UV / TEXTURE_PIXEL_SIZE);
+    // Ort in einfachen Bildpunkten, auf halbe Punkte gerastert wie der feine Boden.
+    vec2 px = floor(UV * ground_size * 2.0) * 0.5;
     vec3 a = texture(ground_light, UV).rgb;
     vec4 b = texture(ground_light_b, UV);
     // Dasselbe bewegte Licht wie auf dem Boden: Wackelkontakt, unruhige Laternen, Feuer.
@@ -78,13 +86,13 @@ void fragment() {
     // Schweißlicht der Halle: Das Wasser blitzt bläulich mit jedem Lichtbogen.
     float dw = length((px - weld.xy) * vec2(1.0, 2.0)) / 150.0;
     c += vec3(0.5, 0.7, 1.0) * weld.z * pow(max(0.0, 1.0 - dw), 2.0) * 0.6;
-    COLOR = vec4(c / night, 0.92);
+    COLOR = vec4(c / night, 0.92 * cover);
 }";
 
         private const string MirrorShader = @"
 shader_type canvas_item;
 render_mode {0};
-uniform sampler2D mask : filter_nearest;
+uniform sampler2D mask : filter_linear;
 uniform vec2 ground_size;
 uniform float rain = 0.3;
 varying vec2 world;
@@ -92,13 +100,14 @@ void vertex() {
     world = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
 }
 void fragment() {
-    vec2 p = floor(world);
-    float m = texture(mask, (p + 0.5) / ground_size).a;
+    vec2 p = floor(world * 2.0) * 0.5;
+    float m = texture(mask, world / ground_size).a;
+    float cover = clamp((m - 0.5) / max(fwidth(m), 0.001) + 0.5, 0.0, 1.0);
     // Das Spiegelbild zittert zeilenweise, stärker im Regen.
     float wobble = sin(p.y * 0.9 + TIME * 4.0) * 0.6 + sin(p.y * 2.3 - TIME * 6.5) * 0.4;
     vec2 uv = UV + vec2(TEXTURE_PIXEL_SIZE.x * wobble * (0.5 + 1.6 * rain), 0.0);
     vec4 t = texture(TEXTURE, uv) * COLOR;
-    COLOR = vec4(t.rgb, t.a * step(0.5, m));
+    COLOR = vec4(t.rgb, t.a * cover);
 }";
 
         private enum Kind
@@ -126,6 +135,10 @@ void fragment() {
         private readonly List<(Vector2 Foot, Vector2 Tile)> _lamps = new();
         private readonly List<Source> _sources = new();
         private bool[,] _water = new bool[0, 0];
+        private readonly List<Spot> _spots = new();
+
+        /// <summary>Eine Pfütze, die am Spiegelpunkt eines Lichts angelegt wird, in einfachen Bildpunkten.</summary>
+        private sealed record Spot(Vector2 Center, float Radius, float Phase, float Phase2);
         private bool _tramChecked;
         private GameMap _blocked = null!;
 
@@ -160,7 +173,7 @@ void fragment() {
         public override void _Ready()
         {
             LightMask = 0;
-            var mask = BuildMask(out var size);
+            var mask = BuildMask(out var size, out int res);
             _surface = new ShaderMaterial { Shader = new Shader { Code = SurfaceShader } };
             _surface.SetShaderParameter("ground_light", GroundLight);
             _surface.SetShaderParameter("ground_light_b", GroundLightB);
@@ -168,7 +181,11 @@ void fragment() {
             _surface.SetShaderParameter("fire_color", FireColor);
             _surface.SetShaderParameter("noise_map", Noise);
             _surface.SetShaderParameter("night", Game.NightColor);
-            AddChild(new Sprite2D { Texture = mask, Centered = false, Material = _surface, LightMask = 0, TextureFilter = TextureFilterEnum.Nearest });
+            _surface.SetShaderParameter("ground_size", size);
+            AddChild(new Sprite2D
+            {
+                Texture = mask, Centered = false, Scale = Vector2.One / res, Material = _surface, LightMask = 0, TextureFilter = TextureFilterEnum.Linear,
+            });
             _mixMaterial = MirrorMaterial("blend_mix", mask, size);
             _addMaterial = MirrorMaterial("blend_add", mask, size);
             // Erst die dunklen Spiegelbilder von Figuren und Pfosten, darüber das Licht.
@@ -270,57 +287,146 @@ void fragment() {
             return material;
         }
 
-        /// <summary>Sucht in ground.png die Bildpunkte jeder Pfütze. Alpha: Wasser, Rot: heller Saum am hinteren Rand.</summary>
-        private Texture2D BuildMask(out Vector2 size)
+        /// <summary>
+        /// Sucht die Bildpunkte jeder Pfütze, erst im einfachen Boden für die Frage, welche Lichter sich spiegeln, dann im
+        /// feinen Boden für das sichtbare Wasser. Alpha: Deckung, weich ausgeblendet. Helligkeit: heller Saum am hinteren Rand.
+        /// </summary>
+        private Texture2D BuildMask(out Vector2 size, out int res)
         {
             var ground = Image.LoadFromFile(GroundPath);
             int w = ground.GetWidth(), h = ground.GetHeight();
             size = new Vector2(w, h);
             var water = new bool[w, h];
+            var boxes = new List<Rect2I>();
+            FindPainted(ground, water, 1, boxes);
+            var open = new bool[w, h];
+            AddMirrorPuddles(water, open, w, h, boxes);
+            _water = Clean(water, w, h, boxes);
+            string fine = Path.Combine(Path.GetDirectoryName(GroundPath) ?? "", "hd", Path.GetFileName(GroundPath));
+            var image = File.Exists(fine) ? Image.LoadFromFile(fine) : null;
+            res = image == null ? 1 : image.GetWidth() / w;
+            if (image == null || res < 2 || image.GetWidth() != w * res || image.GetHeight() != h * res)
+            {
+                res = 1;
+                return MaskTexture(_water, w, h, boxes);
+            }
+            int fw = w * res, fh = h * res;
+            var fineWater = new bool[fw, fh];
+            var fineBoxes = new List<Rect2I>();
+            FindPainted(image, fineWater, res, fineBoxes);
+            int step = res;
+            foreach (var spot in _spots)
+            {
+                fineBoxes.Add(RasterSpot(fineWater, spot, res, (x, y) => open[Mathf.Clamp(x / step, 0, w - 1), Mathf.Clamp(y / step, 0, h - 1)]));
+            }
+            return MaskTexture(Clean(fineWater, fw, fh, fineBoxes), fw, fh, fineBoxes);
+        }
+
+        /// <summary>Gemalte Pfützen im Boden der Auflösung res: Orte und Radien stehen im Manifest in einfachen Bildpunkten.</summary>
+        private void FindPainted(Image ground, bool[,] water, int res, List<Rect2I> boxes)
+        {
+            int w = ground.GetWidth(), h = ground.GetHeight();
             foreach (var (pos, radius) in Puddles)
             {
-                float rx = radius * SearchScale, ry = radius * 0.5f * SearchScale;
-                for (int y = Mathf.Max(0, (int)(pos.Y - ry)); y <= Mathf.Min(h - 1, (int)(pos.Y + ry)); y++)
+                var at = pos * res;
+                float rx = radius * SearchScale * res, ry = radius * 0.5f * SearchScale * res;
+                int x0 = Mathf.Max(0, (int)(at.X - rx)), x1 = Mathf.Min(w - 1, (int)(at.X + rx));
+                int y0 = Mathf.Max(0, (int)(at.Y - ry)), y1 = Mathf.Min(h - 1, (int)(at.Y + ry));
+                for (int y = y0; y <= y1; y++)
                 {
-                    for (int x = Mathf.Max(0, (int)(pos.X - rx)); x <= Mathf.Min(w - 1, (int)(pos.X + rx)); x++)
+                    for (int x = x0; x <= x1; x++)
                     {
-                        float d = new Vector2((x - pos.X) / rx, (y - pos.Y) / ry).Length();
+                        float d = new Vector2((x - at.X) / rx, (y - at.Y) / ry).Length();
                         water[x, y] |= d < 1f && IsPuddle(ground.GetPixel(x, y));
                     }
                 }
+                boxes.Add(new Rect2I(x0, y0, x1 - x0 + 1, y1 - y0 + 1));
             }
-            AddMirrorPuddles(water, w, h);
-            var image = Image.CreateEmpty(w, h, false, Image.Format.Rgba8);
-            _water = new bool[w, h];
-            for (int y = 1; y < h - 1; y++)
+        }
+
+        /// <summary>Einzelne Ausreißer weg, kleine Löcher zu: Mehrheit der Nachbarn entscheidet. Nur in den Kästen um die Pfützen.</summary>
+        private static bool[,] Clean(bool[,] water, int w, int h, List<Rect2I> boxes)
+        {
+            var clean = new bool[w, h];
+            foreach (var box in boxes)
             {
-                for (int x = 1; x < w - 1; x++)
+                for (int y = Mathf.Max(1, box.Position.Y - 1); y <= Mathf.Min(h - 2, box.End.Y); y++)
                 {
-                    // Einzelne Ausreißer weg, kleine Löcher zu: Mehrheit der Nachbarn entscheidet.
-                    int around = 0;
-                    for (int dy = -1; dy <= 1; dy++)
+                    for (int x = Mathf.Max(1, box.Position.X - 1); x <= Mathf.Min(w - 2, box.End.X); x++)
                     {
-                        for (int dx = -1; dx <= 1; dx++)
-                        {
-                            around += water[x + dx, y + dy] ? 1 : 0;
-                        }
-                    }
-                    if (around >= 5)
-                    {
-                        _water[x, y] = true;
-                        bool rim = !water[x, y - 1];
-                        image.SetPixel(x, y, new Color(rim ? 1f : 0f, 0f, 0f, 1f));
+                        clean[x, y] = Around(water, x, y) >= 5;
                     }
                 }
             }
-            return ImageTexture.CreateFromImage(image);
+            return clean;
+        }
+
+        private static int Around(bool[,] water, int x, int y)
+        {
+            int around = 0;
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    around += water[x + dx, y + dy] ? 1 : 0;
+                }
+            }
+            return around;
+        }
+
+        /// <summary>
+        /// Maske als Bild: Alpha ist der Anteil Wasser in den neun Nachbarpunkten. Gefiltert und bei halber Deckung
+        /// abgeschnitten ergibt das einen glatten Rand statt einer Treppe. Helligkeit markiert den hinteren Saum.
+        /// </summary>
+        private static Texture2D MaskTexture(bool[,] water, int w, int h, List<Rect2I> boxes)
+        {
+            var data = new byte[w * h * 2];
+            foreach (var box in boxes)
+            {
+                for (int y = Mathf.Max(1, box.Position.Y - 2); y <= Mathf.Min(h - 2, box.End.Y + 1); y++)
+                {
+                    for (int x = Mathf.Max(1, box.Position.X - 2); x <= Mathf.Min(w - 2, box.End.X + 1); x++)
+                    {
+                        int i = (y * w + x) * 2;
+                        data[i] = (byte)(water[x, y] && !water[x, y - 1] ? 255 : 0);
+                        data[i + 1] = (byte)(Around(water, x, y) * 255 / 9);
+                    }
+                }
+            }
+            return ImageTexture.CreateFromImage(Image.CreateFromData(w, h, false, Image.Format.La8, data));
+        }
+
+        /// <summary>Zeichnet eine Pfütze am Spiegelpunkt ins Raster der Auflösung res. Gibt den Kasten zurück, den sie belegt.</summary>
+        private static Rect2I RasterSpot(bool[,] water, Spot spot, int res, System.Func<int, int, bool> open)
+        {
+            int w = water.GetLength(0), h = water.GetLength(1);
+            var c = spot.Center;
+            float rx = spot.Radius;
+            int x0 = Mathf.Max(1, (int)((c.X - rx * 1.4f) * res)), x1 = Mathf.Min(w - 1, (int)((c.X + rx * 1.4f) * res));
+            int y0 = Mathf.Max(1, (int)((c.Y - rx) * res)), y1 = Mathf.Min(h - 1, (int)((c.Y + rx) * res));
+            for (int y = y0; y < y1; y++)
+            {
+                for (int x = x0; x < x1; x++)
+                {
+                    // Mitte des Punkts in einfachen Bildpunkten. Bei res 1 genau der Punkt selbst wie früher.
+                    float fx = res == 1 ? x : (x + 0.5f) / res - 0.5f, fy = res == 1 ? y : (y + 0.5f) / res - 0.5f;
+                    // Unregelmäßiger Rand wie bei den gemalten Pfützen.
+                    var d = new Vector2((fx - c.X) / rx, (fy - c.Y) / (rx * 0.5f));
+                    float edge = 1f + 0.2f * Mathf.Sin(d.Angle() * 3f + spot.Phase) + 0.12f * Mathf.Sin(d.Angle() * 5f + spot.Phase2);
+                    if (d.Length() < edge && open(x, y))
+                    {
+                        water[x, y] = true;
+                    }
+                }
+            }
+            return new Rect2I(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
         }
 
         /// <summary>
         /// Legt Pfützen an die Spiegelpunkte der Lichter: bei den meisten Laternen, bei jedem Feuer und bei einem Teil der
         /// Fenster. Nur auf freiem Pflaster innerhalb der Karte, das von keinem Haus davor verdeckt wird.
         /// </summary>
-        private void AddMirrorPuddles(bool[,] water, int w, int h)
+        private void AddMirrorPuddles(bool[,] water, bool[,] open, int w, int h, List<Rect2I> areas)
         {
             _blocked = Game.Map.Build();
             var rng = new System.Random(MirrorPuddleSeed);
@@ -359,19 +465,12 @@ void fragment() {
                 float rx = MinMirrorPuddle + (float)rng.NextDouble() * (MaxMirrorPuddle - MinMirrorPuddle);
                 var c = at + new Vector2(((float)rng.NextDouble() - 0.5f) * rx * 0.6f, ((float)rng.NextDouble() - 0.5f) * rx * 0.3f);
                 float phase = (float)rng.NextDouble() * Mathf.Tau, phase2 = (float)rng.NextDouble() * Mathf.Tau;
-                for (int y = Mathf.Max(1, (int)(c.Y - rx)); y < Mathf.Min(h - 1, (int)(c.Y + rx)); y++)
-                {
-                    for (int x = Mathf.Max(1, (int)(c.X - rx * 1.4f)); x < Mathf.Min(w - 1, (int)(c.X + rx * 1.4f)); x++)
-                    {
-                        // Unregelmäßiger Rand wie bei den gemalten Pfützen.
-                        var d = new Vector2((x - c.X) / rx, (y - c.Y) / (rx * 0.5f));
-                        float edge = 1f + 0.2f * Mathf.Sin(d.Angle() * 3f + phase) + 0.12f * Mathf.Sin(d.Angle() * 5f + phase2);
-                        if (d.Length() < edge && OpenGround(new Vector2(x, y), boxes))
-                        {
-                            water[x, y] = true;
-                        }
-                    }
-                }
+                var spot = new Spot(c, rx, phase, phase2);
+                _spots.Add(spot);
+                // Frei oder verdeckt merkt sich das einfache Raster, das feine fragt dort nach. Etwas über den Rand
+                // hinaus prüfen, sonst fehlen dem feinen Rand dort Punkte.
+                RasterSpot(open, spot with { Radius = rx * 1.15f }, 1, (x, y) => OpenGround(new Vector2(x, y), boxes));
+                areas.Add(RasterSpot(water, spot, 1, (x, y) => open[x, y]));
             }
         }
 

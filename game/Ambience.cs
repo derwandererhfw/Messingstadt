@@ -240,17 +240,17 @@ namespace Messingstadt
 
         public override void _Draw()
         {
-            var pts = new Vector2[13];
+            var pts = new Vector2[25];
             foreach (var r in _ripples)
             {
                 float f = r.Age / RippleSeconds;
                 float radius = 1f + r.Radius * f;
-                for (int i = 0; i <= 12; i++)
+                for (int i = 0; i <= 24; i++)
                 {
-                    float a = i / 12f * Mathf.Tau;
+                    float a = i / 24f * Mathf.Tau;
                     pts[i] = r.Pos + new Vector2(Mathf.Cos(a) * radius, Mathf.Sin(a) * radius * 0.5f);
                 }
-                DrawPolyline(pts, new Color(1.9f, 2.1f, 2.5f, 0.75f * (1f - f)), 1f);
+                DrawPolyline(pts, new Color(1.9f, 2.1f, 2.5f, 0.85f * (1f - f)), 0.5f, true);
             }
             foreach (var p in _papers)
             {
