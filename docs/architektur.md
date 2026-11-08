@@ -18,6 +18,10 @@ Eingabe (Godot) -> Befehle -> World.Tick() -> Zustand -> Darstellung (Godot)
 - **`tools/art/`:** erzeugt Boden, Objektgrafiken samt Liste (`game/assets/manifest.json`) und Figurenblatt.
   Die Liste enthält Standfläche und Zeichenreihenfolge, die Karte die gesperrten Felder. Dazu kommt die Kulisse
   `backdrop.png` jenseits der Karte. `generate_concept.py --city` lässt das langsame Figurenrendern aus.
+  Das Figurenblatt kommt aus `figures3d.py`. Welche Spalten zu welcher Bewegung gehören und wie lang ein
+  Doppelschritt ist, steht in `figures.json`. `game/FigureAnimator.cs` liest das und schaltet Gehen und Rennen
+  nach zurückgelegtem Weg weiter, damit die Füße nicht gleiten. `check_figures.py` prüft Gleiten und Zellränder
+  und legt Kontaktbögen und GIFs je Bewegung ab.
   Die Lichtwerte in `data/light_01.json` kommen aus `bake_light.py`: Der Mond dort trifft nur Oberseiten von Objekten
   und zählt nicht fürs Schleichen.
 

@@ -142,7 +142,7 @@ namespace Messingstadt
                 return;
             }
             var (view, flip) = Facing[p.Index];
-            int column = Main.IdleFirstColumn + (int)(_time * 1.6f + p.Index * 1.7f) % 4;
+            int column = Main.IdleFirstColumn + (int)(_time * 1.6f + p.Index * 1.7f) % Main.IdleFrameCount;
             if (_fleeing)
             {
                 // Weg nach Westen aus dem Bild, jeder ein Stück versetzt.
@@ -157,7 +157,7 @@ namespace Messingstadt
                 p.Tile += to.LimitLength(WalkAwaySpeed * dt);
                 view = 2;
                 flip = true;
-                column = Main.WalkFirstColumn + (int)(_time * 16f + p.Index) % 8;
+                column = Main.WalkFirstColumn + (int)(_time * 16f + p.Index) % Main.WalkFrameCount;
             }
             p.Sprite.RegionRect = Game.FigureFrame("Arbeiter", view, column).Region;
             p.Sprite.FlipH = flip;

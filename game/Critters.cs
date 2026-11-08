@@ -394,7 +394,7 @@ namespace Messingstadt
                 _workerLeaving = true;
             }
             // Spalten im Figurenblatt: Stehen mit leichtem Atmen, beim Gehen zur Tür der Blick nach Westen.
-            var region = Game.FigureFrame("Arbeiter", 0, Main.IdleFirstColumn + (int)(_time * 1.6f) % 4).Region;
+            var region = Game.FigureFrame("Arbeiter", 0, Main.IdleFirstColumn + (int)(_time * 1.6f) % Main.IdleFrameCount).Region;
             if (_workerLeaving)
             {
                 var to = WorkerDoor - new Vector2(_workerX, _workerY);
@@ -407,7 +407,7 @@ namespace Messingstadt
                 var step = to.LimitLength(WorkerWalkSpeed * dt);
                 _workerX += step.X;
                 _workerY += step.Y;
-                region = Game.FigureFrame("Arbeiter", 2, Main.WalkFirstColumn + (int)(_time * 14f) % 8).Region;
+                region = Game.FigureFrame("Arbeiter", 2, Main.WalkFirstColumn + (int)(_time * 14f) % Main.WalkFrameCount).Region;
             }
             _worker.RegionRect = region;
             _worker.FlipH = _workerLeaving;
