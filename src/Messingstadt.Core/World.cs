@@ -442,18 +442,22 @@ namespace Messingstadt.Core
             return any;
         }
 
-        /// <summary>Befiehlt den Angriff. Die Einheit geht auf das Ziel zu, bis sie es treffen kann.</summary>
-        public void OrderAttack(int unitId, int targetId)
+        /// <summary>Befiehlt den Angriff. Die Einheit geht auf das Ziel zu, bis sie es treffen kann.
+        /// Wer bezahlt ist, bleibt bezahlt: Auf bestochene Wachen und ihre Hunde gibt es keinen Angriffsbefehl.</summary>
+        public bool OrderAttack(int unitId, int targetId)
         {
             var u = Units[unitId];
-            if (u.Alive && Units[targetId].Alive && State == MissionState.Running)
+            var target = Units[targetId];
+            if (!u.Alive || !target.Alive || target.Bribed || State != MissionState.Running)
             {
-                u.TargetId = targetId;
-                u.DoorTarget = -1;
-                u.BribeTarget = -1;
-                u.Sprinting = false;
-                u.RepathTick = 0;
+                return false;
             }
+            u.TargetId = targetId;
+            u.DoorTarget = -1;
+            u.BribeTarget = -1;
+            u.Sprinting = false;
+            u.RepathTick = 0;
+            return true;
         }
 
         // ---------- Takt ----------

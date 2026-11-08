@@ -65,7 +65,7 @@ Die Art steht in der Mission je Gegner. Fährt die Maus über einen sichtbaren G
 
 Hund und Laufbursche beschießen Agenten nur auf Befehl, denn der Schuss macht den Einsatz laut. Ohne Befehl tritt ein Agent nach dem Hund, der ihn anfällt: 9 Schaden je Sekunde, leise, aber der Hund beißt in der Zeit weiter. Das kostet etwa die Hälfte der Lebenspunkte. Der Schuss dauert kürzer und alarmiert alle.
 
-Fällt der Führer, läuft der Hund auf den nächsten Agenten los. Sobald einer von beiden kämpft, ist der Hund von der Leine. Der Schuss auf einen von beiden bricht den Handel mit beiden.
+Fällt der Führer, läuft der Hund auf den nächsten Agenten los. Sobald einer von beiden kämpft, ist der Hund von der Leine. Auf bestochene Wachen und den Hund eines bestochenen Führers gibt es keinen Angriffsbefehl, ein Rechtsklick darauf bleibt ohne Wirkung. Beim Überfahren steht dann „bestochen“.
 
 Der Laufbursche ist schneller als ein gehender Agent und langsamer als ein rennender. Ein Treffer stoppt ihn. Emil rennt ihm von selbst nach, wenn er ihn bestechen soll, die Puste reicht aber nur für ein kurzes Stück. Kommt die Meldung an, geht die Wache zum gemeldeten Ort, alle Wachen im Umkreis werden alarmiert und die Verstärkung rückt an. Die Wertung bleibt ohne Schuss leise.
 

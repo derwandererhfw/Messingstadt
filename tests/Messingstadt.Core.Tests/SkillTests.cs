@@ -159,14 +159,15 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
-        public void ShootingABribedGuardEndsTheDeal()
+        public void ABribedGuardCannotBeOrderedUnderFire()
         {
             var w = new World(new MapData { Width = 30, Height = 12 }, Mission(new() { Agent(5.5, 5.5, "buchhalter") }, new() { Guard(7.5, 5.5, 1, 0) }));
             w.OrderBribe(0, 1);
             Run(w, 2);
-            w.OrderAttack(0, 1);
+            Assert.False(w.OrderAttack(0, 1));
             Run(w, 20);
-            Assert.False(w.Units[1].Bribed);
+            Assert.True(w.Units[1].Bribed);
+            Assert.Empty(w.Shots);
         }
 
         [Fact]
