@@ -123,6 +123,15 @@ namespace Messingstadt
                         .OrderBy(u => Math.Abs(u.X - emil.X) + Math.Abs(u.Y - emil.Y)).First();
                     Check(line, Game.World.OrderBribe(emil.Id, target.Id), target.Type.Title);
                     break;
+                case "fell":
+                    // Ein Agent fällt sofort, damit Stempel und Hilfezeile ohne langes Gefecht prüfbar sind.
+                    var fallen = Game.World.Units.FirstOrDefault(u => u.Faction == Faction.Agent && u.Alive && u.Name == arg);
+                    Check(line, fallen != null, arg);
+                    if (fallen != null)
+                    {
+                        fallen.Hp = 0;
+                    }
+                    break;
                 case "close": Game.PropagateNotification((int)NotificationWMCloseRequest); break;
                 case "remember": _remembered[arg] = Probe(arg); break;
                 case "same": Check(line, _remembered[arg] == Probe(arg), Probe(arg)); break;

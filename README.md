@@ -46,7 +46,9 @@ dotnet run -c Release --project tools/Messingstadt.Balance
 
 Kampagne über mehrere Einsätze messen: dieselbe Zeile mit `-- --kampagne`.
 
-Den Ergebnis-Bildschirm mit Krankenstube und Arzt prüft `tests/prueflaeufe/kampagne_akten.txt`, aufgerufen mit `--menu --fresh --script=../tests/prueflaeufe/kampagne_akten.txt`.
+Den Ergebnis-Bildschirm mit Krankenstube, Arzt und den Stempeln KRANKENSTUBE und GEFALLEN prüft `tests/prueflaeufe/kampagne_akten.txt`, aufgerufen mit `--menu --fresh --script=../tests/prueflaeufe/kampagne_akten.txt`.
+
+"Spiel laden" auf dem Startbildschirm setzt eine belegte Akte fort, mit dem Übergang statt des Prologs. Leere Akten stehen ausgegraut da. Solange nur der Startbildschirm offen ist, wird nichts gespeichert, und "Neues Spiel" fragt nur nach, wenn in der Akte eine Kampagne liegt, die schon etwas erlebt hat. Das prüfen `erststart_laden.txt` (`--menu --script-writes` in einem leeren `APPDATA`-Ordner) und danach im selben Ordner `laden_fortsetzen.txt` (`--menu --intro --script-writes`).
 
 Grafik neu erzeugen: `python tools/art/generate_concept.py`
 

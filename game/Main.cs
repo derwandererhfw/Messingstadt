@@ -191,6 +191,8 @@ void fragment() {
         private bool _sequencesForced;
         // Die Akte beginnt gerade von vorn: Beim Betreten läuft der Prolog. Eine alte Datei einstieg_gesehen zählt nicht mehr.
         private bool _newCampaign;
+        // Ein Spiel ist begonnen. Solange nur der Startbildschirm offen ist, wird nichts gespeichert und kein Abbruch verbucht.
+        private bool _playing;
         private float _sequenceTime;
         private Vector2? _look;
         private int _shotOnFireTick = -1;
@@ -259,6 +261,7 @@ void fragment() {
             _chatter = new Chatter { Game = this };
             _overlayLayer.AddChild(_chatter);
             BuildUi();
+            _playing = Testing && !_forceMenu;
             StartMission();
             _sound.Game = this;
             AddChild(_sound);
@@ -305,6 +308,18 @@ void fragment() {
         /// <summary>Ein Aktenordner im Menü. Mit --fresh gelten alle als leer.</summary>
         public bool SlotExists(int slot) => !_fresh && _saves.Exists(slot);
         public string SlotLine(int slot) => SlotExists(slot) ? _saves.Describe(slot) : "leer";
+
+        /// <summary>Liegt in der Akte eine Kampagne, die schon etwas erlebt hat? Nur dann fragt "Neues Spiel" vor dem Überschreiben.</summary>
+        public bool SlotBegun(int slot) => !_fresh && _saves.Begun(slot);
+
+        /// <summary>Stempel auf der Akte eines gefallenen Agenten: wer schon einmal geflickt wurde, ist tot.</summary>
+        public string FallStamp(Unit unit)
+        {
+            var record = _campaign.Agents.Find(a => a.Name == unit.Name);
+            // Nach dem Verbuchen steht Dead fest, vorher entscheidet der frühere Sturz.
+            bool dies = record != null && (record.Dead || (!_finished && record.Falls > 0));
+            return dies ? "GEFALLEN" : "KRANKENSTUBE";
+        }
 
         /// <summary>Beruf für die Akte im Einsatz, aus den Missionsdaten.</summary>
         public string AgentRole(int index) => index < _mission.Agents.Count ? _mission.Agents[index].RoleName() : "Agent";
@@ -362,6 +377,7 @@ void fragment() {
 
         private void OpenMainMenu()
         {
+            _playing = false;
             _paper.Visible = false;
             _overlayLayer.Visible = false;
             _menus.ShowTitle();
@@ -382,6 +398,7 @@ void fragment() {
         /// <summary>Öffnet einen Aktenordner und tritt den Einsatz an. Neu heißt: die Akte beginnt von vorn.</summary>
         public void OpenSlot(int slot, bool fresh)
         {
+            _playing = true;
             _slot = SaveFolder.ClampSlot(slot);
             _settings.LastSlot = _slot;
             SaveSettings();
@@ -412,7 +429,7 @@ void fragment() {
 
         private void BookLeaving()
         {
-            if (!_finished)
+            if (!_finished && _playing)
             {
                 _campaign.Abandon(World);
                 SaveCampaign();
@@ -443,6 +460,10 @@ void fragment() {
             ["panel"] = _panel.Visible.ToString(),
             ["hud"] = _paper.Visible.ToString(),
             ["help"] = _help.Visible.ToString(),
+            ["helpline"] = _help.Text,
+            ["stamps"] = string.Join(",", World.Units.Where(u => u.Faction == Faction.Agent && !u.Alive).Select(u => $"{u.Name}:{FallStamp(u)}")),
+            ["begun"] = SlotBegun(_slot).ToString(),
+            ["saved"] = _saves.Exists(_slot).ToString(),
             ["camera"] = _camera.Position.ToString(),
             ["sequence"] = _sequence?.Id ?? "",
             ["beat"] = _sequence?.Beat.ToString() ?? "",
@@ -1053,8 +1074,8 @@ void fragment() {
 
         private void SaveCampaign()
         {
-            // Prüfläufe dürfen den echten Spielstand nicht verändern.
-            if (WritesFiles)
+            // Prüfläufe dürfen den echten Spielstand nicht verändern, und hinter dem Startbildschirm wird nichts angelegt.
+            if (WritesFiles && _playing)
             {
                 _saves.Save(_slot, _campaign);
             }
@@ -1784,6 +1805,31 @@ void fragment() {
             _paper.Refresh(World, Selected, telegram, info);
             _banner.Text = _paused && !ControlsLocked ? "PAUSE" : "";
             _help.Visible = _paper.Visible && !_finished;
+            string help = HelpLine();
+            if (_help.Text != help)
+            {
+                _help.Text = help;
+            }
+        }
+
+        /// <summary>Hilfezeile unten: Bestechen und Tür nennt sie nur, solange ein Buchhalter oder Schlosser im Einsatz lebt.</summary>
+        private string HelpLine()
+        {
+            var agents = World.Units.Where(u => u.Faction == Faction.Agent && u.Alive).ToList();
+            string right = string.Concat(
+                agents.Where(u => u.Skill == World.SkillBookkeeper).Select(u => $", {u.Name}: bestechen")
+                .Concat(agents.Where(u => u.Skill == World.SkillLocksmith).Select(u => $", {u.Name}: Tür")));
+            return $"Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen{right}   Q halten: Lageplan   1-4 Leertaste   WASD F P M   Esc: Menü";
+        }
+
+        public override void _Input(InputEvent e)
+        {
+            // Die Leertaste schaltet Sequenzen weiter. Auf dem Ergebnis-Bildschirm löst sie keinen Knopf aus,
+            // sonst rutscht ein Druck zu viel in "Nochmal". Enter und Maus wählen dort weiter.
+            if (_panel.Visible && !_menus.IsOpen && e is InputEventKey key && (key.Keycode == Key.Space || key.PhysicalKeycode == Key.Space))
+            {
+                GetViewport().SetInputAsHandled();
+            }
         }
 
         private string RatingText() => World.Rating switch
