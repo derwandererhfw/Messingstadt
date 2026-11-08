@@ -1,0 +1,25 @@
+# Spiel laden setzt eine Akte fort: mit Übergang statt Prolog, leere Akten sind nicht ladbar.
+# Aufruf mit --menu --intro --script-writes im APPDATA-Ordner von erststart_laden.txt, in dem Akte 1 liegt.
+wait 20
+expect screen Startbildschirm
+expect begun True
+remember money
+key Down
+expect focus Spiel laden
+key Enter
+expect screen Spiel laden
+expect focus Akte 1: Kasse 300, 0 Einsätze  *
+clickany Akte 2: leer
+expect screen Spiel laden
+clickany Akte 3: leer
+expect screen Spiel laden
+key Enter
+wait 10
+expect screen
+expect slot 1
+same money
+expect sequence uebergang
+key Escape
+wait 10
+expect sequence
+expect hud True

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 
 namespace Messingstadt.Core
 {
@@ -41,6 +42,19 @@ namespace Messingstadt.Core
 
         /// <summary>Eine Zeile für das Menü: Kasse und Zahl der Einsätze, oder "leer".</summary>
         public string Describe(int slot) => Exists(slot) ? Describe(Load(slot)) : "leer";
+
+        /// <summary>
+        /// Hat die Kampagne in der Akte schon etwas erlebt? Eine Akte, die nur angelegt und nie gespielt wurde, gleicht einer neuen
+        /// und darf ohne Rückfrage überschrieben werden.
+        /// </summary>
+        public bool Begun(int slot) => Exists(slot) && Begun(Load(slot));
+
+        public static bool Begun(Campaign campaign)
+        {
+            var blank = new Campaign();
+            return campaign.Missions > 0 || campaign.Records.Count > 0 || campaign.Money != blank.Money || campaign.Heat != 0 || campaign.Support != 0
+                || campaign.Agents.Any(a => a.Falls > 0 || a.Dead);
+        }
 
         public static string Describe(Campaign campaign) =>
             $"Kasse {campaign.Money}, {campaign.Missions} {(campaign.Missions == 1 ? "Einsatz" : "Einsätze")}";

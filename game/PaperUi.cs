@@ -194,7 +194,7 @@ namespace Messingstadt
             card.Alive.AddChild(new ColorRect { Position = new Vector2(6, 77), Size = new Vector2(CardWidth - 12, 6), Color = PaperDark, MouseFilter = MouseFilterEnum.Ignore });
             card.Breath = new ColorRect { Position = new Vector2(7, 78), Size = new Vector2(CardWidth - 14, 4), Color = new Color(0.15f, 0.22f, 0.32f), MouseFilter = MouseFilterEnum.Ignore };
             card.Alive.AddChild(card.Breath);
-            // Gefallen heißt schwer verwundet, siehe docs/story.md.
+            // Der erste Sturz heißt schwer verwundet, der zweite tot, siehe docs/story.md. Den Text setzt Refresh.
             card.Stamp = Text("KRANKENSTUBE", 16, StampRed, Serif);
             card.Stamp.Position = new Vector2(10, 56);
             card.Stamp.RotationDegrees = -11f;
@@ -250,6 +250,10 @@ namespace Messingstadt
                 card.Health.Size = new Vector2(width * u.Hp / u.MaxHp, 6);
                 card.Breath.Size = new Vector2(width * u.Stamina / World.MaxStamina(u), 4);
                 card.Stamp.Visible = !u.Alive;
+                if (!u.Alive)
+                {
+                    card.Stamp.Text = Game.FallStamp(u);
+                }
                 card.Edge.Color = selected.Contains(u.Id) ? Selected : new Color(0f, 0f, 0f, 0.45f);
             }
         }

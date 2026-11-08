@@ -1,6 +1,7 @@
-# Kampagne: Abbruch nach dem ersten Schuss, Ergebnis-Bildschirm mit Krankenstube und Arzt, dann zurück zum Startbildschirm.
-# Den Aktenwechsel gibt es erst wieder, wenn "Spiel laden" auf dem Startbildschirm freigeschaltet ist.
+# Kampagne: Abbruch nach dem ersten Schuss, Ergebnis-Bildschirm mit Krankenstube und Arzt, zweiter Sturz mit Stempel GEFALLEN.
 # Aufruf mit --menu --fresh, damit kein echter Spielstand gelesen wird. Prüfläufe schreiben nichts.
+# Dazu: Hilfezeile nur mit Lebenden, Leertaste löst auf dem Ergebnis-Bildschirm nichts aus, dann zurück zum Startbildschirm.
+# Laden und Fortsetzen prüfen erststart_laden.txt und laden_fortsetzen.txt.
 wait 20
 expect screen Startbildschirm
 click Neues Spiel
@@ -8,15 +9,42 @@ wait 20
 expect slot 1
 expect money 300
 key Space
+expect helpline Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen, Otto: Tür   Q halten: Lageplan   1-4 Leertaste   WASD F P M   Esc: Menü
+# Emil fällt zum ersten Mal: Krankenstube, und die Hilfezeile nennt ihn nicht mehr
+fell Emil
+wait 5
+expect stamps Emil:KRANKENSTUBE
+expect helpline Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Otto: Tür   Q halten: Lageplan   1-4 Leertaste   WASD F P M   Esc: Menü
 attack
 wait 300
 key R
 click Abbrechen
 wait 20
 expect panel True
+expect stamps Emil:KRANKENSTUBE
+# Die Leertaste vom Weiterschalten löst hier keinen Knopf aus
+expect focus Nochmal
+key Space
+wait 10
+expect panel True
+expect finished True
 remember money
 click Arzt (100)
 changed money
+# Emil ist geflickt und wieder dabei. Der zweite Sturz ist tödlich, schon im Einsatz steht GEFALLEN.
+click Nochmal
+wait 30
+expect panel False
+fell Emil
+wait 5
+expect stamps Emil:GEFALLEN
+attack
+wait 300
+key R
+click Abbrechen
+wait 20
+expect panel True
+expect stamps Emil:GEFALLEN
 click Zum Hauptmenü
 wait 20
 expect screen Startbildschirm

@@ -1,0 +1,38 @@
+# Erster Start ohne --fresh: Hinter dem Startbildschirm wird nichts gespeichert, "Neues Spiel" fragt nicht und legt Akte 1 an.
+# Aufruf mit --menu --script-writes in einem eigenen, leeren APPDATA-Ordner. Danach im selben Ordner laden_fortsetzen.txt.
+wait 20
+expect screen Startbildschirm
+expect saved False
+wait 60
+expect saved False
+# Esc auf dem Startbildschirm und Spiel laden ohne Akte schreiben ebenfalls nichts
+key Escape
+key Down
+key Enter
+expect screen Spiel laden
+key Escape
+expect saved False
+expect focus Spiel laden
+key Up
+key Enter
+wait 10
+expect screen
+expect hud True
+expect saved True
+expect begun False
+# Ein Schuss, dann der Abbruch: Die Kampagne hat etwas erlebt und fragt beim nächsten neuen Spiel
+attack
+wait 300
+key R
+click Abbrechen
+wait 20
+expect panel True
+expect begun True
+click Zum Hauptmenü
+wait 20
+expect screen Startbildschirm
+click Neues Spiel
+expect screen Rückfrage
+expect focus Nein, zurück
+key Enter
+expect screen Startbildschirm

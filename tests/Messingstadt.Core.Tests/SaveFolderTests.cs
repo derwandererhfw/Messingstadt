@@ -77,6 +77,25 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void Begun_OnlyForCampaignsThatWerePlayed()
+        {
+            var folder = new SaveFolder(_dir);
+            Assert.False(folder.Begun(1));
+            folder.Save(1, new Campaign());
+            Assert.False(folder.Begun(1));
+            folder.Save(2, new Campaign { Money = 120 });
+            Assert.True(folder.Begun(2));
+            var hurt = new Campaign();
+            hurt.Agents.Add(new AgentRecord { Name = "Emil", Falls = 1 });
+            Assert.True(SaveFolder.Begun(hurt));
+            Assert.True(SaveFolder.Begun(new Campaign { Missions = 1 }));
+            // Die Startstufen aus der Mission zählen nicht als erlebt.
+            var fresh = new Campaign();
+            fresh.Agents.Add(new AgentRecord { Name = "Greta", Legs = 2, Heart = 2 });
+            Assert.False(SaveFolder.Begun(fresh));
+        }
+
+        [Fact]
         public void Describe_CountsMissionsInGerman()
         {
             Assert.Equal("Kasse 300, 1 Einsatz", SaveFolder.Describe(new Campaign { Money = 300, Missions = 1 }));

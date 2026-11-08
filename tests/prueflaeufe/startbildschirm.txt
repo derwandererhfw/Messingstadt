@@ -1,4 +1,4 @@
-# Startbildschirm: "Neues Spiel" und "Beenden" wirken, der Rest ist sichtbar, ausgegraut und mit Tasten nicht erreichbar.
+# Startbildschirm: "Neues Spiel", "Spiel laden" und "Beenden" wirken, der Rest ist sichtbar, ausgegraut und mit Tasten nicht erreichbar.
 # Aufruf mit --menu --fresh.
 wait 20
 expect screen Startbildschirm
@@ -10,14 +10,27 @@ expect title bild,schriftzug,szene
 remember tick
 wait 30
 same tick
-# Pfeiltasten springen über die ausgegrauten Einträge zwischen Neues Spiel und Beenden
+# Pfeiltasten springen über die ausgegrauten Einträge zu Beenden
+key Down
+expect focus Spiel laden
 key Down
 expect focus Beenden
 key Up
+expect focus Spiel laden
+key Up
 expect focus Neues Spiel
-# Klicks auf ausgegraute Einträge bewirken nichts
-clickany Spiel laden  (bald)
+# Spiel laden ohne Akten: alle drei leer und ausgegraut, Esc führt zurück
+key Down
+key Enter
+expect screen Spiel laden
+expect focus Zurück
+clickany Akte 1: leer
+expect screen Spiel laden
+key Escape
 expect screen Startbildschirm
+expect focus Spiel laden
+key Up
+# Klicks auf ausgegraute Einträge bewirken nichts
 clickany Einstellungen  (bald)
 expect screen Startbildschirm
 clickany Mitwirkende  (bald)

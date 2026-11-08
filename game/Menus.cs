@@ -70,7 +70,7 @@ namespace Messingstadt
 
         public void ShowMain() => Open("Hauptmenü", BuildMain);
 
-        /// <summary>Startbildschirm: "Neues Spiel" und "Beenden" wirken, der Rest ist sichtbar und ausgegraut.</summary>
+        /// <summary>Startbildschirm: "Neues Spiel", "Spiel laden" und "Beenden" wirken, der Rest ist sichtbar und ausgegraut.</summary>
         public void ShowTitle()
         {
             Remember();
@@ -115,10 +115,10 @@ namespace Messingstadt
             }
         }
 
-        private void Open(string name, Action build, Action? onBack = null)
+        private void Open(string name, Action build, Action? onBack = null, int focus = 0)
         {
             Remember();
-            var page = new Page { Name = name, Build = build, OnBack = onBack };
+            var page = new Page { Name = name, Build = build, OnBack = onBack, Focus = focus };
             _pages.Push(page);
             Show(page);
         }
@@ -216,23 +216,23 @@ namespace Messingstadt
         }
 
         /// <summary>
-        /// Einträge des Startbildschirms. Laden, Einstellungen und Mitwirkende kommen später dazu,
-        /// Akten und Einstellungen sind schon gebaut (ShowFiles, ShowSettings) und werden dann nur freigeschaltet.
+        /// Einträge des Startbildschirms. Einstellungen und Mitwirkende kommen später dazu,
+        /// die Einstellungen sind schon gebaut (ShowSettings) und werden dann nur freigeschaltet.
         /// </summary>
         private void BuildTitle()
         {
             TitleEntry("Neues Spiel", NewGame);
-            TitleEntry("Spiel laden", null);
+            TitleEntry("Spiel laden", ShowLoad);
             TitleEntry("Einstellungen", null);
             TitleEntry("Mitwirkende", null);
             TitleEntry("Beenden", Game.QuitGame);
         }
 
-        /// <summary>Ein neues Spiel beginnt in der zuletzt offenen Akte. Liegt dort schon eine Kampagne, wird vorher gefragt.</summary>
+        /// <summary>Ein neues Spiel beginnt in der zuletzt offenen Akte. Liegt dort schon eine begonnene Kampagne, wird vorher gefragt.</summary>
         private void NewGame()
         {
             int slot = Game.CurrentSlot;
-            if (!Game.SlotExists(slot))
+            if (!Game.SlotBegun(slot))
             {
                 Game.NewCampaign();
                 return;
@@ -299,6 +299,41 @@ namespace Messingstadt
                 row.AddChild(MakeEntry("Nein, zurück", Back, true));
                 row.AddChild(MakeEntry(yes, action, true));
             });
+        }
+
+        /// <summary>Spiel laden: Die zuletzt geöffnete Akte ist vorgewählt, wenn sie belegt ist.</summary>
+        private void ShowLoad()
+        {
+            var filled = Enumerable.Range(1, SaveFolder.Slots).Where(Game.SlotExists).ToList();
+            Open("Spiel laden", BuildLoad, focus: Math.Max(0, filled.IndexOf(Game.CurrentSlot)));
+        }
+
+        /// <summary>Belegte Akten setzen ihre Kampagne fort, leere stehen ausgegraut da. Neu beginnen geht nur über "Neues Spiel".</summary>
+        private void BuildLoad()
+        {
+            Heading("ROTER HAMMER   AKTENSCHRANK", "", SheetWidth);
+            _body.AddChild(PaperUi.Text("Spiel laden", 26, PaperUi.Ink, PaperUi.Serif));
+            _body.AddChild(Rule());
+            bool any = false;
+            for (int slot = 1; slot <= SaveFolder.Slots; slot++)
+            {
+                int s = slot;
+                if (!Game.SlotExists(s))
+                {
+                    var empty = new Button { Text = $"Akte {s}: leer", Disabled = true, FocusMode = Control.FocusModeEnum.None };
+                    PaperUi.InkButton(empty);
+                    empty.AddThemeFontSizeOverride("font_size", EntryFontSize);
+                    _body.AddChild(empty);
+                    continue;
+                }
+                any = true;
+                string mark = s == Game.CurrentSlot ? "  *" : "";
+                _body.AddChild(MakeEntry($"Akte {s}: {Game.SlotLine(s)}{mark}", () => Game.OpenSlot(s, false), false));
+            }
+            _body.AddChild(any
+                ? PaperUi.Text("* zuletzt geöffnet", 13, new Color(PaperUi.Ink, 0.7f), PaperUi.Typewriter)
+                : Wrapped("Noch liegt keine Akte im Schrank. \"Neues Spiel\" legt die erste an.", 15, SheetWidth));
+            Entry("Zurück", Back);
         }
 
         private void ShowFiles() => Open("Akten", BuildFiles);
