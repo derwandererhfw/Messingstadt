@@ -96,6 +96,19 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void Resting_NamesBatteredAndInfirmary()
+        {
+            var campaign = new Campaign();
+            campaign.Agents.Add(new AgentRecord { Name = "Greta" });
+            campaign.Agents.Add(new AgentRecord { Name = "Otto", Rest = 1 });
+            campaign.Agents.Add(new AgentRecord { Name = "Hanna", Rest = 1, Infirmary = true, Falls = 1 });
+            campaign.Agents.Add(new AgentRecord { Name = "Emil", Dead = true, Falls = 2 });
+            Assert.Equal(new[] { "Otto: angeschlagen, setzt aus", "Hanna: Krankenstube, setzt aus" }, SaveFolder.Resting(campaign));
+            // Wer trotzdem mitgeht, weil sonst zu wenige da wären, setzt nicht aus.
+            Assert.Equal(new[] { "Hanna: Krankenstube, setzt aus" }, SaveFolder.Resting(campaign, new[] { "Otto" }));
+        }
+
+        [Fact]
         public void Describe_CountsMissionsInGerman()
         {
             Assert.Equal("Kasse 300, 1 Einsatz", SaveFolder.Describe(new Campaign { Money = 300, Missions = 1 }));

@@ -1,0 +1,18 @@
+# Aussetzende außerhalb des Ergebnis-Bildschirms: im Aktenschrank unter der Akte und im Einsatz auf einem Zettel neben den Akten.
+# Aufruf mit --menu --script-writes in einem eigenen APPDATA-Ordner, in dem akte_angeschlagen.json als Godot/app_userdata/Messingstadt/kampagne.json liegt.
+# Otto ist angeschlagen, Hanna liegt in der Krankenstube, beide setzen aus. Greta und Emil gehen.
+wait 20
+expect screen Startbildschirm
+click Spiel laden
+expect screen Spiel laden
+expect focus Akte 1: Kasse 420, 1 Einsatz  *
+seetext Otto: angeschlagen, setzt aus
+seetext Hanna: Krankenstube, setzt aus
+key Enter
+wait 20
+expect screen
+expect hud True
+expect resting Otto: angeschlagen, setzt aus; Hanna: Krankenstube, setzt aus
+expect helpline Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen   Q halten: Lageplan   1-2 Leertaste   WASD F P M   Esc: Menü
+seetext SETZT AUS
+seetext Otto: angeschlagen\nHanna: Krankenstube

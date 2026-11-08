@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
@@ -55,6 +56,16 @@ namespace Messingstadt.Core
             return campaign.Missions > 0 || campaign.Records.Count > 0 || campaign.Money != blank.Money || campaign.Heat != 0 || campaign.Support != 0
                 || campaign.Agents.Any(a => a.Falls > 0 || a.Dead);
         }
+
+        /// <summary>
+        /// Wer im nächsten Einsatz aussetzt, je eine Zeile wie "Otto: angeschlagen, setzt aus". Krankenstube heißt einmal gefallen,
+        /// angeschlagen heißt mit weniger als halben Lebenspunkten durchgekommen. Wer trotzdem mitgeht, steht in deployed und fehlt hier.
+        /// </summary>
+        public static List<string> Resting(Campaign campaign, ICollection<string>? deployed = null) =>
+            campaign.Agents
+                .Where(a => !a.Dead && a.Rest > 0 && (deployed == null || !deployed.Contains(a.Name)))
+                .Select(a => $"{a.Name}: {(a.Infirmary ? "Krankenstube" : "angeschlagen")}, setzt aus")
+                .ToList();
 
         public static string Describe(Campaign campaign) =>
             $"Kasse {campaign.Money}, {campaign.Missions} {(campaign.Missions == 1 ? "Einsatz" : "Einsätze")}";

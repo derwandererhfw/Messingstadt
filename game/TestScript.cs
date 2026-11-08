@@ -132,6 +132,7 @@ namespace Messingstadt
                         fallen.Hp = 0;
                     }
                     break;
+                case "seetext": Check(line, HasLabel(Game.ActiveUi(), arg.Replace("\\n", "\n")), arg); break;
                 case "close": Game.PropagateNotification((int)NotificationWMCloseRequest); break;
                 case "remember": _remembered[arg] = Probe(arg); break;
                 case "same": Check(line, _remembered[arg] == Probe(arg), Probe(arg)); break;
@@ -139,6 +140,10 @@ namespace Messingstadt
                 default: Check(line, false, "unbekannter Befehl"); break;
             }
         }
+
+        /// <summary>Steht dieser Text sichtbar auf dem Bildschirm?</summary>
+        private static bool HasLabel(Node node, string text) =>
+            (node is Label label && label.IsVisibleInTree() && label.Text == text) || node.GetChildren().Any(child => HasLabel(child, text));
 
         private string Probe(string name) => Game.Probe().GetValueOrDefault(name, "?");
 

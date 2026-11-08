@@ -309,6 +309,13 @@ void fragment() {
         public bool SlotExists(int slot) => !_fresh && _saves.Exists(slot);
         public string SlotLine(int slot) => SlotExists(slot) ? _saves.Describe(slot) : "leer";
 
+        /// <summary>Wer in der Akte gerade aussetzt, für den Aktenschrank.</summary>
+        public List<string> SlotResting(int slot) => SlotExists(slot) ? SaveFolder.Resting(_saves.Load(slot)) : new List<string>();
+
+        /// <summary>Wer im laufenden Einsatz fehlt, weil er aussetzt. Nach dem Einsatz leer, dann zählt schon der nächste.</summary>
+        public string RestingLine => _finished ? ""
+            : string.Join("\n", SaveFolder.Resting(_campaign, World.Units.Where(u => u.Faction == Faction.Agent).Select(u => u.Name).ToList()));
+
         /// <summary>Liegt in der Akte eine Kampagne, die schon etwas erlebt hat? Nur dann fragt "Neues Spiel" vor dem Überschreiben.</summary>
         public bool SlotBegun(int slot) => !_fresh && _saves.Begun(slot);
 
@@ -455,6 +462,7 @@ void fragment() {
             ["hud"] = _paper.Visible.ToString(),
             ["help"] = _help.Visible.ToString(),
             ["helpline"] = _help.Text,
+            ["resting"] = RestingLine.Replace("\n", "; "),
             ["stamps"] = string.Join(",", World.Units.Where(u => u.Faction == Faction.Agent && !u.Alive).Select(u => $"{u.Name}:{FallStamp(u)}")),
             ["begun"] = SlotBegun(_slot).ToString(),
             ["saved"] = _saves.Exists(_slot).ToString(),
