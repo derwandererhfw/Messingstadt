@@ -81,13 +81,15 @@ void fragment() {
         vec4 state = texture(pane_states, vec2((pane * 255.0 + 0.5) / 256.0, 0.5));
         COLOR.rgb = mix(COLOR.rgb, state.rgb * (0.35 + shade * 1.3) / night, state.a);
     }
-    // Durchblick auf verdeckte Agenten: innen frei, zum Rand hin gerastert, im Raster der Stadtgrafik.
-    vec2 cell = floor(world);
-    for (int i = 0; i < cut_count; i++) {
-        float reach = length((cell + 0.5 - cuts[i]) / vec2(21.0, 33.0));
-        if (reach < cut_open * 0.72 || (reach < cut_open && mod(cell.x + cell.y, 2.0) < 1.0)) {
-            COLOR.a = 0.0;
+    // Durchblick auf verdeckte Agenten: innen so weit frei wie früher, zum Rand hin läuft das Objekt weich aus.
+    // Gerechnet in Weltkoordinaten ohne Raster, damit der Rand bei jeder Auflösung so fein ist wie die Stadt.
+    if (cut_open > 0.001) {
+        float keep = 1.0;
+        for (int i = 0; i < cut_count; i++) {
+            float reach = length((world - cuts[i]) / vec2(21.0, 33.0));
+            keep = min(keep, smoothstep(cut_open * 0.72, cut_open, reach));
         }
+        COLOR.a *= keep;
     }
 }";
         private const float LightMax = 4f;
