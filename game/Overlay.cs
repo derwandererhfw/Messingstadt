@@ -136,6 +136,7 @@ namespace Messingstadt
                 }
             }
             DrawHoveredGuard();
+            DrawSmoke(world);
             foreach (var s in world.Shots)
             {
                 int age = world.Tick - s.Tick;
@@ -220,6 +221,25 @@ namespace Messingstadt
         }
 
         /// <summary>Mündungsfeuer an der Waffe, Leuchtspur und Einschlag: Blut bei Treffern, Staub bei Fehlschüssen.</summary>
+        /// <summary>Rauchtöpfe: graue Ballen, die quellen und gegen Ende dünner werden. Vorläufig, bis es eigene Grafik gibt.</summary>
+        private void DrawSmoke(World w)
+        {
+            float t = Time.GetTicksMsec() / 1000f;
+            foreach (var s in w.Smokes)
+            {
+                float left = Mathf.Clamp((s.UntilTick - w.Tick) / (float)World.TickRate, 0f, 3f) / 3f;
+                var center = Game.ToScreen(s.X, s.Y);
+                float radius = Game.ToScreen(s.X + s.Radius, s.Y).DistanceTo(Game.ToScreen(s.X, s.Y));
+                for (int i = 0; i < 9; i++)
+                {
+                    float a = i * 2.4f + t * 0.15f;
+                    var offset = new Vector2(Mathf.Cos(a), Mathf.Sin(a) * 0.5f) * radius * (0.25f + 0.08f * i) + new Vector2(0, -10f - 2f * i);
+                    float size = radius * (0.55f + 0.06f * Mathf.Sin(t * 0.7f + i));
+                    DrawCircle(center + offset, size, new Color(0.62f, 0.62f, 0.6f, 0.16f * left));
+                }
+            }
+        }
+
         private void DrawShot(ShotEvent s, int age)
         {
             var from = Game.ToScreen(s.FromX, s.FromY) + new Vector2(0, -28);

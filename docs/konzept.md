@@ -99,6 +99,35 @@ hinter einer anderen steht. Der Träger des Kontobuchs bekommt dabei genau das a
 | Otto, Schlosser | Tür öffnen | Rechtsklick auf die Türmarke, 2 s neben der Tür stehen. Danach kann jeder hindurch. Die Sicht bleibt gesperrt |
 | Emil, Buchhalter | Bestechen | Rechtsklick auf eine Wache, wenn nur Emil gewählt ist. 200 aus der Kasse, wirkt ab 2 Feldern Abstand, nur solange die Wache nicht kämpft. Sie ignoriert danach Agenten und Alarm, bis jemand auf sie schießt |
 
+### Ausrüstung
+
+Jeder Agent hat 4 Plätze. Zur Grundausstattung gehört die Pistole, dazu kommt die Kiste der Truppe für Gekauftes, das gerade niemand trägt. Der Verkauf bringt die Hälfte des Preises zurück. Wer stirbt, verliert seine Ausrüstung, wer in die Krankenstube kommt, behält sie. Verbrauchtes ist nach dem Einsatz weg. Die Daten stehen in `data/waffen.json`, die Schnittstelle für die Waffenkammer in `docs/ausruestung.md`.
+
+| Gegenstand | Preis | Werte | Besonderheit |
+|---|---|---|---|
+| Pistole | 100 | 16 Schaden, 7 Felder, alle 0,7 s, 10 Schuss, 1 s Nachladen | Grundausstattung, auf 8 Felder zu hören |
+| Schrotflinte | 350 | 45 Schaden, 4 Felder, alle 0,8 s, 2 Schuss, 1,5 s Nachladen | +15 auf Treffer, aber 10 weniger je Feld. Auf 10 Felder zu hören |
+| Maschinenpistole | 600 | 12 Schaden, 6 Felder, alle 0,2 s, 30 Schuss, 2 s Nachladen | Streut (-5), auf 10 Felder zu hören |
+| Totschläger | 120 | 25 Schaden, 1,2 Felder, alle 0,8 s | Lautlos, macht den Einsatz nicht laut. Eine Wache, die noch nicht kämpft, geht sofort zu Boden, außer dem Werkschutz |
+| Dietrich | 80 | | Schlosser öffnen in 1 statt 2 s, alle anderen in 4 s |
+| Rauchtopf | 60 | Wurf 6 Felder, Wolke 1,5 Felder, 12 s | Niemand sieht hindurch, hinein oder heraus, auch nicht im Lageplan. Einmal |
+| Verbandszeug | 75 | 40 Lebenspunkte | 3 s still stehen, jeder Befehl bricht ab, kein Feuer dabei. Einmal |
+
+Im Einsatz wechselt E die Waffe der Gewählten (0,5 s), G wirft den Rauchtopf auf das Feld unter der Maus, H legt den Verband an. Die Akte zeigt die Waffe in der Hand und die Schüsse im Magazin. Ein leeres Magazin lädt von selbst nach. Die Pistole der ersten Fassung ohne Nachladen gilt nur noch, wenn eine Mission keinen Katalog hat, etwa in alten Tests. Maschinenpistole und Schrotflinte klingen anders, der Totschläger ist nur als dumpfer Treffer aus der Nähe zu hören. Der Rauch ist vorläufig ein grauer Ballen ohne eigene Grafik.
+
+Gemessen mit `--waffen` im Balance-Werkzeug, je 300 Läufe, alle Agenten gleich ausgerüstet. Wer unter die Hälfte fällt, legt den Verband an, sobald ihn keine kämpfende Wache sieht:
+
+| Ausrüstung | Kosten Trupp | Alle angreifen | Feuer bündeln | Zum Buch gehen |
+|---|---|---|---|---|
+| Pistole ohne Nachladen (alte Regel) | | 69 % | 71 % | 44 % |
+| Pistole, 10 Schuss | 400 | 59 % | 62 % | 44 % |
+| Pistole und Verband | 700 | 61 % | 64 % | 42 % |
+| Schrotflinte | 1400 | 72 % | 88 % | 81 % |
+| Maschinenpistole | 2400 | 92 % | 97 % | 94 % |
+| Gemischt: MP, Schrot und Dietrich, Pistole und Verband, Schrot | 1555 | 55 % | 71 % | 75 % |
+
+Das Magazin kostet die Grundausstattung im offenen Kampf rund 10 Punkte. Der Verband rettet selten den Einsatz, aber Lebenspunkte und damit Einsätze ohne Aussetzen. In der Kampagne (`--kampagne`, die Spielweisen kaufen nichts) fallen die Siege mit „Feuer bündeln“ von 44 auf 36 %.
+
 In der ersten Mission führt die Hintertür der Lagerhalle zu einem Durchgang zur Querstraße und zur
 Lohnkasse (300). Beute zählt nur, wenn der Trupp entkommt. Papiere fälschen ist noch nicht gebaut.
 
@@ -269,4 +298,4 @@ ist er, wenn alle Agenten ausgeschaltet sind.
 
 ## Bewusst noch nicht drin
 
-Basisbau, Ausrüstung, mehrere Waffen, Fahrzeuge, Stockwerke.
+Basisbau, Fahrzeuge, Stockwerke. Die Waffenkammer als Bildschirm baut die Session Menüs.

@@ -3,6 +3,8 @@ using Messingstadt.Core;
 // Misst die Spielweisen einer Mission in der echten Spiellogik.
 // Aufruf: dotnet run -c Release --project tools/Messingstadt.Balance
 // Kampagne über mehrere Einsätze: ... -- --kampagne
+// Ausrüstung im Vergleich: ... -- --waffen
+// Mit --ohne-magazin vorweg gilt die Pistole der ersten Fassung, zum Vergleich mit älteren Messungen.
 
 const int Runs = 300;
 const int MaxTicks = 20 * 300;
@@ -13,11 +15,26 @@ string dataDir = FindDataDir();
 string mapJson = File.ReadAllText(Path.Combine(dataDir, "map_01.json"));
 string missionJson = File.ReadAllText(Path.Combine(dataDir, "mission_01.json"));
 string lightJson = File.ReadAllText(Path.Combine(dataDir, "light_01.json"));
+var catalog = Loader.ParseCatalog(File.ReadAllText(Path.Combine(dataDir, "waffen.json")));
+
+// Ausrüstung je Agent in der Reihenfolge der Mission. Null heißt Grundausstattung, ohne Katalog die Pistole ohne Nachladen.
+string[][]? loadout = null;
+bool withCatalog = true;
+if (args.Length > 0 && args[0] == "--ohne-magazin")
+{
+    withCatalog = false;
+    args = args[1..];
+}
 
 MissionData LitMission()
 {
     var mission = Loader.ParseMission(missionJson);
     mission.Light = Loader.ParseLight(lightJson);
+    mission.Catalog = withCatalog ? catalog : null;
+    for (int i = 0; loadout != null && i < mission.Agents.Count; i++)
+    {
+        mission.Agents[i].Items = loadout[Math.Min(i, loadout.Length - 1)].ToList();
+    }
     return mission;
 }
 
@@ -321,6 +338,59 @@ void CampaignRun(string name, Func<Action<World>> make, int campaigns, int missi
     }
     Console.WriteLine($"{name,-18} Sieg {100 * won / played,3}%  Tote je Kampagne {(double)deaths / campaigns:0.0}  Rekruten {(double)recruits / campaigns:0.0}  "
         + $"Einsätze ohne vollen Trupp {100 * shortSquads / played,3}%  Fahndung am Ende {(double)heat / campaigns:0.0}  Kasse am Ende {money / campaigns}");
+}
+
+// Wer unter die Hälfte fällt, legt den Verband an, sobald ihn keine kämpfende Wache sieht. Solange gibt der Spieler ihm keine Befehle.
+Func<Action<World>> Bandaged(Func<Action<World>> make) => () =>
+{
+    var inner = make();
+    return w =>
+    {
+        foreach (var a in w.Units.Where(u => u.Faction == Faction.Agent && u.Alive && u.Hp * 2 < u.MaxHp && u.BandageTicks == 0))
+        {
+            bool underFire = w.Units.Any(g => g.Faction == Faction.Guard && g.Alive && g.GuardState == GuardState.Combat && w.CanSee(g, a, 11 * World.TileUnits));
+            if (!underFire)
+            {
+                w.OrderUseMedkit(a.Id);
+            }
+        }
+        var busy = w.Units.Where(u => u.BandageTicks > 0).Select(u => (u, u.BandageTicks)).ToList();
+        inner(w);
+        foreach (var (u, ticks) in busy)
+        {
+            // Der Befehl an alle soll den Verband nicht abbrechen.
+            if (u.BandageTicks == 0 && u.Alive)
+            {
+                u.BandageTicks = ticks;
+                u.Path.Clear();
+                u.TargetId = -1;
+            }
+        }
+    };
+};
+
+if (args.Length > 0 && args[0] == "--waffen")
+{
+    var kits = new (string Name, string[][]? Kit, bool Catalog)[]
+    {
+        ("Pistole ohne Nachladen", null, false),
+        ("Pistole mit Magazin", null, true),
+        ("Alle Schrotflinte", new[] { new[] { "schrotflinte" } }, true),
+        ("Alle MP", new[] { new[] { "maschinenpistole" } }, true),
+        ("Pistole + Verband", new[] { new[] { "pistole", "verbandszeug" } }, true),
+        ("Gemischt", new[] { new[] { "maschinenpistole" }, new[] { "schrotflinte", "dietrich" }, new[] { "pistole", "verbandszeug" }, new[] { "schrotflinte" } }, true),
+    };
+    foreach (var kit in kits)
+    {
+        loadout = kit.Kit;
+        withCatalog = kit.Catalog;
+        int cost = (kit.Kit ?? new[] { ItemCatalog.StarterKit }).Take(4).Sum(k => k.Sum(id => catalog.Get(id)?.Price ?? 0)) * (kit.Kit is { Length: 1 } || kit.Kit == null ? 4 : 1);
+        Console.WriteLine($"--- {kit.Name}, Ausrüstung {cost}");
+        Report("Alle angreifen", Bandaged(AttackAll));
+        Report("Feuer bündeln", Bandaged(FocusFire));
+        Report("Zum Buch gehen", Bandaged(Rush));
+    }
+    return;
 }
 
 if (args.Length > 0 && args[0] == "--kampagne")

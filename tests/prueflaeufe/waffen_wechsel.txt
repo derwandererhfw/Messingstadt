@@ -1,0 +1,45 @@
+# Ausrüstung im Einsatz: Waffenwechsel mit E, Rauchtopf mit G, Verband mit H.
+# Aufruf mit --menu --script-writes in einem eigenen APPDATA-Ordner, in dem waffen_akte.json als Godot/app_userdata/Messingstadt/kampagne.json liegt.
+# Greta trägt Pistole, Maschinenpistole, Rauchtopf und Verband, Otto Pistole und Dietrich, Emil nichts, Hanna Totschläger und Pistole.
+wait 20
+expect screen Startbildschirm
+click Spiel laden
+expect screen Spiel laden
+key Enter
+wait 20
+expect screen
+expect hud True
+expect helpline Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen, Otto: Tür   E: Waffe   G: Rauch   H: Verband   Q halten: Lageplan   1-4 Leertaste   WASD F P M   Esc: Menü
+expect weapons Greta:Pistole 10, Otto:Pistole 10, Emil:ohne Waffe, Hanna:Knüppel
+key P
+expect paused True
+# Wechsel nur für die Auswahl
+key Key1
+expect selected 0
+key E
+expect weapons Greta:MP 30, Otto:Pistole 10, Emil:ohne Waffe, Hanna:Knüppel
+key E
+expect weapons Greta:Pistole 10, Otto:Pistole 10, Emil:ohne Waffe, Hanna:Knüppel
+# Alle gewählt: Otto hat nur eine Waffe und behält sie, Hanna nimmt die Pistole
+key Space
+key E
+expect weapons Greta:MP 30, Otto:Pistole 10, Emil:ohne Waffe, Hanna:Pistole 10
+key P
+expect paused False
+# Unverletzt bleibt der Verband in der Tasche
+key Key1
+key H
+expect items Greta:pistole+maschinenpistole+rauchtopf+verbandszeug, Otto:pistole+dietrich, Emil:, Hanna:totschlaeger+pistole
+hurt Greta 50
+expect hp 50,100,100,100
+key H
+waitfor hp 90,100,100,100
+expect items Greta:pistole+maschinenpistole+rauchtopf, Otto:pistole+dietrich, Emil:, Hanna:totschlaeger+pistole
+# Rauchtopf zwei Felder vor Greta
+expect smokes 0
+pointat Greta 0 -2
+key G
+expect smokes 1
+expect items Greta:pistole+maschinenpistole, Otto:pistole+dietrich, Emil:, Hanna:totschlaeger+pistole
+expect helpline Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen, Otto: Tür   E: Waffe   Q halten: Lageplan   1-4 Leertaste   WASD F P M   Esc: Menü
+expect weapons Greta:MP 30, Otto:Pistole 10, Emil:ohne Waffe, Hanna:Pistole 10

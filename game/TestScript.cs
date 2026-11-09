@@ -10,7 +10,8 @@ namespace Messingstadt
     /// <summary>
     /// Prüflauf für die Bedienung: --script=&lt;datei&gt; schickt Tasten und Klicks durch den echten Eingabeweg und vergleicht den Zustand.
     /// Zeilen: wait n, key Name, hold Name, release Name, click Text, clickat x y, shot Datei, print,
-    /// expect Größe Wert, remember Größe, same Größe, changed Größe, waitfor Größe Wert, attack, bribe, close.
+    /// expect Größe Wert, remember Größe, same Größe, changed Größe, waitfor Größe Wert, attack, bribe, close,
+    /// pointat Name dx dy (Maus über das Feld neben einem Agenten, ohne Klick), hurt Name Punkte.
     /// Am Ende steht die Zahl der Fehler.
     /// </summary>
     public partial class TestScript : Node
@@ -130,6 +131,22 @@ namespace Messingstadt
                     if (fallen != null)
                     {
                         fallen.Hp = 0;
+                    }
+                    break;
+                case "pointat":
+                    var spot = arg.Split(' ');
+                    var who = Game.World.Units.First(u => u.Faction == Faction.Agent && u.Name == spot[0]);
+                    var tile = Game.TileCenter(who.TileX + int.Parse(spot[1]), who.TileY + int.Parse(spot[2]));
+                    var screen = GetViewport().GetFinalTransform() * (Game.GetCanvasTransform() * tile);
+                    Input.ParseInputEvent(new InputEventMouseMotion { Position = screen, GlobalPosition = screen });
+                    break;
+                case "hurt":
+                    var hurt = arg.Split(' ');
+                    var victim = Game.World.Units.FirstOrDefault(u => u.Faction == Faction.Agent && u.Alive && u.Name == hurt[0]);
+                    Check(line, victim != null, hurt[0]);
+                    if (victim != null)
+                    {
+                        victim.Hp = Math.Max(1, victim.Hp - int.Parse(hurt[1]));
                     }
                     break;
                 case "seetext": Check(line, HasLabel(Game.ActiveUi(), arg.Replace("\\n", "\n")), arg); break;
