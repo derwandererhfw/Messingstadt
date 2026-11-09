@@ -97,6 +97,7 @@ namespace Messingstadt
         private string? _heldMusic;
         private World? _world;
         private int _lastShot;
+        private int _lastStrike;
         private bool _itemTaken, _lootTaken, _bellRang, _ended;
         private bool[] _doorsOpen = Array.Empty<bool>();
         private float _time;
@@ -415,6 +416,7 @@ namespace Messingstadt
         {
             _world = world;
             _lastShot = 0;
+            _lastStrike = 0;
             _itemTaken = _lootTaken = _bellRang = _ended = false;
             _stepCount.Clear();
             _fallen.Clear();
@@ -548,6 +550,8 @@ namespace Messingstadt
                 // Gewehr und Schrotflinte klingen tiefer als die Pistole, das Gewehr rollt länger.
                 var type = shot.ShooterId >= 0 && shot.ShooterId < world.Units.Count ? world.Units[shot.ShooterId].Type : GuardType.Wachmann;
                 float pitch = type == GuardType.Schuetze ? 0.72f : type == GuardType.Werkschutz ? 0.62f : 1f;
+                // Agenten tragen eigene Waffen: Schrot klingt tief, die Maschinenpistole heller und kürzer.
+                pitch = shot.Weapon switch { "schrotflinte" => 0.62f, "maschinenpistole" => 1.18f, _ => pitch };
                 Play($"shot_{(shot.FromX + shot.Tick) % 3}", from, type == GuardType.Wachmann ? 0f : 2f, EventReach, 0.05f, pitch);
                 if (from.DistanceTo(Game.CameraCenter) < ShakeReach)
                 {
@@ -566,6 +570,18 @@ namespace Messingstadt
             if (world.Shots.Count > 0)
             {
                 _lastShot = Math.Max(_lastShot, world.Shots[^1].Tick);
+            }
+            // Schläge mit dem Totschläger: nur ein dumpfer Treffer, aus der Nähe zu hören.
+            foreach (var strike in world.Strikes)
+            {
+                if (strike.Tick > _lastStrike && strike.Hit)
+                {
+                    Play("hit", Game.ToScreen(strike.ToX, strike.ToY), -6f, StepReach);
+                }
+            }
+            if (world.Strikes.Count > 0)
+            {
+                _lastStrike = Math.Max(_lastStrike, world.Strikes[^1].Tick);
             }
         }
 

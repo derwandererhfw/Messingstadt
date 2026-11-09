@@ -240,6 +240,9 @@ void fragment() {
         private int _frame;
 
         public World World { get; private set; } = null!;
+
+        /// <summary>Waffen und Ausrüstung aus data/waffen.json, auch für die Waffenkammer.</summary>
+        public ItemCatalog Catalog { get; private set; } = null!;
         public HashSet<int> Selected { get; } = new();
         public Vector2 MarkerPos { get; private set; }
         public float MarkerTime { get; private set; }
@@ -282,6 +285,7 @@ void fragment() {
             string data = Path.GetFullPath(Path.Combine(root, "..", "data"));
             _map = Loader.ParseMap(File.ReadAllText(Path.Combine(data, "map_01.json")));
             _lightData = Loader.ParseLight(File.ReadAllText(Path.Combine(data, "light_01.json")));
+            Catalog = Loader.ParseCatalog(File.ReadAllText(Path.Combine(data, "waffen.json")));
             _mission = LoadMission();
             Watch = WatchMap.Measure(_map, _mission);
 
@@ -523,13 +527,33 @@ void fragment() {
             ["down"] = World.Units.Count(u => u.Faction == Faction.Agent && !u.Alive).ToString(),
             ["rating"] = World.Rating.ToString(),
             ["cash"] = World.Money.ToString(),
+            ["weapons"] = string.Join(", ", World.Units.Where(u => u.Faction == Faction.Agent).Select(u => $"{u.Name}:{WeaponWord(u)}")),
+            ["items"] = string.Join(", ", World.Units.Where(u => u.Faction == Faction.Agent).Select(u => $"{u.Name}:{string.Join("+", World.ItemIds(u))}")),
+            ["hp"] = string.Join(",", World.Units.Where(u => u.Faction == Faction.Agent).Select(u => u.Hp)),
+            ["smokes"] = World.Smokes.Count.ToString(),
         };
+
+        /// <summary>Waffe in der Hand für die Akte: Kurzname und Schüsse im Magazin, beim Nachladen ein Hinweis.</summary>
+        public string WeaponWord(Unit u)
+        {
+            var item = u.ActiveItem;
+            if (item == null)
+            {
+                return "ohne Waffe";
+            }
+            if (item.Def.Magazine <= 0)
+            {
+                return item.Def.ShortName;
+            }
+            return u.ReloadTicks > 0 ? $"{item.Def.ShortName} lädt" : $"{item.Def.ShortName} {item.Ammo}";
+        }
 
         private MissionData LoadMission()
         {
             string path = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data", "mission_01.json"));
             var mission = Loader.ParseMission(File.ReadAllText(path));
             mission.Light = _lightData;
+            mission.Catalog = Catalog;
             return mission;
         }
 
@@ -1927,11 +1951,19 @@ void fragment() {
             // Die Zifferntasten wählen die Agenten im Einsatz, auch Gefallene behalten ihre Ziffer.
             int squad = World.Units.Count(u => u.Faction == Faction.Agent);
             string keys = squad <= 1 ? "1" : $"1-{squad}";
-            return $"Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen{right}   Q halten: Lageplan   {keys} Leertaste   WASD F P M   Esc: Menü";
+            // Ausrüstungstasten nur, wenn jemand sie brauchen kann. Mit der Grundausstattung bleibt die Zeile wie bisher.
+            string gear = (agents.Any(u => u.Items.Count(i => i.Def.IsWeapon) > 1) ? "   E: Waffe" : "")
+                + (agents.Any(u => World.HasItem(u, ItemKind.Smoke)) ? "   G: Rauch" : "")
+                + (agents.Any(u => World.HasItem(u, ItemKind.Medkit)) ? "   H: Verband" : "");
+            return $"Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen{right}{gear}   Q halten: Lageplan   {keys} Leertaste   WASD F P M   Esc: Menü";
         }
 
         public override void _Input(InputEvent e)
         {
+            if (e is InputEventMouseMotion motion)
+            {
+                _mouseAt = motion.Position;
+            }
             // Die Leertaste schaltet Sequenzen weiter. Auf dem Ergebnis-Bildschirm löst sie keinen Knopf aus,
             // sonst rutscht ein Druck zu viel in "Nochmal". Enter und Maus wählen dort weiter.
             if (_panel.Visible && !_menus.IsOpen && e is InputEventKey key && (key.Keycode == Key.Space || key.PhysicalKeycode == Key.Space))
@@ -1990,6 +2022,13 @@ void fragment() {
                         }
                         break;
                     case Key.F: CenterOnSelection(); break;
+                    case Key.E:
+                        foreach (int id in Selected) World.CycleWeapon(id);
+                        break;
+                    case Key.G: ThrowSmoke(); break;
+                    case Key.H:
+                        foreach (int id in Selected) World.OrderUseMedkit(id);
+                        break;
                     case Key.P: _paused = !_paused; break;
                     case Key.R: PressRestart(); break;
                 }
@@ -2040,6 +2079,20 @@ void fragment() {
                         }
                     }
                 }
+            }
+        }
+
+        /// <summary>Letzte Mausposition aus dem Ereignis, wie bei den Klicks.</summary>
+        private Vector2 _mouseAt;
+
+        /// <summary>Der erste gewählte Agent mit Rauchtopf wirft ihn auf das Feld unter dem Mauszeiger.</summary>
+        private void ThrowSmoke()
+        {
+            var m = ScreenToMap(GetCanvasTransform().AffineInverse() * _mouseAt);
+            int tx = (int)Mathf.Floor(m.X), ty = (int)Mathf.Floor(m.Y);
+            foreach (int id in Selected.OrderBy(id => id))
+            {
+                if (World.OrderThrowSmoke(id, tx, ty)) return;
             }
         }
 

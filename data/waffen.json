@@ -1,0 +1,38 @@
+{
+  "items": [
+    {
+      "id": "pistole", "name": "Pistole", "short": "Pistole", "kind": "schusswaffe", "price": 100,
+      "damage": 16, "range": 7, "cooldown": 0.7, "noise": 8, "accuracy": 0, "falloff": 5, "magazine": 10, "reload": 1.0,
+      "text": "Zehnschüssige Selbstladepistole aus Heeresbeständen. Liegt ruhig in der Hand und knallt, dass man es zwei Straßen weit hört."
+    },
+    {
+      "id": "schrotflinte", "name": "Schrotflinte", "short": "Schrot", "kind": "schusswaffe", "price": 350,
+      "damage": 45, "range": 4, "cooldown": 0.8, "noise": 10, "accuracy": 15, "falloff": 10, "magazine": 2, "reload": 1.5,
+      "text": "Doppelläufig, die Läufe gekürzt. Auf drei Schritt hält sie jeden auf, auf zehn trifft sie die Hauswand."
+    },
+    {
+      "id": "maschinenpistole", "name": "Maschinenpistole", "short": "MP", "kind": "schusswaffe", "price": 600,
+      "damage": 12, "range": 6, "cooldown": 0.2, "noise": 10, "accuracy": -5, "falloff": 6, "magazine": 30, "reload": 2.0,
+      "text": "Mit Trommelmagazin, über einen Hafenarbeiter beschafft. Streut, frisst Patronen und weckt das ganze Viertel."
+    },
+    {
+      "id": "totschlaeger", "name": "Totschläger", "short": "Knüppel", "kind": "nahkampf", "price": 120,
+      "damage": 25, "range": 1.2, "cooldown": 0.8, "noise": 0,
+      "text": "Lederner Knüppel mit Bleikern. Von hinten an eine ahnungslose Wache, und sie wacht erst im Morgengrauen auf. Gegen Panzerung und wache Gegner taugt er wenig."
+    },
+    {
+      "id": "dietrich", "name": "Dietrich", "short": "Dietrich", "kind": "dietrich", "price": 80,
+      "text": "Hakensatz in einer Ledertasche. Ein Schlosser ist damit doppelt so schnell, jeder andere bekommt ein Schloss wenigstens langsam auf."
+    },
+    {
+      "id": "rauchtopf", "name": "Rauchtopf", "short": "Rauch", "kind": "rauch", "price": 60,
+      "range": 6, "radius": 1.5, "duration": 12, "charges": 1,
+      "text": "Blechdose mit Zündschnur aus dem Bergbau. Zwölf Sekunden dicker grauer Qualm, durch den keiner sieht, in keine Richtung."
+    },
+    {
+      "id": "verbandszeug", "name": "Verbandszeug", "short": "Verband", "kind": "verband", "price": 75,
+      "heal": 40, "duration": 3, "charges": 1,
+      "text": "Mullbinden, Jod und ein Schluck Korn. Drei Sekunden still halten, dann ist einmal geflickt, was eine Kugel aufgerissen hat."
+    }
+  ]
+}

@@ -60,6 +60,9 @@ namespace Messingstadt.Core
         public string RoleName() => Role.Length > 0 ? Role
             : Skill == World.SkillLocksmith ? "Schlosser" : Skill == World.SkillBookkeeper ? "Buchhalter" : "Agent";
 
+        /// <summary>Gegenstände eines Agenten nach Kennung aus data/waffen.json. Ohne Angabe die Grundausstattung, siehe ItemCatalog.StarterKit.</summary>
+        public List<string>? Items { get; set; }
+
         /// <summary>Ausbaustufe 1 bis 3: bestimmt das Tempo beim Rennen.</summary>
         public int Legs { get; set; } = 1;
 
@@ -179,6 +182,10 @@ namespace Messingstadt.Core
         /// <summary>Helligkeit der Karte. Ohne Angabe gilt überall dieselbe Reichweite beim Bemerken.</summary>
         public LightData? Light { get; set; }
 
+        /// <summary>Waffenkatalog, steht nicht in der Missionsdatei. Ohne Angabe gibt es nur die Pistole der ersten Fassung.</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        public ItemCatalog? Catalog { get; set; }
+
         /// <summary>Geld zum Einsatzbeginn. Kommt von der Kampagne.</summary>
         public int Money { get; set; }
 
@@ -195,5 +202,7 @@ namespace Messingstadt.Core
         public static MissionData ParseMission(string json) => JsonSerializer.Deserialize<MissionData>(json, Options)!;
 
         public static LightData ParseLight(string json) => JsonSerializer.Deserialize<LightData>(json, Options)!;
+
+        public static ItemCatalog ParseCatalog(string json) => JsonSerializer.Deserialize<ItemCatalog>(json, Options)!;
     }
 }

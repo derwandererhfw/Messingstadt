@@ -45,6 +45,8 @@ namespace Messingstadt
             public ColorRect Health = null!;
             public ColorRect Breath = null!;
             public Label Status = null!;
+            public Label Weapon = null!;
+            public Label Ammo = null!;
             public Label Stamp = null!;
         }
 
@@ -199,11 +201,22 @@ namespace Messingstadt
             card.Status = Text("", 11, new Color(Ink, 0.75f), Typewriter);
             card.Status.Position = new Vector2(6, 19);
             root.AddChild(card.Status);
+            // Waffe in der Hand und Schüsse im Magazin rechts neben Beine und Herz.
+            card.Weapon = Text("", 11, Ink, Typewriter);
+            card.Weapon.HorizontalAlignment = HorizontalAlignment.Right;
+            card.Weapon.Position = new Vector2(100, 31);
+            card.Weapon.Size = new Vector2(CardWidth - 106, 14);
+            card.Ammo = Text("", 11, new Color(Ink, 0.75f), Typewriter);
+            card.Ammo.HorizontalAlignment = HorizontalAlignment.Right;
+            card.Ammo.Position = new Vector2(100, 46);
+            card.Ammo.Size = new Vector2(CardWidth - 106, 14);
             // Was nur Lebende brauchen. Bei Gefallenen steht dort der Stempel, sonst würde er etwas überdecken.
             card.Alive = new Control { Size = new Vector2(CardWidth, CardHeight), MouseFilter = MouseFilterEnum.Ignore };
             root.AddChild(card.Alive);
             AddLevelRow(card.Alive, card.LegsPips, "Beine", 34);
             AddLevelRow(card.Alive, card.HeartPips, "Herz", 49);
+            card.Alive.AddChild(card.Weapon);
+            card.Alive.AddChild(card.Ammo);
             card.Alive.AddChild(new ColorRect { Position = new Vector2(6, 66), Size = new Vector2(CardWidth - 12, 8), Color = PaperDark, MouseFilter = MouseFilterEnum.Ignore });
             card.Health = new ColorRect { Position = new Vector2(7, 67), Size = new Vector2(CardWidth - 14, 6), Color = new Color(0.4f, 0.12f, 0.08f), MouseFilter = MouseFilterEnum.Ignore };
             card.Alive.AddChild(card.Health);
@@ -261,7 +274,10 @@ namespace Messingstadt
                 var u = world.Units[i];
                 card.Name.Text = $"{i + 1} {u.Name.ToUpperInvariant()}";
                 string skill = Game.AgentRole(i);
-                string doing = u.CarriesItem ? "trägt das Buch" : u.Sprinting ? "rennt" : skill;
+                string doing = u.CarriesItem ? "trägt das Buch" : u.BandageTicks > 0 ? "verbindet sich" : u.Sprinting ? "rennt" : skill;
+                var item = u.ActiveItem;
+                card.Weapon.Text = item?.Def.ShortName ?? "ohne";
+                card.Ammo.Text = item == null || item.Def.Magazine <= 0 ? "" : u.ReloadTicks > 0 ? "lädt" : $"{item.Ammo}/{item.Def.Magazine}";
                 string light = Game.LightWord(u);
                 card.Status.Text = !u.Alive ? skill : light.Length > 0 ? $"{doing}, {light}" : doing;
                 ShowLevel(card.LegsPips, u.Legs);

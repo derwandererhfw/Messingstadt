@@ -29,6 +29,9 @@ namespace Messingstadt.Core
         /// <summary>Beruf eines Neuen für die Akte. Leer bei den Agenten der Mission.</summary>
         public string Job { get; set; } = "";
 
+        /// <summary>Was der Agent trägt, nach Kennung aus data/waffen.json, höchstens Campaign.ItemSlots Stück.</summary>
+        public List<string> Items { get; set; } = new(ItemCatalog.StarterKit);
+
         public bool Ready => !Dead && Rest == 0;
     }
 
@@ -78,7 +81,13 @@ namespace Messingstadt.Core
     /// <summary>Was zwischen den Einsätzen bleibt: Geld, Fahndung, Rückhalt, die Agenten und was in jedem Einsatz geschah.</summary>
     public sealed class Campaign
     {
-        public const int CurrentVersion = 2;
+        public const int CurrentVersion = 3;
+
+        /// <summary>Plätze für Ausrüstung je Agent.</summary>
+        public const int ItemSlots = 4;
+
+        /// <summary>Anteil des Preises, den ein Verkauf zurückbringt.</summary>
+        public const int SellPercent = 50;
         public const int MaxLevel = 3;
         public const int MaxHeat = 4;
         public const int MaxSupport = 5;
@@ -117,6 +126,9 @@ namespace Messingstadt.Core
         public string Current { get; set; } = "";
         public List<AgentRecord> Agents { get; set; } = new();
         public Dictionary<string, MissionRecord> Records { get; set; } = new();
+
+        /// <summary>Die Kiste der Truppe: Gekauftes, das gerade niemand trägt.</summary>
+        public List<string> Stash { get; set; } = new();
 
         /// <summary>Der allgemeine Hinweis zum Dauertod erscheint einmal je Kampagne. Die Anzeige setzt das, wenn sie ihn gezeigt hat.</summary>
         public bool DeathRuleExplained { get; set; }
@@ -188,6 +200,7 @@ namespace Messingstadt.Core
                     a.Name = record.Name;
                     a.Legs = record.Legs;
                     a.Heart = record.Heart;
+                    a.Items = new List<string>(record.Items);
                     squad.Add(a);
                 }
             }
@@ -320,6 +333,8 @@ namespace Messingstadt.Core
                 {
                     record.Rest = 1;
                 }
+                // Verbrauchtes ist weg. Wer stirbt, verliert alles, die Krankenstube behält die Sachen.
+                record.Items = record.Dead ? new List<string>() : World.ItemIds(u);
             }
 
             int deadGuards = world.Units.Count(u => u.Faction == Faction.Guard && !u.Alive);
@@ -398,6 +413,59 @@ namespace Messingstadt.Core
             return telegrams;
         }
 
+        /// <summary>Kauft einen Gegenstand. Mit Agent landet er in dessen freiem Platz, sonst in der Kiste.</summary>
+        public bool TryBuy(ItemCatalog catalog, string itemId, string? agent = null)
+        {
+            var def = catalog.Get(itemId);
+            var record = agent == null ? null : Agent(agent);
+            if (def == null || Money < def.Price || (record != null && !CanCarryMore(record)))
+            {
+                return false;
+            }
+            Money -= def.Price;
+            (record?.Items ?? Stash).Add(itemId);
+            return true;
+        }
+
+        /// <summary>Verkauft einen Gegenstand aus den Plätzen des Agenten oder, ohne Agent, aus der Kiste. Bringt SellPercent des Preises.</summary>
+        public bool TrySell(ItemCatalog catalog, string itemId, string? agent = null)
+        {
+            var from = agent == null ? Stash : Agent(agent).Items;
+            if (catalog.Get(itemId) == null || !from.Remove(itemId))
+            {
+                return false;
+            }
+            Money += catalog.SellPrice(itemId);
+            return true;
+        }
+
+        /// <summary>Nimmt einen Gegenstand aus der Kiste und gibt ihn dem Agenten.</summary>
+        public bool Equip(string agent, string itemId)
+        {
+            var record = Agent(agent);
+            if (!CanCarryMore(record) || !Stash.Remove(itemId))
+            {
+                return false;
+            }
+            record.Items.Add(itemId);
+            return true;
+        }
+
+        /// <summary>Legt den Gegenstand auf diesem Platz des Agenten in die Kiste.</summary>
+        public bool Unequip(string agent, int slot)
+        {
+            var record = Agent(agent);
+            if (record.Dead || slot < 0 || slot >= record.Items.Count)
+            {
+                return false;
+            }
+            Stash.Add(record.Items[slot]);
+            record.Items.RemoveAt(slot);
+            return true;
+        }
+
+        private static bool CanCarryMore(AgentRecord record) => !record.Dead && record.Items.Count < ItemSlots;
+
         public bool TryUpgrade(string name, bool legs)
         {
             var record = Agent(name);
@@ -455,12 +523,12 @@ namespace Messingstadt.Core
                 return new Campaign();
             }
             status = version < CurrentVersion ? SaveStatus.Migrated : SaveStatus.Loaded;
-            loaded.Repair();
+            loaded.Repair(version);
             return loaded;
         }
 
         /// <summary>Bringt einen geladenen Stand in gültige Grenzen. Alte Stände kennen keinen Platz, dort ist er der Name.</summary>
-        private void Repair()
+        private void Repair(int version)
         {
             Version = CurrentVersion;
             Money = Math.Max(0, Money);
@@ -472,6 +540,7 @@ namespace Messingstadt.Core
             LastFirstFalls ??= new();
             LastDeaths ??= new();
             LastNewcomers ??= new();
+            Stash = (Stash ?? new()).Where(i => !string.IsNullOrEmpty(i)).ToList();
             Agents = (Agents ?? new()).Where(a => a != null && !string.IsNullOrEmpty(a.Name)).GroupBy(a => a.Name).Select(g => g.First()).ToList();
             foreach (var a in Agents)
             {
@@ -482,6 +551,16 @@ namespace Messingstadt.Core
                 a.Dead = a.Dead || a.Falls >= 2;
                 a.Rest = a.Dead ? 0 : Math.Clamp(a.Rest, 0, 9);
                 a.Infirmary &= a.Rest > 0;
+                // Vor der Waffenkammer trug jeder Lebende eine Pistole.
+                a.Items = (a.Items ?? new()).Where(i => !string.IsNullOrEmpty(i)).Take(ItemSlots).ToList();
+                if (version < 3 && a.Items.Count == 0 && !a.Dead)
+                {
+                    a.Items.AddRange(ItemCatalog.StarterKit);
+                }
+                if (a.Dead)
+                {
+                    a.Items.Clear();
+                }
             }
         }
     }

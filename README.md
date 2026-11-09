@@ -52,6 +52,8 @@ Den Ergebnis-Bildschirm mit Krankenstube, Arzt und den Stempeln KRANKENSTUBE und
 
 Wer aussetzt, angeschlagen oder in der Krankenstube, steht im Aktenschrank unter seiner Akte und im Einsatz auf einem Zettel neben den Agentenakten. Das prüft `akte_aussetzen.txt` mit `--menu --script-writes` in einem eigenen `APPDATA`-Ordner, in den vorher `tests/prueflaeufe/akte_angeschlagen.json` als `Godot/app_userdata/Messingstadt/kampagne.json` kopiert wird.
 
+Waffenwechsel, Rauchtopf und Verband prüft `waffen_wechsel.txt`, genauso aufgerufen, nur mit `tests/prueflaeufe/waffen_akte.json` als Spielstand.
+
 Grafik neu erzeugen: `python tools/art/generate_concept.py`
 
 ## Steuerung
@@ -62,7 +64,10 @@ Grafik neu erzeugen: `python tools/art/generate_concept.py`
 | Linksklick auf Boden | Auswahl dorthin schicken |
 | Doppelklick auf Boden | Auswahl rennt dorthin, kostet Puste, dabei kein Feuer |
 | Rechtsklick auf Wache | angreifen, die Auswahl rückt bis in Reichweite vor. Nur Emil gewählt: bestechen |
-| Rechtsklick auf Türmarke | Otto öffnet die Tür |
+| Rechtsklick auf Türmarke | Otto öffnet die Tür, mit Dietrich auch andere |
+| `E` | nächste Waffe für die Auswahl |
+| `G` | Rauchtopf auf das Feld unter der Maus |
+| `H` | Verband anlegen, 3 s still stehen |
 | `1`–`4`, Leertaste | Agent wählen, alle wählen |
 | Pfeiltasten, WASD | Kamera |
 | `F` | Kamera auf die Auswahl |

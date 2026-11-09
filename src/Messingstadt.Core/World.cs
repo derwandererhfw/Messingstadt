@@ -47,7 +47,7 @@ namespace Messingstadt.Core
         Report,
     }
 
-    public sealed class Unit
+    public sealed partial class Unit
     {
         public int Id;
         public string Name = "";
@@ -103,10 +103,10 @@ namespace Messingstadt.Core
     }
 
     /// <summary>Ein abgegebener Schuss, nur für die Darstellung.</summary>
-    public readonly record struct ShotEvent(int FromX, int FromY, int ToX, int ToY, bool Hit, int Tick, int ShooterId = -1);
+    public readonly record struct ShotEvent(int FromX, int FromY, int ToX, int ToY, bool Hit, int Tick, int ShooterId = -1, string Weapon = "");
 
     /// <summary>Der gesamte Spielzustand. Vollständig deterministisch: gleicher Seed und gleiche Befehle, gleicher Ablauf.</summary>
-    public sealed class World
+    public sealed partial class World
     {
         public const int TickRate = 20;
         public const int TileUnits = 1000;
@@ -114,7 +114,6 @@ namespace Messingstadt.Core
         private const int AgentHp = 100;
         private const int AgentSpeed = 120;
         private const int WeaponRange = 7 * TileUnits;
-        private const int AgentDamage = 16;
         private const int HitChanceBase = 85;
         private const int HitChancePerTile = 5;
         private const int AgentSightRange = 10 * TileUnits;
@@ -229,6 +228,7 @@ namespace Messingstadt.Core
             Map = mapData.Build();
             _hasAgents = mission.Agents.Count > 0;
             _light = mission.Light;
+            _catalog = mission.Catalog ?? ItemCatalog.Fallback;
             _rng = (uint)mission.Seed | 1u;
             ItemName = mission.ItemName;
             _reinforcements = mission.Reinforcements;
@@ -307,6 +307,10 @@ namespace Messingstadt.Core
                 u.Type = GuardType.ForId(d.Type);
                 u.Hp = u.MaxHp = u.Type.Hp;
             }
+            else
+            {
+                Equip(u, d.Items ?? new List<string>(ItemCatalog.StarterKit));
+            }
             u.Skill = d.Skill;
             u.Legs = Math.Clamp(d.Legs, 1, 3);
             u.Heart = Math.Clamp(d.Heart, 1, 3);
@@ -345,6 +349,7 @@ namespace Messingstadt.Core
             u.TargetId = -1;
             u.DoorTarget = -1;
             u.BribeTarget = -1;
+            u.BandageTicks = 0;
             u.Sprinting = sprint && u.Stamina >= MinSprintStamina && path.Count > 0;
             return true;
         }
@@ -354,7 +359,7 @@ namespace Messingstadt.Core
         {
             var u = Units[unitId];
             var door = Doors[doorId];
-            if (!u.Alive || u.Skill != SkillLocksmith || door.Open || State != MissionState.Running)
+            if (!u.Alive || !CanPickLocks(u) || door.Open || State != MissionState.Running)
             {
                 return false;
             }
@@ -455,6 +460,7 @@ namespace Messingstadt.Core
             u.TargetId = targetId;
             u.DoorTarget = -1;
             u.BribeTarget = -1;
+            u.BandageTicks = 0;
             u.Sprinting = false;
             u.RepathTick = 0;
             return true;
@@ -487,6 +493,7 @@ namespace Messingstadt.Core
                 LeaveScent(u);
                 Fight(u);
             }
+            Smokes.RemoveAll(s => s.UntilTick <= Tick);
             SpawnReinforcement();
             CheckMission();
         }
@@ -521,7 +528,7 @@ namespace Messingstadt.Core
             }
             else if (a.Path.Count == 0)
             {
-                door.Progress++;
+                door.Progress += DoorStep(a);
                 if (door.Progress >= DoorTicks)
                 {
                     door.Open = true;
@@ -565,6 +572,11 @@ namespace Messingstadt.Core
 
         private void ThinkAgent(Unit a)
         {
+            if (a.BandageTicks > 0)
+            {
+                Bandage(a);
+                return;
+            }
             if (a.DoorTarget >= 0)
             {
                 WorkOnDoor(a);
@@ -592,7 +604,7 @@ namespace Messingstadt.Core
             }
             if (target != null)
             {
-                if (CanSee(a, target, WeaponRange))
+                if (CanSee(a, target, RangeOf(a)))
                 {
                     if (!a.Sidestepping)
                     {
@@ -603,7 +615,8 @@ namespace Messingstadt.Core
                 }
                 else if (Tick >= a.RepathTick)
                 {
-                    a.RepathTick = Tick + RepathInterval;
+                    // Wer zuschlagen will, muss dranbleiben und plant öfter neu.
+                    a.RepathTick = Tick + (ActiveWeapon(a)?.Def.Kind == ItemKind.Melee ? BiteRepathTicks : RepathInterval);
                     a.Sidestepping = false;
                     WalkTo(a, target.TileX, target.TileY);
                 }
@@ -652,7 +665,7 @@ namespace Messingstadt.Core
                         {
                             continue;
                         }
-                        if (target != null && !Map.HasLineOfSight(x, y, target.TileX, target.TileY))
+                        if (target != null && !HasSight(x, y, target.TileX, target.TileY))
                         {
                             continue;
                         }
@@ -1011,7 +1024,7 @@ namespace Messingstadt.Core
                 return;
             }
             g.RepathTick = Tick + RepathInterval;
-            bool inRange = Distance(g, seen) <= g.Type.WeaponRange - TileUnits;
+            bool inRange = Distance(g, seen) <= RangeOf(g) - TileUnits;
             if (inRange && !TileIsTaken(g, g.TileX, g.TileY) && HasCoverFrom(g, seen))
             {
                 return;
@@ -1037,7 +1050,7 @@ namespace Messingstadt.Core
                 for (int dx = -FiringSearchRadius; dx <= FiringSearchRadius; dx++)
                 {
                     int x = g.TileX + dx, y = g.TileY + dy;
-                    if (Map.IsBlocked(x, y) || TileIsTaken(g, x, y) || !Map.HasLineOfSight(x, y, target.TileX, target.TileY))
+                    if (Map.IsBlocked(x, y) || TileIsTaken(g, x, y) || !HasSight(x, y, target.TileX, target.TileY))
                     {
                         continue;
                     }
@@ -1047,7 +1060,7 @@ namespace Messingstadt.Core
                     }
                     int tx = target.TileX - x, ty = target.TileY - y;
                     int distSq = tx * tx + ty * ty;
-                    int reach = g.Type.WeaponRange / TileUnits - 1;
+                    int reach = RangeOf(g) / TileUnits - 1;
                     if (distSq > reach * reach || distSq < 4)
                     {
                         continue;
@@ -1089,7 +1102,10 @@ namespace Messingstadt.Core
         }
 
         /// <summary>Löst Alarm aus. Nahe Wachen reagieren früher, ferne später oder gar nicht.</summary>
-        public void RaiseAlarm(int x, int y)
+        public void RaiseAlarm(int x, int y) => RaiseAlarm(x, y, AlertRadius);
+
+        /// <summary>Alarm mit eigener Hörweite, etwa für laute und leise Waffen.</summary>
+        public void RaiseAlarm(int x, int y, int radius)
         {
             foreach (var u in Units)
             {
@@ -1098,7 +1114,7 @@ namespace Messingstadt.Core
                     continue;
                 }
                 int dist = DistanceTo(u, x, y);
-                if (dist <= AlertRadius)
+                if (dist <= radius)
                 {
                     u.AlarmTick = Tick + 1 + AlarmDelayPerTile * dist / TileUnits;
                     u.AlarmX = x;
@@ -1183,9 +1199,17 @@ namespace Messingstadt.Core
             {
                 KickDog(u);
             }
+            if (u.Faction == Faction.Agent)
+            {
+                Reload(u);
+            }
             if (u.Cooldown > 0)
             {
                 u.Cooldown--;
+                return;
+            }
+            if (u.ReloadTicks > 0 || u.BandageTicks > 0)
+            {
                 return;
             }
             if (u.Type.Bites)
@@ -1204,17 +1228,22 @@ namespace Messingstadt.Core
                 u.TargetId = -1;
                 target = null;
             }
-            if (target != null && !CanSee(u, target, u.Type.WeaponRange))
+            var arms = ArmsOf(u);
+            if (arms.Range <= 0)
+            {
+                return;
+            }
+            if (target != null && !CanSee(u, target, arms.Range))
             {
                 // Befohlenes Ziel noch nicht in Reichweite: unterwegs nur auf alarmierte Gegner feuern.
-                target = NearestVisibleEnemy(u, u.Type.WeaponRange);
+                target = NearestVisibleEnemy(u, arms.Range);
                 if (target != null && target.Alerted)
                 {
-                    Shoot(u, target);
+                    Attack(u, target, arms);
                 }
                 return;
             }
-            target ??= NearestVisibleEnemy(u, u.Type.WeaponRange);
+            target ??= NearestVisibleEnemy(u, arms.Range);
             // Agenten bleiben ruhig, bis die Wachen alarmiert sind oder der Spieler ein Ziel vorgibt.
             if (target == null || (u.Faction == Faction.Guard && u.GuardState != GuardState.Combat))
             {
@@ -1224,28 +1253,43 @@ namespace Messingstadt.Core
             {
                 return;
             }
-            Shoot(u, target);
+            Attack(u, target, arms);
         }
 
-        private void Shoot(Unit u, Unit target)
+        private void Shoot(Unit u, Unit target, Arms arms)
         {
-            u.Cooldown = u.Type.Cooldown;
+            u.Cooldown = arms.Cooldown;
             u.FacingX = target.X - u.X;
             u.FacingY = target.Y - u.Y;
             u.AimX = u.FacingX;
             u.AimY = u.FacingY;
             u.LastFiredTick = Tick;
-            if (!_everShot)
+            if (!_everShot && arms.Noise > 0)
             {
                 _everShot = true;
                 CallReinforcements();
             }
-            bool hit = NextRandom() % 100 < (uint)HitChance(u, target);
-            Shots.Add(new ShotEvent(u.X, u.Y, target.X, target.Y, hit, Tick, u.Id));
+            UseAmmo(u);
+            bool hit = NextRandom() % 100 < (uint)HitChance(u, target, arms);
+            Shots.Add(new ShotEvent(u.X, u.Y, target.X, target.Y, hit, Tick, u.Id, arms.Id));
             if (Shots.Count > 64)
             {
                 Shots.RemoveAt(0);
             }
+            Provoke(u, target);
+            if (arms.Noise > 0)
+            {
+                RaiseAlarm(u.X, u.Y, arms.Noise);
+            }
+            if (hit)
+            {
+                Hurt(target, arms.Damage);
+            }
+        }
+
+        /// <summary>Wer angegriffen wird, reagiert sofort und kennt die Richtung, auch ohne Schuss.</summary>
+        private void Provoke(Unit u, Unit target)
+        {
             if (target.Faction == Faction.Guard && target.GuardState != GuardState.Combat)
             {
                 // Wer auf einen bestochenen Wachmann schießt, hat den Handel gebrochen.
@@ -1263,11 +1307,6 @@ namespace Messingstadt.Core
                 target.LastKnownY = u.Y;
                 target.Path.Clear();
                 StartCombat(target);
-            }
-            RaiseAlarm(u.X, u.Y);
-            if (hit)
-            {
-                Hurt(target, u.Faction == Faction.Agent ? AgentDamage : u.Type.Damage);
             }
         }
 
@@ -1397,12 +1436,14 @@ namespace Messingstadt.Core
         }
 
         public bool CanSee(Unit a, Unit b, int range) =>
-            Distance(a, b) <= range && Map.HasLineOfSight(a.TileX, a.TileY, b.TileX, b.TileY);
+            Distance(a, b) <= range && HasSight(a.TileX, a.TileY, b.TileX, b.TileY);
 
         /// <summary>Trefferchance in Prozent: Entfernung, Deckung des Ziels, Bewegung des Schützen.</summary>
-        public int HitChance(Unit shooter, Unit target)
+        public int HitChance(Unit shooter, Unit target) => HitChance(shooter, target, ArmsOf(shooter));
+
+        private int HitChance(Unit shooter, Unit target, Arms arms)
         {
-            int chance = HitChanceBase - HitChancePerTile * Distance(shooter, target) / TileUnits;
+            int chance = HitChanceBase + arms.Accuracy - arms.Falloff * Distance(shooter, target) / TileUnits;
             if (HasCoverFrom(target, shooter))
             {
                 chance -= CoverPenalty;
@@ -1520,7 +1561,7 @@ namespace Messingstadt.Core
             {
                 int close = Math.Max(GuardCloseRange, g.Type.HearRange);
                 if (g.Alive && g.Faction == Faction.Guard && !g.Bribed && DistanceTo(g, x, y) <= Math.Max(NoticeRangeAt(x, y), close)
-                    && Map.HasLineOfSight(g.TileX, g.TileY, tileX, tileY)
+                    && HasSight(g.TileX, g.TileY, tileX, tileY)
                     && (DistanceTo(g, x, y) <= close || (InCone(g, x, y) && DistanceTo(g, x, y) <= NoticeRangeAt(x, y))))
                 {
                     return g;
@@ -1558,7 +1599,12 @@ namespace Messingstadt.Core
                 Mix(u.NoticeTicks);
                 Mix(u.AlarmTick);
                 Mix(u.LeashedTo);
+                Mix(u.Weapon);
+                Mix(u.ReloadTicks);
+                Mix(u.BandageTicks);
+                Mix(ActiveWeapon(u)?.Ammo ?? -1);
             }
+            Mix(Smokes.Count);
             return h;
         }
     }
