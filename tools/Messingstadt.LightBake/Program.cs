@@ -41,8 +41,32 @@ float puddleSpec = root.GetProperty("puddleSpec").GetSingle();
 Vector3 viewDir = Vector3.Normalize(new Vector3(1f / 32f, 1f / 32f, 1f / zScale));
 
 var boxes = new List<Box>();
+// Dachkörper je Quader: Grundfläche, Unterkante und Ebenen a·x + b·y + c·z <= d, z in Bildpunkten. Siehe tools/art/roofs.py.
+var roofs = new List<float[][]>();
 foreach (var b in root.GetProperty("boxes").EnumerateArray())
 {
+    var prisms = new List<float[]>();
+    if (b.TryGetProperty("roof", out var roofElement))
+    {
+        foreach (var prism in roofElement.EnumerateArray())
+        {
+            var planes = new List<float>
+            {
+                -1f, 0f, 0f, -prism.GetProperty("x0").GetSingle(), 1f, 0f, 0f, prism.GetProperty("x1").GetSingle(),
+                0f, -1f, 0f, -prism.GetProperty("y0").GetSingle(), 0f, 1f, 0f, prism.GetProperty("y1").GetSingle(),
+                0f, 0f, -1f, -prism.GetProperty("z0").GetSingle(),
+            };
+            foreach (var plane in prism.GetProperty("planes").EnumerateArray())
+            {
+                for (int i = 0; i < 4; i++)
+                {
+                    planes.Add(plane[i].GetSingle());
+                }
+            }
+            prisms.Add(planes.ToArray());
+        }
+    }
+    roofs.Add(prisms.ToArray());
     boxes.Add(new Box(
         new Vector3(b.GetProperty("x0").GetSingle(), b.GetProperty("y0").GetSingle(), b.GetProperty("z0").GetSingle() / zScale),
         new Vector3(b.GetProperty("x1").GetSingle(), b.GetProperty("y1").GetSingle(), b.GetProperty("z1").GetSingle() / zScale),
@@ -103,6 +127,45 @@ Surface Unproject(Sprite s, int ix, int iy)
     float z0T = box.Min.Z * zScale, z1T = box.Max.Z * zScale;
     tLow = MathF.Max(MathF.Max(x0T, y0T), z0T);
     tHigh = MathF.Min(MathF.Min(x1T, y1T), z1T);
+    // Dach: derselbe Schnitt mit jedem Dachkörper. Der vorderste Treffer gewinnt, auch gegen den Quader darunter.
+    float roofT = float.MinValue;
+    Vector3 roofNormal = default;
+    foreach (var prism in roofs[s.Box])
+    {
+        float lo = float.MinValue, hi = float.MaxValue;
+        int face = -1;
+        for (int i = 0; i < prism.Length; i += 4)
+        {
+            float pa = prism[i], pb = prism[i + 1], pc = prism[i + 2], pd = prism[i + 3];
+            float k = (pa + pb) / 32f + pc;
+            float rhs = pd - pa * (a + b) / 2f - pb * (b - a) / 2f;
+            if (k > 1e-6f)
+            {
+                if (rhs / k < hi)
+                {
+                    hi = rhs / k;
+                    face = i;
+                }
+            }
+            else if (k < -1e-6f)
+            {
+                lo = MathF.Max(lo, rhs / k);
+            }
+            else if (rhs < 0f)
+            {
+                lo = float.MaxValue;
+            }
+        }
+        if (lo <= hi && face >= 0 && hi > roofT)
+        {
+            roofT = hi;
+            roofNormal = Vector3.Normalize(new Vector3(prism[face], prism[face + 1], prism[face + 2] * zScale));
+        }
+    }
+    if (roofT > float.MinValue && (tLow > tHigh || roofT > tHigh + 0.01f))
+    {
+        return new Surface(At(roofT) + roofNormal * Eps, roofNormal, s.Box, false, roofNormal.Z > 0.05f);
+    }
     if (tLow <= tHigh)
     {
         var n = tHigh == z1T ? Vector3.UnitZ : tHigh == x1T ? Vector3.UnitX : Vector3.UnitY;
@@ -381,7 +444,7 @@ float[] Shade(Surface s, ref uint rng, float px, float py)
     }
     direct /= DirectSamples;
     direct += Windows(s.Pos, s.Normal, s.Box);
-    if (!s.IsGround && s.Normal == Vector3.UnitZ)
+    if (!s.IsGround && (s.Normal == Vector3.UnitZ || s.Roof))
     {
         direct += Moon(s.Pos, s.Normal, s.Box, ref rng);
     }
@@ -484,7 +547,7 @@ internal readonly record struct Light(Vector3 Pos, Vector3 Color, float Power, i
 
 internal readonly record struct Sprite(int Box, int Left, int Top, int W, int H, int Offset);
 
-internal readonly record struct Surface(Vector3 Pos, Vector3 Normal, int Box, bool IsGround);
+internal readonly record struct Surface(Vector3 Pos, Vector3 Normal, int Box, bool IsGround, bool Roof = false);
 
 internal readonly record struct Box(Vector3 Min, Vector3 Max, Vector3 Albedo)
 {

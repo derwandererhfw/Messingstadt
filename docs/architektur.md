@@ -34,6 +34,15 @@ Eingabe (Godot) -> Befehle -> World.Tick() -> Zustand -> Darstellung (Godot)
   haben die Größe der feinen Bilder: Gebacken wird in einfacher Auflösung, Selbstleuchten und Fensterkennung kommen
   Bildpunkt für Bildpunkt aus dem feinen Bild. Das Bodenlicht bleibt einfach.
 
+- **Dächer:** Fassaden sind flache Bilder, die Dächer dagegen echte Körper (`tools/art/roofs.py`): Prismen aus
+  Ebenen, exakt mit dem Sehstrahl geschnitten. Mansarde, Sattel-, Walm- und Sheddach, Gauben, Schornsteine und Luken
+  entstehen so in beiden Auflösungen gleich. Das Dach gehört zum Bild seines Hauses. Aufbauten sind eigene Objekte und
+  werden gegen das Dach geschnitten: Was der First verdeckt, fehlt in ihrem Bild. Die Ebenen stehen je Haus unter `roof`
+  in `manifest.json`, der Lichtbaker rechnet mit denselben Flächen. Grundfläche und Höhe `z1` eines Hauses bleiben die
+  des Quaders bis zur Traufe: Kollision, Sichtlinien und Schatten kennen die Dächer nicht.
+- **Schrift an Häusern:** `paint_text` zeichnet Buchstaben aus Strichen, in doppelter Auflösung glatt. Damit entstehen
+  gemalte Fassadenschrift, Ladenschilder, Schmierereien und die Leuchtreklame, deren Buchstaben einzeln schalten.
+
 ## Zeichenreihenfolge
 
 Statische Objekte sind beim Export vorsortiert. Eine Figur wird vor dem ersten Objekt eingereiht, das
