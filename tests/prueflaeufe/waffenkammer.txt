@@ -1,0 +1,62 @@
+# Waffenkammer vor dem Einsatz: kaufen, ausrüsten, verkaufen, Einsatz starten, Waffe in der Hand prüfen.
+# Aufruf mit --menu --fresh. Prüfläufe schreiben nichts.
+wait 20
+click Neues Spiel
+wait 20
+expect money 300
+attack
+wait 300
+key R
+click Abbrechen
+wait 20
+expect panel True
+# Nochmal führt in die Kammer, nicht gleich in den Einsatz
+click Nochmal
+wait 5
+expect panel False
+expect armory Greta:None:
+expect gear Greta:pistole, Otto:pistole, Emil:pistole, Hanna:pistole
+# Die Wahl steht auf der ersten Akte, Pfeiltasten wandern in ihre Plätze
+expect focus » GRETA   geht mit
+key Down
+expect focus Pistole
+# Totschläger für Greta, mit Tastatur: Katalog anklicken, Enter kauft für die gewählte Akte
+click Totschläger   120
+expect focus Kaufen für Greta
+key Enter
+expect money 180
+expect gear Greta:pistole+totschlaeger, Otto:pistole, Emil:pistole, Hanna:pistole
+# Rauchtopf in die Kiste, dann aus der Kiste zu Greta
+click Rauchtopf   60
+click In die Kiste kaufen
+expect money 120
+expect stash rauchtopf
+click Rauchtopf
+click Ausrüsten: Greta
+expect stash
+expect gear Greta:pistole+totschlaeger+rauchtopf, Otto:pistole, Emil:pistole, Hanna:pistole
+# Gretas Pistole verkaufen bringt die Hälfte
+click Pistole
+click Verkaufen (+50)
+expect money 170
+expect gear Greta:totschlaeger+rauchtopf, Otto:pistole, Emil:pistole, Hanna:pistole
+# Esc führt zurück zum Bericht, Nochmal wieder hinein
+key Escape
+expect panel True
+expect armory
+click Nochmal
+wait 5
+expect armory Greta:None:
+key Space
+wait 5
+expect panel False
+# Die Leertaste vom Weiterschalten löst hier nichts aus
+expect armory Greta:None:
+click Nochmal
+wait 30
+# Emil und Hanna liegen in der Krankenstube. Greta hat nur den Knüppel als Waffe und hält ihn, der Rauchtopf ist dabei.
+expect armory
+expect hud True
+expect weapons Greta:Knüppel, Otto:Pistole 10
+expect items Greta:totschlaeger+rauchtopf, Otto:pistole
+expect money 170

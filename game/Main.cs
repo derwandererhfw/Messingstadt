@@ -193,6 +193,7 @@ void fragment() {
         private readonly SaveFolder _saves = new(ProjectSettings.GlobalizePath("user://"));
         private int _slot = 1;
         private Button? _panelFocus;
+        private Armory _armory = null!;
         private string _upgradeFocus = "";
         private ColorRect _planBand = null!;
         private int _queuedX, _queuedY, _queuedTick;
@@ -487,6 +488,40 @@ void fragment() {
             {
                 _panelFocus?.GrabFocus();
             }
+            else if (_armory.Visible)
+            {
+                _armory.Refocus();
+            }
+        }
+
+        /// <summary>Die Kampagne für die Waffenkammer. Nach jeder Änderung CampaignChanged rufen, das speichert.</summary>
+        public Campaign Campaign => _campaign;
+
+        public void CampaignChanged() => SaveCampaign();
+
+        /// <summary>Wie der Weg aus Ergebnis und Waffenkammer heißt: nach einem Sieg weiter, sonst derselbe Einsatz noch einmal.</summary>
+        public string NextMissionLabel => World.State == MissionState.Won ? "Nächster Einsatz" : "Nochmal";
+
+        /// <summary>Vor jedem Einsatz geht es durch die Waffenkammer. Mit Bericht führt Esc dorthin zurück.</summary>
+        private void OpenArmory(bool fromResult)
+        {
+            // Telegramm und Akten des vergangenen Einsatzes zeigen alte Zahlen, die Kammer hat ihre eigene Kasse.
+            _paper.Visible = false;
+            _panel.Visible = false;
+            _armory.Open(fromResult);
+        }
+
+        public void ArmoryBack()
+        {
+            _paper.Visible = true;
+            ShowPanel();
+        }
+
+        public void LeaveArmory()
+        {
+            _armory.Close();
+            _paper.Visible = true;
+            NextMission();
         }
 
         /// <summary>Wo im Prüflauf nach Knöpfen gesucht wird: im offenen Blatt, sonst überall.</summary>
@@ -531,6 +566,9 @@ void fragment() {
             ["items"] = string.Join(", ", World.Units.Where(u => u.Faction == Faction.Agent).Select(u => $"{u.Name}:{string.Join("+", World.ItemIds(u))}")),
             ["hp"] = string.Join(",", World.Units.Where(u => u.Faction == Faction.Agent).Select(u => u.Hp)),
             ["smokes"] = World.Smokes.Count.ToString(),
+            ["armory"] = _armory.State,
+            ["stash"] = string.Join("+", _campaign.Stash),
+            ["gear"] = string.Join(", ", _campaign.Roster().Where(a => !a.Dead).Select(a => $"{a.Name}:{string.Join("+", a.Items)}")),
         };
 
         /// <summary>Waffe in der Hand für die Akte: Kurzname und Schüsse im Magazin, beim Nachladen ein Hinweis.</summary>
@@ -1168,6 +1206,8 @@ void fragment() {
             _panelBody.AddThemeConstantOverride("separation", 8);
             _panel.AddChild(_panelBody);
             layer.AddChild(_panel);
+            _armory = new Armory { Game = this };
+            layer.AddChild(_armory);
         }
 
         private const string MissionId = "mission_01";
@@ -1228,7 +1268,7 @@ void fragment() {
             _lastReward = 0;
             if (!costs)
             {
-                PlaySequence("rueckzug", NextMission);
+                PlaySequence("rueckzug", () => OpenArmory(false));
                 return;
             }
             PlaySequence("niederlage", ShowResult);
@@ -1342,9 +1382,9 @@ void fragment() {
             PaperUi.InkButton(menu);
             menu.Pressed += ToMainMenu;
             buttons.AddChild(menu);
-            var next = new Button { Text = won ? "Nächster Einsatz" : "Nochmal", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            var next = new Button { Text = NextMissionLabel, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
             PaperUi.InkButton(next);
-            next.Pressed += NextMission;
+            next.Pressed += () => OpenArmory(true);
             buttons.AddChild(next);
             _panelBody.AddChild(buttons);
             _panelFocus ??= next;
@@ -1428,6 +1468,7 @@ void fragment() {
             _upgradeFocus = "";
             WaitingIds.Clear();
             _panel.Visible = false;
+            _armory.Visible = false;
             World = new World(_map, _mission);
             foreach (var u in World.Units)
             {
@@ -1966,7 +2007,7 @@ void fragment() {
             }
             // Die Leertaste schaltet Sequenzen weiter. Auf dem Ergebnis-Bildschirm löst sie keinen Knopf aus,
             // sonst rutscht ein Druck zu viel in "Nochmal". Enter und Maus wählen dort weiter.
-            if (_panel.Visible && !_menus.IsOpen && e is InputEventKey key && (key.Keycode == Key.Space || key.PhysicalKeycode == Key.Space))
+            if ((_panel.Visible || _armory.Visible) && !_menus.IsOpen && e is InputEventKey key && (key.Keycode == Key.Space || key.PhysicalKeycode == Key.Space))
             {
                 GetViewport().SetInputAsHandled();
             }
@@ -1993,6 +2034,11 @@ void fragment() {
                 if (global.PhysicalKeycode == Key.M)
                 {
                     ToggleMute();
+                    GetViewport().SetInputAsHandled();
+                    return;
+                }
+                if (global.PhysicalKeycode == Key.Escape && !_menus.IsOpen && _armory.Visible && _armory.Back())
+                {
                     GetViewport().SetInputAsHandled();
                     return;
                 }
