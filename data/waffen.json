@@ -2,7 +2,7 @@
   "items": [
     {
       "id": "pistole", "name": "Pistole", "short": "Pistole", "kind": "schusswaffe", "price": 100,
-      "damage": 16, "range": 7, "cooldown": 0.7, "noise": 8, "accuracy": 0, "falloff": 5, "magazine": 10, "reload": 1.0,
+      "damage": 16, "range": 7, "cooldown": 0.7, "noise": 8, "accuracy": 0, "falloff": 5, "magazine": 10, "reload": 0.8,
       "text": "Zehnschüssige Selbstladepistole aus Heeresbeständen. Liegt ruhig in der Hand und knallt, dass man es zwei Straßen weit hört."
     },
     {
@@ -12,12 +12,12 @@
     },
     {
       "id": "maschinenpistole", "name": "Maschinenpistole", "short": "MP", "kind": "schusswaffe", "price": 600,
-      "damage": 12, "range": 6, "cooldown": 0.2, "noise": 10, "accuracy": -5, "falloff": 6, "magazine": 30, "reload": 2.0,
+      "damage": 12, "range": 6, "cooldown": 0.2, "noise": 10, "accuracy": -5, "falloff": 6, "magazine": 20, "reload": 2.0,
       "text": "Mit Trommelmagazin, über einen Hafenarbeiter beschafft. Streut, frisst Patronen und weckt das ganze Viertel."
     },
     {
       "id": "totschlaeger", "name": "Totschläger", "short": "Knüppel", "kind": "nahkampf", "price": 120,
-      "damage": 25, "range": 1.2, "cooldown": 0.8, "noise": 0,
+      "damage": 25, "range": 1.6, "cooldown": 0.8, "noise": 0,
       "text": "Lederner Knüppel mit Bleikern. Von hinten an eine ahnungslose Wache, und sie wacht erst im Morgengrauen auf. Gegen Panzerung und wache Gegner taugt er wenig."
     },
     {

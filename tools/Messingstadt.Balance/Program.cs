@@ -3,8 +3,10 @@ using Messingstadt.Core;
 // Misst die Spielweisen einer Mission in der echten Spiellogik.
 // Aufruf: dotnet run -c Release --project tools/Messingstadt.Balance
 // Kampagne über mehrere Einsätze: ... -- --kampagne
-// Ausrüstung im Vergleich: ... -- --waffen
+// Ausrüstung im Vergleich: ... -- --waffen, gemischte Trupps je Mark: -- --preis
+// Kampagne mit Einkauf: -- --einkauf. Totschläger: -- --knueppel-plan (Zeitfenster wie beim Schleichplan) und -- --knueppel (ohne Plan)
 // Mit --ohne-magazin vorweg gilt die Pistole der ersten Fassung, zum Vergleich mit älteren Messungen.
+// Werte ausprobieren, ohne die Datei zu ändern: --wert maschinenpistole.Magazine=20, Startgeld der Kampagnen: --startgeld 600
 
 const int Runs = 300;
 const int MaxTicks = 20 * 300;
@@ -24,6 +26,25 @@ if (args.Length > 0 && args[0] == "--ohne-magazin")
 {
     withCatalog = false;
     args = args[1..];
+}
+
+// Zum Ausprobieren ohne die Datei zu ändern: --wert pistole.Magazine=15 setzt einen Wert im geladenen Katalog,
+// --startgeld 600 gibt jeder gemessenen Kampagne anderes Startgeld.
+int? startMoney = null;
+while (args.Length > 1 && (args[0] == "--wert" || args[0] == "--startgeld"))
+{
+    if (args[0] == "--startgeld")
+    {
+        startMoney = int.Parse(args[1]);
+    }
+    else
+    {
+        var (key, value) = (args[1].Split('=')[0], args[1].Split('=')[1]);
+        var def = catalog.Get(key.Split('.')[0]) ?? throw new ArgumentException($"Unbekannter Gegenstand in {key}");
+        var prop = typeof(ItemDef).GetProperty(key.Split('.')[1]) ?? throw new ArgumentException($"Unbekanntes Feld in {key}");
+        prop.SetValue(def, Convert.ChangeType(value, prop.PropertyType, System.Globalization.CultureInfo.InvariantCulture));
+    }
+    args = args[2..];
 }
 
 MissionData LitMission()
@@ -49,7 +70,7 @@ World NewWorld(int seed)
 
 void Report(string name, Func<Action<World>> make)
 {
-    int wins = 0, lost = 0, dead = 0, hp = 0, ticks = 0, loud = 0;
+    int wins = 0, lost = 0, dead = 0, hp = 0, ticks = 0, loud = 0, down = 0, knocked = 0, quiet = 0;
     for (int seed = 1; seed <= Runs; seed++)
     {
         var w = NewWorld(seed * 7919);
@@ -68,8 +89,12 @@ void Report(string name, Func<Action<World>> make)
         hp += w.Units.Where(u => u.Faction == Faction.Agent).Sum(u => u.Hp);
         ticks += w.Tick;
         loud += w.Rating == MissionRating.Loud ? 1 : 0;
+        down += w.Units.Count(u => u.Faction == Faction.Guard && !u.Alive);
+        knocked += w.Strikes.Count(k => k.KnockOut);
+        quiet += w.State == MissionState.Won && w.Rating != MissionRating.Loud ? 1 : 0;
     }
-    Console.WriteLine($"{name,-18} Sieg {100 * wins / Runs,3}%  verloren {100 * lost / Runs,3}%  tote Agenten {(double)dead / Runs:0.00}  LP {hp / Runs,3}/400  Dauer {ticks / Runs / 20,3}s  laut {100 * loud / Runs,3}%");
+    Console.WriteLine($"{name,-18} Sieg {100 * wins / Runs,3}%  verloren {100 * lost / Runs,3}%  tote Agenten {(double)dead / Runs:0.00}  LP {hp / Runs,3}/400  Dauer {ticks / Runs / 20,3}s  laut {100 * loud / Runs,3}%  Wachen nieder {(double)down / Runs:0.0}"
+        + (knocked > 0 ? $", davon geschlagen {(double)knocked / Runs:0.0}, leise gewonnen {100 * quiet / Runs}%" : ""));
 }
 
 Action<World> Rush() => RushWith(false);
@@ -281,15 +306,44 @@ void Sneak((int X, int Y)[] stops, int runs, int lag)
     Console.WriteLine($"Nach Lageplan schleichen, Reaktion bis {lag / 20.0:0.0} s: Sieg {100 * won / runs}%, unentdeckt {100 * unseen / runs}%, Dauer {ticks / runs / 20} s");
 }
 
-// Kampagne: Viele Kampagnen über mehrere Einsätze mit einer Spielweise. Zwischen den Einsätzen erst Arzt, dann Anwerben, Rest in Ausbau.
-void CampaignRun(string name, Func<Action<World>> make, int campaigns, int missions)
+// Kampagne: Viele Kampagnen über mehrere Einsätze mit einer Spielweise. Vor jedem Einsatz erst Arzt, dann Anwerben, dann Einkauf, Rest in Ausbau.
+// Ohne Einkauf ist das dieselbe Reihenfolge wie früher, nur dass der Ausbau vor dem ersten Einsatz am Rückhalt für das Anwerben scheitert.
+void CampaignRun(string name, Func<Action<World>> make, int campaigns, int missions, Action<Campaign>? shop = null)
 {
-    int won = 0, played = 0, deaths = 0, recruits = 0, shortSquads = 0, heat = 0, money = 0;
+    int won = 0, played = 0, deaths = 0, recruits = 0, shortSquads = 0, heat = 0, money = 0, spent = 0;
     for (int run = 1; run <= campaigns; run++)
     {
         var c = new Campaign();
+        c.Money = startMoney ?? c.Money;
         for (int m = 0; m < missions; m++)
         {
+            foreach (var a in c.Roster().Where(a => a.Rest > 0).ToList())
+            {
+                c.TryDoctor(a.Name);
+            }
+            foreach (var a in c.Roster().Where(a => a.Dead).ToList())
+            {
+                c.TryRecruit(a.Slot);
+            }
+            if (shop != null)
+            {
+                // Vor dem ersten Einsatz kennt die Kampagne ihre Agenten noch nicht, Prepare legt sie an.
+                if (c.Agents.Count == 0)
+                {
+                    c.Prepare(LitMission(), "mission_01");
+                }
+                int before = c.Money;
+                shop(c);
+                spent += before - c.Money;
+            }
+            foreach (var a in c.Roster().Where(a => !a.Dead).OrderBy(a => a.Legs + a.Heart).ToList())
+            {
+                bool legs = a.Legs <= a.Heart;
+                if (c.Money - Campaign.UpgradeCost(legs ? a.Legs : a.Heart) >= Campaign.RecruitCost)
+                {
+                    c.TryUpgrade(a.Name, legs);
+                }
+            }
             var mission = LitMission();
             mission.Seed = (run * 31 + m) * 7919;
             c.Prepare(mission, "mission_01");
@@ -314,30 +368,263 @@ void CampaignRun(string name, Func<Action<World>> make, int campaigns, int missi
             }
             played++;
             won += w.State == MissionState.Won ? 1 : 0;
-            foreach (var a in c.Roster().Where(a => a.Rest > 0).ToList())
-            {
-                c.TryDoctor(a.Name);
-            }
-            foreach (var a in c.Roster().Where(a => a.Dead).ToList())
-            {
-                c.TryRecruit(a.Slot);
-            }
-            foreach (var a in c.Roster().Where(a => !a.Dead).OrderBy(a => a.Legs + a.Heart).ToList())
-            {
-                bool legs = a.Legs <= a.Heart;
-                if (c.Money - Campaign.UpgradeCost(legs ? a.Legs : a.Heart) >= Campaign.RecruitCost)
-                {
-                    c.TryUpgrade(a.Name, legs);
-                }
-            }
         }
         deaths += c.Agents.Count(a => a.Dead);
         recruits += c.Agents.Count(a => a.Job != "");
         heat += c.Heat;
         money += c.Money;
     }
-    Console.WriteLine($"{name,-18} Sieg {100 * won / played,3}%  Tote je Kampagne {(double)deaths / campaigns:0.0}  Rekruten {(double)recruits / campaigns:0.0}  "
-        + $"Einsätze ohne vollen Trupp {100 * shortSquads / played,3}%  Fahndung am Ende {(double)heat / campaigns:0.0}  Kasse am Ende {money / campaigns}");
+    Console.WriteLine($"{name,-24} Sieg {100 * won / played,3}%  Tote je Kampagne {(double)deaths / campaigns:0.0}  Rekruten {(double)recruits / campaigns:0.0}  "
+        + $"ohne vollen Trupp {100 * shortSquads / played,3}%  Fahndung {(double)heat / campaigns:0.0}  Kasse am Ende {money / campaigns}  Einkauf {spent / campaigns}");
+}
+
+// Einkauf zwischen den Einsätzen nach einer Wunschliste je Agent. Gekauft wird nur, was die Kasse über dem Rückhalt hergibt.
+// Jeder Eintrag gilt für jeden einsatzbereiten Agenten der Reihe nach, bevor der nächste Eintrag drankommt.
+Action<Campaign> Shopper(int reserve, params string[] wishes) => c =>
+{
+    foreach (string id in wishes)
+    {
+        var def = catalog.Get(id)!;
+        foreach (var a in c.Roster().Where(a => a.Ready))
+        {
+            if (!a.Items.Contains(id) && c.Money - def.Price >= reserve)
+            {
+                c.TryBuy(catalog, id, a.Name);
+            }
+        }
+    }
+};
+
+// Ein Spieler wechselt die Waffe wie mit E. Er hält die teuerste Schusswaffe, wenn sie so weit reicht wie die stärkste Waffe der meisten
+// im Trupp. Reicht sie kürzer, bleibt die weite Waffe in der Hand, bis ein Gegner auf Reichweite plus ein Feld heran ist, sonst stünde der
+// Agent beim Bündeln vor den anderen und bekäme das Feuer allein ab. Der Wechsel kostet wie im Spiel 0,5 s.
+Func<Action<World>> Armed(Func<Action<World>> make) => () =>
+{
+    var inner = make();
+    static List<(CarriedItem it, int i)> Guns(Unit a) => a.Items.Select((it, i) => (it, i)).Where(p => p.it.Def.Kind == ItemKind.Firearm).ToList();
+    return w =>
+    {
+        inner(w);
+        var agents = w.Units.Where(u => u.Faction == Faction.Agent && u.Alive).ToList();
+        var reaches = agents.Select(a => Guns(a).OrderByDescending(p => p.it.Def.Price).Select(p => p.it.Def.RangeUnits).DefaultIfEmpty(0).First()).OrderBy(r => r).ToList();
+        int squadReach = reaches.Count == 0 ? 0 : reaches[reaches.Count / 2];
+        foreach (var a in agents.Where(a => a.BandageTicks == 0))
+        {
+            var guns = Guns(a);
+            if (guns.Count == 0)
+            {
+                continue;
+            }
+            var foe = a.TargetId >= 0 && w.Units[a.TargetId].Alive ? w.Units[a.TargetId]
+                : w.Units.Where(g => g.Faction == Faction.Guard && g.Alive && g.Alerted && w.CanSee(a, g, 7 * World.TileUnits)).OrderBy(g => World.Distance(a, g)).FirstOrDefault();
+            int dist = foe == null ? int.MaxValue : World.Distance(a, foe);
+            var best = guns.OrderByDescending(p => p.it.Def.Price).First();
+            var far = guns.OrderByDescending(p => p.it.Def.RangeUnits).First();
+            bool keepFar = best.it.Def.RangeUnits < squadReach && dist > best.it.Def.RangeUnits + World.TileUnits;
+            int pick = keepFar ? far.i : best.i;
+            if (a.Weapon != pick && a.ReloadTicks == 0)
+            {
+                w.SelectWeapon(a.Id, pick);
+            }
+        }
+    };
+};
+
+// Ausschalten mit dem Totschläger: Greta geht mit dem Knüppel in der Hand voraus und schlägt Wachen nieder, eine nach der anderen.
+// Sie greift an, wenn sie die Wache erreicht, bevor die sich umdreht, und keine andere Wache den Weg im Blick hat. Sonst lauert sie in einem
+// Versteck möglichst nah an der Wache. Die anderen warten am Start oder folgen ihr. Sobald eine Wache kämpft, nehmen alle die Pistole und
+// bündeln das Feuer. Ist niemand mehr zu schlagen, geht der Trupp zum Buch.
+// Werkschutz, Hund und Laufbursche lässt sie aus: Der Werkschutz fällt nicht, der Hund hört sie, der Laufbursche schießt nicht.
+// Mit strike false lauert sie nur, zum Vergleich.
+Func<Action<World>> Clubbing(bool squadFollows, bool strike = true) => () =>
+{
+    var focus = Armed(FocusFire)();
+    var rush = Rush();
+    bool loud = false;
+    int target = -1;
+    return w =>
+    {
+        var squad = w.Units.Where(u => u.Faction == Faction.Agent && u.Alive).ToList();
+        if (squad.Count == 0)
+        {
+            return;
+        }
+        var guards = w.Units.Where(u => u.Faction == Faction.Guard && u.Alive && !u.Bribed).ToList();
+        if (!loud && guards.Any(g => g.GuardState == GuardState.Combat || g.GuardState == GuardState.Report))
+        {
+            loud = true;
+            foreach (var a in squad)
+            {
+                a.TargetId = -1;
+            }
+        }
+        if (loud)
+        {
+            focus(w);
+            return;
+        }
+        var lead = squad[0];
+        var prey = guards.Where(g => g.Type != GuardType.Werkschutz && !g.Type.OrderOnly && g.Type.WeaponRange > 0
+            && w.Map.FindPath(lead.TileX, lead.TileY, g.TileX, g.TileY) != null).ToList();
+        if (prey.Count == 0)
+        {
+            rush(w);
+            return;
+        }
+        // Ist sie schon dicht dran, zieht sie den Schlag durch: Umkehren auf offener Straße ist schlimmer.
+        if (target >= 0 && w.Units[target].Alive && lead.TargetId == target && World.Distance(lead, w.Units[target]) <= 5 * World.TileUnits / 2)
+        {
+            return;
+        }
+        // Sonst jede Wache, die sie vor dem Umdrehen erreicht und zu der der Weg frei ist, die nächste zuerst.
+        Unit? free = null;
+        foreach (var g in prey.OrderBy(g => World.Distance(lead, g)))
+        {
+            var way = w.Map.FindPath(lead.TileX, lead.TileY, g.TileX, g.TileY) ?? new List<(int X, int Y)>();
+            way.Insert(0, (lead.TileX, lead.TileY));
+            if (CatchesBeforeTurn(lead, g) && !guards.Any(o => o.Id != g.Id && way.Any(f => Watches(w, o, f.X, f.Y))))
+            {
+                free = g;
+                break;
+            }
+        }
+        if (free != null && strike)
+        {
+            target = free.Id;
+            if (lead.TargetId != free.Id)
+            {
+                w.OrderAttack(lead.Id, free.Id);
+            }
+        }
+        else
+        {
+            if (lead.TargetId >= 0)
+            {
+                lead.TargetId = -1;
+                lead.Path.Clear();
+            }
+            // Warten nur im Versteck. Liegt eines näher an der Wache, auf die sie es abgesehen hat, schleicht sie dorthin und lauert.
+            var near = prey.OrderBy(g => World.Distance(lead, g)).First();
+            bool exposed = !SafeSpot(w, guards, lead.TileX, lead.TileY);
+            if (lead.Path.Count == 0 && (exposed || w.Tick % 40 == 0))
+            {
+                var hide = HideNear(w, lead, guards, near);
+                if (hide != null)
+                {
+                    w.OrderMove(lead.Id, hide.Value.X, hide.Value.Y);
+                }
+            }
+        }
+        if (squadFollows && squad.Count > 1 && w.Tick % 40 == 0)
+        {
+            w.OrderGroupMove(squad.Skip(1).Select(a => a.Id).ToList(), lead.TileX, lead.TileY);
+        }
+    };
+};
+
+// Nächstes Versteck über einen Weg, auf dem gerade keine Wache hinsieht. Mit Ziel zählt die Nähe zur Wache dreifach:
+// Sie lauert so dicht wie möglich, ohne gesehen zu werden.
+(int X, int Y)? HideNear(World w, Unit a, List<Unit> guards, Unit? toward = null)
+{
+    var watch = Hideouts();
+    (int X, int Y)? best = null;
+    int bestScore = int.MaxValue;
+    for (int y = Math.Max(0, a.TileY - 8); y <= Math.Min(watch.Height - 1, a.TileY + 8); y++)
+    {
+        for (int x = Math.Max(0, a.TileX - 8); x <= Math.Min(watch.Width - 1, a.TileX + 8); x++)
+        {
+            if (w.Map.IsBlocked(x, y) || !SafeSpot(w, guards, x, y))
+            {
+                continue;
+            }
+            var path = (x, y) == (a.TileX, a.TileY) ? new List<(int X, int Y)>() : w.Map.FindPath(a.TileX, a.TileY, x, y);
+            if (path == null || path.Any(f => guards.Any(g => Watches(w, g, f.X, f.Y))))
+            {
+                continue;
+            }
+            int score = toward == null ? path.Count : path.Count + 3 * (Math.Abs(x - toward.TileX) + Math.Abs(y - toward.TileY));
+            if (score < bestScore)
+            {
+                best = (x, y);
+                bestScore = score;
+            }
+        }
+    }
+    return best == (a.TileX, a.TileY) ? null : best;
+}
+
+// Ein Versteck sieht gerade keine Wache, und laut Lageplan schaut auch in den nächsten 4 Sekunden keine hin.
+bool SafeSpot(World w, List<Unit> guards, int x, int y)
+{
+    if (guards.Any(g => Watches(w, g, x, y)))
+    {
+        return false;
+    }
+    for (int t = w.Tick; t <= w.Tick + 80; t += 5)
+    {
+        if (Hideouts().IsWatched(x, y, t))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+WatchMap? hideouts = null;
+WatchMap Hideouts() => hideouts ??= WatchMap.Measure(Loader.ParseMap(mapJson), LitMission());
+
+// Würde die Wache einen Agenten auf diesem Feld bemerken, mit einem Feld Spielraum, weil sie weitergeht? Wie World.WatcherOf.
+static bool Watches(World w, Unit g, int tx, int ty)
+{
+    int x = tx * World.TileUnits + World.TileUnits / 2, y = ty * World.TileUnits + World.TileUnits / 2;
+    long dx = x - g.X, dy = y - g.Y;
+    int dist = (int)Math.Sqrt(dx * dx + dy * dy) - World.TileUnits;
+    int close = Math.Max(World.GuardCloseRange, g.Type.HearRange);
+    int notice = w.NoticeRangeAt(x, y);
+    if (dist > Math.Max(notice, close) || !w.Map.HasLineOfSight(g.TileX, g.TileY, tx, ty))
+    {
+        return false;
+    }
+    long fx = g.FacingX, fy = g.FacingY, dot = fx * dx + fy * dy;
+    bool cone = dot > 0 && 2 * dot * dot >= (fx * fx + fy * fy) * (dx * dx + dy * dy);
+    return dist <= close || (cone && dist <= notice);
+}
+
+// Erreicht der Agent die Wache auf Schlagweite, bevor sie sich umdreht und ihn bemerkt? Eine Wache auf Streife wendet am Ende ihres Wegs.
+// Bemerkt sie ihn, bleiben ihr gut 8 Takte, bis sie kämpft. Knapp dahinter zählt das als frei.
+static bool CatchesBeforeTurn(Unit a, Unit g)
+{
+    int gap = Math.Max(0, World.Distance(a, g) - 1100);
+    bool away = !Facing(g, a);
+    if (!away)
+    {
+        return gap <= World.TileUnits;
+    }
+    int turn = int.MaxValue;
+    if (g.Path.Count > 0)
+    {
+        long len = 0;
+        int x = g.X, y = g.Y;
+        foreach (var (tx, ty) in g.Path)
+        {
+            int cx = tx * World.TileUnits + World.TileUnits / 2, cy = ty * World.TileUnits + World.TileUnits / 2;
+            len += (long)Math.Sqrt((double)(cx - x) * (cx - x) + (double)(cy - y) * (cy - y));
+            x = cx;
+            y = cy;
+        }
+        turn = (int)(len / Math.Max(1, World.WalkSpeed(g)));
+    }
+    int closing = World.WalkSpeed(a) - (g.Path.Count > 0 ? World.WalkSpeed(g) : 0);
+    int reach = closing <= 0 ? int.MaxValue : gap / closing;
+    return reach <= (turn == int.MaxValue ? int.MaxValue : turn + 8);
+}
+
+// Steht der Agent im Blickkegel der Wache? Wie World.InCone, nur ohne Reichweite: Auch von weitem dreht sie sich sonst zu ihm.
+static bool Facing(Unit g, Unit o)
+{
+    long fx = g.FacingX, fy = g.FacingY, dx = o.X - g.X, dy = o.Y - g.Y;
+    long dot = fx * dx + fy * dy;
+    return dot > 0 && 2 * dot * dot >= (fx * fx + fy * fy) * (dx * dx + dy * dy);
 }
 
 // Wer unter die Hälfte fällt, legt den Verband an, sobald ihn keine kämpfende Wache sieht. Solange gibt der Spieler ihm keine Befehle.
@@ -393,6 +680,175 @@ if (args.Length > 0 && args[0] == "--waffen")
     return;
 }
 
+// Kampagne mit Einkauf: Wer was kauft, mit dem Startgeld und dem Lohn der Einsätze. Gekauftes kommt in den Platz des Agenten,
+// in die Hand nimmt er die teuerste Schusswaffe.
+if (args.Length > 0 && args[0] == "--einkauf")
+{
+    var shops = new (string Name, Action<Campaign>? Shop)[]
+    {
+        ("nichts", null),
+        ("Verbände, ohne Rückhalt", Shopper(0, "verbandszeug")),
+        ("Schrot, ohne Rückhalt", Shopper(0, "schrotflinte", "verbandszeug")),
+        ("Verbände, Rückhalt 250", Shopper(Campaign.RecruitCost, "verbandszeug")),
+        ("Schrot, Rückhalt 250", Shopper(Campaign.RecruitCost, "schrotflinte", "verbandszeug")),
+        ("Verband+Schrot, R. 250", Shopper(Campaign.RecruitCost, "verbandszeug", "schrotflinte")),
+        ("Schrot, Rückhalt 350", Shopper(Campaign.RecruitCost + Campaign.DoctorCost, "schrotflinte", "verbandszeug")),
+        ("MP, Rückhalt 250", Shopper(Campaign.RecruitCost, "maschinenpistole", "verbandszeug")),
+        ("Knüppel, Rückhalt 250", Shopper(Campaign.RecruitCost, "totschlaeger")),
+    };
+    Console.WriteLine("Je 100 Kampagnen mit 6 Einsätzen, Feuer bündeln:");
+    foreach (var s in shops)
+    {
+        CampaignRun(s.Name, Armed(Bandaged(FocusFire)), 100, 6, s.Shop);
+    }
+    return;
+}
+
+// Totschläger nach Plan: Wie beim Schleichplan sucht das Werkzeug für Greta den frühesten Takt, zu dem ein Angriffsbefehl auf eine Wache
+// zu einem lautlosen Niederschlag führt, ohne dass eine andere Wache kämpft. Dann die nächste Wache von dort aus.
+// Danach kämpft der Trupp wie bei Feuer bündeln, mit weniger Wachen gegen sich. Die Klicks kommen in der Nachprobe zufällig bis zu jitter Takte zu früh oder zu spät.
+if (args.Length > 0 && args[0] == "--knueppel-plan")
+{
+    loadout = new[] { new[] { "totschlaeger", "pistole" } };
+    var orders = new List<(int Tick, int Guard)>();
+    bool Calm(World w) => w.Rating != MissionRating.Loud && !w.Units.Any(g => g.Faction == Faction.Guard && g.Alive
+        && (g.GuardState == GuardState.Combat || g.GuardState == GuardState.Report));
+    // Spielt die Befehle bis zum letzten Niederschlag nach. Liefert die Welt danach oder null, wenn etwas schiefgeht.
+    World? Play(List<(int Tick, int Guard)> plan, int seed, int jitter, Random? rng)
+    {
+        var w = NewWorld(seed);
+        foreach (var (tick, guard) in plan)
+        {
+            int at = Math.Max(0, tick + (rng?.Next(-jitter, jitter + 1) ?? 0));
+            while (w.Tick < at && w.State == MissionState.Running)
+            {
+                w.Step();
+                if (!Calm(w)) return null;
+            }
+            w.OrderAttack(0, guard);
+            for (int i = 0; i < 400 && w.Units[guard].Alive; i++)
+            {
+                w.Step();
+                if (!Calm(w)) return null;
+            }
+            if (w.Units[guard].Alive) return null;
+            w.Units[0].TargetId = -1;
+            w.Units[0].Path.Clear();
+            // Nach dem Schlag 2 s still: Kommt dann doch jemand, zählt der Schlag nicht als gelungen.
+            for (int i = 0; i < 40; i++)
+            {
+                w.Step();
+                if (!Calm(w)) return null;
+            }
+        }
+        return w;
+    }
+    while (true)
+    {
+        var start = Play(orders, 1927, 0, null)!;
+        int from = start.Tick;
+        var prey = start.Units.Where(g => g.Faction == Faction.Guard && g.Alive && g.Type != GuardType.Werkschutz && g.Type.WeaponRange > 0).Select(g => g.Id).ToList();
+        (int Tick, int Guard, int Window)? best = null;
+        foreach (int g in prey)
+        {
+            int first = -1, window = 0;
+            for (int t = from; t < from + 1200 && (first < 0 || window < 200); t += 2)
+            {
+                bool ok = Play(new List<(int Tick, int Guard)>(orders) { (t, g) }, 1927, 0, null) != null;
+                if (ok && first < 0) first = t;
+                if (ok && first >= 0) window += 2;
+                else if (first >= 0) break;
+            }
+            if (first >= 0 && (best == null || first < best.Value.Tick))
+            {
+                best = (first + window / 2, g, window);
+            }
+        }
+        if (best == null) break;
+        orders.Add((best.Value.Tick, best.Value.Guard));
+        Console.WriteLine($"Schlag {orders.Count}: {start.Units[best.Value.Guard].Name} ({start.Units[best.Value.Guard].Type.Title}), Befehl bei {best.Value.Tick / 20.0:0.0} s, Fenster {best.Value.Window / 20.0:0.0} s");
+    }
+    var after = Play(orders, 1927, 0, null)!;
+    Console.WriteLine($"Ohne Aufsehen niedergeschlagen: {orders.Count}, danach stehen noch {after.Units.Count(g => g.Faction == Faction.Guard && g.Alive)} Wachen, Takt {after.Tick / 20.0:0.0} s, Wertung {after.Rating}");
+    foreach (int jitter in new[] { 0, 5, 10, 20 })
+    {
+        var rng = new Random(1927);
+        int won = 0, silent = 0, failed = 0, ko = 0, deadAgents = 0;
+        for (int seed = 1; seed <= Runs; seed++)
+        {
+            var w = Play(orders, seed * 7919, jitter, rng);
+            if (w == null)
+            {
+                // Plan gescheitert: Ab dem Fehler kämpft der Trupp wie bei Feuer bündeln. Das spielt hier eine neue Welt mit gleichem Zufall nach.
+                failed++;
+                w = NewWorld(seed * 7919);
+                var r2 = new Random(1927 + seed);
+                foreach (var (tick, guard) in orders)
+                {
+                    int at = Math.Max(0, tick + r2.Next(-jitter, jitter + 1));
+                    while (w.Tick < at && Calm(w)) w.Step();
+                    if (!Calm(w)) break;
+                    w.OrderAttack(0, guard);
+                    for (int i = 0; i < 400 && w.Units[guard].Alive && Calm(w); i++) w.Step();
+                    if (!Calm(w)) break;
+                    w.Units[0].TargetId = -1;
+                }
+            }
+            ko += w.Strikes.Count(k => k.KnockOut);
+            var finish = Armed(Bandaged(FocusFire))();
+            for (int i = 0; i < MaxTicks && w.State == MissionState.Running; i++)
+            {
+                if (i % 10 == 0) finish(w);
+                w.Step();
+            }
+            won += w.State == MissionState.Won ? 1 : 0;
+            silent += w.State == MissionState.Won && w.Rating != MissionRating.Loud ? 1 : 0;
+            deadAgents += w.Units.Count(u => u.Faction == Faction.Agent && !u.Alive);
+        }
+        Console.WriteLine($"Knüppel nach Plan, Klick +-{jitter / 20.0:0.00} s: Sieg {100 * won / Runs,3}%  leise gewonnen {100 * silent / Runs,3}%  Plan gescheitert {100 * failed / Runs,3}%  geschlagen {(double)ko / Runs:0.0}  tote Agenten {(double)deadAgents / Runs:0.00}");
+    }
+    return;
+}
+
+// Totschläger: Greta schleicht und schlägt, der Trupp wartet oder folgt. Alle tragen Knüppel und Pistole.
+// Was jede Mark bringt: gemischte Trupps, Pistole bleibt als zweite Waffe, Waffenwechsel wie ein Spieler. Gemessen mit Feuer bündeln.
+if (args.Length > 0 && args[0] == "--preis")
+{
+    string[] P = { "pistole" }, S = { "pistole", "schrotflinte" }, M = { "pistole", "maschinenpistole" };
+    var kits = new (string Name, string[][] Kit)[]
+    {
+        ("4 Pistolen", new[] { P }),
+        ("1 Schrot", new[] { S, P, P, P }),
+        ("2 Schrot", new[] { S, S, P, P }),
+        ("4 Schrot", new[] { S }),
+        ("1 MP", new[] { M, P, P, P }),
+        ("2 MP", new[] { M, M, P, P }),
+        ("4 MP", new[] { M }),
+        ("1 MP, 1 Schrot", new[] { M, S, P, P }),
+    };
+    foreach (var kit in kits)
+    {
+        loadout = kit.Kit;
+        int extra = Enumerable.Range(0, 4).Sum(i => kit.Kit[Math.Min(i, kit.Kit.Length - 1)].Skip(1).Sum(id => catalog.Get(id)!.Price));
+        Console.Write($"{kit.Name,-16} Zukauf {extra,4}  ");
+        Report("bündeln", Armed(Bandaged(FocusFire)));
+    }
+    loadout = null;
+    return;
+}
+
+if (args.Length > 0 && args[0] == "--knueppel")
+{
+    loadout = new[] { new[] { "totschlaeger", "pistole" } };
+    Report("Knüppel, Trupp wartet", Clubbing(false));
+    Report("Knüppel, Trupp folgt", Clubbing(true));
+    Report("Nur lauern, kein Schlag", Clubbing(false, false));
+    loadout = null;
+    Report("Lauern mit Pistole", Clubbing(false, false));
+    Report("Feuer bündeln (Vergleich)", FocusFire);
+    return;
+}
+
 if (args.Length > 0 && args[0] == "--kampagne")
 {
     Console.WriteLine("Je 100 Kampagnen mit 6 Einsätzen derselben Mission:");
@@ -426,6 +882,7 @@ if (args.Length > 0 && args[0] == "--lageplan")
     }
     return;
 }
+
 
 // Mit Feldern als Argument, etwa "6,9 6,8": Welche Wache schaut wann hin? Eine Spalte sind 5 Takte.
 if (args.Length > 0)

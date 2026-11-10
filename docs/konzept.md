@@ -105,10 +105,10 @@ Jeder Agent hat 4 Plätze. Zur Grundausstattung gehört die Pistole, dazu kommt 
 
 | Gegenstand | Preis | Werte | Besonderheit |
 |---|---|---|---|
-| Pistole | 100 | 16 Schaden, 7 Felder, alle 0,7 s, 10 Schuss, 1 s Nachladen | Grundausstattung, auf 8 Felder zu hören |
+| Pistole | 100 | 16 Schaden, 7 Felder, alle 0,7 s, 10 Schuss, 0,8 s Nachladen | Grundausstattung, auf 8 Felder zu hören |
 | Schrotflinte | 350 | 45 Schaden, 4 Felder, alle 0,8 s, 2 Schuss, 1,5 s Nachladen | +15 auf Treffer, aber 10 weniger je Feld. Auf 10 Felder zu hören |
-| Maschinenpistole | 600 | 12 Schaden, 6 Felder, alle 0,2 s, 30 Schuss, 2 s Nachladen | Streut (-5), auf 10 Felder zu hören |
-| Totschläger | 120 | 25 Schaden, 1,2 Felder, alle 0,8 s | Lautlos, macht den Einsatz nicht laut. Eine Wache, die noch nicht kämpft, geht sofort zu Boden, außer dem Werkschutz |
+| Maschinenpistole | 600 | 12 Schaden, 6 Felder, alle 0,2 s, 20 Schuss, 2 s Nachladen | Streut (-5), auf 10 Felder zu hören |
+| Totschläger | 120 | 25 Schaden, 1,6 Felder, alle 0,8 s | Lautlos, macht den Einsatz nicht laut. Eine Wache, die noch nicht kämpft, geht sofort zu Boden, außer dem Werkschutz |
 | Dietrich | 80 | | Schlosser öffnen in 1 statt 2 s, alle anderen in 4 s |
 | Rauchtopf | 60 | Wurf 6 Felder, Wolke 1,5 Felder, 12 s | Niemand sieht hindurch, hinein oder heraus, auch nicht im Lageplan. Einmal |
 | Verbandszeug | 75 | 40 Lebenspunkte | 3 s still stehen, jeder Befehl bricht ab, kein Feuer dabei. Einmal |
@@ -120,13 +120,17 @@ Gemessen mit `--waffen` im Balance-Werkzeug, je 300 Läufe, alle Agenten gleich 
 | Ausrüstung | Kosten Trupp | Alle angreifen | Feuer bündeln | Zum Buch gehen |
 |---|---|---|---|---|
 | Pistole ohne Nachladen (alte Regel) | | 69 % | 71 % | 44 % |
-| Pistole, 10 Schuss | 400 | 59 % | 62 % | 44 % |
-| Pistole und Verband | 700 | 61 % | 64 % | 42 % |
+| Pistole, 10 Schuss | 400 | 64 % | 68 % | 44 % |
+| Pistole und Verband | 700 | 66 % | 68 % | 43 % |
 | Schrotflinte | 1400 | 72 % | 88 % | 81 % |
-| Maschinenpistole | 2400 | 92 % | 97 % | 94 % |
-| Gemischt: MP, Schrot und Dietrich, Pistole und Verband, Schrot | 1555 | 55 % | 71 % | 75 % |
+| Maschinenpistole | 2400 | 83 % | 91 % | 90 % |
+| Gemischt: MP, Schrot und Dietrich, Pistole und Verband, Schrot | 1555 | 53 % | 64 % | 70 % |
 
-Das Magazin kostet die Grundausstattung im offenen Kampf rund 10 Punkte. Der Verband rettet selten den Einsatz, aber Lebenspunkte und damit Einsätze ohne Aussetzen. In der Kampagne (`--kampagne`, die Spielweisen kaufen nichts) fallen die Siege mit „Feuer bündeln“ von 44 auf 36 %.
+Gemischte Trupps mit `--preis`: Die Pistole bleibt als zweite Waffe, gewechselt wird wie ein Spieler mit E. Die teure Waffe kommt in die Hand, wenn sie so weit reicht wie die der meisten im Trupp, sonst erst, wenn ein Gegner nah ist. Wer allein kürzer reicht, steht beim Bündeln vorn und fällt zuerst. Feuer bündeln, ohne Zukauf 68 %: eine Schrotflinte 73 %, zwei 78 %, vier 88 %. Eine MP 69 %, vier 91 %. Je Mark ist die Schrotflinte die bessere Wahl, die volle MP-Ausrüstung verzeiht dafür mehr, auch beim bloßen Losrennen.
+
+Kampagne mit Einkauf (`--einkauf`, Feuer bündeln, je 100 Kampagnen mit 6 Einsätzen): Wer das Startgeld sofort ausgibt, kann nach der ersten Niederlage weder Arzt noch Anwerben bezahlen und verliert öfter (Verbände 26 %, Schrotflinte 26 % statt 36 %). Mit 250 Rückhalt für das Anwerben kauft man mit 300 Startgeld kaum etwas, die Siege bleiben bei 36 bis 37 %. Erst mit 600 Startgeld lohnt der Einkauf: sofort eine Schrotflinte, 250 zurück, dann 49 %. Das Startgeld ist ein Vorschlag, im Kern steht weiter 300.
+
+Totschläger: Mit `--knueppel-plan` sucht das Werkzeug wie beim Schleichplan für Greta die Zeitfenster, in denen ein Angriffsbefehl eine Wache lautlos niederschlägt, ohne dass eine andere kämpft. Bei 1,2 Feldern Schlagweite ging das nur beim Offizier, alle anderen Wachen bemerken Greta auf 2 Felder auch von hinten und werden von einer zweiten Wache gedeckt. Bei 1,6 Feldern gehen Offizier und Schütze, danach bündelt der Trupp das Feuer: 79 % Sieg mit Klicks bis 0,25 s daneben, 74 % bis 0,5 s, statt 68 % ohne Knüppel. Bei 1,8 Feldern gingen fünf Wachen, aber nur mit Klicks auf den Takt genau. Die Spielweise ohne Plan (`--knueppel`, Greta lauert im Versteck und schlägt zu, wenn die Wache sie vor dem Umdrehen nicht mehr sieht) schlägt niemanden lautlos nieder, ihre Ergebnisse taugen nicht als Maß für die Waffe.
 
 In der ersten Mission führt die Hintertür der Lagerhalle zu einem Durchgang zur Querstraße und zur
 Lohnkasse (300). Beute zählt nur, wenn der Trupp entkommt. Papiere fälschen ist noch nicht gebaut.
