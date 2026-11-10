@@ -48,14 +48,16 @@ WAIST = 25.0 - HIP
 WORLD_PER_UNIT = 1000 / (32 * math.sqrt(2))
 
 # Teile der Figur, je ein Stoff
-COAT, COAT_D, COAT_L, TROUSERS, SHOE, SKIN, HAIR, HAT, GUN, SHIRT, TRIM = range(11)
+COAT, COAT_D, COAT_L, TROUSERS, SHOE, SKIN, HAIR, HAT, GUN, SHIRT, TRIM, WOOD, LINEN = range(13)
 CAPSULE, DISC = 0, 1
-GUN_LENGTH = {"pistol": 4.2, "shotgun": 11.0, "rifle": 16.0}
+# sawn: doppelläufige Flinte mit gekürzten Läufen, smg: Maschinenpistole mit Trommel, club: Totschläger
+GUN_LENGTH = {"pistol": 4.2, "shotgun": 11.0, "rifle": 16.0, "sawn": 9.5, "smg": 11.0}
+LONG_GUNS = ("shotgun", "rifle", "sawn", "smg")
 
 # Bewegungen in Spaltenreihenfolge und ihre Zahl an Bildern
 MOTIONS = (
     ("walk", 12), ("run", 8), ("idle", 8), ("look", 6), ("raise", 3), ("aim", 2), ("recoil", 3), ("aimwalk", 10),
-    ("fallA", 8), ("fallB", 8),
+    ("fallA", 8), ("fallB", 8), ("strike", 5), ("throw", 5), ("bandage", 6),
 )
 FRAMES = [(motion, i, n) for motion, n in MOTIONS for i in range(n)]
 
@@ -86,7 +88,7 @@ def palette(spec):
     return {
         COAT: C[co], COAT_D: C[co_d], COAT_L: C[co_l], TROUSERS: C[spec["legs"]], SHOE: C["black"],
         SKIN: C["skin"], HAIR: C[spec["hair"]], HAT: C[spec["hat_c"]], GUN: C["soot"], SHIRT: C[spec["shirt"]],
-        TRIM: C[spec.get("trim", co_l)],
+        TRIM: C[spec.get("trim", co_l)], WOOD: C["wood_d"], LINEN: C["paper"],
     }
 
 
@@ -282,20 +284,74 @@ def aim_pose(rig, spec, amount, kick=0.0, push=0.0):
         rig["arms"][-1] = ("ik", hand, (-0.3, -0.8, -1.0))
         rig["gun"] = (hand + direction * 0.6, direction, GUN_LENGTH[gun])
         return
-    # Lange Waffe: von quer vor der Brust in die Schulter
-    rig["twist"] -= 0.38 * e
+    if gun == "club":
+        # Totschläger: aus der hängenden Hand auf Schulterhöhe gehoben, bereit zum Schlag
+        rig["twist"] += 0.25 * e
+        shoulder = arm_root(rig, -1)
+        hang = shoulder + turn_z((1.0, -0.6, -15.6), rig["twist"])
+        ready = shoulder + turn_z((3.5 - push, -0.8, 3.0), rig["twist"])
+        rig["arms"][-1] = ("ik", lerp(hang, ready, e), (0.0, -0.8, -1.0))
+        rig["club"] = unit(turn_z(lerp(np.array((0.3, 0.0, -1.0)), np.array((-0.45, 0.0, 1.0)), e), rig["twist"]))
+        return
     length = GUN_LENGTH[gun]
-    carry_butt = upper(rig, (3.3 * rig_bulk(spec), -4.5, WAIST + 1.5))
-    carry_end = upper(rig, (3.0 * rig_bulk(spec), 3.5, SHOULDER_Z + (2.5 if gun == "rifle" else 0.5)))
-    carry_dir = unit(carry_end - carry_butt)
+    carry_butt, carry_dir, _length, _right, _left = carry_pose(rig, spec)
     shoulder = arm_root(rig, -1)
     aim_dir = np.array((math.cos(kick), 0.0, math.sin(kick)))
-    aim_butt = shoulder + np.array((1.2 - push, 1.6, 0.6))
+    if gun == "smg":
+        # Maschinenpistole aus der Hüfte: vor dem Bauch, beide Hände daran
+        rig["twist"] -= 0.15 * e
+        aim_butt = upper(rig, (2.6 - push, -2.6, WAIST + 5.0))
+    else:
+        # Flinte und Gewehr in die Schulter
+        rig["twist"] -= 0.38 * e
+        aim_butt = shoulder + np.array((1.2 - push, 1.6, 0.6))
     butt = lerp(carry_butt, aim_butt, e)
     direction = unit(lerp(carry_dir, aim_dir, e))
     rig["gun"] = (butt, direction, length)
-    rig["arms"][-1] = ("ik", butt + direction * length * 0.3, (0.0, -0.6, -1.0))
+    grip = 0.22 if gun in ("sawn", "smg") else 0.3
+    rig["arms"][-1] = ("ik", butt + direction * length * grip, (0.0, -0.6, -1.0))
     rig["arms"][1] = ("ik", butt + direction * length * 0.62, (0.0, 0.7, -1.0))
+
+
+def carry_pose(rig, spec):
+    """Lange Waffe beim Stehen und Gehen: Schaft, Richtung, Länge und wo die rechte und linke Hand greifen."""
+    gun = spec.get("gun", "pistol")
+    bulk = rig_bulk(spec)
+    if gun == "sawn":
+        # Mit beiden Händen an der Hüfte, die Läufe zeigen schräg zu Boden.
+        butt = upper(rig, (2.6 * bulk, -2.4, WAIST + 3.4))
+        return butt, unit(turn_z((0.88, 0.1, -0.36), rig["twist"])), GUN_LENGTH[gun], 0.2, 0.62
+    if gun == "smg":
+        # Vor dem Bauch, die Trommel unten, die Mündung leicht gesenkt.
+        butt = upper(rig, (2.4 * bulk, -2.4, WAIST + 3.6))
+        return butt, unit(turn_z((0.95, 0.15, -0.2), rig["twist"])), GUN_LENGTH[gun], 0.2, 0.62
+    butt = upper(rig, (3.3 * bulk, -4.5, WAIST + 1.5))
+    end = upper(rig, (3.0 * bulk, 3.5, SHOULDER_Z + rig["breath"] + (2.5 if gun == "rifle" else 0.5)))
+    return butt, unit(end - butt), float(np.linalg.norm(end - butt)), 0.25, 0.8
+
+
+def draw_gun(p, gun, start, direction, length):
+    """Waffe vom Schaft aus entlang direction."""
+    side = np.cross(direction, (0.0, 0.0, 1.0))
+    side = unit(side) if np.linalg.norm(side) > 1e-3 else np.array((0.0, 1.0, 0.0))
+    down = unit(np.cross(side, direction))
+    if gun == "sawn":
+        # Kolben aus Holz, darauf zwei kurze Läufe nebeneinander
+        p.capsule(start, start + direction * 3.6, 1.2, 0.9, WOOD)
+        for s in (0.6, -0.6):
+            p.capsule(start + direction * 3.2 + side * s, start + direction * length + side * s, 0.62, 0.62, GUN)
+        return
+    if gun == "smg":
+        # Holzschaft, Gehäuse, vorn ein Griff und unten die runde Trommel
+        p.capsule(start, start + direction * 3.2, 1.0, 0.8, WOOD)
+        p.capsule(start + direction * 2.8, start + direction * length, 0.9, 0.6, GUN)
+        p.disc(start + direction * 5.4 - down * 1.6, side, 2.2, 0.8, GUN)
+        p.capsule(start + direction * 8.0, start + direction * 8.0 - down * 2.0, 0.6, 0.6, WOOD)
+        return
+    if gun == "carry":
+        p.capsule(start, start + direction * length, 0.85, 0.75, GUN)
+        return
+    p.capsule(start, start + direction * length, 0.95 if gun == "shotgun" else 0.8, 0.8, GUN)
 
 
 def rig_bulk(spec):
@@ -374,18 +430,15 @@ def body(spec, rig, dying=False):
     if spec.get("satchel"):
         # Umhängetasche an der Hüfte
         p.capsule(up((-1.6, -5.1, WAIST - 2.6)), up((1.9, -5.1, WAIST - 2.6)), 2.7, 2.7, TRIM)
-    if gun not in ("pistol", "none") and rig["carry"] and not dying:
-        # Lange Waffe quer vor dem Körper getragen, beide Hände daran
-        butt = up((3.3 * bulk, -4.5, WAIST + 1.5))
-        end = up((3.0 * bulk, 3.5, shoulder_z + (2.5 if gun == "rifle" else 0.5)))
-        p.capsule(butt, end, 0.85, 0.75, GUN)
-        direction = unit(end - butt)
-        length = float(np.linalg.norm(end - butt))
-        rig["arms"][-1] = ("ik", butt + direction * length * 0.25, (0.0, -0.6, -1.0))
-        rig["arms"][1] = ("ik", butt + direction * length * 0.8, (0.0, 0.7, -1.0))
+    if gun in LONG_GUNS and rig["carry"] and not dying:
+        # Lange Waffe getragen, beide Hände daran
+        butt, direction, length, right, left = carry_pose(rig, spec)
+        draw_gun(p, gun if gun in ("sawn", "smg") else "carry", butt, direction, length)
+        rig["arms"][-1] = ("ik", butt + direction * length * right, (0.0, -0.6, -1.0))
+        rig["arms"][1] = ("ik", butt + direction * length * left, (0.0, 0.7, -1.0))
     if rig["gun"] is not None:
         start, direction, length = rig["gun"]
-        p.capsule(start, start + direction * length, 0.95 if gun == "shotgun" else 0.8, 0.8, GUN)
+        draw_gun(p, gun, start, direction, length)
 
     # Kopf und Kopfbedeckung. Der Kopf dreht sich mit den Schultern und dazu um sich selbst.
     neck = up((0.2, 0, shoulder_z + 1.5))
@@ -418,6 +471,7 @@ def body(spec, rig, dying=False):
         p.capsule(hv((2.7, 1.5, 1.4)), hv((2.7, -1.5, 1.4)), 0.8, 0.8, SHOE)
 
     # Arme: entweder Winkel an Schulter und Ellbogen oder die Hand an einem Zielpunkt.
+    joints = {}
     for side in (1, -1):
         shoulder = arm_root(rig, side)
         mode = rig["arms"].get(side, ("fk", 0.04, 0.18))
@@ -434,9 +488,23 @@ def body(spec, rig, dying=False):
         p.capsule(shoulder, elbow_p, 1.8, 1.5, sleeve)
         p.capsule(elbow_p, hand, 1.5, 1.2, sleeve)
         p.ball(hand, 1.25, SKIN)
+        joints[side] = (elbow_p, hand)
+        if side < 0 and gun == "club" and not dying and not rig.get("busy"):
+            # Lederknüppel in der rechten Hand, hängend oder erhoben
+            direction = rig["club"] if rig.get("club") is not None else unit(hand - elbow_p)
+            p.capsule(hand - direction * 0.8, hand + direction * 6.5, 0.75, 1.05, SHOE)
+        if side < 0 and rig.get("can"):
+            # Rauchtopf: kleine Blechdose in der Wurfhand
+            p.capsule(hand + (0, 0, -0.4), hand + (0, 0, 1.2), 1.15, 1.15, GUN)
+        if side < 0 and rig.get("bandage"):
+            p.ball(hand, 1.0, LINEN)
         if spec.get("leash") and side > 0 and not dying and mode[0] == "fk":
             # Aufgerolltes Ende der Leine in der freien Hand
             p.capsule(hand + (0.4, 0.4, -0.5), hand + (1.2, 1.2, -4.5), 0.75, 0.55, TRIM)
+    if rig.get("bandage") and 1 in joints:
+        # Binde um den linken Unterarm
+        elbow_p, hand = joints[1]
+        p.capsule(lerp(elbow_p, hand, 0.3), lerp(elbow_p, hand, 0.7), 1.7, 1.55, LINEN)
     return p
 
 
@@ -455,14 +523,37 @@ def build(spec, motion, i, n):
 
 # Rückstoß je Bild: Mündung hoch, Oberkörper zurück. Lange Waffen schlagen stärker in die Schulter.
 RECOIL = ((0.3, 1.3, 0.09), (0.14, 0.7, 0.05), (0.05, 0.25, 0.015))
-RECOIL_FORCE = {"pistol": 1.0, "shotgun": 1.7, "rifle": 1.4, "none": 0.0}
+RECOIL_FORCE = {"pistol": 1.0, "shotgun": 1.7, "rifle": 1.4, "sawn": 1.9, "smg": 0.45, "club": 0.0, "none": 0.0}
+# Schlag mit dem Totschläger: ausholen, oben, Treffer, durchgezogen, zurück. Hand relativ zur rechten Schulter,
+# dazu Richtung des Knüppels, Drehung der Schultern und Vorlage.
+STRIKE = (
+    ((-1.5, -1.0, 6.5), (-0.5, 0.0, 1.0), 0.35, -0.06),
+    ((-2.5, -0.8, 7.5), (-0.9, 0.0, 0.3), 0.42, -0.08),
+    ((8.0, -0.5, 1.0), (0.7, 0.0, -0.7), -0.25, 0.18),
+    ((8.5, -0.3, -4.5), (0.3, 0.0, -1.0), -0.3, 0.22),
+    ((4.0, -0.8, -10.0), (0.2, 0.0, -1.0), -0.1, 0.08),
+)
+# Wurf: zurück ausholen, hoch, loslassen, nachschwingen, zurück. Die Dose ist in den ersten beiden Bildern in der Hand.
+THROW = (
+    ((-6.0, -1.5, 1.0), 0.5, -0.06, True),
+    ((-5.0, -1.0, 5.5), 0.45, -0.08, True),
+    ((9.0, -0.5, 5.0), -0.3, 0.15, False),
+    ((10.0, 0.0, -2.0), -0.4, 0.22, False),
+    ((4.0, -1.0, -9.0), -0.15, 0.08, False),
+)
 LOOK = (0.3, 0.72, 0.8, 0.35, -0.5, -0.22)
 
 
 def human_rig(spec, motion, i, n):
     gun = spec.get("gun", "pistol")
     phase = i / n
-    stance = "long" if gun in ("shotgun", "rifle") else "pistol"
+    stance = "long" if gun in LONG_GUNS else "pistol"
+    if motion == "strike":
+        return strike_rig(i)
+    if motion == "throw":
+        return throw_rig(i)
+    if motion == "bandage":
+        return bandage_rig(phase)
     if motion in ("walk", "run"):
         return gait_rig(GAITS[motion], phase)
     if motion == "aimwalk":
@@ -502,9 +593,53 @@ def human_rig(spec, motion, i, n):
         force = RECOIL_FORCE[gun]
         rig["lean"] = -back * force
         aim_pose(rig, spec, 1.0, kick=kick * min(force, 1.3), push=push * force)
-    if gun in ("pistol", "none"):
+    if gun in ("pistol", "none", "club"):
         # Die freie Hand hängt locker etwas vor dem Körper.
         rig["arms"][1] = ("fk", 0.15, 0.35)
+    return rig
+
+
+def strike_rig(i):
+    hand, club, twist, lean = STRIKE[i]
+    rig = stand_rig(0.0, "long")
+    rig["twist"], rig["lean"] = twist, lean
+    rig["carry"] = False
+    shoulder = arm_root(rig, -1)
+    rig["arms"][-1] = ("ik", shoulder + turn_z(hand, twist), (-0.3, -1.0, -0.6))
+    rig["arms"][1] = ("fk", 0.55, 0.9)
+    rig["club"] = unit(turn_z(club, twist))
+    return rig
+
+
+def throw_rig(i):
+    hand, twist, lean, can = THROW[i]
+    rig = stand_rig(0.0, "long")
+    rig["twist"], rig["lean"] = twist, lean
+    rig["carry"] = False
+    rig["busy"] = True
+    rig["can"] = can
+    shoulder = arm_root(rig, -1)
+    rig["arms"][-1] = ("ik", shoulder + turn_z(hand, twist), (-0.4, -1.0, -0.5))
+    rig["arms"][1] = ("fk", 1.25, 0.25) if i < 2 else ("fk", 0.45, 0.7)
+    return rig
+
+
+def bandage_rig(phase):
+    """Kniend: das rechte Knie am Boden, die rechte Hand wickelt die Binde um den linken Unterarm."""
+    rig = new_rig()
+    rig["pelvis"] = np.array((-0.5, 0.0, 13.6))
+    feet = {1: (np.array((6.5, 3.4, ANKLE)), 0.0), -1: (np.array((-10.0, -3.3, 2.2)), -0.8)}
+    legs_from_feet(rig, feet)
+    rig["coat"] = {1: 0.9, -1: 0.0}
+    rig["lean"] = 0.3
+    rig["head_pitch"] = 0.35
+    rig["carry"] = False
+    rig["busy"] = True
+    rig["bandage"] = True
+    t = phase * math.tau
+    rig["arms"][1] = ("ik", upper(rig, (8.0, 2.0, 8.0)), (0.0, 1.0, -1.0))
+    rig["arms"][-1] = ("ik", upper(rig, (8.2, 1.0, 8.6)) + np.array((0.0, 1.9 * math.cos(t), 1.9 * math.sin(t))), (0.0, -1.0, -1.0))
+    rig["breath"] = 0.2 * math.sin(2 * t)
     return rig
 
 

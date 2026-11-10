@@ -520,6 +520,10 @@ SPECS = {
     "Hundefuehrer": dict(coat=("uni_d", "uni", "uni_l"), legs="uni", hat="peak", hat_c="wood_d", shirt="uni_d", hair="hair", hem=26, belt=19, trim="wood_d", strap=True, leash=True),
     "Laufbursche": dict(coat=("iron", "grey_d", "grey"), legs="wood_d", hat="peak", hat_c="wood", shirt="ash", hair="hair", hem=22, belt=20, trim="wood", gun="none", strap=True, satchel=True, scale=0.86),
 }
+# Agenten mit anderer Waffe in der Hand: gleiche Kleidung, eigene Zeilen im Figurenblatt. Das Spiel wählt nach der Waffe.
+SPECS["Agent_Schrot"] = dict(SPECS["Agent"], gun="sawn")
+SPECS["Agent_MP"] = dict(SPECS["Agent"], gun="smg")
+SPECS["Agent_Knueppel"] = dict(SPECS["Agent"], gun="club")
 
 
 def figure(s, ox, oy, spec, direction, step=0, aim=False):

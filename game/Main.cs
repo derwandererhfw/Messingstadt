@@ -1713,13 +1713,12 @@ void fragment() {
                     _focusLeft = FocusSeconds;
                 }
                 // Wer die Waffe hebt, hält oder senkt, blickt aufs Ziel, auch wenn er dabei weitergeht.
-                bool aiming = _animator.Aiming(u);
-                int lookX = aiming ? u.AimX : u.FacingX, lookY = aiming ? u.AimY : u.FacingY;
+                var (lookX, lookY) = _animator.Look(u, now);
                 // Am Boden gedacht: x - y läuft im Bild quer, x + y zur Kamera. Der Westen entsteht durch Spiegeln.
                 float across = lookX - lookY, toward = lookX + lookY;
                 float angle = Mathf.RadToDeg(Mathf.Atan2(toward, Mathf.Abs(across)));
                 int view = Mathf.Clamp(Mathf.RoundToInt((90f - angle) / 45f), 0, _figureViews - 1);
-                s.RegionRect = FigureRegion(u.Sprite, view, column);
+                s.RegionRect = FigureRegion(_animator.SpriteName(u), view, column);
                 s.FlipH = across < 0;
                 s.Modulate = FigureGlow(u);
                 s.Position = foot - FigureFoot + _animator.BiteOffset(World, u, this);
