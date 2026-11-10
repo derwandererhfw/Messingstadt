@@ -15,6 +15,11 @@ expect sequence rueckzug
 expect finished True
 key Escape
 wait 5
+# Vor dem neuen Anlauf geht es durch die Waffenkammer
+expect sequence
+expect armory Greta:None:
+click Nochmal
+wait 5
 expect sequence uebergang
 expect finished False
 key Escape
@@ -49,6 +54,9 @@ expect panel True
 expect finished True
 wait 60
 expect focus Nochmal
+click Nochmal
+wait 5
+expect armory Greta:None:
 click Nochmal
 wait 5
 expect sequence uebergang

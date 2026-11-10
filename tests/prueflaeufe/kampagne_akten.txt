@@ -33,6 +33,10 @@ click Arzt (100)
 changed money
 # Emil ist geflickt und wieder dabei. Der zweite Sturz ist tödlich, schon im Einsatz steht GEFALLEN.
 click Nochmal
+wait 5
+# Vor dem Einsatz die Waffenkammer, Emil ist dort wieder einsatzbereit
+expect armory Greta:None:
+click Nochmal
 wait 30
 expect panel False
 # Hanna liegt noch in der Krankenstube: drei im Einsatz, die Hilfezeile nennt nur ihre Ziffern

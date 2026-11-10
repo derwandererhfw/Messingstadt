@@ -50,6 +50,8 @@ Den Ergebnis-Bildschirm mit Krankenstube, Arzt und den Stempeln KRANKENSTUBE und
 
 "Spiel laden" auf dem Startbildschirm setzt eine belegte Akte fort, mit dem Übergang statt des Prologs. Leere Akten stehen ausgegraut da. Solange nur der Startbildschirm offen ist, wird nichts gespeichert, und "Neues Spiel" fragt nur nach, wenn in der Akte eine Kampagne liegt, die schon etwas erlebt hat. Das prüfen `erststart_laden.txt` (`--menu --script-writes` in einem leeren `APPDATA`-Ordner) und danach im selben Ordner `laden_fortsetzen.txt` (`--menu --intro --script-writes`).
 
+Vor jedem Einsatz geht es durch die Waffenkammer (`game/Armory.cs`): links die Akten mit je vier Plätzen, in der Mitte die Kiste der Truppe, rechts der Katalog aus `data/waffen.json`. Einen Agenten wählen, dann einen Gegenstand anklicken, darunter stehen Werte, Aktentext und die Handgriffe Kaufen, In die Kiste, Ausrüsten, Ablegen und Verkaufen (halber Preis). Esc führt zurück zum Bericht. Beine, Herz, Arzt und Anwerben bleiben auf dem Ergebnis-Bildschirm. Das prüft `waffenkammer.txt` mit `--menu --fresh`.
+
 Wer aussetzt, angeschlagen oder in der Krankenstube, steht im Aktenschrank unter seiner Akte und im Einsatz auf einem Zettel neben den Agentenakten. Das prüft `akte_aussetzen.txt` mit `--menu --script-writes` in einem eigenen `APPDATA`-Ordner, in den vorher `tests/prueflaeufe/akte_angeschlagen.json` als `Godot/app_userdata/Messingstadt/kampagne.json` kopiert wird.
 
 Waffenwechsel, Rauchtopf und Verband prüft `waffen_wechsel.txt`, genauso aufgerufen, nur mit `tests/prueflaeufe/waffen_akte.json` als Spielstand.
