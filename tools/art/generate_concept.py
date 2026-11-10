@@ -20,11 +20,14 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw
 
+import roofs as R
+
 OUT = Path(__file__).resolve().parents[2] / "assets" / "concept"
 RNG = random.Random(1923)
 LIT_ROOMS = random.Random(1933)  # was hinter erleuchteten Fenstern zu sehen ist
 WEAR = random.Random(1931)  # eigener Zufall für die Abnutzung, damit RNG die Fenster nicht verschiebt
 LITTER = random.Random(1941)
+DETAIL = random.Random(1951)  # Schmuck und Schäden der Häuser, eigener Zufall: RNG entscheidet weiter, welche Fenster leuchten
 AMBIENT = {"smoke": [], "steam": [], "fires": [], "puddles": [], "lights": [], "fireLights": []}  # Bildpositionen für die Animationen im Spiel
 HW, HH = 32, 16  # halbe Tile-Breite und -Höhe
 COBBLE_ROWS, COBBLE_STONES = 5, 3  # Pflastersteine je Feld
@@ -168,16 +171,22 @@ class DualDraw:
     """
 
     def __init__(self, img):
+        self.img = img
+        self.fine = img.info.get("hd")
         self.lo = ImageDraw.Draw(img)
-        self.hi = ImageDraw.Draw(img.info["hd"])
+        self.hi = ImageDraw.Draw(self.fine) if self.fine is not None else None
 
     def rectangle(self, box, fill=None):
         self.lo.rectangle(box, fill=fill)
+        if not self.hi:
+            return
         x0, y0, x1, y1 = box
         self.hi.rectangle((x0 * HD, y0 * HD, x1 * HD + HD - 1, y1 * HD + HD - 1), fill=fill)
 
     def line(self, xy, fill=None):
         self.lo.line(xy, fill=fill)
+        if not self.hi:
+            return
         x0, y0, x1, y1 = xy
         mid = HD // 2
         if y0 == y1:
@@ -189,17 +198,161 @@ class DualDraw:
 
     def point(self, xy, fill=None):
         self.lo.point(xy, fill=fill)
+        if not self.hi:
+            return
         x, y = xy
         self.hi.rectangle((x * HD, y * HD, x * HD + HD - 1, y * HD + HD - 1), fill=fill)
 
     def ellipse(self, box, fill=None):
         self.lo.ellipse(box, fill=fill)
+        if not self.hi:
+            return
         x0, y0, x1, y1 = box
         self.hi.ellipse((x0 * HD, y0 * HD, x1 * HD + HD - 1, y1 * HD + HD - 1), fill=fill)
 
+    def fine_line(self, xy, fill):
+        """Linie, die in der Feinfassung nur einen ihrer Bildpunkte breit ist: Sprossen, Gitterstäbe, Fugen."""
+        if not self.hi:
+            self.lo.line(xy, fill=fill)
+            return
+        self.lo.line(xy, fill=fill)
+        x0, y0, x1, y1 = (v * HD + HD // 2 for v in xy)
+        self.hi.line((x0, y0, x1, y1), fill=fill)
+
+    def hd_only_line(self, xy, fill):
+        """Linie nur in der Feinfassung, etwa eine zweite Sprosse, für die das einfache Bild keinen Platz hat."""
+        if self.hi:
+            x0, y0, x1, y1 = (v * HD + HD // 2 for v in xy)
+            self.hi.line((x0, y0, x1, y1), fill=fill)
+
+    def shade(self, box, f, tint=None, amount=0.3):
+        """Dunkelt eine Fläche ab (f < 1) oder hellt sie auf, ohne die Zeichnung darunter zu verlieren."""
+        x0, y0, x1, y1 = (int(v) for v in box)
+        for img, k in ((self.img, 1), (self.fine, HD)):
+            if img is None:
+                continue
+            p = img.load()
+            w, h = img.size
+            for y in range(max(0, y0 * k), min(h, (y1 + 1) * k)):
+                for x in range(max(0, x0 * k), min(w, (x1 + 1) * k)):
+                    c = p[x, y]
+                    if c[3]:
+                        n = blend(c[:3], f)
+                        p[x, y] = (mix(n, tint, amount) if tint else n) + (c[3],)
+
+    def streak(self, x, y0, y1, f0, f1=None, tint=None):
+        """Senkrechte Fahne von y0 nach y1, die von f0 nach f1 ausläuft. Fein nur einen Bildpunkt breit."""
+        f1 = f0 if f1 is None else f1
+        for img, k in ((self.img, 1), (self.fine, HD)):
+            if img is None:
+                continue
+            p = img.load()
+            w, h = img.size
+            u = int(x) * k + k // 2
+            if not 0 <= u < w:
+                continue
+            span = max(1, (int(y1) - int(y0) + 1) * k)
+            for j in range(span):
+                y = int(y0) * k + j
+                if 0 <= y < h and p[u, y][3]:
+                    f = f0 + (f1 - f0) * j / span
+                    n = blend(p[u, y][:3], f)
+                    p[u, y] = (mix(n, tint, 0.3) if tint else n) + (p[u, y][3],)
+
+    def erase(self, box):
+        """Macht einen Bereich durchsichtig: abgeschlagene Ecken."""
+        self.rectangle(box, fill=(0, 0, 0, 0))
+
 
 def draw_on(img):
-    return DualDraw(img) if "hd" in img.info else ImageDraw.Draw(img)
+    return DualDraw(img)
+
+
+# ---------- Schrift aus Strichen, für Schilder und Fassadenschrift ----------
+# Raster 4 × 6, y nach unten. In doppelter Auflösung werden die Striche glatt gezeichnet und bleiben gut lesbar.
+STROKES = {
+    "A": [[(0, 6), (0, 2), (2, 0), (4, 2), (4, 6)], [(0, 3.6), (4, 3.6)]],
+    "B": [[(0, 0), (0, 6), (3, 6), (4, 5), (4, 4), (3, 3), (0, 3)], [(0, 0), (3, 0), (4, 1), (4, 2), (3, 3)]],
+    "C": [[(4, 1), (3, 0), (1, 0), (0, 1), (0, 5), (1, 6), (3, 6), (4, 5)]],
+    "D": [[(0, 0), (0, 6), (2.5, 6), (4, 4.5), (4, 1.5), (2.5, 0), (0, 0)]],
+    "E": [[(4, 0), (0, 0), (0, 6), (4, 6)], [(0, 3), (3, 3)]],
+    "F": [[(4, 0), (0, 0), (0, 6)], [(0, 3), (3, 3)]],
+    "G": [[(4, 1), (3, 0), (1, 0), (0, 1), (0, 5), (1, 6), (3, 6), (4, 5), (4, 3.5), (2.4, 3.5)]],
+    "H": [[(0, 0), (0, 6)], [(4, 0), (4, 6)], [(0, 3), (4, 3)]],
+    "I": [[(2, 0), (2, 6)], [(1, 0), (3, 0)], [(1, 6), (3, 6)]],
+    "K": [[(0, 0), (0, 6)], [(4, 0), (0, 3.6)], [(1.5, 2.4), (4, 6)]],
+    "L": [[(0, 0), (0, 6), (4, 6)]],
+    "M": [[(0, 6), (0, 0), (2, 3.2), (4, 0), (4, 6)]],
+    "N": [[(0, 6), (0, 0), (4, 6), (4, 0)]],
+    "O": [[(1, 0), (3, 0), (4, 1), (4, 5), (3, 6), (1, 6), (0, 5), (0, 1), (1, 0)]],
+    "P": [[(0, 6), (0, 0), (3, 0), (4, 1), (4, 2), (3, 3), (0, 3)]],
+    "R": [[(0, 6), (0, 0), (3, 0), (4, 1), (4, 2), (3, 3), (0, 3)], [(2, 3), (4, 6)]],
+    "S": [[(4, 1), (3, 0), (1, 0), (0, 1), (0, 2), (1, 3), (3, 3), (4, 4), (4, 5), (3, 6), (1, 6), (0, 5)]],
+    "T": [[(0, 0), (4, 0)], [(2, 0), (2, 6)]],
+    "U": [[(0, 0), (0, 5), (1, 6), (3, 6), (4, 5), (4, 0)]],
+    "W": [[(0, 0), (1, 6), (2, 2.5), (3, 6), (4, 0)]],
+    "0": [[(1, 0), (3, 0), (4, 1), (4, 5), (3, 6), (1, 6), (0, 5), (0, 1), (1, 0)]],
+    "1": [[(1, 1), (2, 0), (2, 6)], [(1, 6), (3, 6)]],
+    "2": [[(0, 1), (1, 0), (3, 0), (4, 1), (4, 2), (0, 6), (4, 6)]],
+    "9": [[(4, 3), (1, 3), (0, 2), (0, 1), (1, 0), (3, 0), (4, 1), (4, 5), (3, 6), (1, 6)]],
+    "&": [[(4, 6), (1, 2), (1, 1), (2, 0), (3, 1), (3, 2), (0, 4.5), (0, 5.2), (1, 6), (2.5, 6), (4, 4)]],
+    " ": [],
+}
+
+
+def paint_text(img, x, y, t, height, layers, gap=None, condense=0.8, slant=0.0, jitter=0.0, seed=0):
+    """Schrift aus Strichen auf eine Fassade oder ein Schild, in beiden Auflösungen.
+
+    layers: Liste von (Farbe, Strichbreite, dx, dy, Deckkraft, Abnutzung), alles in einfachen Bildpunkten, von unten nach
+    oben gezeichnet: etwa erst ein dunkler Schein, dann die Leuchtröhre. Gibt die Spannen der Buchstaben zurück.
+    """
+    scale = height / 6
+    gap = max(1.5, scale * 1.3) if gap is None else gap
+    cell = 4 * scale * condense
+    spans, glyphs = [], []
+    cx = x
+    for i, ch in enumerate(t):
+        strokes = []
+        for line in STROKES[ch]:
+            pts = []
+            for j, (gx, gy) in enumerate(line):
+                ox = (float(R.hash01(i * 31 + j, seed, 7)) - 0.5) * jitter
+                oy = (float(R.hash01(i * 31 + j, seed, 9)) - 0.5) * jitter
+                pts.append((cx + gx * scale * condense + (6 - gy) * scale * slant + ox, y + gy * scale + oy))
+            strokes.append(pts)
+        glyphs.append(strokes)
+        if ch != " ":
+            spans.append((int(cx), int(math.ceil(cx + cell + 6 * scale * slant))))
+        cx += cell + gap
+    for im, k in ((img, 1), (img.info.get("hd"), HD)):
+        if im is None:
+            continue
+        arr = np.asarray(im).astype(np.float64)
+        for color, width, dx, dy, opacity, worn in layers:
+            mask = Image.new("L", im.size, 0)
+            md = ImageDraw.Draw(mask)
+            lw = max(1, int(round(width * k)))
+            for strokes in glyphs:
+                for pts in strokes:
+                    q = [((px + dx) * k + (k - 1) / 2, (py + dy) * k + (k - 1) / 2) for px, py in pts]
+                    md.line(q * 2 if len(q) == 1 else q, fill=255, width=lw, joint="curve")
+                    if lw > 2:
+                        r = lw / 2 - 0.5
+                        for px, py in (q[0], q[-1]):
+                            md.ellipse((px - r, py - r, px + r, py + r), fill=255)
+            m = np.asarray(mask).astype(np.float64) / 255 * opacity
+            if worn:
+                yy, xx = np.mgrid[0:im.size[1], 0:im.size[0]] / k
+                wear = R.noise(xx / 2.5, yy / 2.5, seed + 3) * 0.6 + R.noise(xx / 0.9, yy / 0.9, seed + 4) * 0.4
+                m *= np.clip(1.5 - wear * 2.2 * worn - worn * 0.4, 0, 1)
+            a0 = arr[..., 3:4] / 255
+            mm = m[..., None]
+            out_a = a0 + mm * (1 - a0)
+            col = np.array(color, np.float64)
+            arr[..., :3] = np.where(out_a > 0, (arr[..., :3] * a0 * (1 - mm) + col * mm) / np.maximum(out_a, 1e-6), arr[..., :3])
+            arr[..., 3:4] = out_a * 255
+        im.paste(Image.fromarray(np.clip(arr + 0.5, 0, 255).astype(np.uint8), "RGBA"))
+    return spans
 
 
 def canvas(w, h, color, hd=None):
@@ -284,12 +437,25 @@ def lit_room(d, x, y, w, h):
         # Kompakter Busch: Einzelne Blätter sähen auf diese Größe nach Insekten aus.
         d.rectangle((x + 2, y + h - 6, x + 7, y + h - 4), fill=C["wood_d"])
         d.rectangle((x + 3, y + h - 7, x + 6, y + h - 7), fill=C["wood_d"])
-    d.line((mid_x, y, mid_x, y + h), fill=C["wood_d"])
-    d.line((x, mid_y, x + w - 1, mid_y), fill=C["wood_d"])
+    sash(d, x, y, w, h)
+
+
+def sash(d, x, y, w, h, c="wood_d"):
+    """Kastenfenster: Mittelpfosten, Kämpfer unter dem Oberlicht, fein dazu je Flügel eine Quersprosse."""
+    top = y + h // 3
+    d.line((x, top, x + w - 1, top), fill=C[c])
+    d.line((x + w // 2, top, x + w // 2, y + h), fill=C[c])
+    d.hd_only_line((x, (top + y + h) // 2, x + w - 1, (top + y + h) // 2), fill=C[c])
+    d.hd_only_line((x + w // 2, y, x + w // 2, top), fill=C[c])
 
 
 def window(d, x, y, w=11, h=17, lit=False, frame="stone_l"):
-    d.rectangle((x - 1, y - 2, x + w, y + h + 1), fill=C[frame])
+    """Fenster in der Laibung: Sturz mit Schlussstein, Faschen, Fensterbank mit Schlagschatten, Kastenfenster dahinter."""
+    fc = C[frame]
+    d.rectangle((x - 1, y - 2, x + w, y + h + 1), fill=fc)
+    d.rectangle((x - 2, y - 5, x + w + 1, y - 3), fill=fc)
+    d.line((x - 2, y - 5, x + w + 1, y - 5), fill=blend(fc, 1.1))
+    d.rectangle((x + w // 2 - 1, y - 6, x + w // 2 + 1, y - 2), fill=blend(fc, 1.06))
     d.rectangle((x, y, x + w - 1, y + h), fill=C["gas_d"] if lit else C["glass_d"])
     state = WEAR.random()
     if not lit and state < 0.16:
@@ -297,27 +463,64 @@ def window(d, x, y, w=11, h=17, lit=False, frame="stone_l"):
         d.rectangle((x, y, x + w - 1, y + h), fill=C["black"])
         for v in range(y + 1, y + h, 4):
             d.rectangle((x - 2, v, x + w + 1, v + 2), fill=C[WEAR.choice(["wood", "wood_d"])])
+            d.hd_only_line((x - 2, v + 2, x + w + 1, v + 2), fill=C["wood_d"])
+        sill(d, x, y, w, h, fc)
+        soot_plume(d, x, y, w, 0.7)
         return
     if not lit and state < 0.34:
         # Zerbrochene Scheibe: schwarzes Loch mit gezacktem Rand
         for v in range(y, y + h // 2 + 3):
             d.line((x, v, x + WEAR.randint(1, w - 2), v), fill=C["black"])
-    d.line((x + w // 2, y, x + w // 2, y + h), fill=C["wood_d"])
-    d.line((x, y + h // 2, x + w - 1, y + h // 2), fill=C["wood_d"])
     if lit:
         lit_room(d, x, y, w, h)
     else:
-        d.point((x + 1, y + 1), fill=C["glass"])
+        # Spiegelung des Himmels oben in der Scheibe
+        d.line((x + 1, y + 1, x + 3, y + 1), fill=C["glass"])
+        d.hd_only_line((x + 1, y + 2, x + 1, y + 4), fill=C["glass"])
+        sash(d, x, y, w, h)
+    # Laibung: Der Sturz wirft Schatten oben und links in die Öffnung.
+    d.shade((x, y, x + w - 1, y), 0.55)
+    d.shade((x, y + 1, x, y + h), 0.72)
     for _ in range(3):
         d.point((x + WEAR.randint(-1, w), y + h + 1), fill=C["grime"])
+    sill(d, x, y, w, h, fc)
+    soot_plume(d, x, y, w, 0.3 if lit else 0.45)
+
+
+def sill(d, x, y, w, h, fc):
+    """Fensterbank, ein Stück vorstehend, mit Schatten und Wasserfahnen darunter."""
+    d.rectangle((x - 2, y + h + 1, x + w + 1, y + h + 2), fill=fc)
+    d.line((x - 2, y + h + 1, x + w + 1, y + h + 1), fill=blend(fc, 1.12))
+    d.shade((x - 1, y + h + 3, x + w + 1, y + h + 3), 0.62)
+    d.shade((x, y + h + 4, x + w + 1, y + h + 4), 0.84)
+    for u in (x - 1, x + w):
+        if DETAIL.random() < 0.7:
+            d.streak(u, y + h + 4, y + h + 4 + DETAIL.randint(6, 22), 0.74, 0.98)
+
+
+def soot_plume(d, x, y, w, chance):
+    """Rußfahne über dem Sturz: aus Ofenrohren und von alten Bränden, nach oben ausfransend."""
+    if DETAIL.random() >= chance:
+        return
+    length = DETAIL.randint(8, 20)
+    for j in range(length):
+        half = (w + 3) / 2 * (1 - j / length * 0.6) + DETAIL.choice((-1, 0, 0, 1))
+        mid = x + w / 2 + math.sin(j / 4) * 1.2
+        d.shade((int(mid - half), y - 7 - j, int(mid + half), y - 7 - j), 0.6 + 0.4 * (j / length) ** 0.7, C["soot"], 0.25)
 
 
 def door(d, x, base, w=16, h=36, c="wood", lamp=True):
+    """Haustür mit Steingewände, Oberlicht, Stufe davor und einem Vordach aus Eisen und Glas."""
     d.rectangle((x - 2, base - h - 3, x + w + 1, base), fill=C["stone_l"])
     d.rectangle((x, base - h, x + w - 1, base), fill=C[c])
     d.line((x + w // 2, base - h, x + w // 2, base), fill=C["wood_d"])
     d.rectangle((x + 2, base - h + 3, x + w // 2 - 2, base - h + 11), fill=C["gas_d"])
     d.rectangle((x + w // 2 + 2, base - h + 3, x + w - 3, base - h + 11), fill=C["gas_d"])
+    # Füllungen der Flügel
+    for u0, u1 in ((x + 2, x + w // 2 - 2), (x + w // 2 + 2, x + w - 3)):
+        d.fine_line((u0, base - h + 15, u1, base - h + 15), fill=C["wood_d"])
+        d.fine_line((u0, base - 6, u1, base - 6), fill=C["wood_d"])
+        d.hd_only_line((u0, base - h + 15, u0, base - 6), fill=C["wood_d"])
     d.point((x + w // 2 - 2, base - h // 2), fill=C["brass_l"])
     d.point((x + w // 2 + 2, base - h // 2), fill=C["brass_l"])
     # Abgewetzte Farbe und eine eingeschlagene Scheibe
@@ -326,26 +529,52 @@ def door(d, x, base, w=16, h=36, c="wood", lamp=True):
         d.line((u, v, u, v + WEAR.randint(0, 3)), fill=C[WEAR.choice(["wood_d", "grime", "plaster"])])
     if WEAR.random() < 0.6:
         d.rectangle((x + 2, base - h + 3, x + w // 2 - 2, base - h + 11), fill=C["black"])
+    # Die Tür liegt tiefer als die Wand: Schatten oben und links im Gewände
+    d.shade((x, base - h, x + w - 1, base - h + 1), 0.55)
+    d.shade((x, base - h + 2, x, base - 3), 0.7)
+    # Stufe
+    d.rectangle((x - 4, base - 2, x + w + 3, base), fill=C["stone"])
+    d.line((x - 4, base - 2, x + w + 3, base - 2), fill=C["stone_l"])
+    d.shade((x - 4, base, x + w + 3, base), 0.7)
+    # Vordach mit zwei schrägen Streben
+    top = base - h - 8
+    d.rectangle((x - 5, top, x + w + 4, top + 1), fill=C["iron"])
+    d.line((x - 5, top, x + w + 4, top), fill=C["steel"])
+    d.hd_only_line((x - 4, top - 1, x + w + 3, top - 1), fill=C["glass"])
+    d.line((x - 4, top + 2, x - 1, top + 5), fill=C["iron"])
+    d.line((x + w + 3, top + 2, x + w, top + 5), fill=C["iron"])
+    d.shade((x - 3, top + 2, x + w + 2, top + 4), 0.6)
     if lamp:
         lit_lamp = WEAR.random() < 0.5
-        d.rectangle((x + w // 2 - 2, base - h - 9, x + w // 2 + 2, base - h - 5), fill=C["gas_d" if lit_lamp else "soot"])
-        d.line((x + w // 2 - 2, base - h - 10, x + w // 2 + 2, base - h - 10), fill=C["brass_d"])
+        lx = x + w + 6
+        d.line((lx - 2, base - h + 2, lx + 1, base - h + 2), fill=C["brass_d"])
+        d.rectangle((lx, base - h + 3, lx + 3, base - h + 8), fill=C["gas_d" if lit_lamp else "soot"])
+        d.line((lx, base - h + 3, lx + 3, base - h + 3), fill=C["brass_d"])
 
 
-def shop(d, x, base, w, name, awn=("awn_r", "awn_w")):
+def shop(img, d, x, base, w, name, awn=("awn_r", "awn_w")):
+    """Laden: Schaufenster mit Sprossen, zerrissene Markise, darüber das gemalte Ladenschild."""
     d.rectangle((x, base - 40, x + w, base), fill=C["wood_d"])
     d.rectangle((x + 3, base - 28, x + w - 3, base - 8), fill=C["gas"])
     for u in range(x + 3, x + w - 3, 10):
         d.line((u, base - 28, u, base - 8), fill=C["wood"])
+    d.fine_line((x + 3, base - 21, x + w - 3, base - 21), fill=C["wood"])
     d.rectangle((x + 3, base - 7, x + w - 3, base - 1), fill=C["wood"])
+    for u in range(x + 6, x + w - 6, 10):
+        d.fine_line((u, base - 6, u + 6, base - 6), fill=C["wood_d"])
+        d.fine_line((u, base - 2, u + 6, base - 2), fill=C["wood_d"])
     for u in range(x, x + w, 6):
         d.rectangle((u, base - 39, u + 2, base - 31), fill=C[awn[0]])
         d.rectangle((u + 3, base - 39, u + 5, base - 31), fill=C[awn[1]])
         # Zerrissene Markise: Fetzen hängen unterschiedlich tief
         d.rectangle((u, base - 39 + WEAR.randint(4, 8), u + 5, base - 31), fill=C["wood_d"])
-    tw, _ = text_size(name)
-    d.rectangle((x + w // 2 - tw // 2 - 2, base - 48, x + w // 2 + tw // 2 + 2, base - 41), fill=C["black"])
-    text(d, x + w // 2 - tw // 2, base - 47, name, C["brass_l"], worn=0.15)
+    d.shade((x + 3, base - 28, x + w - 3, base - 26), 0.62)
+    d.rectangle((x - 1, base - 52, x + w + 1, base - 41), fill=C["wine_d"])
+    d.fine_line((x - 1, base - 52, x + w + 1, base - 52), fill=C["brass_d"])
+    d.fine_line((x - 1, base - 41, x + w + 1, base - 41), fill=C["black"])
+    tw = len(name) * 4 * 7 / 6 * 0.8 + (len(name) - 1) * 3
+    paint_text(img, x + w / 2 - tw / 2, base - 50, name, 7, [(C["cream"], 1.3, 0, 0, 1.0, 0.3)], gap=3, seed=21)
+    d.shade((x, base - 40, x + w, base - 40), 0.6)
 
 
 def rust_patches(d, x0, y0, x1, y1):
@@ -461,8 +690,153 @@ def weather(tex):
 
 
 def ledge(d, w, y, c="stone_l"):
+    """Gurtgesims zwischen den Geschossen, mit Lichtkante oben und Schlagschatten darunter."""
     d.rectangle((0, y, w, y + 1), fill=C[c])
+    d.hd_only_line((0, y, w, y), fill=blend(C[c], 1.12))
     d.line((0, y + 2, w, y + 2), fill=C["soot"])
+    d.shade((0, y + 3, w, y + 3), 0.8)
+
+
+def cornice(d, w, c="stone_l", dentils=True):
+    """Dachrinne und Hauptgesims am oberen Rand. Die Rinne hängt in der Mitte etwas durch."""
+    d.rectangle((0, 2, w, 5), fill=C[c])
+    d.line((0, 2, w, 2), fill=blend(C[c], 1.12))
+    d.line((0, 6, w, 6), fill=C["soot"])
+    if dentils:
+        for u in range(1, w, 4):
+            d.rectangle((u, 6, u + 1, 7), fill=blend(C[c], 0.9))
+    d.shade((0, 8, w, 8), 0.68)
+    d.shade((0, 9, w, 9), 0.86)
+    for u in range(w):
+        drop = 1 if 0.25 < u / w < 0.8 and math.sin(math.pi * u / w) > 0.75 else 0
+        d.rectangle((u, drop, u, drop + 1), fill=C["steel"])
+        d.point((u, drop + 2), fill=C["iron"])
+    for u in range(5, w, 14):
+        d.line((u, 0, u, 3), fill=C["iron"])
+
+
+def plinth(d, w, h, height=9):
+    """Sockel aus groben Quadern, unten vom Spritzwasser dunkel."""
+    top = h - height
+    d.rectangle((0, top, w, h), fill=C["stone_d"])
+    d.line((0, top, w, top), fill=C["stone"])
+    d.line((0, top - 1, w, top - 1), fill=C["stone_l"])
+    for u in range(0, w, 14):
+        d.fine_line((u, top + 1, u, h), fill=C["soot"])
+    d.fine_line((0, top + 5, w, top + 5), fill=C["soot"])
+    d.shade((0, h - 3, w, h), 0.72)
+
+
+def downpipe(d, x, y0, y1):
+    """Fallrohr aus Zinkblech mit Schellen, oben ein Schwanenhals von der Rinne, Rostfahnen an den Stößen."""
+    d.line((x - 2, y0, x, y0 + 3), fill=C["steel"])
+    d.rectangle((x, y0 + 3, x + 1, y1), fill=C["steel"])
+    d.fine_line((x, y0 + 3, x, y1), fill=C["ash"])
+    d.shade((x + 2, y0 + 4, x + 2, y1), 0.72)
+    for v in range(y0 + 10, y1 - 4, 22):
+        d.rectangle((x - 1, v, x + 2, v), fill=C["iron"])
+        if DETAIL.random() < 0.5:
+            d.streak(x + DETAIL.randint(0, 1), v + 1, v + DETAIL.randint(5, 16), 0.8, 1.0, C["rust"])
+    if DETAIL.random() < 0.5:
+        # Ein Stück fehlt, darunter läuft das Wasser seit Jahren die Wand hinab.
+        v = DETAIL.randint(y0 + 30, max(y0 + 31, y1 - 40))
+        gap = DETAIL.randint(5, 9)
+        for u in (x, x + 1):
+            d.streak(u, v, v + gap, 0.55)
+        for u in range(x - 2, x + 5):
+            d.streak(u, v + gap, v + gap + DETAIL.randint(14, 40), 0.7, 1.0, C["moss"])
+    d.line((x, y1, x + 3, y1), fill=C["steel"])
+
+
+def quoins(d, w, y0, y1, c="stone_l"):
+    """Eckquader im Wechsel lang und kurz."""
+    for i, v in enumerate(range(y0, y1 - 5, 7)):
+        size = 6 if i % 2 else 4
+        for u0 in (0, w - size):
+            d.rectangle((u0, v, u0 + size - 1, v + 5), fill=blend(C[c], 0.94 + 0.1 * DETAIL.random()))
+            d.fine_line((u0, v + 6, u0 + size - 1, v + 6), fill=C["soot"])
+
+
+def chip_corners(d, w, h):
+    """Die Hauskanten sind nicht mehr scharf: abgeschlagene Ziegel und ausgebrochener Putz."""
+    for u in (0, w - 1):
+        v = DETAIL.randint(12, 30)
+        while v < h - 12:
+            size = DETAIL.randint(1, 4)
+            d.erase((u, v, u, v + size))
+            d.shade((u + (1 if u == 0 else -1), v, u + (1 if u == 0 else -1), v + size), 0.7)
+            v += DETAIL.randint(9, 40)
+
+
+def patch(d, x, y, w, h, color):
+    """Geflickte Stelle: frischer, glatter und mit hartem Rand."""
+    d.rectangle((x, y, x + w, y + h), fill=color)
+    d.fine_line((x, y, x + w, y), fill=blend(color, 1.12))
+    d.fine_line((x, y + h, x + w, y + h), fill=blend(color, 0.7))
+    d.fine_line((x + w, y, x + w, y + h), fill=blend(color, 0.8))
+
+
+def balcony(d, x, y, w=11, h=17):
+    """Balkon vor einem Fenster: Steinplatte auf zwei Konsolen, Eisengitter, tiefer Schatten darunter."""
+    floor = y + h + 2
+    d.shade((x - 5, floor + 2, x + w + 5, floor + 4), 0.52)
+    d.shade((x - 4, floor + 5, x + w + 5, floor + 7), 0.78)
+    d.rectangle((x - 6, floor, x + w + 5, floor + 1), fill=C["stone_l"])
+    d.line((x - 6, floor + 2, x + w + 5, floor + 2), fill=C["stone_d"])
+    for u in (x - 4, x + w + 2):
+        d.rectangle((u, floor + 3, u + 1, floor + 5), fill=C["stone"])
+    rail = floor - 9
+    d.line((x - 6, rail, x + w + 5, rail), fill=C["iron"])
+    d.hd_only_line((x - 6, floor - 1, x + w + 5, floor - 1), fill=C["iron"])
+    for u in range(x - 6, x + w + 6, 2):
+        d.fine_line((u, rail, u, floor - 1), fill=C["iron"] if u % 4 else C["black"])
+    if DETAIL.random() < 0.6:
+        # Wäsche über dem Geländer
+        u = x + DETAIL.randint(-4, w - 2)
+        d.rectangle((u, rail, u + DETAIL.randint(3, 5), rail + DETAIL.randint(4, 7)), fill=C[DETAIL.choice(["paper", "cream", "grey_l", "awn_w"])])
+
+
+def bay(d, x0, x1, y0, y1, c):
+    """Erker über mehrere Geschosse: heller Kasten mit Schattenseite rechts, Konsole darunter, Blechdach darüber."""
+    d.shade((x1 + 1, y0 + 3, x1 + 4, y1 + 6), 0.6)
+    d.rectangle((x0, y0, x1, y1), fill=c)
+    d.rectangle((x1 - 2, y0, x1, y1), fill=blend(c, 0.72))
+    d.fine_line((x0, y0, x0, y1), fill=blend(c, 1.12))
+    # Blechdach
+    d.rectangle((x0 - 1, y0 - 4, x1 + 1, y0 - 1), fill=C["steel"])
+    d.line((x0 - 1, y0 - 4, x1 + 1, y0 - 4), fill=C["ash"])
+    for u in range(x0 + 2, x1, 5):
+        d.fine_line((u, y0 - 4, u, y0 - 1), fill=C["iron"])
+    d.shade((x0, y0, x1, y0 + 1), 0.7)
+    # Konsole in Stufen
+    for i in range(4):
+        d.rectangle((x0 + i * 2, y1 + 1 + i * 2, x1 - i * 2, y1 + 2 + i * 2), fill=blend(c, 0.86 - i * 0.07))
+    d.shade((x0 + 6, y1 + 9, x1 - 6, y1 + 11), 0.6)
+
+
+def plaster(img, color, seed, broken=0.15):
+    """Verputzt eine Ziegelwand. Wo der Putz abgefallen ist, schauen die Ziegel durch, mit Schatten an der Bruchkante."""
+    w, h = img.size
+    for im, k in ((img, 1), (img.info.get("hd"), HD)):
+        if im is None:
+            continue
+        arr = np.asarray(im).astype(np.float64)
+        yy, xx = np.mgrid[0:h * k, 0:w * k] / k
+        n = R.noise(xx / 17, yy / 17, seed) * 0.7 + R.noise(xx / 5, yy / 5, seed + 1) * 0.22 + R.noise(xx / 1.3, yy / 1.3, seed + 2) * 0.08
+        # Unten am Sockel und unter der Traufe hält der Putz am schlechtesten.
+        n += 0.12 * np.clip((yy - (h - 30)) / 30, 0, 1) + 0.08 * np.clip((14 - yy) / 14, 0, 1)
+        gone = n > np.quantile(n, 1 - broken)
+        tone = 0.9 + 0.2 * R.noise(xx / 22, yy / 9, seed + 5) - 0.06 * (R.hash01(np.floor(xx * k), np.floor(yy * k), seed) > 0.9)
+        coat = np.array(color, np.float64)[None, None, :] * tone[..., None]
+        dull = arr[..., :3] * 0.62 + np.array(C["mortar"], np.float64)[None, None, :] * 0.3
+        out = np.where(gone[..., None], dull, coat)
+        above = np.vstack([gone[:1], gone[:-1]])
+        below = np.vstack([gone[1:], gone[-1:]])
+        left = np.hstack([gone[:, :1], gone[:, :-1]])
+        out[gone & (~above | ~left)] *= 0.55  # Die Putzkante wirft Schatten in die Fehlstelle
+        out[~gone & below] *= 1.14  # Bruchkante unten fängt Licht
+        arr[..., :3] = np.clip(out, 0, 255)
+        im.paste(Image.fromarray(arr.astype(np.uint8), "RGBA"))
 
 
 def pipe_v(d, x, y0, y1, c="brass"):
@@ -483,27 +857,120 @@ def pipe_h(d, x0, x1, y):
     rust_patches(d, x0, y, x1, y + 3)
 
 
-def tenement(w, h, name=None, material=("brick",), door_at=None, lit_rate=0.65):
+def scrawl(img, x, y, word, height, seed):
+    """Parole, mit dem Pinsel an die Wand geschmiert: schief, ungleich dick, mit Farbnasen."""
+    spans = paint_text(img, x, y, word, height, [(C["paper"], 1.5, 0, 0, 0.95, 0.2)], slant=0.12, jitter=1.1, seed=seed)
+    d = draw_on(img)
+    for u0, u1 in spans[::2]:
+        m = (u0 + u1) // 2
+        d.fine_line((m, y + height, m, y + height + 2 + (m + seed) % 4), fill=C["paper"])
+
+
+def arched_window(d, x, y, w, h, bars=True):
+    """Hohes Bogenfenster in Steingewände, vergittert: So sieht eine Bank von außen aus."""
+    r = w // 2
+    d.ellipse((x - 2, y - r - 2, x + w + 1, y + r + 2), fill=C["stone_l"])
+    d.rectangle((x - 2, y, x + w + 1, y + h + 1), fill=C["stone_l"])
+    d.ellipse((x, y - r, x + w - 1, y + r), fill=C["glass_d"])
+    d.rectangle((x, y, x + w - 1, y + h), fill=C["glass_d"])
+    d.rectangle((x + r - 1, y - r - 4, x + r + 1, y - r), fill=blend(C["stone_l"], 1.08))
+    d.line((x, y, x + w - 1, y), fill=C["wood_d"])
+    d.line((x + r, y - r, x + r, y + h), fill=C["wood_d"])
+    d.hd_only_line((x + 1, y - r + 3, x + 3, y - r + 1), fill=C["glass"])
+    d.shade((x, y - r, x + w - 1, y - r + 2), 0.6)
+    d.shade((x, y - r + 3, x, y + h), 0.72)
+    if bars:
+        for u in range(x + 1, x + w - 1, 3):
+            d.fine_line((u, y - r + 2, u, y + h), fill=C["black"])
+        for v in (y + h // 3, y + 2 * h // 3):
+            d.fine_line((x, v, x + w - 1, v), fill=C["black"])
+    sill(d, x, y, w, h, C["stone_l"])
+
+
+def frieze(img, d, w, word=None):
+    """Glattes Band unter dem Gesims, darin die Inschrift, in den Stein gehauen."""
+    d.rectangle((0, 10, w, 27), fill=blend(C["stone"], 1.06))
+    ledge(d, w, 28)
+    if word:
+        tw = len(word) * 4 * 10 / 6 * 0.8 + (len(word) - 1) * 5
+        paint_text(img, w / 2 - tw / 2, 14, word, 10, [(C["stone_l"], 1.6, 0.7, 0.7, 0.9, 0), (C["soot"], 1.6, 0, 0, 0.85, 0)], gap=5, seed=3)
+
+
+def bank_front(img):
+    d = draw_on(img)
+    w = img.width
+    frieze(img, d, w, "BANK")
+    for u in range(16, 180, 34):
+        d.shade((u + 6, 32, u + 7, 74), 0.7)
+        d.rectangle((u, 32, u + 5, 75), fill=C["stone_l"])
+        d.fine_line((u + 2, 34, u + 2, 73), fill=C["stone"])
+        d.rectangle((u - 1, 30, u + 6, 32), fill=blend(C["stone_l"], 1.08))
+        d.rectangle((u - 1, 73, u + 6, 75), fill=C["stone"])
+    for u in (27, 61, 129, 163):
+        arched_window(d, u, 46, 14, 22)
+    door(d, 88, 83, 18, 38, "brass_d", False)
+    downpipe(d, 186, 2, 78)
+
+
+def bank_side(img):
+    d = draw_on(img)
+    frieze(img, d, img.width)
+    for u in (10, 38):
+        arched_window(d, u, 46, 14, 22)
+
+
+def name_plate(img, d, cx, y, name, height=9):
+    """Emailleschild: dunkle Tafel mit Messingrand und heller Schrift."""
+    tw = len(name) * 4 * height / 6 * 0.8 + (len(name) - 1) * max(1.5, height / 6 * 1.3)
+    x0, x1 = int(cx - tw / 2 - 5), int(cx + tw / 2 + 5)
+    d.shade((x0 + 1, y + height + 5, x1 + 1, y + height + 6), 0.6)
+    d.rectangle((x0, y - 4, x1, y + height + 4), fill=C["brass_d"])
+    d.rectangle((x0 + 1, y - 3, x1 - 1, y + height + 3), fill=C["black"])
+    paint_text(img, cx - tw / 2, y, name, height, [(C["brass_l"], 1.4, 0, 0, 1.0, 0.25)], seed=len(name))
+
+
+def tenement(w, h, name=None, material=("brick",), door_at=None, lit_rate=0.65, render=None, corner_stones=False,
+             balconies=(), bays=(), pipes=()):
+    """Fassade eines Mietshauses. render: Putzfarbe über den Ziegeln. balconies: (Spalte, Geschoss). bays: (Spalte, von, bis)."""
     img, d = wall(w, h, material)
-    d.rectangle((0, 0, w, 3), fill=C["stone_l"])
+    if render:
+        plaster(img, render, DETAIL.randrange(1 << 16))
+        for _ in range(w * h // 5200):
+            patch(d, DETAIL.randint(8, w - 30), DETAIL.randint(14, h - 40), DETAIL.randint(8, 18), DETAIL.randint(5, 12),
+                  blend(mix(render, C["ash"], 0.4), 0.9 + 0.2 * DETAIL.random()))
     floors = (h - 6) // 42
+    columns = list(range(10, w - 16, 26))
+    plinth(d, w, h)
+    for column, first, last in bays:
+        u = columns[column]
+        bay(d, u - 7, u + 26 + 11 + 7, h - last * 42 - 38, h - first * 42 - 8, blend(render or C["stone"], 1.08))
     for f in range(floors):
         base = h - f * 42
         if f:
             ledge(d, w, base)
-        for u in range(10, w - 16, 26):
+            for column, first, last in bays:
+                u = columns[column]
+                if first <= f <= last:
+                    d.rectangle((u - 7, base, u + 44, base + 1), fill=blend(render or C["stone"], 1.16))
+        for i, u in enumerate(columns):
             if f == 0:
                 continue
             lit = RNG.random() < lit_rate
             window(d, u, base - 32, lit=lit)
             if lit:
                 img.info.setdefault("panes", []).append((u, base - 32, 11, 18))
+            if (i, f) in balconies:
+                balcony(d, u, base - 32)
+    cornice(d, w)
+    if corner_stones:
+        quoins(d, w, 10, h - 10)
+    for u in pipes:
+        downpipe(d, u, 2, h - 3)
     if door_at is not None:
         door(d, door_at, h - 1)
     if name:
-        tw, th = text_size(name, 2)
-        d.rectangle((w // 2 - tw // 2 - 4, h - 44 - th, w // 2 + tw // 2 + 4, h - 42), fill=C["black"])
-        text(d, w // 2 - tw // 2, h - 43 - th + 1, name, C["brass_l"], 2, worn=0.08)
+        name_plate(img, d, w // 2, h - 56, name)
+    chip_corners(d, w, h)
     return img
 
 
@@ -654,6 +1121,7 @@ class Thing:
         self.kind = ""
         self.panes = []
         self.hd = True  # zeichnet sich auch in doppelter Auflösung
+        self.prisms = []  # Dachkörper, siehe roofs.py
 
 
 def behind(a, b):
@@ -771,10 +1239,320 @@ def roof_color(a, b, w, d):
     return blend(c, 0.74 + 0.34 * n)
 
 
-def building(x0, y0, w, d, h, left, right, s, things, roof_items=()):
+# ---------- Dachflächen: Farbe je getroffenem Punkt, für roofs.render ----------
+def _c(name):
+    return np.array(C[name], np.float64)
+
+
+def _grime(f, strength=0.3, seed=3):
+    """Großflächige Verfärbung, damit keine Dachfläche gleichmäßig aussieht."""
+    return 1 - strength + 2 * strength * R.noise(f.fx * 2.3, f.fy * 2.3 + f.z / 40, seed)
+
+
+def mat_slate(f):
+    """Schieferdeckung in versetzten Reihen. Einzelne Platten fehlen oder sind ersetzt, unten sitzt Moos."""
+    u, v = f.slope_uv()
+    k = f.res
+    course = np.floor(v / (4 * k))
+    uu = u + (course % 2) * 3 * k
+    tile = np.floor(uu / (6 * k))
+    pick = R.hash01(tile, course, 11)
+    col = np.array((60, 64, 80), np.float64)[None, :] * (0.78 + 0.44 * R.hash01(tile, course, 12))[:, None]
+    col = np.where((pick > 0.955)[:, None], _c("wood_d")[None, :] * 0.8, col)
+    col = np.where(((pick < 0.05))[:, None], np.array((92, 96, 108.0))[None, :], col)
+    joint = (np.floor(v) % (4 * k) == 0) | (np.floor(uu) % (6 * k) == 0)
+    col = col * np.where(joint, 0.6, 1.0)[:, None]
+    moss = (R.noise(f.fx * 5, f.fy * 5, 21) > 0.62) & (R.noise(u / k / 2.0, v / k / 2.0, 22) > 0.45)
+    col = np.where(moss[:, None], col * 0.6 + _c("moss")[None, :] * 0.4, col)
+    return col * _grime(f)[:, None]
+
+
+def mat_tar(f):
+    """Dachpappe in Bahnen mit Nähten, Flicken und stehendem Wasser."""
+    k = f.res
+    a, b = f.fx - f.prism.x0, f.fy - f.prism.y0
+    lane = np.floor(a * 2)
+    col = (_c("tar_l") * 0.55 + _c("gravel") * 0.45)[None, :] * (0.84 + 0.3 * R.hash01(lane, 3, 5))[:, None]
+    seam = np.floor(a * HW * k) % (HW * k // 2) == 0
+    col = np.where(seam[:, None], _c("soot")[None, :], col)
+    spot = R.hash01(np.floor(a * 2.5), np.floor(b * 2.5), 8)
+    col = np.where((spot > 0.84)[:, None], col * 0.45 + _c("soot")[None, :] * 0.55, col)
+    col = np.where((spot < 0.08)[:, None], col * 0.7 + _c("plaster")[None, :] * 0.3, col)
+    n = R.noise(a * 3.2, b * 3.2, 9)
+    fine = R.noise(a * 14, b * 14, 10)
+    col = np.where(((n > 0.74) & (fine > 0.3))[:, None], col * 0.25 + _c("puddle")[None, :] * 0.75, col)
+    col = col * (1 + 0.12 * (R.hash01(np.floor(a * HW * k), np.floor(b * HW * k), 4) > 0.93))[:, None]
+    return col * (0.74 + 0.34 * n)[:, None]
+
+
+def mat_copper(f):
+    """Kupferblech mit Stehfalzen, grün angelaufen, mit dunklen Laufspuren."""
+    u, v = f.slope_uv()
+    k = f.res
+    col = np.array((86, 132, 116), np.float64)[None, :] * (0.8 + 0.4 * R.noise(u / k / 9, v / k / 5, 31))[:, None]
+    bare = R.noise(f.fx * 4, f.fy * 4, 32) > 0.72
+    col = np.where(bare[:, None], col * 0.5 + np.array((120, 84, 56.0))[None, :] * 0.5, col)
+    streak = R.noise(u / k / 1.5, v / k / 30, 33) > 0.68
+    col = col * np.where(streak, 0.78, 1.0)[:, None]
+    seam = np.floor(u) % (7 * k) == 0
+    col = col * np.where(seam, 0.62, 1.0)[:, None]
+    lit = np.floor(u) % (7 * k) == 1
+    return col * np.where(lit, 1.12, 1.0)[:, None]
+
+
+def mat_sheet(f, base=(100, 106, 114), rust=1.0):
+    """Wellblech: Wellen entlang des Gefälles, Tafeln überlappen, Rost läuft von den Stößen aus nach unten."""
+    u, v = f.slope_uv()
+    k = f.res
+    wave = 0.88 + 0.16 * np.sin(u / k * 2 * math.pi / 3)
+    col = np.array(base, np.float64)[None, :] * wave[:, None]
+    lap = np.floor(v) % (13 * k) == 0
+    col = col * np.where(lap, 0.62, 1.0)[:, None]
+    panel = R.hash01(np.floor(u / k / 24), np.floor(v / k / 13), 43)
+    col = col * (0.9 + 0.2 * panel)[:, None]
+    field = R.noise(u / k / 16, v / k / 9, 41) * 0.7 + R.noise(u / k / 2.2, v / k / 11, 42) * 0.3
+    rusty = np.clip((field - 0.6 + 0.1 * rust) * 4, 0, 1)[:, None] * min(1.0, rust)
+    brown = (_c("rust") * 0.6 + _c("rust_d") * 0.4)[None, :] * wave[:, None]
+    col = col * (1 - rusty * 0.85) + brown * rusty * 0.85
+    return col * _grime(f, 0.2)[:, None]
+
+
+def glazing(u, v, k, lit_share, seed, pane_w=7, pane_h=9):
+    """Verglasung mit Eisensprossen. Licht kommt von einzelnen Lampen dahinter, deshalb leuchten Scheiben in Gruppen.
+
+    Gibt Farbe und die Maske der selbstleuchtenden Punkte zurück.
+    """
+    cell_u, cell_v = np.floor(u / (pane_w * k)), np.floor(v / (pane_h * k))
+    pick = R.hash01(cell_u, cell_v, seed)
+    lamp = R.noise(cell_u / 3.5, cell_v / 2.0, seed + 2) + 0.25 * pick
+    lit = (lamp > 1.02 - lit_share) & (lit_share > 0)
+    depth = (v / k - cell_v * pane_h) / pane_h
+    warm = _c("gas_d")[None, :] * (1 - depth * 0.25)[:, None] + _c("gas")[None, :] * (depth * 0.25)[:, None]
+    dirt = 0.6 + 0.6 * R.noise(u / k / 3, v / k / 3, seed + 1)
+    dark = (_c("glass_d") * 0.75 + _c("soot") * 0.25)[None, :] * dirt[:, None]
+    col = np.where(lit[:, None], warm, dark)
+    col = np.where((pick > 0.94)[:, None], _c("black")[None, :], col)
+    patched = (pick > 0.86) & (pick <= 0.94)
+    col = np.where(patched[:, None], _c("iron")[None, :] * 0.9, col)  # mit Blech geflickt
+    bars = (np.floor(u) % (pane_w * k) == 0) | (np.floor(v) % (pane_h * k) == 0)
+    col = np.where(bars[:, None], _c("iron")[None, :] * 0.7, col)
+    glow = lit & ~bars & (pick <= 0.86)
+    return col, glow
+
+
+def brick_np(u, v, k, seed=0):
+    """Mauerwerk wie in wall(), für Giebel und Schornsteine. u, v in Bildpunkten der Auflösung."""
+    row = np.floor(v / (4 * k))
+    mortar = (np.floor(v) % (4 * k) == 4 * k - 1) | (np.floor(u + (row % 2) * 4 * k) % (8 * k) == 8 * k - 1)
+    stone = np.floor((u + (row % 2) * 4 * k) / (8 * k))
+    pick = R.hash01(stone, row, seed)
+    col = np.where((pick < 0.1)[:, None], _c("brick_d")[None, :], np.where((pick > 0.9)[:, None], _c("brick_l")[None, :], _c("brick")[None, :]))
+    col = np.where(mortar[:, None], _c("mortar")[None, :], col)
+    grime = 0.86 * (1 - np.clip(R.noise(u / k / 15, v / k / 15, seed + 1) - 0.55, 0, 1) * 0.95)
+    return (col * grime[:, None]) * 0.88 + _c("grime")[None, :] * 0.12
+
+
+def mat_mansard(f):
+    if f.kind != "plane":
+        return brick_np(*f.wall_uv(), f.res)
+    if f.plane == len(f.prism.planes) - 1:
+        return mat_tar(f)
+    if f.plane >= 4:
+        return mat_sheet(f, (92, 98, 110), 0.25)  # das flache Oberdach ist mit Zinkblech gedeckt
+    col = mat_slate(f)
+    # Unten an der Traufe sammelt sich der Dreck.
+    low = np.clip(1 - (f.z - f.prism.z0) / 6, 0, 1)
+    return col * (1 - 0.35 * low)[:, None]
+
+
+def mat_shed(f):
+    """Sheddach der Fabrik: Blech auf der flachen Seite, Glas mit Sprossen auf der steilen, Giebel wie die Wand."""
+    k = f.res
+    if f.kind == "plane":
+        return mat_sheet(f, (84, 92, 96), 0.7)
+    u, v = f.wall_uv()
+    top = f.prism.top()
+    if f.kind == "x1":
+        vv = v + top * k
+        col, glow = glazing(u, vv - 2 * k, k, 0.3, 51 + int(f.prism.x0 * 10), 5, 7)
+        frame = (vv < 2 * k) | (f.z - f.prism.z0 < 2)
+        col = np.where(frame[:, None], _c("iron")[None, :], col)
+        return col, glow & ~frame
+    un = np.floor(u / k) % 6
+    col = np.where((un == 0)[:, None], _c("green_d")[None, :], np.where((un == 2)[:, None], _c("green_l")[None, :], _c("green")[None, :]))
+    return col * 0.8 * _grime(f, 0.2)[:, None]
+
+
+def mat_gable_brick(f):
+    """Satteldach des Lagers: Wellblech mit einem Lichtband, der Giebel gemauert mit Ladeluke."""
+    k = f.res
+    p = f.prism
+    if f.kind == "plane":
+        col = mat_sheet(f)
+        if f.normal[0] > 0:
+            up = (f.z - p.z0) / max(1e-6, p.top() - p.z0)
+            along = (f.fy - p.y0) / (p.y1 - p.y0)
+            band = (up > 0.36) & (up < 0.62) & (np.abs(along - 0.5) < 0.36) & (np.floor(along * 9) % 3 != 2)
+            u, v = f.slope_uv()
+            g, glow = glazing(u, v, k, 0.0, 61, 5, 4)
+            col = np.where(band[:, None], g, col)
+        return col
+    u, v = f.wall_uv()
+    col = brick_np(u, v + p.z0 * k, k, 7)
+    if f.kind == "y1":
+        mid = (p.x1 - p.x0) * HW / 2
+        uu, zz = u / k - mid, f.z - p.z0
+        hatch = (np.abs(uu) < 7) & (zz > 6) & (zz < 22)
+        planks = np.floor(u / k) % 3 == 0
+        col = np.where(hatch[:, None], _c("wood")[None, :] * np.where(planks, 0.6, 1.0)[:, None], col)
+        frame = (np.abs(uu) < 9) & (zz > 4) & (zz < 24) & ~hatch
+        col = np.where(frame[:, None], _c("stone_l")[None, :], col)
+        beam = (np.abs(uu) < 1.5) & (zz >= 24) & (zz < 30)
+        col = np.where(beam[:, None], _c("iron")[None, :], col)
+        # Verrußt unter dem First
+        col = col * (1 - 0.3 * np.clip((zz - 26) / 14, 0, 1))[:, None]
+    return col
+
+
+def mat_hip(f):
+    return mat_copper(f) if f.kind == "plane" else brick_np(*f.wall_uv(), f.res)
+
+
+def mat_pediment(f):
+    """Giebeldreieck der Bank: heller Stein mit Gesims an den Schrägen und einem runden Fenster."""
+    if f.kind != "y1":
+        return mat_copper(f) if f.kind == "plane" else _c("stone")[None, :] * np.ones((len(f.z), 1))
+    p = f.prism
+    mid = (p.x0 + p.x1) / 2
+    edge = np.minimum.reduce([(d - a * f.fx - b * f.fy) / c - f.z for a, b, c, d, *_ in p.planes])
+    zz = f.z - p.info["base"]
+    col = _c("stone")[None, :] * (0.9 + 0.2 * R.noise(f.fx * 9, f.z / 4, 71))[:, None]
+    col = np.where(((edge < 3.2) | (zz < 3))[:, None], _c("stone_l")[None, :], col)
+    col = np.where((((edge >= 3.2) & (edge < 4.2)) | ((zz >= 3) & (zz < 4)))[:, None], _c("soot")[None, :], col)
+    r = np.hypot((f.fx - mid) * HW, zz - 11)
+    col = np.where((r < 5)[:, None], _c("stone_l")[None, :], col)
+    col = np.where((r < 3.6)[:, None], _c("glass_d")[None, :], col)
+    return col
+
+
+def mat_chimney(f):
+    p = f.prism
+    k = f.res
+    top = p.top()
+    if f.kind == "plane":
+        a, b = (f.fx - p.x0) / (p.x1 - p.x0), (f.fy - p.y0) / (p.y1 - p.y0)
+        rim = np.minimum.reduce([a, b, 1 - a, 1 - b])
+        return np.where((rim > 0.26)[:, None], _c("black")[None, :], _c("stone_l")[None, :] * 0.9)
+    u, v = f.wall_uv()
+    col = brick_np(u, v + top * k, k, int(p.x0 * 37 + p.y0 * 11))
+    col = np.where((top - f.z < 3)[:, None], _c("stone_l")[None, :], col)
+    col = np.where(((top - f.z >= 3) & (top - f.z < 4))[:, None], _c("soot")[None, :], col)
+    return col * (0.62 + 0.38 * np.clip((top - f.z) / 12, 0, 1))[:, None]  # oben vom Rauch schwarz
+
+
+def mat_vent(f):
+    """Lüfterhaube aus Blech mit Lamellen an den Seiten."""
+    p = f.prism
+    if f.kind == "plane":
+        return _c("steel")[None, :] * (0.8 + 0.2 * R.noise(f.fx * 30, f.fy * 30, 80))[:, None]
+    down = p.top() - f.z
+    col = _c("steel")[None, :] * np.ones((len(f.z), 1)) * 0.9
+    slat = (np.floor(down * f.res) % (2 * f.res) == 0) & (down > 2)
+    col = np.where(slat[:, None], _c("soot")[None, :], col)
+    return np.where(((R.noise(f.fx * 40, f.z / 2, 82) > 0.74) & ~slat)[:, None], _c("rust")[None, :] * 0.8, col)
+
+
+def mat_hatch(f):
+    """Dachluke oder Oberlicht: Glas in einem Eisenrahmen, liegt auf der Dachschräge."""
+    p = f.prism
+    if f.kind != "plane":
+        return _c("iron")[None, :] * np.ones((len(f.z), 1))
+    k = f.res
+    a, b = (f.fx - p.x0) * HW * k, (f.fy - p.y0) * HW * k
+    col, glow = glazing(a - k, b - k, k, p.info.get("lit", 0.4), int(p.x0 * 53 + p.y0 * 17), 6, 6)
+    wa, wb = (p.x1 - p.x0) * HW * k, (p.y1 - p.y0) * HW * k
+    frame = (a < k) | (b < k) | (a > wa - 2 * k) | (b > wb - 2 * k)
+    col = np.where(frame[:, None], _c("brass_d")[None, :], col)
+    return col, glow & ~frame
+
+
+def mat_dormer(f):
+    """Gaube: Fenster in der Stirnseite, Wangen aus Zinkblech, kleines Schieferdach."""
+    p = f.prism
+    k = f.res
+    front = "y1" if p.name == "dormer_y" else "x1"
+    if f.kind == "plane":
+        return mat_slate(f)
+    if f.kind != front:
+        return _c("steel")[None, :] * (0.7 + 0.2 * R.noise(f.fx * 20, f.z / 3, 91))[:, None]
+    wall = p.info["wall"]
+    if front == "y1":
+        u, width = (f.fx - p.x0) * HW, (p.x1 - p.x0) * HW
+    else:
+        u, width = (p.y1 - f.fy) * HW, (p.y1 - p.y0) * HW
+    down = wall - f.z
+    col = _c("stone_l")[None, :] * (0.85 + 0.15 * R.noise(u, f.z / 2, 92))[:, None] * np.ones((len(u), 1))
+    col = np.where((down < 0)[:, None], _c("wood")[None, :] * np.where(np.floor(u * k) % (2 * k) == 0, 0.7, 1.0)[:, None], col)
+    glass = (u > 2.5) & (u < width - 2.5) & (down > 1.5) & (down < p.info["glass"])
+    lit = p.info["lit"]
+    pane = (_c("gas_d") if lit else _c("glass_d"))[None, :] * (1 - 0.3 * (down < 3.5))[:, None]
+    bars = (np.abs(np.floor(u * k) - np.floor(width * k / 2)) < 1) | (np.abs(np.floor(down * k) - np.floor(5.5 * k)) < 1)
+    pane = np.where(bars[:, None], _c("wood_d")[None, :], pane)
+    col = np.where(glass[:, None], pane, col)
+    glow = glass & ~bars & (down >= 3.5) if lit else np.zeros(len(u), bool)
+    return col, glow
+
+
+# ---------- Dachformen der Häuser ----------
+def roof_mansard(dormers_y=(), dormers_x=(), steep=30, upper=6):
+    """Mansarddach mit Gauben. dormers_y und dormers_x: Lage der Gauben entlang der linken und rechten Fassade in Feldern."""
+    def make(x0, y0, x1, y1, h):
+        prisms = [R.mansard(x0, y0, x1, y1, h, steep=steep, upper=upper, material=mat_mansard)]
+        for along, facing in [(a, "y") for a in dormers_y] + [(a, "x") for a in dormers_x]:
+            if facing == "y":
+                p = R.dormer(x0 + along, x0 + along + 0.44, y1 - 0.1, 0.9, h, h + steep - 9, h + steep - 1, "y", mat_dormer)
+            else:
+                p = R.dormer(y1 - along - 0.44, y1 - along, x1 - 0.1, 0.9, h, h + steep - 9, h + steep - 1, "x", mat_dormer)
+            p.info = {"wall": h + steep - 9, "glass": steep - 9 - 60 * 0.1 - 2, "lit": DETAIL.random() < 0.35}
+            prisms.append(p)
+        return prisms
+    return make
+
+
+def roof_gable(rise, ridge="y", sag=2.0, material=mat_gable_brick):
+    def make(x0, y0, x1, y1, h):
+        return [R.gable(x0, y0, x1, y1, h, rise, ridge, sag, material)]
+    return make
+
+
+def roof_shed(teeth, rise):
+    def make(x0, y0, x1, y1, h):
+        return R.sawtooth(x0, y0, x1, y1, h, teeth, rise, mat_shed, sag=1.2)
+    return make
+
+
+def roof_bank(rise=24, pediment_at=3.03, pediment_w=1.7, pediment_h=34):
+    """Walmdach aus Kupfer, über dem Eingang ein Giebeldreieck."""
+    def make(x0, y0, x1, y1, h):
+        k = pediment_h / (pediment_w / 2)
+        xm = x0 + pediment_at
+        front = R.Prism(xm - pediment_w / 2, y1 - 0.8, xm + pediment_w / 2, y1, h,
+                        [R.rise_from("x0", xm - pediment_w / 2, h, k), R.rise_from("x1", xm + pediment_w / 2, h, k)], mat_pediment, "pediment")
+        front.info = {"base": h}
+        return [R.hip(x0, y0, x1, y1, h, rise, 44, mat_hip), front]
+    return make
+
+
+def building(x0, y0, w, d, h, left, right, s, things, roof_items=(), roof=None):
+    prisms = roof(x0, y0, x0 + w, y0 + d, h) if roof else []
+
     def draw():
-        box(s, x0, y0, x0 + w, y0 + d, 0, h, left, right, roof_color)
+        box(s, x0, y0, x0 + w, y0 + d, 0, h, left, right, (lambda a, b, w2, d2: None) if prisms else roof_color)
+        if prisms:
+            R.render(s, prisms)
     things.append(Thing(x0, y0, x0 + w, y0 + d, 0, h, draw, solid=True, opaque=True))
+    house = things[-1]
+    house.prisms = prisms
     # Erleuchtete Fenster mit ihrer Lage im Bild, damit das Spiel sie einzeln schalten kann
     west = s.to_screen(x0, y0 + d, h)
     south = s.to_screen(x0 + w, y0 + d, h)
@@ -782,85 +1560,163 @@ def building(x0, y0, w, d, h, left, right, s, things, roof_items=()):
         for u, v, pw, ph, *fixed in tex.info.get("panes", []):
             things[-1].panes.append({"x": int(origin[0]), "y": int(origin[1]), "slope": slope, "u": u, "v": v, "w": pw, "h": ph, "kind": "window", "type": fixed[0] if fixed else ""})
     for item in roof_items:
-        item(x0, y0, w, d, h, s, things)
+        item(x0, y0, w, d, h, s, things, house)
 
 
-def chimney(fx, fy, hc=26, smoke=True):
-    def add(x0, y0, w, d, h, s, things):
+def roof_base(house, h, x, y, x1=None, y1=None):
+    """Höhe des Dachs unter einem Aufbau: der höchste Punkt unter seiner Grundfläche."""
+    if not house.prisms:
+        return h
+    points = [(x, y)] if x1 is None else [(x, y), (x1, y), (x, y1), (x1, y1), ((x + x1) / 2, (y + y1) / 2)]
+    return max(R.height_at(house.prisms, px, py) or h for px, py in points)
+
+
+def roof_block(size, height, material, kind_smoke=False):
+    """Quader, der aus dem Dach ragt. Er wird mit dem Dach zusammen geschnitten: Was der First verdeckt, fehlt im Bild."""
+    def make(fx, fy, hc=height, smoke=kind_smoke):
+        def add(x0, y0, w, d, h, s, things, house):
+            x, y = x0 + fx * w, y0 + fy * d
+            top = roof_base(house, h, x, y, x + size, y + size) + hc
+            body = R.block(x, y, x + size, y + size, h, top, material)
+            if smoke:
+                cx, cy = s.to_screen(x + size / 2, y + size / 2, top)
+                AMBIENT["smoke"].append([int(cx), int(cy) - 2])
+
+            def draw():
+                R.render(s, house.prisms + [body], only={body})
+            things.append(Thing(x, y, x + size, y + size, h, top, draw))
+        return add
+    return make
+
+
+chimney = roof_block(0.32, 26, mat_chimney, True)
+vent = roof_block(0.34, 10, mat_vent)
+
+
+def skylight(fx, fy, lit=0.4, size=(0.9, 0.6)):
+    """Oberlicht: Glas mit Sprossen in einem Rahmen, liegt auf der Dachfläche und folgt ihrer Neigung."""
+    def add(x0, y0, w, d, h, s, things, house):
         x, y = x0 + fx * w, y0 + fy * d
-        if smoke:
-            cx, cy = s.to_screen(x + 0.16, y + 0.16, h + hc)
-            AMBIENT["smoke"].append([int(cx), int(cy) - 2])
-        made = []
+        mx, my = x + size[0] / 2, y + size[1] / 2
+        plane = R.flat(h + 5)
+        for p in house.prisms:
+            if p.height(mx, my) is not None and p.height(mx, my) >= roof_base(house, h, mx, my) - 0.01:
+                plane = R.lifted(min((q for q in p.planes if q[2] > 0), key=lambda q: (q[3] - q[0] * mx - q[1] * my) / q[2])[:4], 4)
+        hatch = R.Prism(x, y, x + size[0], y + size[1], h, [plane], mat_hatch, "hatch")
+        hatch.info = {"lit": lit}
 
         def draw():
-            if not made:
-                tl, dl = wall(10, hc, ("brick",))
-                tr, dr = wall(10, hc, ("brick",))
-                dl.rectangle((0, 0, 10, 3), fill=C["stone_l"])
-                dr.rectangle((0, 0, 10, 3), fill=C["stone_l"])
-                made.extend((tl, tr))
-            box(s, x, y, x + 0.32, y + 0.32, h, hc, made[0], made[1], lambda a, b, w2, d2: C["black"])
-        things.append(Thing(x, y, x + 0.32, y + 0.32, h, h + hc, draw))
-    return add
-
-
-def skylight(fx, fy):
-    def add(x0, y0, w, d, h, s, things):
-        x, y = x0 + fx * w, y0 + fy * d
-        def draw():
-            box(s, x, y, x + 0.9, y + 0.6, h, 6, base="brass_d",
-                top=lambda a, b, w2, d2: C["gas"] if (int(a * 6) + 0) % 2 and b > 0.06 else C["brass_d"])
-        things.append(Thing(x, y, x + 0.9, y + 0.6, h, h + 6, draw))
-    return add
-
-
-def vent(fx, fy):
-    def add(x0, y0, w, d, h, s, things):
-        x, y = x0 + fx * w, y0 + fy * d
-        def draw():
-            box(s, x, y, x + 0.34, y + 0.34, h, 10, base="steel", top=lambda a, b, w2, d2: C["iron"])
-        things.append(Thing(x, y, x + 0.34, y + 0.34, h, h + 10, draw))
+            R.render(s, house.prisms + [hatch], only={hatch})
+        things.append(Thing(x, y, x + size[0], y + size[1], h, hatch.top(), draw))
     return add
 
 
 def water_tank(fx, fy):
-    def add(x0, y0, w, d, h, s, things):
+    def add(x0, y0, w, d, h, s, things, house):
         x, y = x0 + fx * w, y0 + fy * d
+        base = roof_base(house, h, x + 0.4, y + 0.4)
+
         def draw():
             k = s.res
-            cx, cy = s.to_screen(x + 0.4, y + 0.4, h)
+            cx, cy = s.to_screen(x + 0.4, y + 0.4, base)
+            cx, cy = int(cx), int(cy)
             for lx in (-9, 8):
                 s.rect(cx + lx * k, cy - 16 * k, 2 * k, 16 * k, C["iron"])
-            cylinder(s, cx, cy - 12 * k, 12, 24, ("wood_d", "wood", "brass"), bands=True)
-        things.append(Thing(x, y, x + 0.8, y + 0.8, h, h + 40, draw))
+            # Kreuzstreben zwischen den Beinen, fein gezeichnet
+            d2 = ImageDraw.Draw(s.img)
+            d2.line((cx - 8 * k, cy - 2 * k, cx + 8 * k, cy - 14 * k), fill=C["iron"] + (255,), width=1)
+            d2.line((cx - 8 * k, cy - 14 * k, cx + 8 * k, cy - 2 * k), fill=C["iron"] + (255,), width=1)
+            cylinder(s, cx, cy - 12 * k - 24 * k, 12, 24, ("wood_d", "wood", "brass"), bands=True)
+        things.append(Thing(x, y, x + 0.8, y + 0.8, base, base + 40, draw))
     return add
 
 
-def roof_sign(word, fy=0.92):
-    def add(x0, y0, w, d, h, s, things):
-        y = y0 + fy * d
-        tw, th = text_size(word, 3)
-        tex = canvas(tw + 8, th + 12, (0, 0, 0, 0))
-        dr = draw_on(tex)
-        for u in range(2, tw + 6, 12):
-            dr.rectangle((u, th + 4, u + 1, th + 11), fill=C["iron"])
-        dr.rectangle((0, th + 4, tw + 7, th + 5), fill=C["iron"])
-        text(dr, 4, 1, word, C["brass"], 3, worn=0.14)
+def clothesline(fx0, fy0, fx1, fy1):
+    """Wäscheleine zwischen zwei Pfosten auf dem Dach."""
+    def add(x0, y0, w, d, h, s, things, house):
+        ax, ay, bx, by = x0 + fx0 * w, y0 + fy0 * d, x0 + fx1 * w, y0 + fy1 * d
+        base = roof_base(house, h, (ax + bx) / 2, (ay + by) / 2)
+        wash = [(DETAIL.uniform(0.1, 0.9), DETAIL.randint(3, 6), DETAIL.randint(5, 10),
+                 DETAIL.choice(["paper", "cream", "grey_l", "awn_w", "navy_l", "wine_l"])) for _ in range(5)]
+
         def draw():
-            west = s.to_screen(x0 + 0.3, y + 0.05, h + tex.height)
+            k = s.res
+            dr = ImageDraw.Draw(s.img)
+            a, b = s.to_screen(ax, ay, base), s.to_screen(bx, by, base)
+            for px, py in (a, b):
+                dr.rectangle((px - k // 2, py - 15 * k, px + k // 2, py), fill=C["wood_d"] + (255,))
+                dr.line((px - 2 * k, py - 14 * k, px + 2 * k, py - 14 * k), fill=C["wood_d"] + (255,))
+            rope = lambda t: (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t - 14 * k + math.sin(math.pi * t) * 3 * k)  # noqa: E731
+            pts = [rope(i / 24) for i in range(25)]
+            dr.line(pts, fill=C["ash"] + (255,), width=1)
+            for t, cw, ch, col in sorted(wash):
+                px, py = rope(t)
+                dr.rectangle((px, py, px + cw * k, py + ch * k), fill=C[col] + (255,))
+                dr.line((px, py + ch * k, px + cw * k, py + ch * k), fill=blend(C[col], 0.7) + (255,))
+                dr.line((px + cw * k, py, px + cw * k, py + ch * k), fill=blend(C[col], 0.8) + (255,))
+        things.append(Thing(min(ax, bx), min(ay, by), max(ax, bx) + 0.05, max(ay, by) + 0.05, base, base + 16, draw))
+    return add
+
+
+def roof_mast(fx, fy, height=30):
+    """Dachständer: Mast mit Querträgern und Isolatoren, die Drähte laufen durchhängend nach hinten aus dem Bild."""
+    def add(x0, y0, w, d, h, s, things, house):
+        x, y = x0 + fx * w, y0 + fy * d
+        base = roof_base(house, h, x, y)
+
+        def draw():
+            k = s.res
+            dr = ImageDraw.Draw(s.img)
+            px, py = s.to_screen(x, y, base)
+            dr.rectangle((px - k // 2, py - height * k, px + k // 2, py), fill=C["iron"] + (255,))
+            dr.line((px - 5 * k, py, px, py - 9 * k), fill=C["iron"] + (255,))
+            for i, up in enumerate((height - 2, height - 9)):
+                ty = py - up * k
+                dr.line((px - 7 * k, ty + 3 * k, px + 7 * k, ty - 3 * k), fill=C["iron"] + (255,), width=max(1, k // 2 + 1))
+                for side in (-6, -3, 3, 6):
+                    ix, iy = px + side * k, ty - side * k * 3 // 7
+                    dr.rectangle((ix - k // 2, iy - 2 * k, ix + k // 2, iy), fill=C["paper"] + (255,))
+                    # Draht: läuft nach hinten links weg und hängt durch
+                    span = (70 + i * 14) * k
+                    pts = [(ix - span * t, iy - 2 * k - span * t * 0.36 + math.sin(math.pi * min(1, t * 1.1)) * 7 * k) for t in (j / 16 for j in range(17))]
+                    dr.line(pts, fill=C["soot"] + (255,), width=1)
+        things.append(Thing(x - 0.1, y - 0.1, x + 0.1, y + 0.1, base, base + height, draw))
+    return add
+
+
+NEON = [((92, 22, 30), 3.6, 0, 0, 0.9, 0), ((226, 62, 52), 2.0, 0, 0, 1.0, 0), ((255, 186, 160), 0.8, 0, 0, 1.0, 0)]
+
+
+def roof_sign(word, fx=0.18, fy=0.65, height=13):
+    """Leuchtreklame auf einem Eisengerüst über dem Dach. Jeder Buchstabe ist eine eigene Röhre und wird einzeln geschaltet."""
+    def add(x0, y0, w, d, h, s, things, house):
+        x, y = x0 + fx * w, y0 + fy * d
+        base = roof_base(house, h, x + 0.5, y)
+        scale = height / 6
+        gap = scale * 1.5
+        tw = int(len(word) * 4 * scale * 0.8 + (len(word) - 1) * gap)
+        legs = 10
+        tex = canvas(tw + 10, height + 6 + legs, (0, 0, 0, 0))
+        dr = draw_on(tex)
+        top = height + 5
+        # Gerüst: zwei Gurte, Pfosten und Kreuzstreben
+        dr.rectangle((0, top, tw + 9, top), fill=C["iron"])
+        dr.rectangle((0, top + legs - 1, tw + 9, top + legs - 1), fill=C["iron"])
+        for u in range(1, tw + 8, 12):
+            dr.rectangle((u, top, u, top + legs - 1), fill=C["iron"])
+            dr.fine_line((u, top, min(tw + 9, u + 12), top + legs - 1), fill=C["soot"])
+            dr.fine_line((u, top + legs - 1, min(tw + 9, u + 12), top), fill=C["soot"])
+        # Rückwand aus Blechstreifen, damit die Röhren Halt haben
+        dr.fine_line((2, 2 + height // 2, tw + 7, 2 + height // 2), fill=C["soot"])
+        spans = paint_text(tex, 5, 3, word, height, NEON, gap=gap, seed=5)
+
+        def draw():
+            west = s.to_screen(x, y + 0.05, base + tex.height)
             shear(s, tex, int(west[0]), int(west[1]), 0.5, 1.0)
-        things.append(Thing(x0 + 0.3, y, x0 + 0.3 + tex.width / HW, y + 0.05, h, h + tex.height, draw))
-        # Jeder Buchstabe des Schilds wird einzeln geschaltet: Spalten mit Farbe, getrennt durch leere Spalten.
-        west = s.to_screen(x0 + 0.3, y + 0.05, h + tex.height)
-        start = None
-        for u in range(tex.width + 1):
-            used = u < tex.width and any(tex.getpixel((u, v))[3] for v in range(1, th + 2))
-            if used and start is None:
-                start = u
-            elif not used and start is not None:
-                things[-1].panes.append({"x": int(west[0]), "y": int(west[1]), "slope": 0.5, "u": start, "v": 1, "w": u - start, "h": th + 1, "kind": "sign"})
-                start = None
+        things.append(Thing(x, y, x + tex.width / HW, y + 0.05, base, base + tex.height, draw))
+        west = s.to_screen(x, y + 0.05, base + tex.height)
+        for u0, u1 in spans:
+            things[-1].panes.append({"x": int(west[0]), "y": int(west[1]), "slope": 0.5, "u": u0 - 2, "v": 0, "w": u1 - u0 + 4, "h": height + 5, "kind": "sign"})
     return add
 
 
@@ -1328,6 +2184,17 @@ def draw_ground(s, solids, glows, dirt=None):
     return dirt
 
 
+def restore_random(point):
+    """Setzt den Zufall auf den Stand, den er vor dem Umbau der Häuser an dieser Stelle hatte (rng_freeze.json).
+
+    Davon hängt ab, welche Fenster leuchten und wo Pfützen und Dreck liegen, also auch das Licht fürs Schleichen.
+    Neue Einzelheiten der Häuser nehmen deshalb DETAIL und lassen diese Folgen in Ruhe.
+    """
+    frozen = json.loads(Path(__file__).with_name("rng_freeze.json").read_text())[point]
+    for name, (version, state, gauss) in frozen.items():
+        globals()[name].setstate((version, tuple(state), gauss))
+
+
 def build_scene(with_people=True):
     global DUAL
     DUAL = not with_people  # Feinfassungen braucht nur der Export
@@ -1337,76 +2204,117 @@ def build_scene(with_people=True):
         points.clear()
     solids = [(1, 1, 6, 6), (0, 7, 6, 9), (1, 12, 6, 17), (12, 1, 18, 6), (12, 12, 17, 18)]
 
-    # Links: Mietshaus mit Laden, Bank aus Stein, Hotel mit Dachschild
-    left = tenement(160, 128, door_at=30)
+    # Links: verputztes Mietshaus mit Laden, Bank aus Stein, Hotel mit Leuchtreklame
+    grey_render = (150, 142, 128)
+    left = tenement(160, 128, door_at=30, render=grey_render, pipes=(4,), balconies=((3, 2), (4, 1)))
     shop_d = draw_on(left)
-    shop(shop_d, 60, 127, 76, "KOHLE")
-    right = tenement(160, 128, door_at=70)
-    pipe_v(draw_on(right), 12, 4, 127)
+    shop(left, shop_d, 60, 127, 76, "KOHLE")
+    right = tenement(160, 128, door_at=70, render=grey_render, pipes=(152,), balconies=((1, 2), (1, 1), (4, 2)))
+    pipe_v(draw_on(right), 12, 10, 118)
     poster(draw_on(left), 8, 96)
     poster(draw_on(right), 100, 96)
-    text(draw_on(right), 110, 114, "STREIK", C["paper"], 1, worn=0.2)
+    scrawl(right, 104, 110, "STREIK", 6, 3)
     building(1, 1, 5, 5, 128, left, right, s, things,
-             [chimney(0.2, 0.2), chimney(0.65, 0.3, 20, False), water_tank(0.35, 0.55), vent(0.8, 0.8), skylight(0.1, 0.72)])
+             [chimney(0.14, 0.18), chimney(0.82, 0.3, 20, False), water_tank(0.3, 0.3), vent(0.55, 0.45), skylight(0.3, 0.58, 0.0, (0.5, 0.4)),
+              clothesline(0.5, 0.7, 0.72, 0.5), roof_mast(0.68, 0.3)],
+             roof=roof_mansard((0.4, 1.9, 3.5), (0.5, 2.1, 3.7)))
 
-    bank_l = tenement(192, 84, "BANK", ("stone",), lit_rate=0.7)
-    door(draw_on(bank_l), 88, 83, 18, 38, "brass_d", False)
-    for u in range(16, 180, 34):
-        draw_on(bank_l).rectangle((u, 44, u + 5, 83), fill=C["stone_l"])
+    bank_l = tenement(192, 84, material=("stone",), lit_rate=0.7)
+    bank_front(bank_l)
     bank_r = tenement(64, 84, material=("stone",), lit_rate=0.7)
-    building(0, 7, 6, 2, 84, bank_l, bank_r, s, things, [vent(0.2, 0.3), vent(0.5, 0.3), skylight(0.7, 0.2)])
+    bank_side(bank_r)
+    building(0, 7, 6, 2, 84, bank_l, bank_r, s, things, [vent(0.82, 0.42)], roof=roof_bank())
 
-    hotel_l = tenement(160, 170, "HOTEL", door_at=72, lit_rate=0.8)
-    hotel_r = tenement(160, 170, door_at=30, lit_rate=0.8)
-    pipe_v(draw_on(hotel_r), 120, 6, 169)
+    ochre = (168, 138, 92)
+    hotel_l = tenement(160, 170, "HOTEL", door_at=72, lit_rate=0.8, render=ochre, corner_stones=True, bays=((0, 1, 2),), pipes=(150,),
+                       balconies=((4, 3), (4, 2), (4, 1)))
+    hotel_r = tenement(160, 170, door_at=30, lit_rate=0.8, render=ochre, corner_stones=True, bays=((3, 2, 3),), balconies=((1, 3), (1, 1)))
+    pipe_v(draw_on(hotel_r), 120, 10, 160)
     poster(draw_on(hotel_l), 20, 138)
     poster(draw_on(hotel_l), 110, 136)
     poster(draw_on(hotel_r), 62, 138)
-    text(draw_on(hotel_r), 80, 142, "BRANDT RAUS", C["paper"], 1, worn=0.25)
+    scrawl(hotel_r, 70, 139, "BRANDT RAUS", 7, 8)
     building(1, 12, 5, 5, 170, hotel_l, hotel_r, s, things,
-             [roof_sign("HOTEL ADLER"), chimney(0.75, 0.3, 24, False), vent(0.2, 0.3), water_tank(0.5, 0.2)])
+             [roof_sign("HOTEL ADLER", 0.14, 0.75), chimney(0.82, 0.3, 24, False), chimney(0.14, 0.2, 22), vent(0.56, 0.4), water_tank(0.3, 0.3),
+              roof_mast(0.68, 0.52, 24)],
+             roof=roof_mansard((0.5, 1.6, 2.7, 3.8), (0.6, 1.7, 2.8, 3.9)))
 
     # Rechts: Fabrik aus Grünblech mit Rohren, Kessel und Maschinenhalle
     fab_l, fd = wall(192, 110, ("green",))
-    fd.rectangle((0, 0, 192, 3), fill=C["green_l"])
+    cornice(fd, 192, "green_l", dentils=False)
+    plinth(fd, 192, 110, 7)
     for u in range(14, 170, 44):
+        fd.rectangle((u - 2, 14, u + 30, 46), fill=C["iron"])
         fd.rectangle((u, 16, u + 28, 44), fill=C["gas_d"])
         for k in range(u, u + 28, 7):
             fd.line((k, 16, k, 44), fill=C["iron"])
+        for v in (25, 35):
+            fd.fine_line((u, v, u + 28, v), fill=C["iron"])
+        fd.shade((u, 16, u + 28, 17), 0.6)
+        fd.rectangle((u - 3, 46, u + 31, 47), fill=C["green_l"])
+        fd.shade((u - 2, 48, u + 31, 49), 0.65)
         fab_l.info.setdefault("panes", []).append((u, 16, 29, 29, "halle"))
-    fd.rectangle((60, 66, 112, 109), fill=C["iron"])
-    for k in range(60, 112, 6):
-        fd.line((k, 66, k, 109), fill=C["soot"])
+    # Rolltor in einem Rahmen aus Winkeleisen
+    fd.rectangle((58, 74, 114, 109), fill=C["soot"])
+    fd.rectangle((60, 76, 112, 109), fill=C["iron"])
+    for v in range(78, 109, 3):
+        fd.fine_line((60, v, 112, v), fill=C["soot"])
+    fd.shade((60, 76, 112, 78), 0.6)
+    rust_patches(fd, 60, 100, 112, 108)
     pipe_h(fd, 0, 191, 52)
-    pipe_v(fd, 130, 52, 109)
-    pipe_v(fd, 24, 52, 109)
-    tw, th = text_size("BRANDT WERKE", 2)
-    fd.rectangle((96 - tw // 2 - 4, 56, 96 + tw // 2 + 4, 58 + th), fill=C["black"])
-    text(fd, 96 - tw // 2, 57, "BRANDT WERKE", C["brass_l"], 2, worn=0.08)
+    pipe_v(fd, 130, 52, 102)
+    pipe_v(fd, 24, 52, 102)
+    # Firmenname direkt aufs Blech gemalt, die Farbe blättert
+    tw = 12 * 4 * 2 * 0.8 + 11 * 2.6
+    fd.shade((int(96 - tw / 2 - 5), 57, int(96 + tw / 2 + 5), 72), 0.62)
+    paint_text(fab_l, 96 - tw / 2, 59, "BRANDT WERKE", 12, [(C["cream"], 2.0, 0, 0, 0.95, 0.36)], gap=2.6, seed=11)
     fab_r, fr = wall(160, 110, ("green",))
-    fr.rectangle((0, 0, 160, 3), fill=C["green_l"])
+    cornice(fr, 160, "green_l", dentils=False)
+    plinth(fr, 160, 110, 7)
+    for u in (16, 108):
+        fr.rectangle((u - 2, 50, u + 30, 82), fill=C["iron"])
+        fr.rectangle((u, 52, u + 28, 80), fill=C["glass_d"])
+        for k in range(u, u + 28, 7):
+            fr.line((k, 52, k, 80), fill=C["iron"])
+        for v in (61, 71):
+            fr.fine_line((u, v, u + 28, v), fill=C["iron"])
+        for _ in range(5):
+            bu, bv = u + 7 * DETAIL.randint(0, 3), DETAIL.choice((52, 62, 72))
+            fr.rectangle((bu + 1, bv + 1, bu + 6, bv + 8), fill=C["black"])
+        fr.shade((u, 52, u + 28, 53), 0.6)
     pipe_h(fr, 0, 159, 30)
-    pipe_v(fr, 40, 30, 109)
-    text(fr, 62, 74, "STREIK", C["paper"], 2, worn=0.3)
+    pipe_v(fr, 40, 30, 102)
+    downpipe(fr, 150, 2, 104)
+    scrawl(fab_r, 56, 88, "STREIK", 10, 2)
     building(12, 1, 6, 5, 110, fab_l, fab_r, s, things,
-             [chimney(0.15, 0.25, 54), chimney(0.4, 0.25, 54), skylight(0.1, 0.65), skylight(0.45, 0.65), skylight(0.72, 0.65), vent(0.8, 0.2)])
+             [chimney(0.12, 0.25, 54), chimney(0.42, 0.25, 54), vent(0.82, 0.2), roof_mast(0.72, 0.7, 26)],
+             roof=roof_shed(5, 24))
 
     # Lager unten rechts
     lag_l, ld = wall(160, 70, ("brick",))
-    ld.rectangle((0, 0, 160, 3), fill=C["stone_l"])
+    cornice(ld, 160, dentils=False)
+    plinth(ld, 160, 70, 7)
     # Die Tür sitzt genau vor dem Durchgang in Spalte 14 der Karte.
     door(ld, 66, 69, 28, 40, "wood", True)
-    text(ld, 104, 30, "LAGER", C["plaster"], 2, worn=0.2)
-    poster(ld, 14, 46)
-    poster(ld, 38, 48)
+    paint_text(lag_l, 104, 12, "LAGER", 13, [(C["paper"], 2.2, 0, 0, 0.92, 0.32)], seed=17)
+    poster(ld, 14, 40)
+    poster(ld, 38, 42)
+    downpipe(ld, 4, 2, 64)
+    chip_corners(ld, 160, 70)
     lag_r, lr = wall(192, 70, ("brick",))
-    lr.rectangle((0, 0, 192, 3), fill=C["stone_l"])
-    pipe_h(lr, 0, 191, 20)
+    cornice(lr, 192, dentils=False)
+    plinth(lr, 192, 70, 7)
+    pipe_h(lr, 0, 191, 14)
     for u in range(20, 170, 40):
         window(lr, u, 30, 14, 18, lit=u % 3 == 0)
-    text(lr, 44, 56, "STREIK", C["paper"], 1, worn=0.2)
-    building(12, 12, 5, 6, 70, lag_l, lag_r, s, things, [vent(0.3, 0.3), chimney(0.7, 0.6, 22)])
+    patch(lr, 124, 26, 22, 14, blend(C["brick_l"], 0.9))
+    scrawl(lag_r, 42, 54, "STREIK", 6, 5)
+    downpipe(lr, 186, 2, 64)
+    chip_corners(lr, 192, 70)
+    building(12, 12, 5, 6, 70, lag_l, lag_r, s, things, [vent(0.3, 0.3), chimney(0.7, 0.6, 22)], roof=roof_gable(38))
 
+    if not with_people:
+        restore_random("yard")
     # Maschinen im Hof vor der Fabrik
     boiler(12.3, 6.4, s, things)
     boiler(14.6, 6.4, s, things)
@@ -1448,6 +2356,8 @@ def export_game():
     root = Path(__file__).resolve().parents[2]
     assets = root / "game" / "assets"
     (assets / "things").mkdir(parents=True, exist_ok=True)
+    restore_random("export")
+    DETAIL.seed(1951)
     s, things = build_scene(with_people=False)
     # Außerhalb der Karte bleibt der Boden durchsichtig, dort liegt die Umgebung.
     mask = Image.new("L", s.img.size)
@@ -1466,7 +2376,8 @@ def export_game():
         name = f"{i:03d}.png"
         s.img.crop(bbox).save(assets / "things" / name)
         exported.append((t, name, bbox))
-        manifest.append({"file": name, "px": bbox[0], "py": bbox[1], "x0": t.x0, "y0": t.y0, "x1": t.x1, "y1": t.y1, "z0": t.z0, "z1": t.z1, "kind": t.kind, "panes": t.panes})
+        manifest.append({"file": name, "px": bbox[0], "py": bbox[1], "x0": t.x0, "y0": t.y0, "x1": t.x1, "y1": t.y1, "z0": t.z0, "z1": t.z1, "kind": t.kind, "panes": t.panes,
+                         **({"roof": [p.to_json() for p in t.prisms]} if t.prisms else {})})
         if t.solid:
             solids.append({"x0": t.x0, "y0": t.y0, "x1": t.x1, "y1": t.y1, "opaque": t.opaque})
     (assets / "manifest.json").write_text(json.dumps({"ox": s.ox, "oy": s.oy, "things": manifest, "backdrop": backdrop,
@@ -1544,7 +2455,8 @@ def export_backdrop(assets):
         material = ("stone",) if hash01(int(x), int(y), 4) < 0.3 else ("brick",)
         left = tenement(int(w * HW), h, material=material, lit_rate=0.22)
         right = tenement(int(d * HW), h, material=material, lit_rate=0.22)
-        building(x, y, w, d, h, left, right, s, things, [chimney(0.2, 0.3, 24, False), vent(0.6, 0.6)])
+        roof = roof_gable(34, "x" if hash01(int(x), int(y), 6) < 0.5 else "y", 1.0) if hash01(int(x), int(y), 5) < 0.4 else roof_mansard((1.0, 2.7, 4.4), (1.0, 2.7, 4.4))
+        building(x, y, w, d, h, left, right, s, things, [chimney(0.2, 0.3, 24, False), vent(0.6, 0.6)], roof=roof)
     for t in sort_things(things):
         s.img = Image.new("RGBA", (s.w, s.h), (0, 0, 0, 0))
         s.px = s.img.load()
