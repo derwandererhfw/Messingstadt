@@ -210,12 +210,12 @@ def main():
             x0, y0, x1, y1, z1 = x0 + 0.4, y0 + 0.4, x1 - 0.4, y1 - 0.4, 62
         if t["kind"] == "lamp":
             z1 = 50
-        if t["kind"] in ("open", "prop"):
-            z1 = t["z0"]  # Durchbrochenes und Kleinkram werfen keinen Schatten: Das Schleichlicht soll bleiben, wie es war
         albedo = mean_albedo(rgba)
         key = ",".join(f"{t[k]:.2f}" for k in ("x0", "y0", "x1", "y1", "z0"))
         boxes.append({"x0": x0, "y0": y0, "x1": x1, "y1": y1, "z0": t["z0"], "z1": z1, "albedo": albedo,
-                      "rulesAlbedo": frozen["boxes"].get(key, albedo), "roof": t.get("roof", [])})
+                      "rulesAlbedo": frozen["boxes"].get(key, albedo), "roof": t.get("roof", []),
+                      # Kleinkram wirft im Bild Schatten, fürs Schleichlicht aber keinen. Durchbrochenes wie Fahrräder nie.
+                      "ghost": {"prop": 1, "open": 2}.get(t["kind"], 0)})
         sprites.append({"name": Path(t["file"]).stem, "box": len(boxes) - 1, "left": t["px"], "top": t["py"], "kind": t["kind"]})
         images.append(rgba)
 

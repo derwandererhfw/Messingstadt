@@ -47,6 +47,8 @@ var roofs = new List<float[][]>();
 var rulesAlbedo = new List<Vector3>();
 Vector3 rulesGroundAlbedo = root.TryGetProperty("rulesGroundAlbedo", out var frozenGround) ? Vec(frozenGround) : groundAlbedo;
 bool rulesPass = false;
+// Geist: 1 = Kleinkram, der fürs Schleichlicht keinen Schatten wirft, 2 = Durchbrochenes, das nie einen wirft.
+var ghost = new List<int>();
 foreach (var b in root.GetProperty("boxes").EnumerateArray())
 {
     var prisms = new List<float[]>();
@@ -75,6 +77,7 @@ foreach (var b in root.GetProperty("boxes").EnumerateArray())
         new Vector3(b.GetProperty("x0").GetSingle(), b.GetProperty("y0").GetSingle(), b.GetProperty("z0").GetSingle() / zScale),
         new Vector3(b.GetProperty("x1").GetSingle(), b.GetProperty("y1").GetSingle(), b.GetProperty("z1").GetSingle() / zScale),
         Vec(b.GetProperty("albedo"))));
+    ghost.Add(b.TryGetProperty("ghost", out var ghostElement) ? ghostElement.GetInt32() : 0);
     rulesAlbedo.Add(b.TryGetProperty("rulesAlbedo", out var frozenAlbedo) ? Vec(frozenAlbedo) : Vec(b.GetProperty("albedo")));
 }
 var boxArray = boxes.ToArray();
@@ -194,6 +197,8 @@ Surface Unproject(Sprite s, int ix, int iy)
 
 // ---------- Strahlen ----------
 
+bool Unseen(int box) => ghost[box] == 2 || (ghost[box] == 1 && rulesPass);
+
 bool Occluded(Vector3 from, Vector3 to, int ignore)
 {
     var d = to - from;
@@ -203,7 +208,7 @@ bool Occluded(Vector3 from, Vector3 to, int ignore)
     }
     for (int i = 0; i < boxArray.Length; i++)
     {
-        if (i != ignore && boxArray[i].Hits(from, d, 1f, out _, out _))
+        if (i != ignore && !Unseen(i) && boxArray[i].Hits(from, d, 1f, out _, out _))
         {
             return true;
         }
@@ -229,7 +234,7 @@ bool Closest(Vector3 from, Vector3 dir, int ignore, out Vector3 pos, out Vector3
     }
     for (int i = 0; i < boxArray.Length; i++)
     {
-        if (i != ignore && boxArray[i].Hits(from, dir, best, out float t, out var n))
+        if (i != ignore && !Unseen(i) && boxArray[i].Hits(from, dir, best, out float t, out var n))
         {
             best = t;
             found = i;
@@ -529,7 +534,7 @@ for (int pass = 0; pass < 2; pass++)
         {
             var p = new Vector3((gx + 0.5f) / gridRes, (gy + 0.5f) / gridRes, gridZ);
             int at = (gy * gridSize + gx) * GridChannels;
-            if (Array.Exists(boxArray, b => b.Contains(p)))
+            if (Enumerable.Range(0, boxArray.Length).Any(i => ghost[i] == 0 && boxArray[i].Contains(p)))
             {
                 grid[at] = -1f;
                 continue;
