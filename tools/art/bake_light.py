@@ -26,7 +26,7 @@ VOID_LIGHT = (0.34, 0.37, 0.55)  # außerhalb der Karte bleibt der gemalte Nacht
 LAMP_COLOR = (1.0, 0.74, 0.42)
 FIRE_COLOR = (1.0, 0.45, 0.15)
 LAMP_POWER = 4.2
-FIRE_POWER = 0.7
+FIRE_POWER = 0.5  # gedämpft: Die Kessel sollen glimmen, nicht den Hof überstrahlen
 # Leuchtmittel hinter den Fenstern: Licht nach außen, Einfärbung der Scheibe, Anteil unter allen erleuchteten Fenstern.
 WINDOW_TYPES = {
     "gluehlampe": dict(color=(1.0, 0.76, 0.46), power=0.014, pane=(1.2, 1.05, 0.78), weight=4),
@@ -201,6 +201,8 @@ def main():
             x0, y0, x1, y1, z1 = x0 + 0.4, y0 + 0.4, x1 - 0.4, y1 - 0.4, 62
         if t["kind"] == "lamp":
             z1 = 50
+        if t["kind"] == "open":
+            z1 = t["z0"]  # Fahrräder und anderes Durchbrochenes: fast nur Luft, wirft keinen Schatten
         boxes.append({"x0": x0, "y0": y0, "x1": x1, "y1": y1, "z0": t["z0"], "z1": z1, "albedo": mean_albedo(rgba), "roof": t.get("roof", [])})
         sprites.append({"name": Path(t["file"]).stem, "box": len(boxes) - 1, "left": t["px"], "top": t["py"], "kind": t["kind"]})
         images.append(rgba)

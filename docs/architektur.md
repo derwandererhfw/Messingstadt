@@ -43,6 +43,12 @@ Eingabe (Godot) -> Befehle -> World.Tick() -> Zustand -> Darstellung (Godot)
 - **Schrift an Häusern:** `paint_text` zeichnet Buchstaben aus Strichen, in doppelter Auflösung glatt. Damit entstehen
   gemalte Fassadenschrift, Ladenschilder, Schmierereien und die Leuchtreklame, deren Buchstaben einzeln schalten.
 
+- **Straße und Kleinkram:** Den Boden rechnet `ground_np` in jeder Auflösung aus denselben Regeln: Fahrbahn mit
+  Rinnstein, Gullys und Schienen, Gehwege aus Platten zwischen Mosaikstreifen, um jedes Haus ein Pflasterstreifen.
+  Kleinkram (`street_props`) sperrt nichts: Er steht höchstens ein Viertelfeld vor einer Wand oder auf Feldern, die
+  Kessel und Kisten ohnehin sperren. Der Fahrdraht ist ein Objekt ohne Breite, damit niemand eine Wand aus ihm liest.
+  Durchbrochenes wie Fahrräder hat die Art `open` und wirft im Lichtbaker keinen Schatten.
+
 ## Zeichenreihenfolge
 
 Statische Objekte sind beim Export vorsortiert. Eine Figur wird vor dem ersten Objekt eingereiht, das
