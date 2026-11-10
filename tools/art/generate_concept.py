@@ -291,6 +291,8 @@ STROKES = {
     "T": [[(0, 0), (4, 0)], [(2, 0), (2, 6)]],
     "U": [[(0, 0), (0, 5), (1, 6), (3, 6), (4, 5), (4, 0)]],
     "W": [[(0, 0), (1, 6), (2, 2.5), (3, 6), (4, 0)]],
+    "Z": [[(0, 0), (4, 0), (0, 6), (4, 6)]],
+    "7": [[(0, 0), (4, 0), (1.6, 6)]],
     "0": [[(1, 0), (3, 0), (4, 1), (4, 5), (3, 6), (1, 6), (0, 5), (0, 1), (1, 0)]],
     "1": [[(1, 1), (2, 0), (2, 6)], [(1, 6), (3, 6)]],
     "2": [[(0, 1), (1, 0), (3, 0), (4, 1), (4, 2), (0, 6), (4, 6)]],
@@ -1738,7 +1740,7 @@ def cylinder(s, cx, cy, r, h, cols, rivets=False, bands=False):
             for ry in range(4, h, 8):
                 s.put(cx + x, int(cy + depth + ry * k), C["brass_l"])
     for y in range(-rr // 2, rr // 2 + 1):
-        half = int(rr * (1 - (2 * y / rr) ** 2) ** 0.5) if rr else 0
+        half = int(rr * max(0.0, 1 - (2 * y / rr) ** 2) ** 0.5) if rr else 0
         for x in range(-half, half + 1):
             s.put(cx + x, cy + y, C[d] if abs(x) > half - 2 or abs(2 * y) > rr - 2 else C[m])
 
@@ -1762,6 +1764,7 @@ def boiler(x, y, s, things):
     def draw():
         k = s.res
         cx, cy = s.to_screen(x + 0.9, y + 0.9, 62)
+        cx, cy = int(cx), int(cy)
         s.rect(cx - 24 * k, cy + 44 * k, 48 * k, 22 * k, C["iron"])
         cylinder(s, cx, cy, 22, 62, ("grey_d", "steel", "ash"), rivets=True, bands=True)
         # Rostfahnen laufen die Kesselwand hinab, fein nur einen Bildpunkt breit
@@ -1772,15 +1775,33 @@ def boiler(x, y, s, things):
             c = C[WEAR.choice(["rust", "rust_d", "grime", "rust_l"])]
             for by in range(start, min(start + WEAR.randint(4, 26) * k, int(cy + depth * k + 62 * k))):
                 s.put(cx + bx * k, by, c)
-        # Manometer
-        s.rect(cx - 12 * k, cy + 26 * k, 9 * k, 9 * k, C["brass_d"])
-        s.rect(cx - 11 * k, cy + 27 * k, 7 * k, 7 * k, C["paper"])
-        s.rect(cx - 8 * k, cy + 30 * k, k, k, C["wine"])
-        s.rect(cx - 7 * k, cy + 29 * k, k, k, C["wine"])
-        # Feuerluke
-        s.rect(cx + 2 * k, cy + 40 * k, 13 * k, 13 * k, C["black"])
-        s.rect(cx + 4 * k, cy + 42 * k, 9 * k, 9 * k, C["gas_d"])
-        s.rect(cx + 6 * k, cy + 44 * k, 5 * k, 5 * k, C["gas"])
+        dr = ImageDraw.Draw(s.img)
+        ink = lambda name, f=1.0: blend(C[name], f) + (255,)  # noqa: E731
+        # Steigleiter an der linken Flanke
+        for lx in (-19, -15):
+            dr.line((cx + lx * k, cy + 12 * k, cx + lx * k, cy + 64 * k), fill=ink("soot"))
+        for ry in range(14, 64, 4):
+            dr.line((cx - 19 * k, cy + ry * k, cx - 15 * k, cy + ry * k), fill=ink("soot"))
+        # Speiserohr mit Handrad
+        dr.rectangle((cx + 15 * k, cy + 18 * k, cx + 16 * k + k - 1, cy + 58 * k), fill=ink("brass_d"))
+        dr.line((cx + 15 * k, cy + 18 * k, cx + 15 * k, cy + 58 * k), fill=ink("brass"))
+        dr.ellipse((cx + 12 * k, cy + 30 * k, cx + 19 * k, cy + 36 * k), outline=ink("wine"))
+        dr.line((cx + 12 * k, cy + 33 * k, cx + 19 * k, cy + 33 * k), fill=ink("wine"))
+        # Manometer: runde Messinguhr mit Zeiger statt eines weißen Vierecks
+        dr.ellipse((cx - 12 * k, cy + 25 * k, cx - 3 * k, cy + 34 * k), fill=ink("brass_d"))
+        dr.ellipse((cx - 11 * k, cy + 26 * k, cx - 4 * k, cy + 33 * k), fill=ink("paper", 0.72))
+        dr.line((cx - 7.5 * k, cy + 29.5 * k, cx - 5.5 * k, cy + 27.5 * k), fill=ink("wine_d"))
+        dr.line((cx - 7.5 * k, cy + 34 * k, cx - 7.5 * k, cy + 40 * k), fill=ink("brass_d"))
+        # Feuertür: gusseiserner Rahmen, die Tür steht einen Spalt offen, dahinter die Glut hinter Roststäben
+        dr.rectangle((cx + 1 * k, cy + 39 * k, cx + 14 * k + k - 1, cy + 53 * k + k - 1), fill=ink("black"))
+        dr.rectangle((cx + 3 * k, cy + 42 * k, cx + 12 * k + k - 1, cy + 51 * k + k - 1), fill=ink("gas_d"))
+        dr.rectangle((cx + 5 * k, cy + 45 * k, cx + 10 * k + k - 1, cy + 51 * k + k - 1), fill=ink("gas"))
+        for bx in range(3, 13, 2):
+            dr.rectangle((cx + bx * k, cy + 42 * k, cx + bx * k + max(0, k - 1), cy + 51 * k + k - 1), fill=ink("black"))
+        dr.rectangle((cx + 3 * k, cy + 41 * k, cx + 12 * k + k - 1, cy + 43 * k), fill=ink("soot"))
+        dr.rectangle((cx - 1 * k, cy + 40 * k, cx + 1 * k, cy + 52 * k + k - 1), fill=ink("iron"))
+        for hy in (42, 50):
+            dr.rectangle((cx - 1 * k, cy + hy * k, cx + 2 * k, cy + hy * k + k - 1), fill=ink("brass_d"))
     things.append(Thing(x, y, x + 1.8, y + 1.8, 0, 90, draw, solid=True, opaque=True))
     things[-1].kind = "boiler"
 
@@ -1797,35 +1818,148 @@ def post(x, y, z, s, things):
     things.append(Thing(x, y, x + 0.12, y + 0.12, 0, z, draw))
 
 
+WIRE_Z = 70  # Fahrdraht der Straßenbahn, über der Rohrbrücke
+
+
+def mat_tram_roof(f):
+    """Dach des Wagens: geteertes Segeltuch, in der Mitte der Laternenaufbau mit kleinen Lüftungsfenstern."""
+    p = f.prism
+    k = f.res
+    if p.name == "lantern" and f.kind == "x1":
+        u = (p.y1 - f.fy) * HW
+        glass = (np.floor(u) % 9 >= 2) & (np.floor(u) % 9 <= 6) & (p.top() - f.z > 1.5) & (f.z - p.z0 > 1)
+        lit = R.hash01(np.floor(u / 9), 3, 7) < 0.6
+        col = np.where(glass[:, None], np.where(lit[:, None], _c("gas_d")[None, :], _c("glass_d")[None, :]), _c("wine_d")[None, :])
+        return col, glass & lit
+    if f.kind != "plane":
+        return _c("wine_d")[None, :] * np.ones((len(f.z), 1))
+    v = (f.fy - p.y0) * HW * k
+    col = np.array((104, 104, 112), np.float64)[None, :] * (0.8 + 0.3 * R.noise(f.fx * 12, f.fy * 6, 95))[:, None]
+    col = col * np.where(np.floor(v) % (16 * k) == 0, 0.7, 1.0)[:, None]
+    return col * (0.9 + 0.2 * R.hash01(np.floor(f.fx * 64), np.floor(f.fy * 64), 96))[:, None]
+
+
 def tram(x, y, length, s, things):
     made = []
+    h = 40
+    roof = [R.mansard(x, y, x + 0.8, y + length, h, steep=3, steep_k=26, upper=1.5, upper_k=6, material=mat_tram_roof),
+            R.block(x + 0.3, y + 0.5, x + 0.52, y + length - 0.5, h, h + 8, mat_tram_roof, "lantern")]
 
-    def draw():
-        w, h = int(length * HW), 40
-        if made:
-            box(s, x, y, x + 0.8, y + length, 0, h, made[0], made[1],
-                lambda a, b, w2, d2: C["steel"] if abs(a - w2 / 2) > 0.1 else C["iron"])
-            return
+    def textures():
+        w = int(length * HW)
         tex = canvas(w, h, C["wine"])
         d = draw_on(tex)
-        d.rectangle((0, 0, w, 3), fill=C["brass_d"])
-        d.rectangle((0, 30, w, h), fill=C["soot"])
-        d.rectangle((0, 28, w, 29), fill=C["rust_l"])
+        # Zweifarbig: oben creme mit dem Fensterband, unten weinrot
+        d.rectangle((0, 4, w, 24), fill=blend(C["cream"], 0.86))
+        d.rectangle((0, 0, w, 3), fill=C["soot"])
+        d.fine_line((0, 3, w, 3), fill=C["brass_d"])
+        d.rectangle((0, 31, w, h), fill=C["soot"])
+        d.rectangle((0, 24, w, 25), fill=C["brass_d"])
+        d.fine_line((0, 24, w, 24), fill=C["brass"])
+        windows = []
         for u in range(5, w - 12, 15):
-            d.rectangle((u, 8, u + 10, 22), fill=C["gas_d"] if WEAR.random() < 0.45 else C["glass_d"])
-            d.line((u + 5, 8, u + 5, 22), fill=C["wood_d"])
-        rust_patches(d, 0, 24, w - 1, 28)
-        text(d, 10, 23, "LINIE ", C["brass_l"]) if False else None
+            lit = WEAR.random() < 0.45
+            d.rectangle((u - 1, 7, u + 11, 23), fill=C["wood_d"])
+            d.rectangle((u, 8, u + 10, 22), fill=C["gas_d"] if lit else C["glass_d"])
+            d.fine_line((u, 12, u + 10, 12), fill=C["wood_d"])
+            windows.append((u, lit))
+        rust_patches(d, 0, 26, w - 1, 30)
+        # Fahrgäste als Schattenriss, mit Hut, vor den hellen Scheiben
+        for u, lit in windows:
+            if lit and DETAIL.random() < 0.7:
+                px = u + DETAIL.randint(2, 6)
+                d.rectangle((px, 15, px + 3, 18), fill=C["black"])
+                d.rectangle((px - 1, 19, px + 4, 22), fill=C["black"])
+                d.fine_line((px - 1, 15, px + 4, 15), fill=C["black"])
+            elif not lit:
+                d.hd_only_line((u + 1, 9, u + 3, 9), fill=C["glass"])
+        # Türen an beiden Enden mit Griffstange, davor das Trittbrett
+        for u in (0, w - 5):
+            d.rectangle((u, 6, u + 4, 30), fill=C["wine_d"])
+            d.rectangle((u + 1, 8, u + 3, 18), fill=C["glass_d"])
+            d.fine_line((u + 2 if u else u + 4, 14, u + 2 if u else u + 4, 28), fill=C["brass"])
+            d.rectangle((u - 1 if u else 0, 31, u + 6, 32), fill=C["wood"])
+            d.shade((u - 1 if u else 0, 33, u + 6, 34), 0.5)
+        # Linienschild und Wagennummer
+        d.rectangle((w // 2 - 13, 26, w // 2 + 13, 30), fill=C["black"])
+        paint_text(tex, w // 2 - 11, 26.5, "LINIE 7", 4, [(C["brass_l"], 0.9, 0, 0, 1.0, 0)], gap=1.4, seed=3)
+        # Fahrgestell: zwei Drehgestelle mit Rädern
+        for wx in (20, w - 24):
+            d.rectangle((wx - 8, 31, wx + 12, 35), fill=C["iron"])
+            for off in (-4, 8):
+                d.ellipse((wx + off - 4, 32, wx + off + 4, 40), fill=C["black"])
+                d.ellipse((wx + off - 1, 35, wx + off + 1, 37), fill=C["steel"])
+        d.shade((0, 4, w, 5), 0.7)
         front = canvas(int(0.8 * HW), h, C["wine"])
         fd = draw_on(front)
-        fd.rectangle((0, 0, front.width, 3), fill=C["brass_d"])
-        fd.rectangle((3, 8, front.width - 4, 20), fill=C["glass"])
-        fd.rectangle((0, 30, front.width, h), fill=C["soot"])
-        fd.rectangle((front.width // 2 - 3, 24, front.width // 2 + 2, 29), fill=C["gas"])
+        fw = front.width
+        fd.rectangle((0, 4, fw, 24), fill=blend(C["cream"], 0.86))
+        fd.rectangle((0, 0, fw, 3), fill=C["soot"])
+        # Zielschild über der Scheibe
+        fd.rectangle((6, 4, fw - 7, 8), fill=C["black"])
+        paint_text(front, fw / 2 - 1.3, 4.6, "7", 3.4, [(C["gas"], 0.9, 0, 0, 1.0, 0)], seed=4)
+        fd.rectangle((2, 9, fw - 3, 21), fill=C["wood_d"])
+        fd.rectangle((3, 10, fw - 4, 20), fill=C["glass"])
+        fd.line((fw // 2, 10, fw // 2, 20), fill=C["wood_d"])
+        fd.hd_only_line((5, 12, 9, 18), fill=blend(C["glass"], 1.25))
+        fd.rectangle((0, 24, fw, 25), fill=C["brass_d"])
+        # Scheinwerfer in Messingfassung
+        fd.ellipse((fw // 2 - 4, 25, fw // 2 + 3, 31), fill=C["brass_d"])
+        fd.ellipse((fw // 2 - 3, 26, fw // 2 + 2, 30), fill=C["gas"])
+        fd.rectangle((0, 32, fw, h), fill=C["soot"])
+        fd.rectangle((1, 32, fw - 2, 33), fill=C["iron"])
+        fd.rectangle((fw // 2 - 2, 34, fw // 2 + 1, 36), fill=C["iron"])
         made.extend((front, tex))
-        box(s, x, y, x + 0.8, y + length, 0, h, front, tex,
-            lambda a, b, w2, d2: C["steel"] if abs(a - w2 / 2) > 0.1 else C["iron"])
+
+    def draw():
+        if not made:
+            textures()
+        box(s, x, y, x + 0.8, y + length, 0, h, made[0], made[1], lambda a, b, w2, d2: None)
+        R.render(s, roof)
+        # Stromabnehmer: Schere aus Rohren, oben das Schleifstück am Fahrdraht
+        k = s.res
+        dr = ImageDraw.Draw(s.img)
+        ink = C["black"] + (255,)
+        my = y + length * 0.42
+        base_a, base_b = s.to_screen(x + 0.41, my - 0.35, h + 8), s.to_screen(x + 0.41, my + 0.35, h + 8)
+        knee_a, knee_b = s.to_screen(x + 0.41, my - 0.55, h + 18), s.to_screen(x + 0.41, my + 0.55, h + 18)
+        head = s.to_screen(x + 0.41, my, WIRE_Z - 1)
+        for a, b in ((base_a, knee_b), (base_b, knee_a), (knee_a, head), (knee_b, head)):
+            dr.line((a[0], a[1], b[0], b[1]), fill=ink, width=max(1, k // 2 + (k > 1)))
+        bar_a, bar_b = s.to_screen(x + 0.2, my, WIRE_Z - 1), s.to_screen(x + 0.62, my, WIRE_Z - 1)
+        dr.line((bar_a[0], bar_a[1], bar_b[0], bar_b[1]), fill=C["brass_d"] + (255,), width=k)
     things.append(Thing(x, y, x + 0.8, y + length, 0, 40, draw, solid=True, opaque=True))
+    things[-1].prisms = roof
+
+
+def overhead_wire(x, spans, s, things):
+    """Fahrdraht über dem Gleis, an Querdrähten zwischen den Häusern aufgehängt. spans: (y, x links, x rechts, Höhe an der Wand)."""
+    def draw():
+        dr = ImageDraw.Draw(s.img)
+        k = s.res
+        ink = C["black"] + (255,)
+        stops = [0.0] + [sp[0] for sp in spans] + [20.0]
+        for a, b in zip(stops, stops[1:]):
+            pts = []
+            for i in range(25):
+                t = i / 24
+                pts.append(s.to_screen(x, a + (b - a) * t, WIRE_Z - math.sin(math.pi * t) * (b - a) * 0.45))
+            dr.line([(px, py) for px, py in pts], fill=ink, width=1)
+        for yy, xl, xr, zw in spans:
+            pts = []
+            for i in range(25):
+                t = i / 24
+                xx = xl + (xr - xl) * t
+                near = 1 - abs(xx - x) / max(x - xl, xr - x)
+                pts.append(s.to_screen(xx, yy, zw - (zw - WIRE_Z - 2) * near ** 0.8))
+            dr.line([(px, py) for px, py in pts], fill=C["soot"] + (255,), width=1)
+            for xx, zz in ((xl, zw),):  # rechts sitzt die Rosette an einer Wand, die man von hier nicht sieht
+                px, py = s.to_screen(xx, yy, zz)
+                dr.rectangle((px - k, py - k, px + k, py + k), fill=C["paper"] + (255,))
+            px, py = s.to_screen(x, yy, WIRE_Z + 2)
+            dr.rectangle((px - k, py, px + k, py + 2 * k), fill=C["paper"] + (255,))
+    # Ohne Breite: Für alle, die aus dem Quader eine Wand lesen, steht hier nichts.
+    things.append(Thing(x, 0.0, x, 20.0, WIRE_Z - 2, WIRE_Z + 10, draw))
 
 
 def getaway_truck(x, y, s, things):
@@ -1861,18 +1995,213 @@ def getaway_truck(x, y, s, things):
 def lamp(x, y, s, things, glows):
     glows.append((x, y))
     AMBIENT["lights"].append([x, y, 55])
+
     def draw():
         k = s.res
         sx, sy = s.to_screen(x, y)
         sx, sy = int(sx), int(sy)
-        s.rect(sx - 2 * k, sy - 3 * k, 5 * k, 3 * k, C["soot"])
-        s.rect(sx - 1 * k, sy - 50 * k, 2 * k, 48 * k, C["iron"])
-        s.rect(sx - 4 * k, sy - 60 * k, 8 * k, 10 * k, C["brass_d"])
-        s.rect(sx - 3 * k, sy - 59 * k, 6 * k, 8 * k, C["gas"])
-        s.rect(sx - 4 * k, sy - 63 * k, 8 * k, 3 * k, C["soot"])
-        s.rect(sx - 7 * k, sy - 46 * k, 14 * k, 1, C["iron"])
+        dr = ImageDraw.Draw(s.img)
+
+        def part(x0, y0, x1, y1, c):
+            a, b = int(round(x0 * k)), int(round(x1 * k))
+            lo, hi = int(round(y0 * k)), int(round(y1 * k))
+            dr.rectangle((sx + a, sy - max(hi, lo + 1), sx + max(b, a + 1) - 1, sy - lo - 1), fill=tuple(c) + (255,))
+
+        # Sockel aus Gusseisen, gestuft und kanneliert
+        part(-4, 0, 4, 2, C["soot"])
+        part(-3, 2, 3, 6, C["iron"])
+        part(-2.5, 6, 2.5, 7, C["soot"])
+        part(-2, 7, 2, 12, blend(C["iron"], 1.1))
+        part(-2.5, 12, 2.5, 13, C["soot"])
+        for fx in (-1.5, 0.5):
+            part(fx, 2.5, fx + 0.5, 5.5, C["soot"])
+        # Mast, links eine Lichtkante
+        part(-1, 13, 1, 49, C["iron"])
+        part(-1, 13, -0.5, 49, C["steel"])
+        part(-1.5, 30, 1.5, 31, C["soot"])
+        # Leitersprosse für den Laternenanzünder
+        part(-7, 45.5, 7, 46, C["iron"])
+        part(-7.5, 45, -6.5, 46.5, C["soot"])
+        part(6.5, 45, 7.5, 46.5, C["soot"])
+        # Kelch unter der Laterne
+        part(-1.5, 49, 1.5, 50, C["brass_d"])
+        part(-2.5, 50, 2.5, 51, C["brass_d"])
+        # Laterne: Glas, das sich nach oben weitet, in einem Rahmen aus Messing
+        rows = 9 * k
+        for i in range(rows):
+            half = 3 + 1.8 * i / rows
+            yy = 51 + i / k
+            part(-half, yy, half, yy + 1 / k, C["gas_d"])
+            part(-half + 1, yy, half - 1, yy + 1 / k, C["gas"])
+            part(-half - 0.5, yy, -half + 0.5, yy + 1 / k, C["brass_d"])
+            part(half - 0.5, yy, half + 0.5, yy + 1 / k, C["brass_d"])
+        part(-0.25, 51, 0.25, 60, C["brass_d"])
+        part(-3.5, 51, 3.5, 51.5, C["brass_d"])
+        # Dach mit Abzug und Knauf
+        part(-6, 60, 6, 61, C["soot"])
+        part(-5, 61, 5, 62, C["black"])
+        part(-3, 62, 3, 63, C["soot"])
+        part(-1.5, 63, 1.5, 64.5, C["soot"])
+        part(-0.5, 64.5, 0.5, 66, C["brass_d"])
     things.append(Thing(x - 0.05, y - 0.05, x + 0.05, y + 0.05, 0, 60, draw))
     things[-1].kind = "lamp"
+
+
+# ---------- Kleinkram: steht dicht an Wänden oder auf ohnehin gesperrten Feldern und sperrt selbst nichts ----------
+def mat_plain(color, top=None, bands=0):
+    def material(f):
+        if f.kind == "plane":
+            c = np.array(top or blend(color, 1.1), np.float64)
+        else:
+            c = np.array(color, np.float64)
+        col = c[None, :] * (0.85 + 0.3 * R.noise(f.fx * 25, f.fy * 25 + f.z / 3, 97))[:, None]
+        if bands and f.kind != "plane":
+            col = col * np.where(np.floor((f.z - f.prism.z0) * f.res) % (bands * f.res) == 0, 0.6, 1.0)[:, None]
+        return col
+    return material
+
+
+def prop_box(x, y, w, d, h, material, s, things, z0=0):
+    body = R.block(x, y, x + w, y + d, z0, z0 + h, material)
+
+    def draw():
+        R.render(s, [body])
+    things.append(Thing(x, y, x + w, y + d, z0, z0 + h, draw))
+
+
+def ash_can(x, y, s, things, lid=True):
+    """Mülltonne aus verzinktem Blech mit Deckel."""
+    def draw():
+        k = s.res
+        cx, cy = s.to_screen(x + 0.13, y + 0.13, 13)
+        cx, cy = int(cx), int(cy)
+        cylinder(s, cx, cy, 5, 13, ("grey_d", "grey", "grey_l"), bands=True)
+        if lid:
+            dr = ImageDraw.Draw(s.img)
+            dr.ellipse((cx - 6 * k, cy - 4 * k, cx + 6 * k, cy + 2 * k), fill=C["grey_d"] + (255,))
+            dr.ellipse((cx - 5 * k, cy - 4 * k, cx + 5 * k, cy + k), fill=C["grey_l"] + (255,))
+            dr.rectangle((cx - k, cy - 4 * k, cx + k, cy - 3 * k), fill=C["iron"] + (255,))
+    things.append(Thing(x, y, x + 0.26, y + 0.26, 0, 15, draw))
+
+
+def barrel(x, y, s, things, cols=("rust_d", "rust", "rust_l")):
+    def draw():
+        cx, cy = s.to_screen(x + 0.15, y + 0.15, 16)
+        cylinder(s, int(cx), int(cy), 6, 16, cols, bands=True)
+    things.append(Thing(x, y, x + 0.3, y + 0.3, 0, 16, draw))
+
+
+def hydrant(x, y, s, things):
+    """Hydrant: kurzer roter Gusskörper mit Haube und seitlichem Abgang."""
+    def draw():
+        k = s.res
+        sx, sy = s.to_screen(x, y)
+        sx, sy = int(sx), int(sy)
+        dr = ImageDraw.Draw(s.img)
+        p = lambda x0, y0, x1, y1, c: dr.rectangle((sx + int(x0 * k), sy - max(int(y1 * k), int(y0 * k) + 1), sx + max(int(x1 * k), int(x0 * k) + 1) - 1, sy - int(y0 * k) - 1), fill=tuple(c) + (255,))  # noqa: E731
+        p(-3, 0, 3, 1.5, C["soot"])
+        p(-2, 1.5, 2, 9, C["wine"])
+        p(-2, 1.5, -1, 9, C["wine_l"])
+        p(1, 1.5, 2, 9, C["wine_d"])
+        p(-2.5, 9, 2.5, 10, C["wine_d"])
+        p(-1.5, 10, 1.5, 11.5, C["wine"])
+        p(-0.5, 11.5, 0.5, 12.5, C["brass_d"])
+        p(2, 5, 3.5, 7, C["brass_d"])
+    things.append(Thing(x - 0.06, y - 0.06, x + 0.06, y + 0.06, 0, 12, draw))
+
+
+def flat_prop(x, y, tex, s, things, along="x", kind=""):
+    """Flaches Ding, das an einer Wand lehnt oder hängt: als Bild in die Wandebene gekippt."""
+    def draw():
+        if along == "x":
+            west = s.to_screen(x, y, tex.height)
+            shear(s, tex, int(west[0]), int(west[1]), 0.5, 1.0)
+        else:
+            south = s.to_screen(x, y + tex.width / HW, tex.height)
+            shear(s, tex, int(south[0]), int(south[1]), -0.5, 0.8)
+    if along == "x":
+        things.append(Thing(x, y - 0.03, x + tex.width / HW, y + 0.03, 0, tex.height, draw))
+    else:
+        things.append(Thing(x - 0.03, y, x + 0.03, y + tex.width / HW, 0, tex.height, draw))
+    things[-1].kind = kind
+
+
+def bicycle_tex(color="soot"):
+    """Fahrrad von der Seite, aus dünnen Linien: in doppelter Auflösung sind Speichen und Rahmen zu erkennen."""
+    tex = canvas(30, 19, (0, 0, 0, 0))
+    for im, k in ((tex, 1), (tex.info.get("hd"), HD)):
+        if im is None:
+            continue
+        dr = ImageDraw.Draw(im)
+        ink = C["black"] + (255,)
+        frame = C[color] + (255,)
+        for wx in (7, 22):
+            dr.ellipse(((wx - 6) * k, 6 * k, (wx + 6) * k, 18 * k), outline=ink, width=max(1, k - 1))
+            if k > 1:
+                for ang in range(0, 180, 45):
+                    ax, ay = math.cos(math.radians(ang)) * 5.5 * k, math.sin(math.radians(ang)) * 5.5 * k
+                    dr.line((wx * k - ax, 12 * k - ay, wx * k + ax, 12 * k + ay), fill=C["iron"] + (255,))
+        lines = [((7, 12), (12, 5)), ((12, 5), (20, 5)), ((20, 5), (22, 12)), ((12, 5), (15, 12)), ((15, 12), (7, 12)), ((15, 12), (20, 5)),
+                 ((20, 5), (19, 2)), ((12, 5), (11, 3))]
+        for (ax, ay), (bx, by) in lines:
+            dr.line((ax * k, ay * k, bx * k, by * k), fill=frame, width=max(1, k - 1))
+        dr.line((17 * k, 2 * k, 21 * k, 2 * k), fill=ink, width=k)
+        dr.line((9 * k, 3 * k, 13 * k, 3 * k), fill=C["wood_d"] + (255,), width=k)
+    return tex
+
+
+def news_stand_tex():
+    """Zeitungsaushang: Brett mit den Blättern des Tages, darunter eine Kiste mit dem Stapel."""
+    tex = canvas(34, 30, (0, 0, 0, 0))
+    d = draw_on(tex)
+    d.rectangle((0, 0, 33, 19), fill=C["wood_d"])
+    d.rectangle((1, 1, 32, 5), fill=C["wine_d"])
+    paint_text(tex, 3, 1.6, "ZEITUNG", 3.4, [(C["cream"], 0.8, 0, 0, 1.0, 0)], gap=1.3, seed=9)
+    for i, u in enumerate((2, 12, 22)):
+        d.rectangle((u, 7, u + 8, 18), fill=blend(C["paper"], 0.82 + 0.06 * i))
+        d.rectangle((u + 1, 8, u + 7, 9), fill=C["black"])
+        for v in range(11, 18, 2):
+            d.fine_line((u + 1, v, u + 7 - (v + i) % 3, v), fill=C["ash"])
+    d.rectangle((3, 20, 4, 29), fill=C["wood_d"])
+    d.rectangle((29, 20, 30, 29), fill=C["wood_d"])
+    d.rectangle((8, 22, 26, 29), fill=C["wood"])
+    d.rectangle((8, 21, 26, 22), fill=C["paper"])
+    d.fine_line((8, 26, 26, 26), fill=C["wood_d"])
+    return tex
+
+
+def street_props(s, things):
+    """Kleinkram der Straße. Alles hier steht höchstens ein Viertelfeld vor einer Wand oder auf Feldern, die Kessel und
+    Kisten ohnehin sperren: Die Figuren laufen von Feldmitte zu Feldmitte und kommen daran vorbei."""
+    crate_mat = mat_plain(C["wood"], C["wood"], 4)
+    first = len(things)
+    # Mülltonnen neben den Haustüren
+    ash_can(6.03, 2.55, s, things)
+    ash_can(6.03, 2.85, s, things, lid=False)
+    ash_can(3.9, 17.03, s, things)
+    ash_can(6.03, 14.6, s, things)
+    # Fässer und Kisten im Fabrikhof, unterhalb der Kessel
+    barrel(13.3, 8.32, s, things)
+    barrel(13.65, 8.5, s, things, ("navy_d", "navy", "navy_l"))
+    barrel(15.2, 8.35, s, things)
+    prop_box(14.3, 8.4, 0.5, 0.4, 14, crate_mat, s, things)
+    prop_box(14.38, 8.46, 0.34, 0.28, 9, crate_mat, s, things, z0=14)
+    prop_box(15.6, 8.45, 0.4, 0.4, 11, crate_mat, s, things)
+    # Kisten an der Lagerwand
+    prop_box(17.02, 16.3, 0.24, 0.5, 12, crate_mat, s, things)
+    prop_box(17.02, 16.85, 0.24, 0.36, 8, crate_mat, s, things)
+    # Fahrräder lehnen an der Wand
+    flat_prop(4.25, 6.06, bicycle_tex(), s, things, kind="open")
+    flat_prop(6.06, 12.5, bicycle_tex("wine_d"), s, things, along="y", kind="open")
+    flat_prop(14.9, 18.06, bicycle_tex("navy_d"), s, things, kind="open")
+    # Zeitungsaushang am Mietshaus, zur Straße mit der Bahn hin
+    flat_prop(6.06, 4.1, news_stand_tex(), s, things, along="y")
+    # Hydranten am Bordstein
+    hydrant(7.76, 12.3, s, things)
+    hydrant(10.26, 6.72, s, things)
+    hydrant(11.74, 8.74, s, things)
+    for t in things[first:]:
+        t.kind = t.kind or "prop"
 
 
 def person(x, y, name, direction, step, s, things):
@@ -1899,66 +2228,6 @@ def crate(x, y, s, things):
 
 
 # ---------- Boden ----------
-def paving(along, across):
-    """Reihenpflaster: Die Steine liegen quer zur Fahrbahn, jede zweite Reihe versetzt. Gibt Farbe, Reihe und Stein zurück."""
-    row = math.floor(along * COBBLE_ROWS)
-    shift = across * COBBLE_STONES + 0.5 * (row % 2)
-    stone = math.floor(shift)
-    if (along * COBBLE_ROWS) % 1 < 0.17 or shift % 1 < 0.1:
-        return C["cobble_d"], row, stone
-    return blend(mix(C["cobble"], C["cobble_l"], hash01(row, stone, 6) * 0.5), 0.94 + 0.1 * hash01(row, stone, 3)), row, stone
-
-
-def ground_color(fx, fy, solids, bounded=True):
-    n = 20
-    if bounded and not (0 <= fx < n and 0 <= fy < n):
-        return None
-    road_y = 9 <= fy < 12
-    road_x = 8 <= fx < 10
-    if road_x or road_y:
-        if road_x and not road_y:
-            for rail in (8.42, 8.58, 9.42, 9.58):
-                if abs(fx - rail) < 0.018:
-                    return C["rust_d"] if noise(fy * 4, rail, 9) > 0.62 else mix(C["iron"], C["steel"], 0.35)
-                if abs(fx - rail - 0.03) < 0.012:
-                    return C["black"]
-        c, row, stone = paving(fy, fx) if road_x else paving(fx, fy)
-        # Ausgebrochene Steine liegen beieinander, nicht gleichmäßig verstreut.
-        if noise(fx * 2.3, fy * 2.3, 41) > 0.8 and hash01(row, stone, 5) < 0.5:
-            return C["dirt"]
-        n = noise(fx * 1.6, fy * 1.6, 11)
-        gutter = (road_y and not road_x and min(fy - 9, 12 - fy) < 0.3) or (road_x and not road_y and min(fx - 8, 10 - fx) < 0.22)
-        return blend(c, (0.55 if gutter else 0.68) + 0.4 * n)
-    if 6 <= fx < 12 or 7 <= fy < 14:
-        kerb = fx >= 7.88 and fx < 8 or 10 <= fx < 10.12 or 8.88 <= fy < 9 or 12 <= fy < 12.12
-        n = noise(fx * 1.4, fy * 1.4, 21)
-        if kerb:
-            return blend(C["stone"], 0.66 + 0.4 * n)
-        cx, cy = math.floor(fx * 2), math.floor(fy * 2)
-        ax, ay = (fx * 2) % 1, (fy * 2) % 1
-        roll = hash01(cx, cy, 7)
-        if roll < 0.03 and noise(fx * 9, fy * 9, 22) > 0.35:
-            return C["dirt"]  # Platte weggebrochen, mit unregelmäßigem Rand
-        edge = ax < 0.06 or ay < 0.06
-        tone = 0.91 + 0.09 * hash01(cx, cy, 8)
-        c = C["stone_d"] if edge else blend(C["stone"], tone)
-        # Gesprungene Platte: Der Sprung läuft schräg und krumm, nicht von Ecke zu Ecke.
-        if roll < 0.14:
-            slope = 0.35 + 1.3 * hash01(cx, cy, 9)
-            line = ay - slope * ax - (hash01(cx, cy, 10) - 0.4) + (noise(fx * 16, fy * 16, 23) - 0.5) * 0.35
-            if abs(line) < 0.04:
-                c = mix(c, C["grime"], 0.65)
-        return blend(c, 0.56 + 0.42 * n)
-    # Hof: festgefahrener Teer und Schotter, die Flächen gehen ineinander über
-    n = noise(fx * 1.8, fy * 1.8, 31)
-    c = mix(C["tar"], C["gravel"], round(noise(fx * 3.1, fy * 3.1, 33) * 4) / 4 * 0.7)
-    if abs(noise(fx * 2.2, fy * 2.2, 34) - 0.5) < 0.012:
-        c = C["soot"]  # Risse im Teer
-    if n < 0.27 and noise(fx * 12, fy * 12, 32) > 0.5:
-        return mix(c, C["moss"], 0.45)
-    return blend(c, (0.56 + 0.45 * n) * (0.97 + 0.06 * hash01(math.floor(fx * 28), math.floor(fy * 28), 35)))
-
-
 def scatter_dirt(s, solids):
     """Pfützen, Ölflecken, Müll und Unkraut, nur auf den Boden gemalt und ohne Einfluss auf die Spiellogik.
 
@@ -2024,14 +2293,33 @@ def paint_dirt(s, ops):
 
 
 def manhole(s, mx, my):
-    """Gullydeckel: eiserner Rand, Gitter aus Schlitzen."""
+    """Kanaldeckel aus Gusseisen: Rahmen, Fuge, Waffelmuster und zwei Löcher für den Haken."""
     r = s.res
     cx, cy = s.to_screen(mx, my)
     for j in range(-5 * r, 5 * r + 1):
         for i in range(-10 * r, 10 * r + 1):
-            d = (i / (10 * r)) ** 2 + (j / (5 * r)) ** 2
-            if d < 1:
-                s.put(int(cx) + i, int(cy) + j, C["iron"] if d > 0.6 else (C["black"] if (i + j) % 3 else C["soot"]))
+            u, v = i / (10 * r), j / (5 * r)
+            d = math.hypot(u, v)
+            if d >= 1:
+                continue
+            if d > 0.84:
+                c = blend(C["iron"], 0.9 + 0.3 * (v < 0))
+            elif d > 0.74:
+                c = C["black"]
+            elif math.hypot(abs(u) - 0.45, v) < 0.09:
+                c = C["black"]
+            else:
+                waffle = (math.floor((u + v) * 4.5) + math.floor((u - v) * 4.5)) % 2
+                c = C["iron"] if waffle else C["soot"]
+            s.put(int(cx) + i, int(cy) + j, c)
+
+
+RAILS = (8.42, 8.58, 9.42, 9.58)
+# Straßenabläufe im Rinnstein: Feld x, y und die Richtung des Bordsteins
+GULLIES = ((8.11, 3.4, "y"), (8.11, 13.3, "y"), (9.89, 16.4, "y"), (9.89, 7.6, "y"), (4.3, 9.15, "x"), (17.3, 9.15, "x"), (14.5, 11.85, "x"), (6.9, 11.85, "x"))
+# Kellerroste und Kohlenklappen dicht an der Hauswand: x0, y0, x1, y1
+GRATES = ((2.2, 6.03, 2.7, 6.2), (4.4, 6.03, 4.9, 6.2), (6.03, 2.6, 6.2, 3.1), (2.0, 17.03, 2.5, 17.2), (6.03, 13.2, 6.2, 13.7), (6.03, 15.6, 6.2, 16.1),
+          (13.0, 18.03, 13.5, 18.2), (17.03, 14.2, 17.2, 14.7), (18.03, 2.2, 18.2, 2.7))
 
 
 def hash01_np(ix, iy, seed=0):
@@ -2049,8 +2337,12 @@ def noise_np(x, y, seed=0):
     return top * (1 - fy) + bottom * fy
 
 
-def ground_np(fx, fy):
-    """ground_color für ganze Felder auf einmal, Ergebnis als (…, 3) uint8. Gleiche Regeln, nur mit numpy gerechnet."""
+def ground_np(fx, fy, solids=()):
+    """Farbe des Bodens für ganze Felder auf einmal, Ergebnis als (…, 3) uint8.
+
+    Fahrbahn aus Reihenpflaster mit Rinnstein und Schienen, Gehwege aus Platten zwischen zwei Streifen Mosaikpflaster,
+    Bordsteine, Höfe aus Teer. Um jedes Haus (solids) läuft ein gepflasterter Streifen, direkt an der Wand ein Traufstreifen.
+    """
     col = lambda name: np.array(C[name], np.float64)  # noqa: E731
 
     def blend_np(c, f):
@@ -2059,8 +2351,11 @@ def ground_np(fx, fy):
     def mix_np(a, b, f):
         return np.floor(a + (b - a) * f[..., None])
 
+    def put(base, mask, c):
+        return np.where(mask[..., None], c, base)
+
     shape = fx.shape
-    out = np.zeros(shape + (3,))
+    full = lambda v: np.full(shape, v)  # noqa: E731
     road_y = (9 <= fy) & (fy < 12)
     road_x = (8 <= fx) & (fx < 10)
     road = road_x | road_y
@@ -2073,20 +2368,41 @@ def ground_np(fx, fy):
     sett = blend_np(mix_np(col("cobble"), col("cobble_l"), hash01_np(row, stone, 6) * 0.5), 0.94 + 0.1 * hash01_np(row, stone, 3))
     c = np.where(joint[..., None], col("cobble_d"), sett)
     n = noise_np(fx * 1.6, fy * 1.6, 11)
-    gutter = (road_y & ~road_x & (np.minimum(fy - 9, 12 - fy) < 0.3)) | (road_x & ~road_y & (np.minimum(fx - 8, 10 - fx) < 0.22))
-    paved = blend_np(c, np.where(gutter, 0.55, 0.68) + 0.4 * n)
+    edge_y = np.minimum(fy - 9, 12 - fy)
+    edge_x = np.minimum(fx - 8, 10 - fx)
+    gutter = (road_y & ~road_x & (edge_y < 0.3)) | (road_x & ~road_y & (edge_x < 0.22))
+    paved = blend_np(c, 0.68 + 0.4 * n)
     broken = (noise_np(fx * 2.3, fy * 2.3, 41) > 0.8) & (hash01_np(row, stone, 5) < 0.5)
-    paved = np.where(broken[..., None], col("dirt"), paved)
-    rails = road_x & ~road_y
-    for rail in reversed((8.42, 8.58, 9.42, 9.58)):
-        shadow = rails & (np.abs(fx - rail - 0.03) < 0.012)
-        paved = np.where(shadow[..., None], col("black"), paved)
-        head = rails & (np.abs(fx - rail) < 0.018)
-        metal = np.where((noise_np(fy * 4, np.full(shape, rail), 9) > 0.62)[..., None], col("rust_d"), mix_np(col("iron"), col("steel"), np.full(shape, 0.35)))
-        paved = np.where(head[..., None], metal, paved)
+    paved = put(paved, broken, col("dirt"))
+    # Rinnstein: drei Reihen Steine längs zum Bordstein, dunkler, mit stehendem Wasser dicht an der Kante
+    reach = np.where(road_x & ~road_y, edge_x / 0.22, edge_y / 0.3)
+    lane = np.floor(reach * 3)
+    g_joint = ((reach * 3) % 1 < 0.16) | ((along * 2.4 + 0.5 * (lane % 2)) % 1 < 0.07)
+    g_stone = hash01_np(np.floor(along * 2.4 + 0.5 * (lane % 2)), lane + np.floor(across), 13)
+    g = blend_np(np.where(g_joint[..., None], col("cobble_d") * 0.8, mix_np(col("cobble_d"), col("cobble"), g_stone * 0.7)), 0.58 + 0.34 * n)
+    film = noise_np(along * 1.1, np.floor(across) * 3.0, 14) + 0.25 * noise_np(along * 5, across * 9, 15)
+    wet = (reach < 0.5 + 0.5 * noise_np(along * 3, across, 16)) & (film > 0.58)
+    g = put(g, wet, mix_np(g, col("puddle"), full(0.72)))
+    g = put(g, wet & (hash01_np(np.floor(along * 60), np.floor(across * 60), 17) > 0.965), mix_np(col("puddle"), col("glass"), full(0.5)))
+    paved = put(paved, gutter, g)
+    for x, y, way in GULLIES:
+        da, dc = (fy - y, fx - x) if way == "y" else (fx - x, fy - y)
+        frame = (np.abs(da) < 0.19) & (np.abs(dc) < 0.1)
+        slots = (np.abs(da) < 0.16) & (np.abs(dc) < 0.07)
+        paved = put(paved, frame, blend_np(col("iron"), 0.75 + 0.3 * n))
+        paved = put(paved, slots & ((da * 24) % 1 < 0.5), col("black"))
+    # Schienen: Rillenschiene, der Kopf blank gefahren. Unter den Laternen fängt er das Licht.
+    for rail in reversed(RAILS):
+        flank = road_x & (np.abs(fx - rail) < 0.07)
+        paved = put(paved, flank, blend_np(paved, full(0.84)))
+        paved = put(paved, road_x & (np.abs(fx - rail - 0.03) < 0.012), col("black"))
+        head = road_x & (np.abs(fx - rail) < 0.018)
+        rusty = noise_np(fy * 4, full(rail), 9) > 0.8
+        metal = np.where(rusty[..., None], col("rust_d"), mix_np(col("steel"), col("ash"), full(0.55)))
+        paved = put(paved, head, metal)
+        paved = put(paved, road_x & (np.abs(fx - rail + 0.006) < 0.005) & ~rusty, np.array((214, 216, 220.0)))
     # Gehweg
     walk = ~road & (((6 <= fx) & (fx < 12)) | ((7 <= fy) & (fy < 14)))
-    kerb = ((fx >= 7.88) & (fx < 8)) | ((10 <= fx) & (fx < 10.12)) | ((8.88 <= fy) & (fy < 9)) | ((12 <= fy) & (fy < 12.12))
     n = noise_np(fx * 1.4, fy * 1.4, 21)
     cx, cy = np.floor(fx * 2), np.floor(fy * 2)
     ax, ay = (fx * 2) % 1, (fy * 2) % 1
@@ -2096,22 +2412,63 @@ def ground_np(fx, fy):
     slope = 0.35 + 1.3 * hash01_np(cx, cy, 9)
     line = ay - slope * ax - (hash01_np(cx, cy, 10) - 0.4) + (noise_np(fx * 16, fy * 16, 23) - 0.5) * 0.35
     crack = (roll < 0.14) & (np.abs(line) < 0.04)
-    c = np.where(crack[..., None], mix_np(c, col("grime"), np.full(shape, 0.65)), c)
+    c = put(c, crack, mix_np(c, col("grime"), full(0.65)))
     slabs = blend_np(c, 0.56 + 0.42 * n)
-    slabs = np.where(((roll < 0.03) & (noise_np(fx * 9, fy * 9, 22) > 0.35))[..., None], col("dirt"), slabs)
-    slabs = np.where(kerb[..., None], blend_np(col("stone"), 0.66 + 0.4 * n), slabs)
+    slabs = put(slabs, (roll < 0.03) & (noise_np(fx * 9, fy * 9, 22) > 0.35), col("dirt"))
+    # Mosaikpflaster: kleine Steine, unruhig verlegt, einzelne fehlen
+    mu, mv = fx * 9 + 0.35 * np.sin(fy * 5), fy * 9 + 0.35 * np.sin(fx * 5)
+    m_stone = hash01_np(np.floor(mu), np.floor(mv), 51)
+    m_joint = (mu % 1 < 0.16) | (mv % 1 < 0.16)
+    mosaic = mix_np(np.array((112, 106, 100.0)), np.array((146, 136, 122.0)), m_stone)
+    mosaic = put(mosaic, m_joint, np.array((70, 66, 66.0)))
+    mosaic = put(mosaic, (m_stone > 0.95) & (noise_np(fx * 3, fy * 3, 52) > 0.5), col("dirt"))
+    mosaic = blend_np(mosaic, 0.58 + 0.42 * n)
+    # Abstand zum nächsten Haus
+    near = full(9.0)
+    for x0, y0, x1, y1 in solids:
+        gap = np.hypot(np.maximum.reduce([x0 - fx, np.zeros(shape), fx - x1]), np.maximum.reduce([y0 - fy, np.zeros(shape), fy - y1]))
+        near = np.minimum(near, gap)
+    kerb_gap = np.minimum.reduce([np.abs(fx - 7.88), np.abs(fx - 10.12), np.abs(fy - 8.88), np.abs(fy - 12.12)])
+    slabs = put(slabs, (near < 0.36) | (kerb_gap < 0.3), mosaic)
+    # Bordstein: Granit mit Stoßfugen. Zur Kamera hin ist die Stirn zu sehen, sonst nur die helle Oberkante.
+    kerb = ((fx >= 7.88) & (fx < 8)) | ((10 <= fx) & (fx < 10.12)) | ((8.88 <= fy) & (fy < 9)) | ((12 <= fy) & (fy < 12.12))
+    k_along = np.where(((fx >= 7.88) & (fx < 8)) | ((10 <= fx) & (fx < 10.12)), fy, fx)
+    k = blend_np(col("stone"), 0.7 + 0.4 * n)
+    k = put(k, (k_along * 1.7) % 1 < 0.03, blend_np(col("stone_d"), 0.5 + 0.3 * n))
+    face = ((fx >= 7.965) & (fx < 8)) | ((fy >= 8.965) & (fy < 9))
+    k = put(k, face, blend_np(col("stone_d"), 0.4 + 0.25 * n))
+    lip = ((fx >= 7.94) & (fx < 7.965)) | ((fy >= 8.94) & (fy < 8.965)) | ((10 <= fx) & (fx < 10.025)) | ((12 <= fy) & (fy < 12.025))
+    k = put(k, lip, blend_np(col("stone_l"), 0.8 + 0.3 * n))
+    slabs = put(slabs, kerb, k)
     # Hof
     n = noise_np(fx * 1.8, fy * 1.8, 31)
     c = mix_np(col("tar"), col("gravel"), np.round(noise_np(fx * 3.1, fy * 3.1, 33) * 4) / 4 * 0.7)
-    c = np.where((np.abs(noise_np(fx * 2.2, fy * 2.2, 34) - 0.5) < 0.012)[..., None], col("soot"), c)
+    c = put(c, np.abs(noise_np(fx * 2.2, fy * 2.2, 34) - 0.5) < 0.012, col("soot"))
     yard = blend_np(c, (0.56 + 0.45 * n) * (0.97 + 0.06 * hash01_np(np.floor(fx * 28), np.floor(fy * 28), 35)))
-    yard = np.where(((n < 0.27) & (noise_np(fx * 12, fy * 12, 32) > 0.5))[..., None], mix_np(c, col("moss"), np.full(shape, 0.45)), yard)
+    yard = put(yard, (n < 0.27) & (noise_np(fx * 12, fy * 12, 32) > 0.5), mix_np(c, col("moss"), full(0.45)))
+    # Um die Häuser im Hof ein gepflasterter Streifen mit Kantenstein
+    yard = put(yard, near < 0.62, mosaic)
+    border = (near >= 0.55) & (near < 0.62)
+    yard = put(yard, border, blend_np(col("stone"), 0.62 + 0.36 * n))
+    yard = put(yard, border & (((fx + fy) * 1.9) % 1 < 0.04), blend_np(col("stone_d"), 0.5 + 0.3 * n))
+    yard = put(yard, (near >= 0.62) & (near < 0.65), blend_np(yard, full(0.7)))
     out = np.where(road[..., None], paved, np.where(walk[..., None], slabs, yard))
+    # Traufstreifen: Direkt an der Wand liegt kein Pflaster, sondern Dreck, Moos und Kies.
+    drip = (near < 0.085 + 0.03 * noise_np(fx * 7, fy * 7, 61)) & ~road
+    soil = mix_np(col("dirt"), col("moss"), np.clip(noise_np(fx * 6, fy * 6, 62) * 1.6 - 0.6, 0, 1) * 0.7)
+    soil = blend_np(soil, 0.7 + 0.5 * hash01_np(np.floor(fx * 40), np.floor(fy * 40), 63))
+    out = put(out, drip, soil)
+    for x0, y0, x1, y1 in GRATES if len(solids) else ():
+        inside = (fx >= x0) & (fx < x1) & (fy >= y0) & (fy < y1)
+        long_x = x1 - x0 > y1 - y0
+        bars = ((np.where(long_x, fx, fy) * 26) % 1 < 0.45)
+        rim = (fx < x0 + 0.02) | (fx > x1 - 0.02) | (fy < y0 + 0.02) | (fy > y1 - 0.02)
+        out = put(out, inside, np.where((bars & ~rim)[..., None], col("black"), blend_np(col("iron"), full(0.8))))
     return out.astype(np.uint8)
 
 
-def draw_ground_fine(s, solids, dirt):
-    """Boden in der Auflösung der Szene, mit numpy gerechnet. Schmutz und Gullydeckel wie im einfachen Bild."""
+def paint_ground(s, solids, dirt, cut_out):
+    """Boden in der Auflösung der Szene. cut_out: außerhalb der Karte durchsichtig statt himmelfarben."""
     ys, xs = np.mgrid[0:s.h, 0:s.w]
     a = ((xs + 0.5) / s.res - s.ox) / HW
     b = ((ys + 0.5) / s.res - s.oy) / HH
@@ -2119,7 +2476,7 @@ def draw_ground_fine(s, solids, dirt):
     inside = (fx >= 0) & (fx < 20) & (fy >= 0) & (fy < 20)
     rgb = np.empty((s.h, s.w, 3), np.uint8)
     rgb[...] = C["sky"]
-    rgb[inside] = ground_np(fx[inside], fy[inside])
+    rgb[inside] = ground_np(fx[inside], fy[inside], solids)
     s.img = Image.fromarray(np.dstack([rgb, np.full((s.h, s.w), 255, np.uint8)]), "RGBA").copy()
     s.px = s.img.load()
     paint_dirt(s, dirt)
@@ -2128,9 +2485,15 @@ def draw_ground_fine(s, solids, dirt):
         dist = np.hypot(np.maximum.reduce([x0 - fx, np.zeros_like(fx), fx - x1]), np.maximum.reduce([y0 - fy, np.zeros_like(fy), fy - y1]))
         shade = inside & (dist > 0) & (dist < 0.5)
         arr[shade, :3] = np.clip(np.floor(arr[shade, :3] * (0.62 + 0.38 * dist[shade] / 0.5)[:, None]), 0, 255)
-    arr[..., 3] = np.where(inside, 255, 0)
+    if cut_out:
+        arr[..., 3] = np.where(inside, 255, 0)
     s.img = Image.fromarray(arr, "RGBA").copy()
     s.px = s.img.load()
+
+
+def draw_ground_fine(s, solids, dirt):
+    """Boden in der Auflösung der Szene, Schmutz und Gullydeckel wie im einfachen Bild."""
+    paint_ground(s, solids, dirt, True)
     for mx, my in MANHOLES:
         manhole(s, mx, my)
 
@@ -2156,30 +2519,9 @@ def bleed(img, rounds=4):
 
 def draw_ground(s, solids, glows, dirt=None):
     """Malt den Boden. Ohne dirt wird der Schmutz neu gestreut, sonst werden die übergebenen Flecken gemalt."""
-    for sy in range(s.h):
-        for sx in range(s.w):
-            fx, fy = s.to_map(sx + 0.5, sy + 0.5)
-            c = ground_color(fx, fy, solids)
-            if c:
-                s.put(sx, sy, c)
     if dirt is None:
         dirt = scatter_dirt(s, solids)
-    paint_dirt(s, dirt)
-    # Kontaktschatten an Gebäudekanten, nur im Umkreis eines halben Felds um das Gebäude gerechnet
-    for x0, y0, x1, y1 in solids:
-        corners = [s.to_screen(x, y) for x in (x0 - 0.5, x1 + 0.5) for y in (y0 - 0.5, y1 + 0.5)]
-        left, right = int(min(c[0] for c in corners)) - 2, int(max(c[0] for c in corners)) + 3
-        top, bottom = int(min(c[1] for c in corners)) - 2, int(max(c[1] for c in corners)) + 3
-        for sy in range(max(0, top), min(s.h, bottom)):
-            for sx in range(max(0, left), min(s.w, right)):
-                fx, fy = s.to_map(sx + 0.5, sy + 0.5)
-                if not (0 <= fx < 20 and 0 <= fy < 20):
-                    continue
-                dx = max(x0 - fx, 0, fx - x1)
-                dy = max(y0 - fy, 0, fy - y1)
-                dist = (dx * dx + dy * dy) ** 0.5
-                if 0 < dist < 0.5:
-                    s.shade(sx, sy, 0.62 + 0.38 * dist / 0.5)
+    paint_ground(s, solids, dirt, False)
     # Der Lichtschein der Laternen entsteht im Spiel, hier würde er nur als Punktmuster stören.
     return dirt
 
@@ -2331,6 +2673,9 @@ def build_scene(with_people=True):
     for lx, ly in ((7.5, 2.0), (7.5, 5.5), (10.5, 3.5), (10.5, 6.9), (7.5, 13.5), (10.5, 13.5), (5.6, 10.5), (12.6, 10.5)):
         lamp(lx, ly, s, things, glows)
 
+    overhead_wire(8.5, ((3.2, 6.0, 12.0, 82), (14.5, 6.0, 12.0, 78)), s, things)
+    street_props(s, things)
+
     # Figuren
     if with_people:
         person(10.5, 8.4, "Agent", "e", 0, s, things)
@@ -2438,13 +2783,17 @@ def export_backdrop(assets):
     s.ox, s.oy = BACKDROP_W // 2, BACKDROP_H // 2 - 20 * HH
     s.img = Image.new("RGBA", (s.w, s.h), C["sky"] + (255,))
     s.px = s.img.load()
-    for sy in range(s.h):
-        for sx in range(s.w):
-            fx, fy = s.to_map(sx + 0.5, sy + 0.5)
-            dist = max(-fx, fx - 20, -fy, fy - 20)
-            if 0 <= dist < BACKDROP_STREETS:
-                c = blend(ground_color(fx, fy, (), bounded=False), BACKDROP_DARK)
-                s.px[sx, sy] = mix(c, C["sky"], (dist / BACKDROP_STREETS) ** 0.7) + (255,)
+    ys, xs = np.mgrid[0:s.h, 0:s.w]
+    a, b = (xs + 0.5 - s.ox) / HW, (ys + 0.5 - s.oy) / HH
+    fx, fy = (a + b) / 2, (b - a) / 2
+    dist = np.maximum.reduce([-fx, fx - 20, -fy, fy - 20])
+    street = (dist >= 0) & (dist < BACKDROP_STREETS)
+    paving = np.floor(ground_np(fx[street], fy[street]) * BACKDROP_DARK)
+    haze = ((dist[street] / BACKDROP_STREETS) ** 0.7)[:, None]
+    arr = np.asarray(s.img).copy()
+    arr[street, :3] = (paving + (np.array(C["sky"], np.float64) - paving) * haze).astype(np.uint8)
+    s.img = Image.fromarray(arr, "RGBA")
+    s.px = s.img.load()
     canvas = s.img
     things = []
     # Vor der Karte (x oder y über 20) bleiben die Blocks weit genug weg und flach, damit sie nichts verdecken.

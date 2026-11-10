@@ -13,7 +13,10 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-ROOT = Path(__file__).resolve().parents[2]
+import os
+
+HOME = Path(__file__).resolve().parents[2]
+ROOT = Path(os.environ.get("MESSINGSTADT_BAKE_ROOT", HOME))  # anderer Stand zum Vergleichen, etwa ein ausgecheckter älterer
 ASSETS = ROOT / "game" / "assets"
 OUT = ASSETS / "light"
 WORK = ROOT / "work" / "light"
@@ -26,7 +29,8 @@ VOID_LIGHT = (0.34, 0.37, 0.55)  # außerhalb der Karte bleibt der gemalte Nacht
 LAMP_COLOR = (1.0, 0.74, 0.42)
 FIRE_COLOR = (1.0, 0.45, 0.15)
 LAMP_POWER = 4.2
-FIRE_POWER = 0.7
+FIRE_POWER = 0.5  # gedämpft: Die Kessel sollen glimmen, nicht den Hof überstrahlen
+RULES_FIRE_POWER = 0.7  # fürs Schleichen (light_01.json) zählt das Feuer weiter mit der alten Stärke, darauf ist die Balance abgestimmt
 # Leuchtmittel hinter den Fenstern: Licht nach außen, Einfärbung der Scheibe, Anteil unter allen erleuchteten Fenstern.
 WINDOW_TYPES = {
     "gluehlampe": dict(color=(1.0, 0.76, 0.46), power=0.014, pane=(1.2, 1.05, 0.78), weight=4),
@@ -50,7 +54,7 @@ FLASH_AMBIENT = 0.2
 VOID_FLASH = 0.3
 BACKDROP_FLASH = 1.3  # die Kulisse ist dunkler gemalt, beim Blitz soll die Kartengrenze trotzdem nicht auffallen
 MOON_DIRECTION = (-0.45, -0.25, 0.85)  # von hinten und oben: Nur Dächer und Oberseiten sehen ihn, nicht Fassaden und Straßen
-MOON_COLOR = (0.2, 0.225, 0.3)
+MOON_COLOR = (0.42, 0.47, 0.62)  # gut doppelt so hell wie zuerst: Die Dächer sollen nachts lesbar sein. Zählt nicht fürs Schleichen.
 FOG_SIZE = 256
 EMISSIVE = ((255, 232, 160), (226, 170, 90))
 EMISSIVE_REACH = 45
@@ -59,6 +63,9 @@ GRID_RES = 4
 GRID_Z = 22
 TONE_KNEE = 0.28
 BLUR_RADIUS = 2
+
+# Fensterlicht, wie es die Spielregeln kennen: aus work/light/windows.json eines Laufs übernommen, nur bei gewollter Änderung neu
+RULES_WINDOWS = Path(__file__).with_name("rules_windows.json")
 
 
 def is_emissive(rgba):
@@ -189,6 +196,8 @@ def main():
     # nasser Boden lesen sein Licht in Weltkoordinaten.
     fine_images = {Path(f).stem: np.array(Image.open(ASSETS / "hd" / "things" / f).convert("RGBA"))
                    for f in manifest.get("hd", {}).get("things", [])}
+    # Fürs Schleichlicht strahlen Boden und Objekte so zurück wie vor dem Umbau der Grafik: Neue Farben ändern nur das Bild.
+    frozen = json.loads(Path(__file__).with_name("rules_albedo.json").read_text())
     boxes, sprites, images = [], [], []
     groundless = ground[(np.abs(ground[..., :3].astype(int) - ground[0, 0, :3].astype(int)).sum(axis=2) > 8)]
     sprites.append({"name": "ground", "box": -1, "left": 0, "top": 0})
@@ -201,7 +210,12 @@ def main():
             x0, y0, x1, y1, z1 = x0 + 0.4, y0 + 0.4, x1 - 0.4, y1 - 0.4, 62
         if t["kind"] == "lamp":
             z1 = 50
-        boxes.append({"x0": x0, "y0": y0, "x1": x1, "y1": y1, "z0": t["z0"], "z1": z1, "albedo": mean_albedo(rgba), "roof": t.get("roof", [])})
+        albedo = mean_albedo(rgba)
+        key = ",".join(f"{t[k]:.2f}" for k in ("x0", "y0", "x1", "y1", "z0"))
+        boxes.append({"x0": x0, "y0": y0, "x1": x1, "y1": y1, "z0": t["z0"], "z1": z1, "albedo": albedo,
+                      "rulesAlbedo": frozen["boxes"].get(key, albedo), "roof": t.get("roof", []),
+                      # Kleinkram wirft im Bild Schatten, fürs Schleichlicht aber keinen. Durchbrochenes wie Fahrräder nie.
+                      "ghost": {"prop": 1, "open": 2}.get(t["kind"], 0)})
         sprites.append({"name": Path(t["file"]).stem, "box": len(boxes) - 1, "left": t["px"], "top": t["py"], "kind": t["kind"]})
         images.append(rgba)
 
@@ -303,11 +317,13 @@ def main():
         "moonDirection": MOON_DIRECTION, "moonColor": MOON_COLOR,
         "boxes": boxes, "lights": lights, "puddles": manifest["puddles"],
         "sprites": [{k: s[k] for k in ("box", "left", "top", "w", "h")} for s in sprites],
-        "gridRes": GRID_RES, "gridZ": GRID_Z,
+        "gridRes": GRID_RES, "gridZ": GRID_Z, "rulesFireScale": RULES_FIRE_POWER / FIRE_POWER,
+        "rulesGroundAlbedo": frozen["ground"],
+        **({"rulesWindows": json.loads(RULES_WINDOWS.read_text())} if RULES_WINDOWS.exists() else {}),
     }
     (WORK / "scene.json").write_text(json.dumps(scene), encoding="utf-8")
 
-    subprocess.run(["dotnet", "run", "-c", "Release", "--project", str(ROOT / "tools" / "Messingstadt.LightBake"), "--", str(WORK)], check=True)
+    subprocess.run(["dotnet", "run", "-c", "Release", "--project", str(HOME / "tools" / "Messingstadt.LightBake"), "--", str(WORK)], check=True)
 
     data = np.fromfile(WORK / "light.bin", dtype="<f4")
     at = 0
@@ -346,13 +362,14 @@ def main():
                    None if halo is None else resize_float(halo, size), sprite["box"])
 
     size = 20 * GRID_RES
-    grid = np.fromfile(WORK / "grid.bin", dtype="<f4").reshape(size, size, 4)
+    grid = np.fromfile(WORK / "grid.bin", dtype="<f4").reshape(size, size, 7)
     inside = grid[..., 0] < 0
     grid[inside] = 0
-    filled = fill_empty(np.concatenate([tone(grid[..., :3]), grid[..., 3:]], axis=-1), ~inside)
+    filled = fill_empty(np.concatenate([tone(grid[..., :3]), grid[..., 3:4]], axis=-1), ~inside)
     Image.fromarray(encode(filled), "RGBA").save(OUT / "grid.png")
-    # Für die Spielregeln: Helligkeit in Prozent, im Stand von Figuren gemessen.
-    levels = (filled[..., :3].mean(axis=-1) * 100).round().astype(int).ravel().tolist()
+    # Für die Spielregeln: Helligkeit in Prozent, im Stand von Figuren gemessen. Eigenes Licht, siehe RULES_FIRE_POWER.
+    rules = fill_empty(tone(grid[..., 4:7]), ~inside)
+    levels = (rules.mean(axis=-1) * 100).round().astype(int).ravel().tolist()
     (ROOT / "data" / "light_01.json").write_text(json.dumps({"cells": GRID_RES, "size": size, "levels": levels}), encoding="utf-8")
     # Die Kulisse hat kein eigenes Licht, sondern trägt überall das des Nachthimmels.
     Image.fromarray(encode(np.array([[VOID_LIGHT]]))).save(OUT / "backdrop_a.png")
