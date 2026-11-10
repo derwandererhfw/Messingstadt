@@ -72,7 +72,7 @@ namespace Messingstadt
             if (_lines.Length > 0)
             {
                 // Halb so breit wie ein einfacher Bildpunkt, so fein wie die Linien der Stadt in doppelter Auflösung.
-                DrawMultiline(_lines, new Color(0.8f, 0.86f, 1f, 0.5f), 0.5f);
+                DrawMultiline(_lines, new Color(0.8f, 0.86f, 1f, 0.62f), 0.7f);
             }
         }
     }

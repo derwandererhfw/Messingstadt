@@ -53,7 +53,8 @@ namespace Messingstadt
         private const int ConePoints = 14;
         private const float ConeHeight = 52f;
         private const float ConeRadius = 46f;
-        private const float ConeAlpha = 0.26f;
+        private const float ConeAlpha = 0.3f;
+        private const float ConeRainBoost = 0.7f;
 
         // Nebel: Der Shader liest die Lichtkarte des Bodens, die Schwaden leuchten also genau dort, wo Licht fällt.
         private const string FogShaderCode = @"
@@ -83,6 +84,55 @@ void fragment() {
     COLOR = vec4(mix(l * vec3(0.82, 0.86, 0.95) + vec3(0.03, 0.035, 0.05), vec3(0.086, 0.098, 0.17), rim * 0.8) / night, amount);
 }";
 
+        /// <summary>
+        /// Regenfäden im Licht einer Laterne: Nur im Kegel sieht man die Tropfen fallen, dicht unter der Lampe am hellsten.
+        /// </summary>
+        private sealed partial class ConeRain : Node2D
+        {
+            private const int Threads = 24;
+            private const float FallsPerSecond = 2.3f;
+            private const float ThreadLength = 8f;
+            private const float ThreadAlpha = 0.75f;
+            private const float SplashAlpha = 0.6f;
+
+            public Weather Weather = null!;
+            public Color Glow;
+            public bool Stutters;
+
+            public override void _Draw()
+            {
+                float rain = Weather.RainStrength;
+                float lamp = Stutters ? Weather.Game.StutterLevel : Weather.Game.UnrestLevel;
+                int count = Mathf.CeilToInt(Threads * Mathf.Clamp(rain * 1.5f, 0f, 1f));
+                var slant = new Vector2(Weather.Wind * 0.006f, 1f);
+                for (int i = 0; i < count; i++)
+                {
+                    // Feste Zufallswerte je Faden: Platz quer im Kegel, Tiefe und Versatz im Fall.
+                    float side = Mathf.Sin(i * 12.9898f) * 43758.547f;
+                    side = (side - Mathf.Floor(side)) * 2f - 1f;
+                    float deep = Mathf.Sin(i * 78.233f) * 12543.21f;
+                    deep = deep - Mathf.Floor(deep);
+                    float fall = (Weather._time * FallsPerSecond * (0.85f + 0.3f * deep) + deep * 7f) % 1f;
+                    float ground = ConeHeight + (deep - 0.5f) * ConeRadius * 0.7f;
+                    // Der Faden fällt senkrecht und wird erst sichtbar, wo er in den Kegel eintritt.
+                    float top = Mathf.Abs(side) * ground * 0.9f;
+                    var at = new Vector2(side * ConeRadius * 0.85f, top + fall * (ground - top));
+                    float alpha = ThreadAlpha * lamp * (1f - side * side) * (1f - 0.55f * fall);
+                    if (fall > 0.9f)
+                    {
+                        // Unten zerplatzt der Tropfen auf dem Pflaster.
+                        float f = (fall - 0.9f) / 0.1f;
+                        var hit = new Vector2(side * ConeRadius * 0.85f, ground);
+                        var color = new Color(Glow, SplashAlpha * lamp * (1f - side * side) * (1f - f));
+                        DrawRect(new Rect2(hit + new Vector2(-1f - 2f * f, -1.5f * f), new Vector2(0.7f, 0.7f)), color);
+                        DrawRect(new Rect2(hit + new Vector2(1f + 2f * f, -1.5f * f), new Vector2(0.7f, 0.7f)), color);
+                        continue;
+                    }
+                    DrawLine(at, at + slant * ThreadLength, new Color(Glow, alpha), 0.6f);
+                }
+            }
+        }
+
         private sealed class Cone
         {
             public Polygon2D Shape = null!;
@@ -97,7 +147,7 @@ void fragment() {
         private LightningBolt? _liveBolt;
         private (Vector2 Top, Vector2 Bottom, bool Front, bool Hit)? _strikePath;
         private readonly List<(Vector2 Top, Vector2 Tile)> _chimneys = new();
-        private readonly List<CpuParticles2D> _coneRain = new();
+        private readonly List<ConeRain> _coneRain = new();
         private Sprite2D _strikeGlow = null!;
         private Sprite2D _ember = null!;
         private float _strikeGlowLeft;
@@ -225,7 +275,7 @@ void fragment() {
             _fog.SetShaderParameter("density", Mathf.Lerp(1.5f, 0.75f, RainStrength));
             foreach (var rain in _coneRain)
             {
-                rain.Modulate = new Color(1f, 1f, 1f, Mathf.Clamp(RainStrength * 1.8f, 0f, 1f));
+                rain.QueueRedraw();
             }
         }
 
@@ -334,13 +384,10 @@ void fragment() {
                 AddChild(shape);
                 bool stutters = Mathf.Abs((float)lamp[0] - stutterLamp.X) < 0.01f && Mathf.Abs((float)lamp[1] - stutterLamp.Y) < 0.01f;
                 _cones.Add(new Cone { Shape = shape, Stutters = stutters });
-                var rain = new CpuParticles2D
+                var rain = new ConeRain
                 {
-                    Material = additive, Position = foot - new Vector2(0, ConeHeight - 6), ZIndex = shape.ZIndex,
-                    Amount = 12, Lifetime = 0.45f, Preprocess = 0.5f, EmissionShape = CpuParticles2D.EmissionShapeEnum.Rectangle,
-                    EmissionRectExtents = new Vector2(ConeRadius * 0.55f, 4f), Direction = new Vector2(0.15f, 1f), Spread = 3f,
-                    Gravity = Vector2.Zero, InitialVelocityMin = 90f, InitialVelocityMax = 120f,
-                    ScaleAmountMin = 1f, ScaleAmountMax = 1f, Color = new Color(glow, 0.55f),
+                    Weather = this, Material = additive, Position = foot - new Vector2(0, ConeHeight), ZIndex = shape.ZIndex,
+                    Glow = glow, Stutters = stutters, LightMask = 0,
                 };
                 AddChild(rain);
                 _coneRain.Add(rain);
@@ -406,7 +453,8 @@ void fragment() {
             }
             foreach (var cone in _cones)
             {
-                cone.Shape.Modulate = new Color(1f, 1f, 1f, cone.Stutters ? Game.StutterLevel : Game.UnrestLevel);
+                // Im Regen streut die nasse Luft das Licht, der Kegel steht dann deutlicher.
+                cone.Shape.Modulate = new Color(1f, 1f, 1f, (cone.Stutters ? Game.StutterLevel : Game.UnrestLevel) * (1f + ConeRainBoost * RainStrength));
             }
         }
 

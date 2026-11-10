@@ -221,6 +221,7 @@ void fragment() {
         private float _testFlash = -1f;
         private float _testRain = -1f;
         private bool _testSmoke;
+        private Vector2? _testPot;
         private Vector2? _testShip;
         private bool _forcePlan;
         // --intro zeigt im Prüflauf alle Sequenzen, --seq=<id> beginnt mit dieser, --seq-time=<s> springt in ihr vor.
@@ -870,6 +871,9 @@ void fragment() {
             _windowLife.Game = this;
             AddChild(_windowLife);
             _critterGlow = glow;
+            AddChild(new Haze { Game = this });
+            AddChild(new Drains { Game = this });
+            AddChild(new SmokePot { Game = this, TestAt = _testPot });
             AddChild(new RainLayer { Game = this, ZIndex = 3900 });
         }
 
@@ -898,6 +902,12 @@ void fragment() {
                 else if (a.StartsWith("--flash="))
                 {
                     _testFlash = float.Parse(a["--flash=".Length..], System.Globalization.CultureInfo.InvariantCulture);
+                }
+                else if (a.StartsWith("--pot="))
+                {
+                    // Prüflauf: stellt eine Rauchwolke wie vom Rauchtopf auf dieses Feld.
+                    var pot = a["--pot=".Length..].Split(',');
+                    _testPot = new Vector2(float.Parse(pot[0], System.Globalization.CultureInfo.InvariantCulture), float.Parse(pot[1], System.Globalization.CultureInfo.InvariantCulture));
                 }
                 else if (a == "--smoke")
                 {
@@ -1755,6 +1765,17 @@ void fragment() {
 
         /// <summary>Tiefe im Bild für eine kleine Figur an dieser Stelle, zwischen den Objekten davor und dahinter.</summary>
         public int DepthZ(float x, float y) => ThingZ(InsertIndex(x, y) - 1) + 20;
+
+        /// <summary>Tiefe für einen Dunstschleier längs x + y = depth: direkt hinter dem ersten Objekt, das über diese Linie nach vorn reicht.</summary>
+        public int BehindLineZ(float depth)
+        {
+            int i = 0;
+            while (i < _things.Count && _things[i].X1 + _things[i].Y1 <= depth)
+            {
+                i++;
+            }
+            return ThingZ(i) - 1;
+        }
 
         /// <summary>Tiefe für etwas, das auf einem Objekt in dieser Höhe sitzt: direkt über diesem Objekt.</summary>
         public int PerchZ(float x, float y, float z)
