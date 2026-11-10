@@ -2174,6 +2174,7 @@ def street_props(s, things):
     """Kleinkram der Straße. Alles hier steht höchstens ein Viertelfeld vor einer Wand oder auf Feldern, die Kessel und
     Kisten ohnehin sperren: Die Figuren laufen von Feldmitte zu Feldmitte und kommen daran vorbei."""
     crate_mat = mat_plain(C["wood"], C["wood"], 4)
+    first = len(things)
     # Mülltonnen neben den Haustüren
     ash_can(6.03, 2.55, s, things)
     ash_can(6.03, 2.85, s, things, lid=False)
@@ -2199,6 +2200,8 @@ def street_props(s, things):
     hydrant(7.76, 12.3, s, things)
     hydrant(10.26, 6.72, s, things)
     hydrant(11.74, 8.74, s, things)
+    for t in things[first:]:
+        t.kind = t.kind or "prop"
 
 
 def person(x, y, name, direction, step, s, things):

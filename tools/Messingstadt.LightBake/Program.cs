@@ -43,6 +43,10 @@ Vector3 viewDir = Vector3.Normalize(new Vector3(1f / 32f, 1f / 32f, 1f / zScale)
 var boxes = new List<Box>();
 // Dachkörper je Quader: Grundfläche, Unterkante und Ebenen a·x + b·y + c·z <= d, z in Bildpunkten. Siehe tools/art/roofs.py.
 var roofs = new List<float[][]>();
+// Rückstrahlung für das Licht der Spielregeln: der Stand vor dem Umbau der Grafik, damit neue Farben das Schleichen nicht ändern.
+var rulesAlbedo = new List<Vector3>();
+Vector3 rulesGroundAlbedo = root.TryGetProperty("rulesGroundAlbedo", out var frozenGround) ? Vec(frozenGround) : groundAlbedo;
+bool rulesPass = false;
 foreach (var b in root.GetProperty("boxes").EnumerateArray())
 {
     var prisms = new List<float[]>();
@@ -71,6 +75,7 @@ foreach (var b in root.GetProperty("boxes").EnumerateArray())
         new Vector3(b.GetProperty("x0").GetSingle(), b.GetProperty("y0").GetSingle(), b.GetProperty("z0").GetSingle() / zScale),
         new Vector3(b.GetProperty("x1").GetSingle(), b.GetProperty("y1").GetSingle(), b.GetProperty("z1").GetSingle() / zScale),
         Vec(b.GetProperty("albedo"))));
+    rulesAlbedo.Add(b.TryGetProperty("rulesAlbedo", out var frozenAlbedo) ? Vec(frozenAlbedo) : Vec(b.GetProperty("albedo")));
 }
 var boxArray = boxes.ToArray();
 
@@ -240,7 +245,7 @@ bool Closest(Vector3 from, Vector3 dir, int ignore, out Vector3 pos, out Vector3
         return false;
     }
     pos = from + dir * best + foundNormal * Eps;
-    albedo = found < 0 ? groundAlbedo : boxArray[found].Albedo;
+    albedo = found < 0 ? (rulesPass ? rulesGroundAlbedo : groundAlbedo) : rulesPass ? rulesAlbedo[found] : boxArray[found].Albedo;
     return true;
 }
 
@@ -251,6 +256,9 @@ Vector3 RandomOnSphere(ref uint rng)
 }
 
 Vector3 CosineDir(Vector3 n, ref uint rng) => Vector3.Normalize(n + RandomOnSphere(ref rng) * 0.999f);
+
+// Stärke der Feuer in diesem Durchgang: 1 fürs Bild, ein eigener Wert für das Licht der Spielregeln.
+float fireScale = 1f;
 
 float LightAt(Light l, Vector3 p, Vector3 n, int ignore, ref uint rng, out Vector3 toLight)
 {
@@ -264,7 +272,7 @@ float LightAt(Light l, Vector3 p, Vector3 n, int ignore, ref uint rng, out Vecto
     {
         return 0f;
     }
-    return l.Power * cos / MathF.Max(dist2, 0.15f);
+    return l.Power * (l.Layer == 2 ? fireScale : 1f) * cos / MathF.Max(dist2, 0.15f);
 }
 
 Vector3 DirectForBounce(Vector3 p, Vector3 n, int ignore, ref uint rng)
@@ -329,12 +337,22 @@ foreach (var (key, cell) in windowCells)
     windowList.Add((pos + n * 0.03f, n, type.Color, type.Power * cell.Count, key.Item4));
 }
 var windows = windowList.ToArray();
+// Fensterlicht für die Spielregeln: der festgehaltene Stand (rules_windows.json), sonst das eben gesammelte.
+var rulesWindows = windows;
+if (root.TryGetProperty("rulesWindows", out var frozenWindows))
+{
+    rulesWindows = frozenWindows.EnumerateArray().Select(w => (
+        new Vector3(w[0].GetSingle(), w[1].GetSingle(), w[2].GetSingle()), new Vector3(w[3].GetSingle(), w[4].GetSingle(), w[5].GetSingle()),
+        new Vector3(w[6].GetSingle(), w[7].GetSingle(), w[8].GetSingle()), w[9].GetSingle(), -1)).ToArray();
+}
+File.WriteAllText(Path.Combine(workDir, "windows.json"), "[" + string.Join(", ", windows.Select(w => FormattableString.Invariant(
+    $"[{w.Pos.X:R},{w.Pos.Y:R},{w.Pos.Z:R},{w.Normal.X:R},{w.Normal.Y:R},{w.Normal.Z:R},{w.Color.X:R},{w.Color.Y:R},{w.Color.Z:R},{w.Power:R}]"))) + "]");
 Console.WriteLine($"{boxArray.Length} Quader, {lightArray.Length} Lichter, {windows.Length} Fensterlichter");
 
 Vector3 Windows(Vector3 p, Vector3 n, int ignore)
 {
     var sum = Vector3.Zero;
-    foreach (var w in windows)
+    foreach (var w in rulesPass ? rulesWindows : windows)
     {
         var d = w.Pos - p;
         float dist2 = d.LengthSquared();
@@ -495,35 +513,50 @@ Console.WriteLine($"Lichtkarten fertig nach {(DateTime.Now - started).TotalSecon
 int gridRes = root.GetProperty("gridRes").GetInt32();
 float gridZ = root.GetProperty("gridZ").GetSingle() / zScale;
 int gridSize = mapSize * gridRes;
-var grid = new float[gridSize * gridSize * 4];
-Parallel.For(0, gridSize, gy =>
+// Je Zelle: Licht fürs Bild (3), Blitz (1) und Licht für die Spielregeln (3). Die Regeln rechnen Feuer mit eigener Stärke.
+float rulesFire = root.TryGetProperty("rulesFireScale", out var rulesFireElement) ? rulesFireElement.GetSingle() : 1f;
+const int GridChannels = 7;
+var grid = new float[gridSize * gridSize * GridChannels];
+for (int pass = 0; pass < 2; pass++)
 {
-    for (int gx = 0; gx < gridSize; gx++)
+    // Zweiter Durchgang mit denselben Zufallszahlen, nur die Feuer so stark, wie die Spielregeln sie kennen.
+    fireScale = pass == 0 ? 1f : rulesFire;
+    rulesPass = pass == 1;
+    int first = pass == 0 ? 0 : 4;
+    Parallel.For(0, gridSize, gy =>
     {
-        var p = new Vector3((gx + 0.5f) / gridRes, (gy + 0.5f) / gridRes, gridZ);
-        int at = (gy * gridSize + gx) * 4;
-        if (Array.Exists(boxArray, b => b.Contains(p)))
+        for (int gx = 0; gx < gridSize; gx++)
         {
-            grid[at] = -1f;
-            continue;
-        }
-        uint rng = (uint)(gy * gridSize + gx + 1) * 2654435761u | 1u;
-        var sum = Vector3.Zero;
-        for (int i = 0; i < GridSamples; i++)
-        {
-            foreach (var l in lightArray)
+            var p = new Vector3((gx + 0.5f) / gridRes, (gy + 0.5f) / gridRes, gridZ);
+            int at = (gy * gridSize + gx) * GridChannels;
+            if (Array.Exists(boxArray, b => b.Contains(p)))
             {
-                sum += l.Color * LightAt(l, p, Vector3.Zero, -2, ref rng, out _);
+                grid[at] = -1f;
+                continue;
             }
-            sum += Incoming(p, RandomOnSphere(ref rng), -2, ref rng);
+            uint rng = (uint)(gy * gridSize + gx + 1) * 2654435761u | 1u;
+            var sum = Vector3.Zero;
+            for (int i = 0; i < GridSamples; i++)
+            {
+                foreach (var l in lightArray)
+                {
+                    sum += l.Color * LightAt(l, p, Vector3.Zero, -2, ref rng, out _);
+                }
+                sum += Incoming(p, RandomOnSphere(ref rng), -2, ref rng);
+            }
+            sum = sum / GridSamples + Windows(p, Vector3.Zero, -2);
+            grid[at + first] = sum.X;
+            grid[at + first + 1] = sum.Y;
+            grid[at + first + 2] = sum.Z;
+            if (pass == 0)
+            {
+                grid[at + 3] = Flash(p, Vector3.Zero, -2, ref rng);
+            }
         }
-        sum = sum / GridSamples + Windows(p, Vector3.Zero, -2);
-        grid[at] = sum.X;
-        grid[at + 1] = sum.Y;
-        grid[at + 2] = sum.Z;
-        grid[at + 3] = Flash(p, Vector3.Zero, -2, ref rng);
-    }
-});
+    });
+}
+fireScale = 1f;
+rulesPass = false;
 using (var gridOut = new BinaryWriter(File.Create(Path.Combine(workDir, "grid.bin"))))
 {
     foreach (float v in grid)

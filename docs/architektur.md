@@ -49,6 +49,11 @@ Eingabe (Godot) -> Befehle -> World.Tick() -> Zustand -> Darstellung (Godot)
   Kessel und Kisten ohnehin sperren. Der Fahrdraht ist ein Objekt ohne Breite, damit niemand eine Wand aus ihm liest.
   Durchbrochenes wie Fahrräder hat die Art `open` und wirft im Lichtbaker keinen Schatten.
 
+- **Schleichlicht bleibt von der Grafik getrennt:** `data/light_01.json` rechnet der Lichtbaker in einem eigenen
+  Durchgang. Dort gelten die alte Feuerstärke (`RULES_FIRE_POWER`), die Rückstrahlung aus `rules_albedo.json` und das
+  Fensterlicht aus `rules_windows.json`, Kleinkram wirft keinen Schatten, der Mond zählt nicht. Neue Farben, Fenster
+  oder gedämpftes Glühen ändern so nur das Bild. Wer das Schleichlicht bewusst ändern will, erneuert diese Dateien.
+
 ## Zeichenreihenfolge
 
 Statische Objekte sind beim Export vorsortiert. Eine Figur wird vor dem ersten Objekt eingereiht, das
