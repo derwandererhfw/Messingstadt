@@ -29,6 +29,7 @@ namespace Messingstadt
         private const int StrikeTicksPerFrame = 2;
         private const float ThrowFramesPerSecond = 11f;
         private const float BandageFramesPerSecond = 4f;
+        private const float PickFramesPerSecond = 6f;
 
         private readonly Dictionary<string, (int Start, int Count)> _columns = new();
         private readonly Dictionary<string, Dictionary<string, float>> _strides = new();
@@ -36,7 +37,10 @@ namespace Messingstadt
         private readonly Dictionary<int, State> _states = new();
         private readonly HashSet<string> _names = new();
 
-        // Agenten mit anderer Waffe in der Hand haben eigene Zeilen im Blatt, siehe SPECS in generate_concept.py.
+        private readonly Dictionary<string, HashSet<string>> _has = new();
+        private readonly List<string> _agents = new();
+
+        // Agenten mit anderer Waffe in der Hand haben eigene Zeilen im Blatt, siehe AGENTS in generate_concept.py.
         private static readonly Dictionary<string, string> WeaponRows = new()
         {
             ["schrotflinte"] = "_Schrot", ["maschinenpistole"] = "_MP", ["totschlaeger"] = "_Knueppel",
@@ -52,6 +56,8 @@ namespace Messingstadt
             public int Smokes = -1;
             public float ThrowStarted = -100f;
             public int ThrowX, ThrowY;
+            public string Row = "";
+            public string RowWeapon = "?";
         }
 
         /// <summary>Erste Spalte und Bildzahl für Kleintiere und Passanten, die das Blatt mitbenutzen.</summary>
@@ -86,6 +92,19 @@ namespace Messingstadt
                     _biteReach[b.Name] = b.Value.GetSingle();
                 }
             }
+            foreach (var figure in root.GetProperty("has").EnumerateObject())
+            {
+                var motions = new HashSet<string>();
+                foreach (var m in figure.Value.EnumerateArray())
+                {
+                    motions.Add(m.GetString()!);
+                }
+                _has[figure.Name] = motions;
+                if (!figure.Name.Contains('_'))
+                {
+                    _agents.Add(figure.Name);
+                }
+            }
             (IdleFirst, IdleCount) = _columns["idle"];
             (WalkFirst, WalkCount) = _columns["walk"];
         }
@@ -102,15 +121,32 @@ namespace Messingstadt
             return s;
         }
 
-        /// <summary>Zeile im Blatt: Agenten zeigen die Waffe, die sie gerade in der Hand haben.</summary>
+        /// <summary>
+        /// Zeile im Blatt. Greta, Otto, Emil und Hanna haben eigene Zeilen, dazu je Waffe in der Hand eine weitere.
+        /// Wer anders heißt, etwa ein Rekrut, bekommt nach seinem Namen eine der vier Gestalten.
+        /// </summary>
         public string SpriteName(Unit u)
         {
-            if (u.ActiveItem?.Def.Id is { } id && WeaponRows.TryGetValue(id, out var suffix) && _names.Contains(u.Sprite + suffix))
+            if (u.Faction != Faction.Agent || _agents.Count == 0)
             {
-                return u.Sprite + suffix;
+                return u.Sprite;
             }
-            return u.Sprite;
+            var s = StateOf(u);
+            string weapon = u.ActiveItem?.Def.Id ?? "";
+            if (s.RowWeapon != weapon)
+            {
+                string who = _names.Contains(u.Name) ? u.Name : _agents[(int)(Hash(u.Name.Length, u.Name.Length > 0 ? u.Name[0] : 0) % (uint)_agents.Count)];
+                string row = WeaponRows.TryGetValue(weapon, out var suffix) ? who + suffix : who;
+                s.Row = _names.Contains(row) ? row : who;
+                s.RowWeapon = weapon;
+            }
+            return s.Row;
         }
+
+        /// <summary>Ob es diese Bewegung für die Figur im Blatt gibt. Manche gibt es nur für Agenten oder nur mit einer Waffe.</summary>
+        private bool Has(Unit u, string motion) => _has.TryGetValue(SpriteName(u), out var motions) && motions.Contains(motion);
+
+        private static bool AtLock(Unit u) => u.Faction == Faction.Agent && u.DoorTarget >= 0 && !u.Moving;
 
         private static bool Melee(Unit u) => u.ActiveItem?.Def.Kind == ItemKind.Melee;
 
@@ -128,9 +164,14 @@ namespace Messingstadt
         }
 
         /// <summary>Wohin die Figur blickt: beim Zielen aufs Ziel, beim Wurf zur Wolke, sonst in Gehrichtung.</summary>
-        public (int X, int Y) Look(Unit u, float now)
+        public (int X, int Y) Look(World world, Unit u, float now)
         {
             var s = StateOf(u);
+            if (u.Alive && AtLock(u) && u.DoorTarget < world.Doors.Count)
+            {
+                var door = world.Doors[u.DoorTarget];
+                return (door.MarkX - u.X, door.MarkY - u.Y);
+            }
             if (u.Alive && now - s.ThrowStarted < ThrowSeconds)
             {
                 return (s.ThrowX - u.X, s.ThrowY - u.Y);
@@ -226,18 +267,27 @@ namespace Messingstadt
                 return Column(fall, (int)((now - s.FallStarted) / FallSeconds * _columns[fall].Count));
             }
             WatchThrow(world, u, s, now);
-            if (u.BandageTicks > 0 && _columns.ContainsKey("bandage"))
+            if (u.BandageTicks > 0 && Has(u, "bandage"))
             {
                 return Cycle("bandage", now * BandageFramesPerSecond / _columns["bandage"].Count);
             }
             int sinceStrike = world.Tick - u.LastStrikeTick;
-            if (_columns.TryGetValue("strike", out var strike) && sinceStrike >= 0 && sinceStrike < strike.Count * StrikeTicksPerFrame)
+            if (Has(u, "strike") && sinceStrike >= 0 && sinceStrike < _columns["strike"].Count * StrikeTicksPerFrame)
             {
                 return Column("strike", sinceStrike / StrikeTicksPerFrame);
             }
-            if (now - s.ThrowStarted < ThrowSeconds)
+            if (now - s.ThrowStarted < ThrowSeconds && Has(u, "throw"))
             {
                 return Column("throw", (int)((now - s.ThrowStarted) * ThrowFramesPerSecond));
+            }
+            if (AtLock(u) && Has(u, "pick"))
+            {
+                return Cycle("pick", now * PickFramesPerSecond / _columns["pick"].Count);
+            }
+            if (u.ReloadTicks > 0 && !u.Moving && Has(u, "reload") && u.ActiveItem is { } loading)
+            {
+                float done = 1f - u.ReloadTicks / (float)System.Math.Max(1, loading.Def.ReloadTicks);
+                return Column("reload", (int)(done * _columns["reload"].Count));
             }
             bool wants = WantsAim(world, u);
             s.Aim = Mathf.Clamp(s.Aim + (wants ? delta / RaiseSeconds : -delta / LowerSeconds), 0f, 1f);
@@ -246,7 +296,9 @@ namespace Messingstadt
             {
                 // Ein alarmierter Hund rennt, er kennt kein Gehen mehr. Der Laufbursche auch.
                 bool running = u.Sprinting || ((u.Type.Bites || u.Type.Reports) && u.Alerted);
-                string motion = running ? "run" : s.Aim > 0.5f && !u.Type.Bites ? "aimwalk" : "walk";
+                // Wer mit dem Knüppel geht, schleicht: geduckt, den Knüppel hinter dem Rücken.
+                bool sneaking = !running && s.Aim <= 0.5f && Melee(u) && Has(u, "sneak");
+                string motion = running ? "run" : sneaking ? "sneak" : s.Aim > 0.5f && !u.Type.Bites ? "aimwalk" : "walk";
                 return Cycle(motion, s.Distance / Stride(u, motion));
             }
             if (s.Aim >= 1f)

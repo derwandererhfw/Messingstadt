@@ -605,7 +605,8 @@ void fragment() {
                     ? new Rect2(sprite.Position.X + size.X, top, -size.X, -size.Y)
                     : new Rect2(sprite.Position.X, top, size.X, -size.Y);
                 var m = sprite.Modulate;
-                canvas.DrawTextureRectRegion(sprite.Texture, rect, region, new Color(m.R * FigureShade, m.G * FigureShade, m.B * FigureShade, FigureAlpha * m.A));
+                var small = new Rect2(region.Position / Game.FigureMirrorScale, region.Size / Game.FigureMirrorScale);
+                canvas.DrawTextureRectRegion(Game.FigureMirror, rect, small, new Color(m.R * FigureShade, m.G * FigureShade, m.B * FigureShade, FigureAlpha * m.A));
             }
         }
 

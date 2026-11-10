@@ -989,10 +989,28 @@ SPECS = {
     "Hundefuehrer": dict(coat=("uni_d", "uni", "uni_l"), legs="uni", hat="peak", hat_c="wood_d", shirt="uni_d", hair="hair", hem=26, belt=19, trim="wood_d", strap=True, leash=True),
     "Laufbursche": dict(coat=("iron", "grey_d", "grey"), legs="wood_d", hat="peak", hat_c="wood", shirt="ash", hair="hair", hem=22, belt=20, trim="wood", gun="none", strap=True, satchel=True, scale=0.86),
 }
-# Agenten mit anderer Waffe in der Hand: gleiche Kleidung, eigene Zeilen im Figurenblatt. Das Spiel wählt nach der Waffe.
-SPECS["Agent_Schrot"] = dict(SPECS["Agent"], gun="sawn")
-SPECS["Agent_MP"] = dict(SPECS["Agent"], gun="smg")
-SPECS["Agent_Knueppel"] = dict(SPECS["Agent"], gun="club")
+# Die vier Agenten: braune, schäbige Mäntel in Abstufung, dazu je eigener Hut, eigene Statur und eigenes Beiwerk.
+# Farben als RGB, damit die Palette der Stadt unberührt bleibt.
+AGENTS = {
+    # Truppführerin: Schlapphut mit dunklem Band, langer Mantel, weinroter Schal
+    "Greta": dict(coat=((82, 58, 40), (126, 90, 60), (158, 120, 84)), legs="iron", hat="fedora", hat_c=(64, 48, 40), band=(30, 26, 26),
+                  shirt="ash", hair="hair", hem=33, belt=21, scarf=(128, 46, 40), bulk=0.97),
+    # Schlosser: breit, kurze dunkle Joppe, Schiebermütze, Werkzeugtasche
+    "Otto": dict(coat=((50, 38, 30), (82, 60, 44), (110, 84, 62)), legs="soot", hat="peak", hat_c=(96, 88, 78), shirt="ash", hair="hair",
+                 hem=25, belt=20, bulk=1.2, strap=True, satchel=True, trim=(60, 44, 34)),
+    # Buchhalter: schmal, heller langer Mantel, Melone, weißer Kragen
+    "Emil": dict(coat=((118, 94, 64), (162, 132, 92), (194, 164, 120)), legs="grey_d", hat="bowler", hat_c=(40, 36, 38), shirt="paper",
+                 hair="hair", hem=33, belt=21, bulk=0.93),
+    # Kurierin: klein, graubrauner kurzer Mantel, Baskenmütze, rotes Haar, Kuriertasche, heller Schal
+    "Hanna": dict(coat=((64, 58, 42), (98, 90, 64), (128, 118, 88)), legs="iron", hat="beret", hat_c=(52, 44, 58), shirt="ash",
+                  hair=(150, 84, 48), bun=True, hem=27, belt=20, scale=0.92, strap=True, satchel=True, trim=(150, 124, 86),
+                  scarf=(168, 160, 140)),
+}
+# Mit anderer Waffe in der Hand gibt es eigene Zeilen im Figurenblatt. Das Spiel wählt nach Name und Waffe.
+WEAPON_ROWS = {"": "pistol", "_Schrot": "sawn", "_MP": "smg", "_Knueppel": "club"}
+# Was figures3d.py rendert: die Agenten zuerst, dann alle übrigen Figuren. "Agent" bleibt nur für das Konzeptblatt.
+SHEET_SPECS = {name + suffix: dict(spec, gun=gun, agent=True) for name, spec in AGENTS.items() for suffix, gun in WEAPON_ROWS.items()}
+SHEET_SPECS.update({name: spec for name, spec in SPECS.items() if name != "Agent"})
 
 
 def figure(s, ox, oy, spec, direction, step=0, aim=False):

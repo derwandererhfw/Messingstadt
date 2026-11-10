@@ -22,6 +22,10 @@ Eingabe (Godot) -> Befehle -> World.Tick() -> Zustand -> Darstellung (Godot)
   Doppelschritt ist, steht in `figures.json`. `game/FigureAnimator.cs` liest das und schaltet Gehen und Rennen
   nach zurückgelegtem Weg weiter, damit die Füße nicht gleiten. `check_figures.py` prüft Gleiten und Zellränder
   und legt Kontaktbögen und GIFs je Bewegung ab.
+  `figures.png` enthält je Bildpunkt nur eine Palettennummer, die Farben stehen je Figur in einer Zeile von
+  `figures_palette.png`. Der Figurenshader in `Main.cs` schlägt sie nach, das spart drei Viertel des Texturspeichers.
+  Für Spiegelungen gibt es `figures_mirror.png`, farbig und viermal kleiner. Die vier Agenten stehen als `AGENTS` in
+  `generate_concept.py`, je Waffe mit eigener Zeile. Figuren-Sprites legt man über `Main.NewFigureSprite()` an.
   Die Lichtwerte in `data/light_01.json` kommen aus `bake_light.py`: Der Mond dort trifft nur Oberseiten von Objekten
   und zählt nicht fürs Schleichen.
 - **Doppelte Auflösung:** `game/assets/hd/` enthält Boden und alle Objekte zusätzlich doppelt so fein,

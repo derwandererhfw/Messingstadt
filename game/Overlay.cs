@@ -63,10 +63,12 @@ namespace Messingstadt
                 if (u.Faction == Faction.Agent)
                 {
                     // Der innere Ring gehört immer zum Agenten, der äußere weiße Ring zeigt die Auswahl.
-                    DrawIsoRing(p, Main.AgentColor, 11f);
+                    // Steht der Agent hinter einem Haus oder der Bahn, wird der Ring blass. Sonst sieht es aus, als stünde er auf dem Dach.
+                    float ring = Game.IsFootHiddenByThing(u) ? 0.35f : 1f;
+                    DrawIsoRing(p, new Color(Main.AgentColor, ring), 11f);
                     if (Game.Selected.Contains(u.Id))
                     {
-                        DrawIsoRing(p, Colors.White, 14f);
+                        DrawIsoRing(p, new Color(Colors.White, ring), 14f);
                     }
                     while (labels.Exists(l => Mathf.Abs(l.X - p.X) < LabelWidth && Mathf.Abs(l.Y - p.Y) < LabelHeight))
                     {
