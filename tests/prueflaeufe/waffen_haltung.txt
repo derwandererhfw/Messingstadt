@@ -1,0 +1,36 @@
+# Haltungen je Waffe als Standbilder: Stehen, Verband, Wurf, Angriff mit Gehen, Schießen und Schlag.
+# Aufruf mit --menu --script-writes in einem eigenen APPDATA-Ordner, in dem haltung_akte.json als Godot/app_userdata/Messingstadt/kampagne.json liegt.
+# Greta trägt die Maschinenpistole, Otto die Schrotflinte, Emil Pistole und Verband, Hanna Totschläger und Rauchtopf.
+# Die Bilder landen unter user://haltung_*.png.
+wait 20
+click Spiel laden
+key Enter
+wait 40
+expect weapons Greta:MP 30, Otto:Schrot 2, Emil:Pistole 10, Hanna:Knüppel
+shot user://haltung_stehen.png
+hurt Emil 50
+key Key3
+key H
+wait 20
+shot user://haltung_verband.png
+key Key4
+pointat Hanna 0 -2
+key G
+wait 2
+shot user://haltung_wurf_0.png
+wait 4
+shot user://haltung_wurf_1.png
+key Space
+attack
+wait 25
+shot user://haltung_angriff_0.png
+wait 25
+shot user://haltung_angriff_1.png
+wait 25
+shot user://haltung_angriff_2.png
+wait 25
+shot user://haltung_angriff_3.png
+wait 25
+shot user://haltung_angriff_4.png
+wait 25
+shot user://haltung_angriff_5.png

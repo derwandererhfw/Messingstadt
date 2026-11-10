@@ -26,11 +26,21 @@ namespace Messingstadt
         private const int BiteTicksPerFrame = 2;
         private const float TargetRadiusUnits = 90f;
         private const float DefaultStride = 930f;
+        private const int StrikeTicksPerFrame = 2;
+        private const float ThrowFramesPerSecond = 11f;
+        private const float BandageFramesPerSecond = 4f;
 
         private readonly Dictionary<string, (int Start, int Count)> _columns = new();
         private readonly Dictionary<string, Dictionary<string, float>> _strides = new();
         private readonly Dictionary<string, float> _biteReach = new();
         private readonly Dictionary<int, State> _states = new();
+        private readonly HashSet<string> _names = new();
+
+        // Agenten mit anderer Waffe in der Hand haben eigene Zeilen im Blatt, siehe SPECS in generate_concept.py.
+        private static readonly Dictionary<string, string> WeaponRows = new()
+        {
+            ["schrotflinte"] = "_Schrot", ["maschinenpistole"] = "_MP", ["totschlaeger"] = "_Knueppel",
+        };
 
         private sealed class State
         {
@@ -39,6 +49,9 @@ namespace Messingstadt
             public bool HasFoot;
             public float Aim;
             public float FallStarted = -1f;
+            public int Smokes = -1;
+            public float ThrowStarted = -100f;
+            public int ThrowX, ThrowY;
         }
 
         /// <summary>Erste Spalte und Bildzahl für Kleintiere und Passanten, die das Blatt mitbenutzen.</summary>
@@ -49,6 +62,10 @@ namespace Messingstadt
 
         public void Load(JsonElement root)
         {
+            foreach (var n in root.GetProperty("names").EnumerateArray())
+            {
+                _names.Add(n.GetString()!);
+            }
             foreach (var c in root.GetProperty("columns").EnumerateObject())
             {
                 _columns[c.Name] = (c.Value[0].GetInt32(), c.Value[1].GetInt32());
@@ -85,8 +102,58 @@ namespace Messingstadt
             return s;
         }
 
+        /// <summary>Zeile im Blatt: Agenten zeigen die Waffe, die sie gerade in der Hand haben.</summary>
+        public string SpriteName(Unit u)
+        {
+            if (u.ActiveItem?.Def.Id is { } id && WeaponRows.TryGetValue(id, out var suffix) && _names.Contains(u.Sprite + suffix))
+            {
+                return u.Sprite + suffix;
+            }
+            return u.Sprite;
+        }
+
+        private static bool Melee(Unit u) => u.ActiveItem?.Def.Kind == ItemKind.Melee;
+
+        private static int SmokeCharges(Unit u)
+        {
+            int count = 0;
+            foreach (var item in u.Items)
+            {
+                if (item.Def.Kind == ItemKind.Smoke)
+                {
+                    count += System.Math.Max(1, item.Charges);
+                }
+            }
+            return count;
+        }
+
+        /// <summary>Wohin die Figur blickt: beim Zielen aufs Ziel, beim Wurf zur Wolke, sonst in Gehrichtung.</summary>
+        public (int X, int Y) Look(Unit u, float now)
+        {
+            var s = StateOf(u);
+            if (u.Alive && now - s.ThrowStarted < ThrowSeconds)
+            {
+                return (s.ThrowX - u.X, s.ThrowY - u.Y);
+            }
+            return Aiming(u) && !Melee(u) ? (u.AimX, u.AimY) : (u.FacingX, u.FacingY);
+        }
+
+        private float ThrowSeconds => _columns.TryGetValue("throw", out var c) ? c.Count / ThrowFramesPerSecond : 0f;
+
+        /// <summary>Ein Rauchtopf weniger in der Tasche heißt: Er ist gerade geworfen worden. Die Wolke steht im Kern sofort.</summary>
+        private void WatchThrow(World world, Unit u, State s, float now)
+        {
+            int smokes = SmokeCharges(u);
+            if (s.Smokes > smokes && world.Smokes.Count > 0)
+            {
+                s.ThrowStarted = now;
+                (s.ThrowX, s.ThrowY) = (world.Smokes[^1].X, world.Smokes[^1].Y);
+            }
+            s.Smokes = smokes;
+        }
+
         private float Stride(Unit u, string motion) =>
-            _strides.TryGetValue(u.Sprite, out var table) && table.TryGetValue(motion, out float stride) ? stride : DefaultStride;
+            _strides.TryGetValue(SpriteName(u), out var table) && table.TryGetValue(motion, out float stride) ? stride : DefaultStride;
 
         private int Column(string motion, int frame)
         {
@@ -157,6 +224,20 @@ namespace Messingstadt
                 // Nicht alle sterben gleich: Die Id bestimmt, ob die Figur nach vorn oder zur Seite sackt.
                 string fall = u.Id % 2 == 0 ? "fallA" : "fallB";
                 return Column(fall, (int)((now - s.FallStarted) / FallSeconds * _columns[fall].Count));
+            }
+            WatchThrow(world, u, s, now);
+            if (u.BandageTicks > 0 && _columns.ContainsKey("bandage"))
+            {
+                return Cycle("bandage", now * BandageFramesPerSecond / _columns["bandage"].Count);
+            }
+            int sinceStrike = world.Tick - u.LastStrikeTick;
+            if (_columns.TryGetValue("strike", out var strike) && sinceStrike >= 0 && sinceStrike < strike.Count * StrikeTicksPerFrame)
+            {
+                return Column("strike", sinceStrike / StrikeTicksPerFrame);
+            }
+            if (now - s.ThrowStarted < ThrowSeconds)
+            {
+                return Column("throw", (int)((now - s.ThrowStarted) * ThrowFramesPerSecond));
             }
             bool wants = WantsAim(world, u);
             s.Aim = Mathf.Clamp(s.Aim + (wants ? delta / RaiseSeconds : -delta / LowerSeconds), 0f, 1f);
