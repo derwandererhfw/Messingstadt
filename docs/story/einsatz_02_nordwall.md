@@ -52,7 +52,7 @@ Der Nordwall ist das Viertel am alten Stadtwall. Zu sehen ist der Platz hinter d
 | Wachstube Nord, der Arrest | x 7–14, y 2–6 | Hauptbau am Wall. Zwei Zellentüren nach Süden in den Hof |
 | Arresthof | x 8–13, y 6–9 | Vor der Wachstube. Eine Lampe über den Zellentüren, sonst dunkel. Eine Kohlenkiste bei (8,5, 8,5) als Deckung |
 | Wachlokal | x 7–14, y 9–10 | Niedriger Vorbau zur Wallstraße mit Haupttür, Schild und Laterne. Schließt den Hof nach Süden |
-| Hofmauer West | x 7–8, y 6–9 | Niedrig. Darin die Pforte zur Gerichtsgasse |
+| Hofmauer West | x 7–8, y 6–9 | Niedrig. Die Pforte zur Gerichtsgasse ist eine Lücke in der Mauer mit einem Tor aus Eisenblech (so gebaut, Stand 2026-11-11) |
 | Hofmauer Ost | x 13–14, y 6–9 | Niedrig. Darin das Hoftor |
 | Kaserne der Wache | x 15–19, y 3–8 | Mannschaftshaus, einige Fenster hell |
 | Remise | x 15–19, y 13–17 | Offener Schuppen mit dem Gefangenenwagen, grau, vergittert. Requisit, fährt nicht |
@@ -61,7 +61,7 @@ Der Nordwall ist das Viertel am alten Stadtwall. Zu sehen ist der Platz hinter d
 | Beamtenhaus Ost | x 9–13, y 14–18 | Ebenso. Dazwischen ein Durchgang, x 6–9 |
 | Wallgasse | x 0–2, y 13–20 | Sackgasse am Westrand. Hier wartet der Wagen der Wäscherei |
 
-Laternen: (4,5, 10,5), (10,5, 10,5), (16,5, 10,5) auf der Wallstraße, (11,5, 10,1) über der Haupttür des Wachlokals, (10,5, 6,2) über den Zellentüren im Arresthof. Die Gerichtsgasse, der Fuß des Walls und der Durchgang zwischen den Beamtenhäusern sind dunkel.
+Laternen: (2,5, 10,5), (10,5, 10,5), (16,5, 10,5) auf der Wallstraße, (11,5, 10,1) über der Haupttür des Wachlokals, (10,5, 6,2) über den Zellentüren im Arresthof. Die Gerichtsgasse, der Fuß des Walls und der Durchgang zwischen den Beamtenhäusern sind dunkel. Die westliche Laterne stand in der ersten Vorlage bei x 4,5. Die Level-Session hat sie nach der Messung versetzt, damit die Querung zur Gerichtsgasse im Dunkeln liegt.
 
 ### Türen
 
@@ -87,8 +87,8 @@ Alle aus dem Bestand. Die Stadtwache ist die Polizei von Messingstadt, eine neue
 
 | Name | Art | Wo | Verhalten | Käuflich |
 |---|---|---|---|---|
-| Wallstreife 1 | Wachmann | Wallstraße | Rundgang (3, 11) – (17, 11) | 200 |
-| Wallstreife 2 | Wachmann | Wallstraße | Rundgang (17, 12) – (3, 12), läuft gegenläufig | 200 |
+| Wallstreife 1 | Wachmann | Wallstraße | Rundgang (0, 11) – (13, 11) | 200 |
+| Wallstreife 2 | Wachmann | Wallstraße | Rundgang (13, 12) – (0, 12), läuft gegenläufig | 200 |
 | Türposten | Wachmann | (11,5, 10,5), Blick nach Süden, vor der Haupttür | Posten, dreht sich. Trägt den Schlüssel zur Pforte | 200 |
 | Wachhabender | Offizier | (14,5, 9,5), Blick nach Süden, an der Ecke neben der Schreibstube | Posten. Sieht die Straße und den Gang zum Hoftor | 400 |
 | Schließer | Wachmann | Arresthof | Rundgang (8, 7) – (12, 7). Trägt die Schlüssel zu beiden Zellen | 200 |
@@ -98,6 +98,8 @@ Alle aus dem Bestand. Die Stadtwache ist die Polizei von Messingstadt, eine neue
 | Mann vom Werk | Werkschutz | (14,5, 7,5), vor dem Hoftor, Blick nach Süden | Posten. Wartet auf die Übergabe | nein |
 
 Neun Gegner und ein Hund, etwa wie in Einsatz 1. Der Mann vom Werk, der Wachhabende an der Ecke und der Schütze machen das Hoftor teuer. Die Gerichtsgasse ist der leise Weg, dort stört nur der Hund.
+
+Die Wallstreifen liefen in der ersten Vorlage von x 3 bis 17. Die Level-Session hat sie nach der Messung auf x 0 bis 13 gelegt: Vorher blieb an der Querung kein Fenster von einer Sekunde.
 
 ## 4. Ablauf
 
@@ -115,7 +117,7 @@ Der Rückweg ist der schwere Teil: Die Gefangenen sind langsam, und die Wallstra
 
 - Die Wallstreifen laufen gegenläufig. Der Lageplan zeigt das Fenster, in dem die Straße frei ist. In der Geschichte ist das Gretas alter Dienstplan.
 - Der Hund wittert in der Gasse jeden. Entweder kauft der Buchhalter den Hundeführer, oder der Trupp wartet am Südende, bis beide am Wall wenden.
-- Otto öffnet Pforte und Zellen. Ohne ihn kauft der Buchhalter erst den Türposten (Schlüssel zur Pforte), dann den Schließer (Schlüssel zu den Zellen). Der Schließer geht im Hof auf und ab: bestechen, mit dem Totschläger niederschlagen oder seinen Rundgang abpassen.
+- Otto öffnet Pforte und Zellen. Ohne ihn holt sich der Trupp die Schlüssel: erst vom Türposten (Pforte), dann vom Schließer (Zellen), gekauft oder mit dem Totschläger. Der Schließer geht im Hof auf und ab: bestechen, mit dem Totschläger niederschlagen oder seinen Rundgang abpassen.
 - Der Bote läuft die Wallstraße ab. Sieht er den Trupp mit den Gefangenen, rennt er zum Türposten. Hanna ist die Einzige, die ihn sicher einholt. Für 50 schweigt er.
 
 ### Laut
@@ -147,7 +149,7 @@ Empfohlen ist die volle Fassung. Die kleine Fassung kommt ohne neue Regel aus un
 - Ein Gefangener geht 2,0 Felder pro Sekunde, rennt nicht, kämpft nicht und hat 60 Lebenspunkte. Wachen bemerken ihn wie einen Agenten.
 - Gewonnen ist, wenn alle lebenden Gefangenen und ein Agent 1 s in der Zielzone stehen. Stirbt einer, geht der Einsatz weiter. Sterben beide, ist er verloren.
 - Die Kampagne merkt sich je Gefangenem, ob er lebt. Spätere Texte fragen das ab.
-- Wer Türposten oder Schließer besticht, bekommt deren Schlüssel und schließt selbst auf. So bleibt der Einsatz auch ohne Schlosser und ohne Dietrich lösbar. Ob ein Niedergeschlagener seine Schlüssel verliert, entscheidet die Level-Session. Aus Sicht der Geschichte spricht nichts dagegen.
+- Wer Türposten oder Schließer besticht, bekommt deren Schlüssel und schließt selbst auf. So bleibt der Einsatz auch ohne Schlosser und ohne Dietrich lösbar. Auch ein Niedergeschlagener verliert seine Schlüssel (so gebaut, Stand 2026-11-11).
 
 **Kleine Fassung, ohne neue Regel:**
 
@@ -245,6 +247,8 @@ Ist Hanna im Trupp und lebt, antwortet sie an der Zelle: „Komm, Paul. Reden sp
 | `abandoned` | Schießerei am Nordwall, Täter flüchtig | Bewaffnete griffen die Wachstube Nord an und zogen sich zurück. Die Verlegung der Gefangenen ist verschoben.{dead} |
 | `retreat` | Unruhe am Nordwall | Anwohner meldeten Gestalten hinter dem Amtsgericht. Die Wache fand nichts. |
 | `loot` | | Auch die Bußgeldkasse der Wachstube fehlt. |
+
+Den Fall `unseen` erreicht im gebauten Einsatz keine gemessene Spielweise (Messung der Level-Session, 2026-11-11): Wer gekauft oder niedergeschlagen wird, hat den Trupp vorher bemerkt. Der Text bleibt als Rückfall stehen. Kein anderer Text des Einsatzes verspricht einen unentdeckten Ausgang.
 
 Neuer Platzhalter `{prisoners}` für die volle Fassung: leer, wenn beide leben. Sonst „ Einer der Gefangenen kam dabei ums Leben.“ Den Einbau in `Headlines.cs` übernimmt die Level-Session (Absprache vom 2026-11-11).
 
