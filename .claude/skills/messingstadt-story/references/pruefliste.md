@@ -27,6 +27,7 @@ Vor jedem neuen Einsatz und vor jeder Übernahme von Texten ins Spiel durchgehen
 - Passen Längen in die Anzeige (Akte 18 Zeichen, Auftrag auf das Papier)?
 - Gibt es für jeden Ausgang eine Schlagzeile (`unseen`, `quiet`, `loud`, `lost`, `abandoned`, `retreat`)?
 - Platzhalter richtig geschrieben (`{item}`, `{dead}`, `{fallen}`, `{loot}`, `{paid}`)?
+- Schrägansicht: Die Kamera schaut von Süden. Ein hohes Haus verdeckt drei Felder nördlich und westlich von sich. Liegen Zielorte, Türen mit Spielbedeutung und Hauptwege frei? Zeigen wichtige Türen nach Süden oder Osten? Stehen hohe Gebäude am Nordrand?
 
 ## Welt
 

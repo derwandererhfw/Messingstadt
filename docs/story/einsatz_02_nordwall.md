@@ -1,6 +1,6 @@
 # Einsatz 2: Die Wachstube (Nordwall, Befreien)
 
-Stand 2026-11-11. Bauvorlage der Story-Session für Level, Mechanik, Grafik, Ton und Sequenzen. Auftrag des Nutzers über die Hauptsession. Rahmen (Viertel, Auftragsart, wer befreit wird) ist KANON. Karte, Gegner, Regeln und Texte in dieser Datei sind VORSCHLAG der Story, bis der Nutzer sie am gebauten Einsatz abnimmt. Alle Koordinaten sind Felder auf einer Karte von 20 × 20 wie in `data/map_01.json`, Norden ist y = 0.
+Stand 2026-11-11. Bauvorlage der Story-Session für Level, Mechanik, Grafik, Ton und Sequenzen. Auftrag des Nutzers über die Hauptsession. Rahmen (Viertel, Auftragsart, wer befreit wird) ist KANON. Karte, Gegner, Regeln und Texte in dieser Datei sind VORSCHLAG der Story, bis der Nutzer sie am gebauten Einsatz abnimmt. Alle Koordinaten sind Felder auf einer Karte von 20 × 20 wie in `data/map_01.json`, Norden ist y = 0. Der gebaute Grundriss steht in `../einsatz_02_grundriss.md` und geht bei Abweichungen vor. Diese Vorlage ist am 2026-11-11 daran angeglichen: Die Wachstube steht am Wall, der Arresthof liegt südlich davor, weil die Schrägansicht sonst Hof und Zellen verdeckt hätte.
 
 ## 1. Geschichte
 
@@ -49,30 +49,31 @@ Der Nordwall ist das Viertel am alten Stadtwall. Zu sehen ist der Platz hinter d
 | Stadtwall | x 0–20, y 0–2 | Backsteinmauer über die ganze Breite, oben Wehrgang, unten zugemauerte Bögen. Nicht begehbar, sperrt die Sicht |
 | Amtsgericht | x 1–5, y 3–9 | Großer dunkler Bau mit Freitreppe nach Süden. Kein Fenster brennt |
 | Gerichtsgasse | x 5–7, y 2–9 | Schmal, ohne Laterne. Führt von der Wallstraße zum Wall |
-| Wachstube Nord | x 7–14, y 5–9 | Hauptbau. Vorn nach Süden das Wachlokal mit Treppe und Laterne, hinten der Arrest |
-| Arresthof | x 8–13, y 2–5 | Zwischen Wachstube und Wall. Eine Lampe über den Zellentüren, sonst dunkel |
-| Hofmauer West | x 7, y 2–5 | Darin die Pforte zur Gerichtsgasse |
-| Hofmauer Ost | x 13, y 2–5 | Darin das Hoftor |
+| Wachstube Nord, der Arrest | x 7–14, y 2–6 | Hauptbau am Wall. Zwei Zellentüren nach Süden in den Hof |
+| Arresthof | x 8–13, y 6–9 | Vor der Wachstube. Eine Lampe über den Zellentüren, sonst dunkel. Eine Kohlenkiste bei (8,5, 8,5) als Deckung |
+| Wachlokal | x 7–14, y 9–10 | Niedriger Vorbau zur Wallstraße mit Haupttür, Schild und Laterne. Schließt den Hof nach Süden |
+| Hofmauer West | x 7–8, y 6–9 | Niedrig. Darin die Pforte zur Gerichtsgasse |
+| Hofmauer Ost | x 13–14, y 6–9 | Niedrig. Darin das Hoftor |
 | Kaserne der Wache | x 15–19, y 3–8 | Mannschaftshaus, einige Fenster hell |
 | Remise | x 15–19, y 13–17 | Offener Schuppen mit dem Gefangenenwagen, grau, vergittert. Requisit, fährt nicht |
 | Wallstraße | y 10–12, ganze Breite | Kopfsteinpflaster, drei Laternen, Straßenbahnschienen ohne Bahn in dieser Nacht |
-| Beamtenhaus West | x 2–6, y 13–18 | Mietshaus mit Vorgarten |
-| Beamtenhaus Ost | x 9–13, y 13–18 | Ebenso. Dazwischen ein Durchgang, x 6–9 |
+| Beamtenhaus West | x 2–6, y 14–18 | Zwei Geschosse, davor ein Feld Vorgarten |
+| Beamtenhaus Ost | x 9–13, y 14–18 | Ebenso. Dazwischen ein Durchgang, x 6–9 |
 | Wallgasse | x 0–2, y 13–20 | Sackgasse am Westrand. Hier wartet der Wagen der Wäscherei |
 
-Laternen: (4,5, 10,5), (10,5, 10,5), (16,5, 10,5) auf der Wallstraße, (10,5, 9,6) über der Tür der Wachstube, (10,5, 4,8) im Arresthof. Die Gerichtsgasse, der Fuß des Walls und der Durchgang zwischen den Beamtenhäusern sind dunkel.
+Laternen: (4,5, 10,5), (10,5, 10,5), (16,5, 10,5) auf der Wallstraße, (11,5, 10,1) über der Haupttür des Wachlokals, (10,5, 6,2) über den Zellentüren im Arresthof. Die Gerichtsgasse, der Fuß des Walls und der Durchgang zwischen den Beamtenhäusern sind dunkel.
 
 ### Türen
 
-Alle vier sind verschlossen. Regeln wie in `../konzept.md`: Schlosser 2 s, mit Dietrich 1 s, alle anderen nur mit Dietrich in 4 s.
+Alle fünf sind verschlossen. Regeln wie in `../konzept.md`: Schlosser 2 s, mit Dietrich 1 s, alle anderen nur mit Dietrich in 4 s.
 
 | Tür | Felder | Marke | Wozu |
 |---|---|---|---|
-| Pforte zur Gerichtsgasse | [7, 3] | (6,5, 3,5) | Leiser Zugang zum Arresthof |
-| Hoftor | [13, 3] | (14,5, 3,5) | Östlicher Zugang, bewacht |
-| Zelle 1 | [9, 5], [9, 6] | (9,5, 4,5) | Anton Weiß steht bei (9,5, 6,5) |
-| Zelle 2 | [11, 5], [11, 6] | (11,5, 4,5) | Paul Roth steht bei (11,5, 6,5) |
-| Schreibstube | [13, 8], [13, 7] | (13,5, 9,5) | Bußgeldkasse bei (13,5, 7,5), 300 |
+| Pforte zur Gerichtsgasse | [7, 7] | (6,5, 7,5) | Leiser Zugang zum Arresthof |
+| Hoftor | [13, 7] | (14,5, 7,5) | Östlicher Zugang, bewacht |
+| Zelle 1 | [9, 5], [9, 4] | (9,5, 6,5) | Anton Weiß steht bei (9,5, 4,5) |
+| Zelle 2 | [11, 5], [11, 4] | (11,5, 6,5) | Paul Roth steht bei (11,5, 4,5) |
+| Schreibstube | [13, 9] | (13,5, 10,5) | Im Ostende des Wachlokals. Bußgeldkasse bei (13,5, 9,5), 300 |
 
 ### Start und Ziel
 
@@ -86,17 +87,17 @@ Alle aus dem Bestand. Die Stadtwache ist die Polizei von Messingstadt, eine neue
 
 | Name | Art | Wo | Verhalten | Käuflich |
 |---|---|---|---|---|
-| Wallstreife 1 | Wachmann | Wallstraße | Rundgang (3, 10) – (17, 10) | 200 |
+| Wallstreife 1 | Wachmann | Wallstraße | Rundgang (3, 11) – (17, 11) | 200 |
 | Wallstreife 2 | Wachmann | Wallstraße | Rundgang (17, 12) – (3, 12), läuft gegenläufig | 200 |
-| Türposten | Wachmann | (10,5, 9,5), Blick nach Süden | Posten, dreht sich | 200 |
-| Wachhabender | Offizier | (12,5, 9,5), Blick nach Süden | Posten vor der Schreibstube | 400 |
-| Schließer | Wachmann | Arresthof | Rundgang (8, 3) – (12, 3). Trägt den Schlüsselbund | 200 |
+| Türposten | Wachmann | (11,5, 10,5), Blick nach Süden, vor der Haupttür | Posten, dreht sich | 200 |
+| Wachhabender | Offizier | (14,5, 9,5), Blick nach Süden, an der Ecke neben der Schreibstube | Posten. Sieht die Straße und den Gang zum Hoftor | 400 |
+| Schließer | Wachmann | Arresthof | Rundgang (8, 7) – (12, 7). Trägt den Schlüsselbund | 200 |
 | Hundeführer mit Hund | Hundeführer, Wachhund | Gerichtsgasse | Rundgang (5, 9) – (5, 2) – (6, 2) – (6, 9) | 300 |
-| Wallposten | Schütze | Am Fuß des Walls, Ostseite | Rundgang (14, 2) – (19, 2). Sieht das Hoftor | 200 |
+| Wallposten | Schütze | Am Fuß des Walls, Ostseite | Rundgang (14, 2) – (19, 2). Sieht durch den Postengang zwischen Wachstube und Kaserne zum Hoftor. Für die Kamera meist verdeckt | 200 |
 | Bote | Laufbursche | Zwischen Remise und Gericht | Rundgang (16, 12) – (6, 12) | 50 |
-| Mann vom Werk | Werkschutz | (14,5, 3,5), vor dem Hoftor, Blick nach Osten | Posten. Wartet auf die Übergabe | nein |
+| Mann vom Werk | Werkschutz | (14,5, 7,5), vor dem Hoftor, Blick nach Süden | Posten. Wartet auf die Übergabe | nein |
 
-Neun Gegner und ein Hund, etwa wie in Einsatz 1. Der Mann vom Werk und der Schütze machen das Hoftor teuer. Die Gerichtsgasse ist der leise Weg, dort stört nur der Hund.
+Neun Gegner und ein Hund, etwa wie in Einsatz 1. Der Mann vom Werk, der Wachhabende an der Ecke und der Schütze machen das Hoftor teuer. Die Gerichtsgasse ist der leise Weg, dort stört nur der Hund.
 
 ## 4. Ablauf
 
@@ -119,7 +120,7 @@ Der Rückweg ist der schwere Teil: Die Gefangenen sind langsam, und die Wallstra
 
 ### Laut
 
-- Durch das Hoftor: Rauchtopf vor den Wallposten, dann der Mann vom Werk aus der Nähe, am besten mit der Schrotflinte. Der Totschläger hilft gegen ihn nicht.
+- Durch das Hoftor: von der Wallstraße in den Gang zwischen Wachlokal und Kaserne, am Wachhabenden vorbei. Rauchtopf in den Postengang gegen den Wallposten, dann der Mann vom Werk aus der Nähe, am besten mit der Schrotflinte. Der Totschläger hilft gegen ihn nicht.
 - Nach dem ersten Schuss kommt der Werkschutz vom Ostende der Wallstraße. Der Rückweg zur Wallgasse führt dann durch die Gerichtsgasse und quer über die Straße, mit den Gefangenen im Schlepp.
 - Ein Rauchtopf auf der Wallstraße deckt die Querung.
 
@@ -150,7 +151,7 @@ Empfohlen ist die volle Fassung. Die kleine Fassung kommt ohne neue Regel aus un
 
 **Kleine Fassung, ohne neue Regel:**
 
-- Beide Gefangenen stehen in einer Zelle, Felder [10, 5], [10, 6], und gelten zusammen als das Ziel der Mission: `itemName` „Gefangene“, `item` (10,5, 6,5).
+- Beide Gefangenen stehen in einer Zelle, Felder [10, 5], [10, 4], und gelten zusammen als das Ziel der Mission: `itemName` „Gefangene“, `item` (10,5, 4,5).
 - „Aufnehmen“ dauert 3 s, der Agent ist danach langsam wie mit dem Kontobuch. Zwei Figuren, die folgen, wären dann nur Darstellung.
 - Ohne Schlosser und Dietrich ist diese Fassung nicht lösbar. Dann muss der Stadtplan den Dietrich vor dem Einsatz verlangen oder schenken.
 
@@ -281,7 +282,7 @@ Nach der Zeitung, nur beim Sieg:
 | Level | Karte, Gegner, Türen, Start und Ziel nach Abschnitt 2 bis 4. Lohn 350 steht im Stadtplan |
 | Mechanik | Gefangene (volle Fassung) oder Entscheidung für die kleine. Schließer öffnet Zellen. Optional halber Preis mit Greta |
 | Kampagne | Merker je Gefangenem: lebt, tot |
-| Grafik | Stadtwall, Amtsgericht, Wachstube mit Arresthof, Kaserne, Remise mit Gefangenenwagen, Beamtenhäuser. Zwei Figuren: Weiß mit Schürze und grauem Haar, Paul schmal, in Hemd und Socken. Das Grafikthema des Viertels folgt in `grafikthemen.md` |
+| Grafik | Stadtwall, Amtsgericht, Wachstube mit Arresthof und niedrigem Wachlokal, Kaserne, Remise mit Gefangenenwagen, Beamtenhäuser. Zwei Figuren: Weiß mit Schürze und grauem Haar, Paul schmal, in Hemd und Socken. Das Grafikthema des Viertels folgt in `grafikthemen.md` |
 | Ton | Zellentür, Schlüsselbund, Husten, Glocke vom Amtsgericht zur vollen Stunde |
 | Sequenzen | Szenenplan aus den Kästen oben. Block `chatter` je Mission, falls ihr die Missionsdaten lest |
 | Story | `{prisoners}` in `Headlines.cs`, sobald die Regel steht. Sätze mit Spielhinweis nach dem Bau gegen die Karte prüfen |
