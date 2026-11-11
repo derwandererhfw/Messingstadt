@@ -988,7 +988,7 @@ void fragment() {
                 Game = this, ZIndex = 0, Windows = _windowLife, Noise = fogNoise, GroundSize = _groundSize,
                 ManifestPath = ProjectSettings.GlobalizePath("res://assets/manifest.json"),
                 LampColor = LampColor, FireColor = FireColor, StutterLamp = StutterLamp, Lamps = _mission.Lamps, Fires = _ambience.Fires,
-                ExtraFires = new[] { ToScreen((int)(Strikers.BarrelTile.X * World.TileUnits), (int)(Strikers.BarrelTile.Y * World.TileUnits)) },
+                ExtraFires = Strikers.Present ? new[] { ToScreen((int)(Strikers.BarrelTile.X * World.TileUnits), (int)(Strikers.BarrelTile.Y * World.TileUnits)) } : System.Array.Empty<Vector2>(),
                 Puddles = _ambience.Puddles,
             };
             AddChild(wet);

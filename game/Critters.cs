@@ -33,15 +33,8 @@ namespace Messingstadt
         private const float DragSeconds = 1.3f;
         private const int FlyingZ = 3500;
 
-        // Sitzplätze der Tauben: Feld x, y und Höhe in Bildpixeln, jeweils eine kleine Gruppe.
-        private static readonly (float X, float Y, float Z)[] Perches =
-        {
-            (5.95f, 2.6f, 128), (5.95f, 3.2f, 128), (5.95f, 3.7f, 128), (5.95f, 4.4f, 128),
-            (2.6f, 16.95f, 170), (3.3f, 16.95f, 170), (3.9f, 16.95f, 170),
-            // Lager: an der Traufe der rechten Dachseite. Fabrik: in den Kehlen des Sheddachs über der linken Wand.
-            (16.95f, 13.4f, 70), (16.95f, 14.1f, 70), (16.95f, 14.7f, 70), (16.95f, 16.2f, 70),
-            (13.25f, 5.95f, 110), (14.45f, 5.95f, 110), (15.65f, 5.95f, 110),
-        };
+        // Sitzplätze der Tauben je Karte: Feld x, y und Höhe in Bildpixeln, jeweils eine kleine Gruppe.
+        private static List<Vector3> Perches => MapSite.Current.Perches;
 
         private sealed class Rat
         {

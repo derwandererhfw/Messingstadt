@@ -19,9 +19,11 @@ namespace Messingstadt
         private const float FlameLightScale = 0.55f;
         private const float FlameEnergy = 1.9f;
 
-        public static readonly Vector2 BarrelTile = new(13.25f, 18.7f);
-        private static readonly Vector2[] Spots = { new(12.65f, 18.55f), new(13.85f, 18.6f), new(13.4f, 19.3f) };
-        private static readonly Vector2 BannerTile = new(12.35f, 18.02f);
+        // Wo die Tonne steht, kommt je Karte aus MapSite. Ohne Eintrag gibt es keine Streikposten.
+        public static bool Present => MapSite.Current.Strikers != null;
+        public static Vector2 BarrelTile => MapSite.Current.Strikers?.Barrel ?? Vector2.Zero;
+        private static Vector2[] Spots => MapSite.Current.Strikers?.Spots ?? System.Array.Empty<Vector2>();
+        private static Vector2 BannerTile => MapSite.Current.Strikers?.Banner ?? Vector2.Zero;
 
         // Blick zur Tonne: Blatt-Zeile der Blickrichtung und ob gespiegelt wird.
         private static readonly (int View, bool Flip)[] Facing = { (2, false), (2, true), (4, false) };
@@ -50,6 +52,11 @@ namespace Messingstadt
 
         public override void _Ready()
         {
+            if (!Present)
+            {
+                SetProcess(false);
+                return;
+            }
             var foot = Screen(BarrelTile);
             AddChild(new Sprite2D
             {

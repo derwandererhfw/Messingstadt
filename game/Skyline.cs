@@ -85,6 +85,12 @@ void fragment() {
 
         public override void _Ready()
         {
+            // Smog, Laternen und Hochbahn dieser Ebene gehören zur Kulisse des Kesselviertels.
+            if (!MapSite.Current.Skyline)
+            {
+                SetProcess(false);
+                return;
+            }
             using var json = JsonDocument.Parse(File.ReadAllText(DataPath));
             var root = json.RootElement;
             var margin = new Vector2(root.GetProperty("marginX").GetInt32(), root.GetProperty("marginTop").GetInt32());

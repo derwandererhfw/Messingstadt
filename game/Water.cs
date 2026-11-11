@@ -247,7 +247,7 @@ namespace Messingstadt
                 {
                     AddBeam(x0, x1, y1, z1);
                 }
-                else if (Mathf.IsEqualApprox(z1, TramHeight) && w < 1f && d > 3f)
+                else if (MapSite.Current.Tram && Mathf.IsEqualApprox(z1, TramHeight) && w < 1f && d > 3f)
                 {
                     AddTram(x1, y0, y1);
                 }

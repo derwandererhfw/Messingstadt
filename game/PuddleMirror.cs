@@ -240,7 +240,10 @@ void fragment() {
                 }
             }
             lights++;
-            Consider(new Source { Kind = Kind.Barrel, Mirror = Screen(Strikers.BarrelTile) + new Vector2(0f, BarrelFlameHeight), Size = FireSize });
+            if (Strikers.Present)
+            {
+                Consider(new Source { Kind = Kind.Barrel, Mirror = Screen(Strikers.BarrelTile) + new Vector2(0f, BarrelFlameHeight), Size = FireSize });
+            }
             Counted = (lights, _sources.Count);
         }
 
@@ -455,7 +458,10 @@ void fragment() {
                     points.Add((new Vector2(center.X, 2f * foot - center.Y), PanePuddleShare));
                 }
             }
-            points.Add((Screen(Strikers.BarrelTile) + new Vector2(0f, BarrelFlameHeight), 1f));
+            if (Strikers.Present)
+            {
+                points.Add((Screen(Strikers.BarrelTile) + new Vector2(0f, BarrelFlameHeight), 1f));
+            }
             foreach (var (at, share) in points)
             {
                 if (rng.NextDouble() >= share || !OpenGround(at, boxes) || WetShare(water, at, w, h) > AlreadyWetShare)

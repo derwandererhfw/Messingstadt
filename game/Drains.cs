@@ -11,19 +11,7 @@ namespace Messingstadt
     /// </summary>
     public partial class Drains : Node2D
     {
-        // Lage wie GULLIES und GRATES in tools/art/generate_concept.py. Ändert die Grafik sie dort, hier nachziehen.
-        private static readonly (float X, float Y, bool AlongY)[] Gullies =
-        {
-            (8.11f, 3.4f, true), (8.11f, 13.3f, true), (9.89f, 16.4f, true), (9.89f, 7.6f, true),
-            (4.3f, 9.15f, false), (17.3f, 9.15f, false), (14.5f, 11.85f, false), (6.9f, 11.85f, false),
-        };
-        private static readonly (float X0, float Y0, float X1, float Y1)[] Grates =
-        {
-            (2.2f, 6.03f, 2.7f, 6.2f), (4.4f, 6.03f, 4.9f, 6.2f), (6.03f, 2.6f, 6.2f, 3.1f), (2.0f, 17.03f, 2.5f, 17.2f), (6.03f, 13.2f, 6.2f, 13.7f),
-            (6.03f, 15.6f, 6.2f, 16.1f), (13.0f, 18.03f, 13.5f, 18.2f), (17.03f, 14.2f, 17.2f, 14.7f), (18.03f, 2.2f, 18.2f, 2.7f),
-        };
-        // Die Fahrbahnen: längs x zwischen y 9 und 12, längs y zwischen x 8 und 10. In der Kreuzung gibt es keinen Rinnstein.
-        private const float RoadX0 = 8f, RoadX1 = 10f, RoadY0 = 9f, RoadY1 = 12f;
+        // Abläufe, Roste und Fahrbahnen kommen je Karte aus MapSite. Ohne Fahrbahnen gibt es keinen Rinnstein.
         private const float MapMin = 0.3f, MapMax = 19.7f;
         private const float Reach = 4f;
         private const float GlintsPerTile = 1.1f;
@@ -57,8 +45,11 @@ namespace Messingstadt
         public override void _Ready()
         {
             ZIndex = 0;
-            foreach (var (x, y, alongY) in Gullies)
+            var site = MapSite.Current;
+            foreach (var (tile, alongY) in site.Road == null ? new List<(Vector2, bool)>() : site.Gullies)
             {
+                float x = tile.X, y = tile.Y;
+                float RoadX0 = site.Road!.X0, RoadX1 = site.Road.X1, RoadY0 = site.Road.Y0, RoadY1 = site.Road.Y1;
                 // Der Rinnstein endet an der Kreuzung und am Kartenrand.
                 float at = alongY ? y : x;
                 float low = alongY ? (y < RoadY0 ? MapMin : RoadY1) : (x < RoadX0 ? MapMin : RoadX1);
@@ -91,9 +82,9 @@ namespace Messingstadt
             var growth = new Curve();
             growth.AddPoint(new Vector2(0f, 0.3f));
             growth.AddPoint(new Vector2(1f, 1f));
-            foreach (var (x0, y0, x1, y1) in Grates)
+            foreach (var grate in site.Grates)
             {
-                var middle = new Vector2((x0 + x1) / 2f, (y0 + y1) / 2f);
+                var middle = grate.GetCenter();
                 var steam = new CpuParticles2D
                 {
                     Texture = puff, TextureFilter = TextureFilterEnum.Linear, Position = Screen(middle), ZIndex = Game.DepthZ(middle.X, middle.Y) + 3,
@@ -141,8 +132,9 @@ namespace Messingstadt
                     DrawLine(Screen(tile), Screen(tile + step), new Color(light.R * WaterTint.R, light.G * WaterTint.G, light.B * WaterTint.B, alpha), 0.6f);
                 }
             }
-            foreach (var (x, y, _) in Gullies)
+            foreach (var (tile, _) in MapSite.Current.Road == null ? new List<(Vector2, bool)>() : MapSite.Current.Gullies)
             {
+                float x = tile.X, y = tile.Y;
                 // Am Ablauf strudelt es.
                 var at = Screen(new Vector2(x, y));
                 var light = Game.FigureLight((int)(x * World.TileUnits), (int)(y * World.TileUnits), MinLight);

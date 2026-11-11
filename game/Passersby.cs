@@ -171,6 +171,12 @@ namespace Messingstadt
 
         public override void _Ready()
         {
+            // Wege, Haltestelle und Hauswände sind auf das Kesselviertel gebaut. Auf anderen Karten gibt es keine Passanten.
+            if (!MapSite.Current.Passersby)
+            {
+                SetProcess(false);
+                return;
+            }
             using var doc = JsonDocument.Parse(File.ReadAllText(FiguresPath));
             var root = doc.RootElement;
             _views = root.GetProperty("views").GetInt32();
