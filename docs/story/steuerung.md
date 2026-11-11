@@ -33,11 +33,15 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 | 2026-11-06 | Keine Prosa-Fassung (Roman, Begleitheft) | Nutzer über die Sequenzen-Session („5. Nein“) |
 | 2026-11-06 | Prolog „Drei Wochen“ vor Einsatz 1 freigegeben (`texte/prolog.md`, Branch `claude/sequenzen-95d8ec`). Panel 7: Hanna „Ich nehm die Pistole trotzdem mit.“, Greta „Nimm sie. Und lass sie stecken.“ Kolbs Zimmer ohne Farbakzent. Nicht wiederholbar, weil Panel 6 alle vier nennt | Nutzer über die Sequenzen-Session („Ja, freigeben“) |
 | 2026-11-07 | Ersetzt „nicht wiederholbar“: Der Prolog läuft bei jedem „Neuen Spiel“, nicht beim Fortsetzen und nicht bei jedem Programmstart. Ein neues Spiel beginnt mit allen vieren, Panel 6 stimmt also immer | Nutzer über die Hauptsession („jedes „Neue Spiel“, also meine Empfehlung“) |
+| 2026-11-11 | Stadtplan zur Einsatzwahl: fünf Viertel, anfangs alle bei den Brandt-Werken, nach einem gelungenen Einsatz hält der Hammer das Viertel. Inhalt in `stadtplan.md` | Nutzer über die Hauptsession |
+| 2026-11-11 | Einsatz 4 wird Überzeugen (ein Prokurist schließt Valks Schließfach auf), Einsatz 5 wird Ausschalten (Führer des Werkschutzes, der die Altstadt abriegelt). „Der Anzeiger“ bleibt sechster Einsatz | Nutzer über die Hauptsession („Ja, beide ändern“) |
 
 ## Offene Entscheidungen
 
 | Frage | Wer entscheidet | Folgen |
 |---|---|---|
+| Stadtplan: Namen der Viertel (Kesselviertel, Nordwall, Gleisviertel, Kontorviertel) und der Personen Albert Dorn und Gustav Rademacher | Nutzer | Stehen schon in der Vorlage für die Kampagne, sind aber nicht ausdrücklich freigegeben |
+| Stadtplan: Kann ein Viertel an Brandt zurückfallen? Wie sieht der Notstand auf dem Plan aus? | Nutzer mit Kampagne | Vorschläge in `stadtplan.md`, Abschnitt Offen |
 | Eigene Fähigkeiten für Greta und Hanna? | Nutzer mit Mechanik | Vorschlag Story: Greta fälscht Papiere, Hanna bringt Beute schneller weg |
 | Wann erfährt der Trupp vom Plan mit dem Notstand? | Nutzer | Siehe `wissen.md`, betrifft Einsatz 2 bis 4 |
 | Welche Währung gilt in Messingstadt? | Nutzer | Im Spiel stehen nur Zahlen (200, 300). Ein Arbeiter sagt „Groschen“ |
