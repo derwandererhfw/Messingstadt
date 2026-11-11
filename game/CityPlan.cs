@@ -632,11 +632,6 @@ void fragment() {
                     var outline = shape.Polygon.Select(p => rect.Position + p * scale).Append(rect.Position + shape.Polygon[0] * scale).ToArray();
                     bool wiped = d.Ours && (_wipe[i] < 0f || _wipe[i] >= WipeSeconds);
                     _top.DrawPolyline(outline, wiped ? HammerEdge : BrandtEdge, 2f, true);
-                    if (i == Selected)
-                    {
-                        // Der Umriss des gewählten Viertels pulsiert mit, in heller Tinte.
-                        _top.DrawPolyline(outline, new Color(BrandtInk, 0.55f + 0.4f * pulse), 3f, true);
-                    }
                     var ink = wiped ? BrandtInk : d.Selectable ? PaperUi.Ink : new Color(PaperUi.Ink, 0.6f);
                     const int size = 17;
                     float width = PaperUi.Serif.GetStringSize(d.Name, HorizontalAlignment.Left, -1, size).X;
@@ -655,6 +650,13 @@ void fragment() {
                     }
                 }
                 _top.DrawRect(rect, PaperUi.Ink, false, 2f);
+                if (Selected < _shapes.Count && Selected < _districts.Count)
+                {
+                    // Der Umriss des gewählten Viertels pulsiert mit, in heller Tinte. Zuletzt gezeichnet, damit ihn kein Nachbar überdeckt.
+                    var chosen = _shapes[Selected].Polygon;
+                    var ring = chosen.Select(p => rect.Position + p * scale).Append(rect.Position + chosen[0] * scale).ToArray();
+                    _top.DrawPolyline(ring, new Color(BrandtInk, 0.55f + 0.4f * pulse), 3f, true);
+                }
             }
 
             private void DrawStamp(Vector2 center, float scale, float alpha)
