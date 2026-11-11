@@ -92,7 +92,7 @@ In den Menüs wählen Pfeiltasten und Maus dasselbe, Enter oder Klick bestätigt
 
 ## Prüfläufe für die Bedienung
 
-`--script=<datei>` schickt Tasten und Klicks durch den echten Eingabeweg und vergleicht den Zustand, die Befehle stehen in `game/TestScript.cs`. Dazu passen `--menu` (Startbildschirm auch im Prüflauf) und `--fresh` (ohne Spielstand). Prüfläufe schreiben nichts in die Dateien des Spielers. Nur `--script-writes` tut das und gehört in einen eigenen `APPDATA`-Ordner.
+`--script=<datei>` schickt Tasten und Klicks durch den echten Eingabeweg und vergleicht den Zustand, die Befehle stehen in `game/TestScript.cs`. Dazu passen `--menu` (Startbildschirm auch im Prüflauf) und `--fresh` (ohne Spielstand). Im Prüflauf zählt jedes Bild als ein Sechzigstel Spielzeit, gleich wie schnell der Rechner zeichnet: Dieselben Befehle geben denselben Ablauf, und am Ende steht die Prüfsumme der Spielwelt in der Ausgabe. `waittick <n>` wartet auf einen Takt der Spielwelt. Prüfläufe schreiben nichts in die Dateien des Spielers. Nur `--script-writes` tut das und gehört in einen eigenen `APPDATA`-Ordner.
 
 Prüfläufe zeigen keine Zwischensequenzen. `--intro` schaltet sie ein, `--seq=<id>` beginnt mit einer bestimmten aus `data/sequences`, `--seq-time=<s>` springt darin vor. Die Abläufe in `tests/prueflaeufe/sequenz_*.txt` prüfen Überspringen, Weiterschalten, Abbruch und den Weg vom Startbildschirm, etwa:
 

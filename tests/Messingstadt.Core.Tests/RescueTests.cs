@@ -207,6 +207,24 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void HeBoardsWhenHisLeaderStopsBesideTheWagonAndAnotherAgentIsAboard()
+        {
+            // Der Führer hält ein Feld neben dem Wagen, wie es beim Sammeln eines Trupps vorkommt.
+            var w = FreedWeiss(prisoners: 1);
+            (w.Units[0].X, w.Units[0].Y) = (4500, 1500);
+            w.Units[0].Path.Clear();
+            (Weiss(w).X, Weiss(w).Y) = (5500, 1500);
+            Weiss(w).Path.Clear();
+            Run(w, 200);
+            Assert.Equal(MissionState.Running, w.State);
+            Assert.True(Weiss(w).X >= 3000);
+            (w.Units[1].X, w.Units[1].Y) = (1500, 1500);
+            w.Units[1].Path.Clear();
+            Run(w, 200);
+            Assert.Equal(MissionState.Won, w.State);
+        }
+
+        [Fact]
         public void APrisonerStillInHisCellBlocksTheWin()
         {
             var w = FreedWeiss();

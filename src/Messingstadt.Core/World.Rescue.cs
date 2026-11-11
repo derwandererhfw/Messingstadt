@@ -45,6 +45,7 @@ namespace Messingstadt.Core
         private const int FollowStopRange = 11 * TileUnits / 10;
         private const int AdoptRange = 3 * TileUnits;
         private const int FollowRepathTicks = 8;
+        private const int BoardRange = 3 * TileUnits;
 
         /// <summary>True in einem Einsatz der Art Befreien: Es gibt Gefangene statt eines Gegenstands.</summary>
         public bool IsRescue { get; }
@@ -233,7 +234,7 @@ namespace Messingstadt.Core
             {
                 return;
             }
-            if (InExit(leader) && leader.Path.Count == 0)
+            if (leader.Path.Count == 0 && (InExit(leader) || (NearExit(leader) && AgentAboard())))
             {
                 Board(p, leader);
                 return;
@@ -315,6 +316,15 @@ namespace Messingstadt.Core
         }
 
         private bool InExit(Unit u) => u.X >= _exit.X0 && u.X < _exit.X1 && u.Y >= _exit.Y0 && u.Y < _exit.Y1;
+
+        /// <summary>
+        /// Steht er höchstens drei Felder neben dem Wagen? Wer einen Trupp zum Wagen schickt, bekommt nicht jeden in das Feld.
+        /// Ein Befreiter steigt trotzdem ein, wenn sein Führer daneben hält und schon ein Agent im Wagen steht.
+        /// </summary>
+        private bool NearExit(Unit u) =>
+            u.X >= _exit.X0 - BoardRange && u.X < _exit.X1 + BoardRange && u.Y >= _exit.Y0 - BoardRange && u.Y < _exit.Y1 + BoardRange;
+
+        private bool AgentAboard() => Units.Exists(a => a.Alive && a.Faction == Faction.Agent && a.Path.Count == 0 && InExit(a));
 
         /// <summary>
         /// Befreien: Gewonnen ist, wenn alle lebenden Gefangenen und ein Agent im Wagen stehen. Stirbt einer, geht es weiter,
