@@ -174,7 +174,7 @@ namespace Messingstadt
             {
                 return;
             }
-            _ambience = new TitleAmbience { Strength = _image == null ? 0.6f : 1f };
+            _ambience = new TitleAmbience { Strength = _image == null ? 0.6f : 1f, Scene = _image != null, Picture = _image };
             AddChild(_ambience);
             // Über Titelbild und Schatten, unter Streifen und Schrift
             MoveChild(_ambience, _image == null ? 1 : 2);
