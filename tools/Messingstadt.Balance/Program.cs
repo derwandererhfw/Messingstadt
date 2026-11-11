@@ -835,15 +835,17 @@ Func<Action<World>> QuietWithMoney(int lag, string[]? club = null) => () =>
                 stage = 1;
                 break;
             case 1:
-                if (At(otto, 7, 15) && At(emil, 6, 15) && Go(StreetClear(emil, 6, 9, World.WalkSpeed(emil))))
+                if (At(otto, 7, 15) && At(emil, 6, 15) && Go(StreetClear(emil, 6, 7, World.WalkSpeed(emil))))
                 {
-                    w.OrderMove(emil.Id, 6, 9);
-                    w.OrderMove(otto.Id, 6, 10);
+                    // In die dunkle Gasse, nicht an ihren hellen Ausgang: Der Hundeführer ist auf seinem Rundgang nicht immer gleich da.
+                    w.OrderMove(emil.Id, 6, 7);
+                    w.OrderMove(otto.Id, 6, 8);
                     stage = 2;
                 }
                 break;
             case 2:
-                if (emil.TileY <= 10 && emil.BribeTarget != handler.Id && !handler.Bribed && handler.Alive)
+                bool handlerNear = handler.TileX >= 5 && World.Distance(emil, handler) <= 6 * World.TileUnits;
+                if (emil.TileY <= 9 && handlerNear && emil.BribeTarget != handler.Id && !handler.Bribed && handler.Alive)
                 {
                     w.OrderBribe(emil.Id, handler.Id);
                 }
@@ -1092,6 +1094,56 @@ void ReportRescue(string name, Func<Action<World>> make, int money = 600)
         loud += w.Rating == MissionRating.Loud ? 1 : 0;
     }
     Console.WriteLine($"{name,-34} Sieg {100 * wins / Runs,3}%  beide gerettet {100 * all / Runs,3}%  tote Agenten {(double)dead / Runs:0.00}  unentdeckt {100 * unseen / Runs,3}%  leise {100 * quietWins / Runs,3}%  laut {100 * loud / Runs,3}%  Dauer {ticks / Runs / 20,3}s");
+}
+
+// Wer bemerkt Otto zuerst, und wo steht er dann? Zeigt, an welcher Stelle der Weg ohne Geld am engsten ist. --wer <Takte Verspätung>
+if (args.Length > 0 && args[0] == "--wer")
+{
+    int lag = args.Length > 1 ? int.Parse(args[1]) : 10;
+    var p0 = new[] { "pistole" };
+    loadout = new[] { p0, new[] { "pistole", "totschlaeger", "dietrich" }, p0, p0 };
+    var tally = new Dictionary<string, int>();
+    int starts = 0, werWins = 0, werQuiet = 0, werTicks = 0;
+    for (int seed = 1; seed <= Runs; seed++)
+    {
+        var mission = LitMission();
+        mission.Seed = seed * 7919;
+        mission.Money = 0;
+        var w = new World(Loader.ParseMap(mapJson), mission);
+        var strategy = QuietLocksmith(lag)();
+        string first = "niemand";
+        int started = -1;
+        for (int i = 0; i < MaxTicks && w.State == MissionState.Running; i++)
+        {
+            if (i % 10 == 0)
+            {
+                strategy(w);
+            }
+            w.Step();
+            var otto = w.Units[1];
+            if (started < 0 && otto.TileY < 13)
+            {
+                started = w.Tick;
+            }
+            var seen = w.Units.Find(u => u.Faction == Faction.Guard && u.Name != "Schließer" && u.GuardState != GuardState.Patrol);
+            if (seen != null && first == "niemand")
+            {
+                bool back = !w.Prisoners.Any(p => p.Captive);
+                first = $"{seen.Name,-14} Otto bei {otto.TileX,2},{otto.TileY,2} {(back ? "Rückweg" : "Hinweg")}";
+            }
+        }
+        starts += started < 0 ? 0 : started;
+        werWins += w.State == MissionState.Won ? 1 : 0;
+        werQuiet += w.State == MissionState.Won && w.Rating != MissionRating.Loud ? 1 : 0;
+        werTicks += w.Tick;
+        tally[first] = tally.GetValueOrDefault(first) + 1;
+    }
+    Console.WriteLine($"Verspätung bis {lag / 20.0:0.0#} s: Sieg {100 * werWins / Runs}%, leise {100 * werQuiet / Runs}%, Aufbruch im Mittel nach {starts / Runs / 20} s, Dauer {werTicks / Runs / 20} s");
+    foreach (var (k, v) in tally.OrderByDescending(t => t.Value).Take(14))
+    {
+        Console.WriteLine($"{v,4}  {k}");
+    }
+    return;
 }
 
 // Ein Lauf des leisen Wegs im Einzelnen: wer wann etwas bemerkt und wo der Trupp dann steht.

@@ -159,41 +159,45 @@ Gemessen mit `dotnet run -c Release --project tools/Messingstadt.Balance -- --mi
 
 | Spielweise | Einkauf | Siege | Tote Agenten | Wertung |
 |---|---|---|---|---|
-| Alle gehen zur Pforte, Otto öffnet | | 1 % | 3,96 | Laut |
-| Otto allein, der Rest wartet | | 0 % | 3,96 | Laut |
-| Erst kämpfen, dann befreien | | 48 % | 2,50 | Laut |
-| Laut durchs Hoftor | | 41 % | 2,63 | Laut |
-| Erst kämpfen, eine Maschinenpistole | 600 | 82 % | 0,94 | Laut |
-| Erst kämpfen, Schrotflinte, Rauchtopf, zwei Verbände | 560 | 66 % | 1,93 | Laut |
-| Erst kämpfen, vier Schrotflinten | 1400 | 14 % | 3,10 | Laut |
-| Erst kämpfen, vier Maschinenpistolen | 2400 | 98 % | 0,20 | Laut |
-| Leise ohne Geld: Otto allein nach Lageplan, Totschläger | 120 | 0 % | 0 | kommt nicht los |
-| Dasselbe mit Dietrich | 200 | 100 % | 0 | Leise |
-| Dasselbe, Klicks bis 0,25 s zu spät | 200 | 16 % | 0,97 | 96 % Laut |
-| Dasselbe, Klicks bis 0,5 s zu spät | 200 | 9 % | 0,99 | 99 % Laut |
+| Alle gehen zur Pforte, Otto öffnet | | 4 % | 3,78 | Laut |
+| Otto allein, der Rest wartet | | 0 % | 3,92 | Laut |
+| Erst kämpfen, dann befreien | | 46 % | 2,55 | Laut |
+| Laut durchs Hoftor | | 40 % | 2,67 | Laut |
+| Laut durchs Hoftor mit Rauchtopf im Postengang | 60 | 40 % | 2,65 | Laut |
+| Direkt zum Hoftor, ohne vorher zu kämpfen, mit oder ohne Rauchtopf | | 0 % | 3,99 | Laut |
+| Erst kämpfen, eine Maschinenpistole | 600 | 84 % | 0,84 | Laut |
+| Erst kämpfen, Schrotflinte, Rauchtopf, zwei Verbände | 560 | 70 % | 1,86 | Laut |
+| Erst kämpfen, vier Schrotflinten | 1400 | 19 % | 2,98 | Laut |
+| Erst kämpfen, vier Maschinenpistolen | 2400 | 98 % | 0,17 | Laut |
+| Leise ohne Geld: Otto allein nach Lageplan, Totschläger | 120 | 100 % | 0 | Leise |
+| Dasselbe, Klicks bis 0,5 s zu spät | 120 | 14 % | 0,90 | 91 % Laut |
+| Otto allein mit Totschläger und Dietrich | 200 | 100 % | 0 | Leise |
+| Dasselbe, Klicks bis 0,5 s zu spät | 200 | 100 % | 0 | Leise |
+| Dasselbe, Klicks bis 0,75 s zu spät | 200 | 69 % | | Leise oder verloren |
+| Dasselbe, Klicks bis 1 s zu spät | 200 | 52 % | | Leise oder verloren |
+| Dasselbe, Klicks bis 1,5 s zu spät | 200 | 35 % | | 23 % Leise |
+| Dasselbe, Klicks bis 2 s zu spät | 200 | 26 % | | 12 % Leise |
 | Leise mit Geld: Otto und Emil nach Lageplan, Hundeführer und Schließer gekauft | 500 Bestechung | 100 % | 0 | Leise |
 | Dasselbe, Klicks bis 0,5 s zu spät | 500 Bestechung | 100 % | 0 | Leise |
-| Dasselbe, Klicks bis 1 s zu spät | 500 Bestechung | 100 % | 0,01 | 52 % Leise, 48 % Laut |
-| Dasselbe, Klicks bis 1,5 s zu spät | 500 Bestechung | 67 % | 1,14 | 24 % Leise, 75 % Laut |
-| Dasselbe, Klicks bis 2 s zu spät | 500 Bestechung | 51 % | 1,71 | 12 % Leise, 87 % Laut |
-| Direkt zum Hoftor, ohne vorher zu kämpfen | | 0 % | 3,97 | Laut |
-| Dasselbe mit Rauchtopf im Postengang | 60 | 0 % | 3,99 | Laut |
-| Laut durchs Hoftor mit Rauchtopf im Postengang | 60 | 40 % | 2,64 | Laut |
+| Dasselbe, Klicks bis 1 s zu spät | 500 Bestechung | 100 % | 0,01 | 52 % Leise, 47 % Laut |
+| Dasselbe, Klicks bis 1,5 s zu spät | 500 Bestechung | 100 % | 0 | 36 % Leise, 64 % Laut |
+| Dasselbe, Klicks bis 2 s zu spät | 500 Bestechung | 75 % | 0,92 | 21 % Leise, 79 % Laut |
 
 In jedem Sieg kamen beide Gefangenen lebend heraus. Was die Zahlen sagen:
 
 - Wer ohne Plan hineingeht, verliert.
 - Der offene Kampf kostet mit der Grundausstattung den halben Trupp. Eine einzige Maschinenpistole hebt ihn von 48 auf 82 %. Schrotflinten allein taugen hier nicht, die Wege sind zu lang.
-- Leise ohne Geld geht nur mit Dietrich: Mit 2 s an der Pforte passt Otto nie zwischen Hund und Hundeführer, mit 1 s immer. Der Weg verzeiht aber keine Verspätung, und fliegt Otto auf, sterben die Wartenden am Start.
+- Leise ohne Geld: Der Hundeführer geht auf jedem Rundgang ein Stück am Fuß des Walls nach Westen, bis (1, 2), und ist so lange aus der Gasse. Vorher drehte er nur in der Gasse, und Otto wurde in 271 von 300 Läufen an der Pforte erwischt, sobald der Klick bis 0,5 s zu spät kam (9 % Siege). Jetzt verzeiht der Weg mit Dietrich 0,5 s ganz und 1 s zur Hälfte. Ohne Dietrich, mit 2 s an der Pforte, geht er nur bei genauen Klicks. Eng ist danach die Querung der Wallstraße, wie beim Weg mit Geld.
+- Der Weg mit Geld bleibt der sichere: halb so lang (63 gegen 121 s, Otto allein wartet 81 s auf sein Fenster), und wer zu spät klickt, gewinnt meist trotzdem laut, während Otto allein dann fällt.
 - Leise mit Geld ist der verlässliche Weg und kostet 500.
 - „Unentdeckt“ erreicht keine gemessene Spielweise: Wer gekauft oder niedergeschlagen wird, hat den Trupp vorher bemerkt.
 
 - Der Rauchtopf im Postengang ändert am Hoftor nichts (41 gegen 40 %): Das Gefecht entscheidet sich auf der Wallstraße gegen Streifen, Türposten und Verstärkung, nicht am Wallposten.
-- Otto allein mit Dietrich ist eine Klickprüfung: Schon 0,25 s Verspätung lassen ihn in 96 % der Läufe auffliegen. In einer früheren Fassung dieser Tabelle stand für 0,5 s fälschlich „100 % Siege“, richtig sind 9 %.
+- Wo es eng wird, zeigt `--wer <Takte>`: Es zählt, welche Wache Otto zuerst bemerkt und wo er dann steht.
 
 Im Spiel mit echten Wachen gespielt sind beide Wege. Laut (`einsatz2_laut.txt`): vier Maschinenpistolen, 13 Wachen ausgeschaltet, ein Agent gefallen, beide Gefangenen im Wagen; mit sechs verschobenen Startzeiten sechs Siege mit keinem oder einem Gefallenen. Leise (`einsatz2_leise.txt`): Otto und Emil kaufen Hundeführer und Schließer, Wertung leise, niemand fällt, alle zehn Wachen stehen noch.
 
-Stellschrauben für den leisen Weg, nur gemessen (`--schrauben`), nicht eingebaut:
+Stellschrauben für den leisen Weg, gemessen mit `--schrauben` vor der Änderung am Hundeführer. Die Leitung hat entschieden, keine davon einzubauen:
 
 | Stellschraube | Spielweise | Kosten | genau | 0,5 s spät | 1 s spät |
 |---|---|---|---|---|---|
@@ -205,6 +209,8 @@ Stellschrauben für den leisen Weg, nur gemessen (`--schrauben`), nicht eingebau
 | | Bursche nicht beachtet | 500 | 0 % Siege | 0 % Siege | 0 % Siege |
 
 A und C machen den Weg teurer, aber nicht riskanter: Das Wagnis liegt in den zwei Querungen der Wallstraße, nicht im Hof. B macht ihn mit den gemessenen Spielweisen unmöglich. Eine Uhr („Um sechs kommt der Werkschutz“) bräuchte eine neue Regel und ist nicht gemessen.
+
+Die Zellen liegen im Gebäude. Wer auf einem Feld seiner Zelle steht, wird nicht gezeichnet (`World.HiddenInCell`), sonst klebte er außen an der Fassade. Solange die Tür zu ist, steht sein kurzer Name neben dem Schloss. Ein Befreiter bleibt nie in der Zelle stehen, auch wenn sein Führer direkt vor der Tür wartet, sondern tritt auf das nächste freie Feld davor.
 
 ### Mehrere Einsätze
 

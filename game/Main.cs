@@ -666,7 +666,7 @@ void fragment() {
             ["guards"] = World.Units.Count(u => u.Faction == Faction.Guard && u.Alive).ToString(),
             ["agents"] = World.Units.Count(u => u.Faction == Faction.Agent && u.Alive).ToString(),
             ["bribed"] = string.Join(", ", World.Units.Where(u => u.Bribed).Select(u => u.Name)),
-            ["where"] = string.Join(", ", World.Units.Where(u => u.Faction == Faction.Agent && u.Alive).Select(u => $"{u.Name}:{u.TileX},{u.TileY}")),
+            ["where"] = string.Join(", ", World.Units.Where(u => (u.Faction == Faction.Agent || u.IsPrisoner) && u.Alive).Select(u => $"{u.Name}:{u.TileX},{u.TileY}{(World.HiddenInCell(u) ? " verborgen" : "")}")),
             ["scene"] = s_scene,
             ["telegram"] = _paper.TelegramText,
             ["state"] = World.State.ToString(),
@@ -680,6 +680,7 @@ void fragment() {
             ["sounds"] = _sound.PlayCount.ToString(),
             ["menusounds"] = _sound.MenuPlayCount.ToString(),
             ["menusound"] = _sound.LastMenuSound,
+            ["uisounds"] = _sound.UiPlayCount.ToString(),
             ["state"] = World.State.ToString(),
             ["item"] = World.ItemTaken.ToString(),
             ["fields"] = _paper.FieldTexts,
@@ -2039,6 +2040,7 @@ void fragment() {
                 SetFigureVariant(s, row, _animator.IsRecruit(u) ? "rekrut" : u.Faction == Faction.Guard && s_scene == "nordwall" ? "stadtwache" : "");
                 s.FlipH = across < 0;
                 s.Modulate = FigureGlow(u);
+                s.Visible = !World.HiddenInCell(u);
                 s.Position = foot - FigureFoot + _animator.BiteOffset(World, u, this);
                 int depth = ThingZ(InsertIndex(u.X / (float)World.TileUnits, u.Y / (float)World.TileUnits) - 1);
                 s.ZIndex = u.Alive ? depth + rank + 2 : depth + 1;
@@ -2568,7 +2570,7 @@ void fragment() {
             float bestD = 18f;
             foreach (var u in World.Units)
             {
-                if (u.Faction != faction || !u.Alive) continue;
+                if (u.Faction != faction || !u.Alive || World.HiddenInCell(u)) continue;
                 var center = ToScreen(u.X, u.Y) + new Vector2(0, -20);
                 float d = Math.Max(Math.Abs(center.X - p.X), Math.Abs(center.Y - p.Y) * 0.6f);
                 if (d < bestD)

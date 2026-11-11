@@ -12,12 +12,12 @@ key Key2
 clickfield 7 15
 key Key3
 clickfield 6 15
-waittick 260
-# Fenster: beide Wallstreifen laufen auseinander
-clickfield 6 9
+waittick 450
+# Fenster: beide Wallstreifen laufen auseinander. In der dunklen Gasse auf den Hundeführer warten, er kommt vom Wall zurück
+clickfield 6 7
 key Key2
-clickfield 6 10
-waittick 300
+clickfield 6 8
+waittick 510
 key Key3
 rclickunit Hundeführer
 waitcontains bribed Hundeführer

@@ -52,6 +52,23 @@ namespace Messingstadt.Core
 
         public List<DroppedKeys> KeysOnGround { get; } = new();
 
+        /// <summary>
+        /// Sitzt er noch im Gebäude? Die Zelle liegt hinter der Fassade: Solange die Tür zu ist und solange er auf einem Feld der
+        /// Zelle steht, zeigt das Spiel ihn nicht, sonst klebte er außen an der Wand. Er erscheint, wenn er vor die Tür tritt.
+        /// </summary>
+        public bool HiddenInCell(Unit u)
+        {
+            if (!u.IsPrisoner || u.CellDoor < 0 || !u.Alive)
+            {
+                return false;
+            }
+            var door = Doors[u.CellDoor];
+            return !door.Open || door.Tiles.Contains((u.TileX, u.TileY));
+        }
+
+        /// <summary>Kurzer Name eines Gefangenen, wie er im Telegramm und an der Zellentür steht.</summary>
+        public string PrisonerShort(Unit u) => _prisonerShort.GetValueOrDefault(u.Id, u.Name);
+
         private readonly Dictionary<int, string> _prisonerShort = new();
         private RescueTextData _rescueTexts = new();
 
@@ -240,7 +257,16 @@ namespace Messingstadt.Core
                 return;
             }
             int distance = Distance(p, leader);
-            if (distance <= FollowStopRange)
+            if (distance <= FollowStopRange && HiddenInCell(p))
+            {
+                // Nicht in der Zelle stehen bleiben, auch wenn der Führer direkt vor der Tür wartet: heraus auf das nächste freie Feld.
+                if (p.Path.Count == 0 && Tick >= p.RepathTick)
+                {
+                    p.RepathTick = Tick + FollowRepathTicks;
+                    StepOutOfCell(p);
+                }
+            }
+            else if (distance <= FollowStopRange)
             {
                 p.Path.Clear();
                 if (TileIsTaken(p, p.TileX, p.TileY))
@@ -252,6 +278,37 @@ namespace Messingstadt.Core
             {
                 p.RepathTick = Tick + FollowRepathTicks;
                 WalkTo(p, leader.TileX, leader.TileY);
+            }
+        }
+
+        private void StepOutOfCell(Unit p)
+        {
+            var cell = Doors[p.CellDoor].Tiles;
+            (int X, int Y)? best = null;
+            int bestSteps = int.MaxValue;
+            foreach (var (cx, cy) in cell)
+            {
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        int x = cx + dx, y = cy + dy;
+                        if (Map.IsBlocked(x, y) || cell.Contains((x, y)) || TileIsTaken(p, x, y))
+                        {
+                            continue;
+                        }
+                        int steps = Map.FindPath(p.TileX, p.TileY, x, y)?.Count ?? int.MaxValue;
+                        if (steps < bestSteps)
+                        {
+                            best = (x, y);
+                            bestSteps = steps;
+                        }
+                    }
+                }
+            }
+            if (best != null)
+            {
+                WalkTo(p, best.Value.X, best.Value.Y);
             }
         }
 
