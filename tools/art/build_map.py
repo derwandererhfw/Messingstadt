@@ -6,7 +6,7 @@ Aufruf (aus dem Projektordner):
     python tools/art/build_map.py 02 --preview=bild.png   nur ein Übersichtsbild, nichts wird geschrieben
 
 Liest data/scene_<nr>.json (Level: Gebäude, Mauern, Requisiten, Laternen, Straßen) und schreibt nach
-game/assets/<id>/ dieselben Dateien wie generate_concept.py für das Kesselviertel: ground.png, things/, hd/,
+game/assets/maps/<id>/ dieselben Dateien wie generate_concept.py für das Kesselviertel: ground.png, things/, hd/,
 manifest.json, backdrop.png, nach dem Lichtbake light/ und panes.json, dazu data/light_<nr>.json. Die Regelkarte
 data/map_<nr>.json schreibt weiter tools/level/scene_to_map.py, hier wird nur geprüft, dass sie zu den Bildern passt.
 
@@ -53,18 +53,88 @@ THEMES = {
 
 
 # ---------- Dächer ----------
-def mat_low(f):
+def mat_low(f, tint=(1.0, 1.0, 1.0), cap=None):
     if f.kind != "plane":
         return g.brick_np(*f.wall_uv(), f.res)
-    return g.mat_tar(f) if f.plane == len(f.prism.planes) - 1 else g.mat_slate(f)
+    if f.plane == len(f.prism.planes) - 1:
+        return (cap or g.mat_tar)(f)
+    return g.mat_slate(f) * np.array(tint)[None, :]
 
 
-def roof_low(cap=22, k=26):
-    """Flaches Walmdach aus Schiefer mit Teerpappe obenauf. Steigt von jeder Kante mit k Bildpunkten je Feld."""
+def mat_zinc(f):
+    """Zinkblech in Bahnen, matt und hell: die Kappe über dem Mannschaftshaus."""
+    return g.mat_sheet(f, (104, 110, 118), 0.35)
+
+
+def roof_low(cap=22, k=26, tint=(1.0, 1.0, 1.0), top=None):
+    """Flaches Walmdach aus Schiefer, obenauf Teerpappe, Kupfer oder Zink. Steigt von jeder Kante mit k Bildpunkten je Feld."""
     def make(x0, y0, x1, y1, h):
         planes = [R.rise_from(e, a, h, k) for e, a in (("x0", x0), ("x1", x1), ("y0", y0), ("y1", y1))] + [R.flat(h + cap)]
-        return [R.Prism(x0, y0, x1, y1, h, planes, mat_low, "low")]
+        return [R.Prism(x0, y0, x1, y1, h, planes, lambda f: mat_low(f, tint, top), "low")]
     return make
+
+
+def mat_turret(f):
+    """Dachreiter: verschieferter Kasten, nach Süden und Osten je ein erleuchtetes Zifferblatt."""
+    p = f.prism
+    if f.kind == "plane":
+        return g.mat_copper(f)
+    col = g.mat_slate(f) * 0.9
+    if f.kind not in ("x1", "y1"):
+        return col
+    u = (p.y1 - f.fy) * HW if f.kind == "x1" else (f.fx - p.x0) * HW
+    half = (p.x1 - p.x0) * HW / 2
+    du, dv = u - half, f.z - (p.top() - half - 1)
+    r = np.hypot(du, dv)
+    col = np.where((r < half - 1.5)[:, None], g._c("stone_l")[None, :], col)
+    face = r < half - 3
+    col = np.where(face[:, None], np.array((236, 222, 176.0))[None, :], col)
+    hands = face & (((np.abs(du) < 0.6) & (dv > 0) & (dv < half - 5)) | ((np.abs(dv + du * 0.3) < 0.6) & (du > 0) & (du < half - 6)))
+    marks = face & (r > half - 4.6) & ((np.abs(du) < 0.7) | (np.abs(dv) < 0.7))
+    col = np.where((hands | marks)[:, None], g._c("black")[None, :], col)
+    return col, face & ~hands & ~marks
+
+
+def with_turret(roof, fx, fy, size=0.9, lift=54, spire=24):
+    """Setzt einen Dachreiter mit Kupferhelm aufs Dach. Er gehört zum Bild des Hauses und wirft im Schleichlicht keinen Schatten."""
+    def make(x0, y0, x1, y1, h):
+        prisms = roof(x0, y0, x1, y1, h)
+        x, y = x0 + fx * (x1 - x0), y0 + fy * (y1 - y0)
+        top = h + lift
+        k = spire / (size / 2)
+        helm = R.Prism(x - 0.06, y - 0.06, x + size + 0.06, y + size + 0.06, top,
+                       [R.rise_from(e, a, top, k) for e, a in (("x0", x - 0.06), ("x1", x + size + 0.06), ("y0", y - 0.06), ("y1", y + size + 0.06))],
+                       g.mat_copper, "helm")
+        return prisms + [R.block(x, y, x + size, y + size, h, top, mat_turret, "turret"), helm]
+    return make
+
+
+def rod(fx, fy, height=22, flag=False):
+    """Blitzableiter oder Fahnenmast auf dem Dach: eine dünne Stange, am Mast hängt ein nasses Tuch in den Farben der Stadtwache."""
+    def add(x0, y0, w, d, h, s, things, house):
+        x, y = x0 + fx * w, y0 + fy * d
+        base = g.roof_base(house, h, x, y)
+
+        def draw():
+            k = s.res
+            dr = ImageDraw.Draw(s.img)
+            px, py = s.to_screen(x, y, base)
+            px, py = int(px), int(py)
+            dr.rectangle((px, py - height * k, px + (k - 1 if flag else max(0, k - 2)), py), fill=g.C["steel" if flag else "iron"] + (255,))
+            if flag:
+                dr.rectangle((px - k, py - height * k - 2 * k, px + 2 * k - 1, py - height * k - 1), fill=g.C["brass"] + (255,))
+                top = py - (height - 2) * k
+                for i in range(7 * k):  # das Tuch hängt schlaff und wird nach unten schmaler
+                    wide = int((9 - 5 * i / (7 * k)) * k * (0.8 + 0.2 * math.sin(i / k * 1.7)))
+                    for j in range(wide):
+                        stripe = (j * 3) // max(1, wide)
+                        col = (g.C["navy_d"], g.C["paper"], g.C["navy_d"])[stripe]
+                        s.img.putpixel((px + k + j, top + i + j // 3), tuple(int(c * (0.75 if (i // k + j // k) % 3 == 0 else 0.95)) for c in col) + (255,))
+            else:
+                dr.rectangle((px - k // 2, py - 2 * k, px + k // 2 + 1, py), fill=g.C["iron"] + (255,))
+        things.append(g.Thing(x - 0.05, y - 0.05, x + 0.05, y + 0.05, base, base + height, draw))
+        things[-1].kind = "open"
+    return add
 
 
 def roof_flat(rise=3, sheet=False):
@@ -96,11 +166,32 @@ def roof_rampart(x0, y0, x1, y1, h):
         prisms.append(R.block(x, y1 - 0.2, min(x1, x + 0.72), y1, h, h + 11, mat_walk, "merlon"))
         x += 1.0
     prisms.append(R.block(x0, y1 - 0.2, x1, y1, h, h + 5, mat_walk, "parapet"))
+    for tx in (5.0, 14.1):  # Wachtürme über den beiden Gassen, die auf den Wall stoßen. Nördlich davon liegt kein Feld mehr
+        if x0 + tx + 1.5 < x1:
+            prisms.append(R.block(x0 + tx, y0 + 0.2, x0 + tx + 1.5, y1, h, h + 30, mat_tower, "tower"))
+            for cx, cy in ((0, 0.2), (1.1, 0.2), (0, y1 - y0 - 0.4), (1.1, y1 - y0 - 0.4)):
+                prisms.append(R.block(x0 + tx + cx, y0 + cy, x0 + tx + cx + 0.4, y0 + cy + 0.4, h, h + 37, mat_walk, "merlon"))
     return prisms
 
 
+def mat_tower(f):
+    """Wachturm auf dem Wall: Backstein, oben ein Band aus Granit, nach Süden und Osten je eine dunkle Scharte."""
+    p = f.prism
+    if f.kind == "plane":
+        return mat_walk(f)
+    col = g.brick_np(*f.wall_uv(), f.res, 7)
+    top = p.top()
+    col = np.where((top - f.z < 3)[:, None], g._c("stone")[None, :], col)
+    if f.kind in ("x1", "y1"):
+        u = (p.y1 - f.fy) * HW if f.kind == "x1" else (f.fx - p.x0) * HW
+        mid = ((p.y1 - p.y0) if f.kind == "x1" else (p.x1 - p.x0)) * HW / 2
+        slit = (np.abs(u - mid) < 1.6) & (top - f.z > 9) & (top - f.z < 21)
+        col = np.where(slit[:, None], g._c("black")[None, :], col)
+    return col
+
+
 # ---------- Fassaden des Nordwalls ----------
-def office_front(w, h, lit_rate, barred=False, name=None, floors=None, door_at=None):
+def office_front(w, h, lit_rate, barred=False, name=None, floors=None, door_at=None, force=()):
     """Amtsfassade aus Klinker: Granitsockel, Gesimse, Rundbogenfenster. Erleuchtete Stuben haben schlichte Rechteckfenster."""
     img, d = g.wall(w, h, ("brick",))
     g.plinth(d, w, h, 11)
@@ -116,11 +207,11 @@ def office_front(w, h, lit_rate, barred=False, name=None, floors=None, door_at=N
         base = int(h - 11 - f * step)
         if f:
             g.ledge(d, w, base)
-        for u in range(9, w - 18, 24):
+        for col, u in enumerate(range(9, w - 18, 24)):
             y = base - int(step) + 14
             if f == 0 and door_at is not None and abs(u + 6 - door_at) < 20:
                 continue
-            if g.RNG.random() < lit_rate:
+            if (g.RNG.random() < lit_rate) | ((f, col) in force):  # force: (Geschoss, Spalte) brennt immer
                 g.window(d, u, y, 11, 17, lit=True)
                 img.info.setdefault("panes", []).append((u, y, 11, 18))
                 if barred:
@@ -189,6 +280,21 @@ def notice_board(d, x, y):
             d.fine_line((u + 1, v, u + 5, v), fill=g.C["ash"])
 
 
+def prop_item(add):
+    """Dachaufbau, der nur im Bild Schatten wirft: Das Schleichlicht bleibt, wie es war."""
+    def wrapped(x0, y0, w, d, h, s, things, house):
+        add(x0, y0, w, d, h, s, things, house)
+        things[-1].kind = "prop"
+    return wrapped
+
+
+GATES = []  # Tore des Grundrisses, damit die Mauer daneben ihre Pfosten bekommt
+
+
+def mat_post(f):
+    return g._c("stone_l")[None, :] * (0.86 + 0.2 * R.noise(f.fx * 9, f.fy * 9 + f.z / 5, 21))[:, None]
+
+
 def nordwall_building(b, s, things):
     """Ein Gebäude des Nordwalls nach seiner Art: zwei Fassaden, Dach und Aufbauten."""
     w, depth, h = b["x1"] - b["x0"], b["y1"] - b["y0"], b["height"]
@@ -220,8 +326,9 @@ def nordwall_building(b, s, things):
         clock(d, wl // 2, 42)
         right, dr = office_front(wr, h, lit)
         g.downpipe(dr, 6, 2, h - 4)
-        roof = roof_low(24, 26)
-        items = [g.chimney(0.7, 0.62, 16, False)]
+        # Kupferkappe und Dachreiter mit erleuchteter Uhr: das Gericht ist das Wahrzeichen des Viertels
+        roof = with_turret(roof_low(24, 26, top=g.mat_copper), 0.39, 0.72)
+        items = [g.chimney(0.7, 0.62, 16, False), prop_item(g.chimney(0.2, 0.3, 16, False)), rod(0.5, 0.795, 14)]
     elif kind == "wachstube":
         left, d = office_front(wl, h, lit, barred=True)
         for door in b.get("doors", ()):
@@ -230,8 +337,8 @@ def nordwall_building(b, s, things):
             cell_door(d, u - 6, h - 1)
         right, dr = office_front(wr, h, lit, barred=True)
         g.downpipe(d, wl - 8, 2, h - 4)
-        roof = roof_low(18, 24)
-        items = [g.chimney(0.8, 0.6, 14, False)]
+        roof = roof_low(18, 24, tint=(0.9, 0.96, 1.08))
+        items = [g.chimney(0.8, 0.6, 14, False), rod(0.2, 0.5, 20)]
     elif kind == "wachlokal":
         left, d = g.wall(wl, h, ("brick",))
         g.plinth(d, wl, h, 6)
@@ -261,8 +368,11 @@ def nordwall_building(b, s, things):
         right, dr = office_front(wr, h, lit)
         g.downpipe(dr, wr - 8, 2, h - 4)
         g.quoins(d, wl, 10, h - 12)
-        roof = roof_low(22, 24)
-        items = [g.chimney(0.25, 0.7, 16, False), g.chimney(0.75, 0.7, 16, False)]
+        g.name_plate(left, d, wl // 2, 8, "KASERNE", 6)
+        # Zinkkappe, Schiefer mit warmem Stich, darauf eine Reihe Lüfter wie auf jedem Mannschaftshaus, an der Ecke die Fahne
+        roof = roof_low(22, 24, tint=(1.12, 1.0, 0.88), top=mat_zinc)
+        items = [g.chimney(0.25, 0.7, 16, False), g.chimney(0.75, 0.7, 16, False)] + [prop_item(g.vent(0.46, fy)) for fy in (0.2, 0.42, 0.64)]
+        items.append(rod(0.9, 0.9, 40, flag=True))
     elif kind == "remise":
         left = g.canvas(wl, h, g.C["soot"])
         d = g.draw_on(left)
@@ -296,12 +406,27 @@ def nordwall_building(b, s, things):
                 dr.fine_line((u, 16, u + 22, 16), fill=g.C["iron"])
                 dr.fine_line((u, h - 6, u + 22, h - 6), fill=g.C["iron"])
         roof = roof_flat(2)
+        posts = []
+        for gate in GATES:
+            if gate["x0"] == b["x0"] and gate["y0"] == b["y1"]:  # Tor südlich dieses Mauerstücks
+                dr.rectangle((0, 0, 9, h), fill=g.C["stone_l"])
+                dr.shade((9, 0, 10, h), 0.6)
+                posts.append((b["y1"] - 0.3, b["y1"]))
+            if gate["x0"] == b["x0"] and gate["y1"] == b["y0"]:
+                dr.rectangle((wr - 10, 0, wr - 1, h), fill=g.C["stone_l"])
+                posts.append((b["y0"], b["y0"] + 0.3))
+        if posts:
+            plain = roof
+            roof = lambda x0, y0, x1, y1, hh: plain(x0, y0, x1, y1, hh) + [R.block(x0, a, x1, e, hh, hh + 7, mat_post, "post") for a, e in posts]  # noqa: E731
     else:  # Mietshaus der Beamten und alles Unbekannte: Klinker mit Granitbändern, schlicht
-        left, d = office_front(wl, h, lit, floors=2, door_at=wl // 2)
+        # Restlicht für den Start im Durchgang: Im Westhaus brennt das Eckfenster zur Gasse, im Osthaus das zur Straße.
+        # Fensterlicht zählt nur fürs Bild, das Schleichlicht kennt die Fenster aus rules_windows_<nr>.json.
+        west = b["id"].endswith("west")
+        left, d = office_front(wl, h, lit, floors=2, door_at=wl // 2, force=() if west else ((0, 0), (1, 0)))
         g.door(d, wl // 2 - 8, h - 1, 16, 30, "wood", True)
         g.quoins(d, wl, 10, h - 12)
         g.downpipe(d, 8, 2, h - 4)
-        right, dr = office_front(wr, h, lit, floors=2)
+        right, dr = office_front(wr, h, lit, floors=2, force=((0, 0), (1, 1)) if west else ())
         g.quoins(dr, wr, 10, h - 12)
         roof = roof_low(20, 26)
         items = [g.chimney(0.72, 0.66, 14, False)]
@@ -316,22 +441,79 @@ def sheet_gate(gate, s, things):
     """
     h, depth = gate["height"], gate["y1"] - gate["y0"]
     wr = int(depth * HW)
-    left, _ = g.wall(4, h, ("iron",))
-    right, d = g.wall(wr, h, ("iron",))
-    d.rectangle((0, 0, wr - 1, h - 1), fill=g.C["iron"])
-    d.rectangle((0, 0, wr - 1, 1), fill=g.C["steel"])
-    d.rectangle((0, h - 3, wr - 1, h - 1), fill=g.C["black"])
-    for u in (0, wr // 2, wr - 1):  # Rahmen und Stoß der beiden Bleche
+    sheet = g.blend(g.C["steel"], 1.12)
+    left = g.canvas(4, h, sheet)
+    right = g.canvas(wr, h, sheet)
+    d = g.draw_on(right)
+    d.rectangle((0, 0, wr - 1, 1), fill=g.C["ash"])  # blanke Oberkante
+    d.rectangle((0, h - 4, wr - 1, h - 1), fill=g.C["wood_d"])
+    for u in (0, wr // 2, wr - 1):  # Rahmen und Stoß der beiden Flügel
         d.fine_line((u, 0, u, h), fill=g.C["black"])
-    for v in (6, h - 8):  # Bänder mit Nietköpfen
-        d.rectangle((1, v, wr - 2, v + 1), fill=g.C["grey_d"])
+    for v in (5, h - 10):  # Bänder mit blanken Nietköpfen
+        d.rectangle((1, v, wr - 2, v + 2), fill=g.C["iron"])
         for u in range(3, wr - 2, 4):
-            d.fine_line((u, v, u, v), fill=g.C["steel"])
-    d.rectangle((wr // 2 + 2, h // 2 - 1, wr // 2 + 4, h // 2 + 2), fill=g.C["black"])  # Schlosskasten
-    d.shade((0, 2, wr, 4), 0.7)
+            d.rectangle((u, v + 1, u, v + 1), fill=g.C["paper"])
+    d.rectangle((wr // 2 - 7, 11, wr // 2 + 7, 16), fill=g.C["paper"])  # Emailleschild: weiß mit schwarzem Rand
+    d.fine_line((wr // 2 - 7, 11, wr // 2 + 7, 11), fill=g.C["black"])
+    d.fine_line((wr // 2 - 7, 16, wr // 2 + 7, 16), fill=g.C["black"])
+    for u in range(wr // 2 - 5, wr // 2 + 5, 2):
+        d.fine_line((u, 13, u, 14), fill=g.C["black"])
+    d.rectangle((wr // 2 + 2, h // 2 + 3, wr // 2 + 4, h // 2 + 6), fill=g.C["black"])  # Schlosskasten
+    d.rectangle((wr // 2 + 3, h // 2 + 4, wr // 2 + 3, h // 2 + 4), fill=g.C["brass_l"])
     g.building(gate["x0"] + 0.36, gate["y0"], 0.12, depth, h, left, right, s, things)
     things[-1].solid = False
     things[-1].kind = "gate"
+
+
+def laundry_van(x, y, s, things):
+    """Der Fluchtwagen: Lieferwagen einer Wäscherei. Dunkles Führerhaus, heller Kastenaufbau mit Aufschrift und rotem Streifen."""
+    cab, long, wide = 0.38, 1.4, 0.8
+    made = {}
+
+    def side_of(length, height, base):
+        tex = g.canvas(int(length * HW), height, g.C[base])
+        return tex, g.draw_on(tex)
+
+    def wheel(d, wx, h):
+        d.ellipse((wx - 4, h - 9, wx + 4, h - 1), fill=g.C["black"])
+        d.rectangle((wx - 1, h - 6, wx + 1, h - 4), fill=g.C["grey_l"])
+
+    def draw():
+        if not made:
+            body, d = side_of(long - cab, 40, "cream")
+            w = body.width
+            d.rectangle((0, 0, w - 1, 1), fill=g.C["paper"])
+            for u in (0, w - 1):
+                d.fine_line((u, 0, u, 30), fill=g.C["wood_d"])
+            d.rectangle((0, 21, w - 1, 22), fill=(150, 34, 30))  # roter Streifen der Firma
+            spans = g.paint_text(body, 2, 10, "WASCHEREI", 4.6, [(g.C["black"], 1.0, 0, 0, 1.0, 0.1)], gap=1.0, condense=0.72)
+            a0, a1 = spans[1]
+            for u in (a0 + 0.6, a1 - 1.4):  # die Punkte des Ä
+                d.fine_line((u, 8, u, 8), fill=g.C["black"])
+            d.rectangle((0, 30, w - 1, 39), fill=g.C["soot"])
+            d.rectangle((0, 30, w - 1, 30), fill=g.C["wood_d"])
+            wheel(d, 8, 40)
+            back, bd = side_of(wide, 40, "cream")  # Rückwand, vom Führerhaus verdeckt bis auf den oberen Rand
+            bd.rectangle((0, 0, back.width - 1, 1), fill=g.C["paper"])
+            nose, nd = side_of(cab, 30, "navy")
+            nd.rectangle((0, 0, nose.width - 1, 1), fill=g.C["navy_l"])
+            nd.rectangle((2, 4, nose.width - 3, 13), fill=g.C["glass"])
+            nd.rectangle((0, 21, nose.width - 1, 29), fill=g.C["soot"])
+            wheel(nd, nose.width - 6, 30)
+            front, fd = side_of(wide, 30, "navy")
+            fd.rectangle((0, 0, front.width - 1, 1), fill=g.C["navy_l"])
+            fd.rectangle((3, 4, front.width - 4, 13), fill=g.C["glass"])
+            fd.fine_line((front.width // 2, 4, front.width // 2, 13), fill=g.C["navy_d"])
+            fd.rectangle((7, 16, front.width - 8, 22), fill=g.C["black"])  # Kühlergrill
+            for u in range(8, front.width - 8, 2):
+                fd.fine_line((u, 16, u, 22), fill=g.C["grey"])
+            fd.rectangle((0, 22, front.width - 1, 29), fill=g.C["soot"])
+            fd.rectangle((2, 17, 5, 20), fill=g.C["gas_d"])
+            fd.rectangle((front.width - 6, 17, front.width - 3, 20), fill=g.C["gas_d"])
+            made.update(body=body, back=back, nose=nose, front=front)
+        g.box(s, x, y, x + wide, y + long - cab, 0, 40, made["back"], made["body"], lambda a, b, w2, d2: g.blend(g.C["cream"], 0.9))
+        g.box(s, x, y + long - cab, x + wide, y + long, 0, 30, made["front"], made["nose"], lambda a, b, w2, d2: g.C["navy_l"])
+    things.append(g.Thing(x, y, x + wide, y + long, 0, 34, draw, solid=True, opaque=False))
 
 
 def prison_van(d, x, base):
@@ -461,6 +643,7 @@ def build(scene, theme):
         points.clear()
     s = g.Scene(scene["width"])
     things, glows = [], []
+    GATES[:] = scene.get("gates", [])
     for b in scene["buildings"] + scene["walls"]:
         nordwall_building(b, s, things)
     for gate in scene.get("gates", ()):
@@ -475,7 +658,7 @@ def build(scene, theme):
         if prop["kind"] == "kiste":
             g.crate(x + 0.3, y + 0.3, s, things)
         elif prop["kind"] == "fluchtwagen":
-            g.getaway_truck(prop["x"] - 0.4, prop["y"] - 0.7, s, things)
+            laundry_van(prop["x"] - 0.4, prop["y"] - 0.7, s, things)
         if prop["kind"] in ("kiste", "fluchtwagen"):
             things[-1].solid, things[-1].opaque = prop["solid"], prop["opaque"]
     for b in scene["buildings"]:
