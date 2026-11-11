@@ -806,9 +806,24 @@ def menu_sounds():
     save("menu_select", fade(thud + 0.45 * paper, 0.001, 0.1), 0.55)
 
 
+def peil_ping():
+    """Peilgerät von 1927: ein Relais zieht an und fällt ab, dahinter summt kurz die Röhre. Dumpf, damit es über Minuten nicht nervt."""
+    rng = own_rng("peil_ping")
+    for i, (thunk, gap, hum_hz) in enumerate(((230, 0.055, 100), (205, 0.07, 100), (255, 0.045, 100))):
+        t = time(0.42)
+        x = np.zeros_like(t)
+        for at, gain in ((0.0, 1.0), (gap, 0.45)):
+            tt = np.maximum(t - at, 0)
+            clack = lowpass(noise(0.42, rng), 1700) * decay(tt, 0.006) + 0.8 * np.sin(2 * np.pi * thunk * tt) * decay(tt, 0.014)
+            x += clack * gain * (t >= at)
+        swell = np.minimum(t / 0.03, 1) * decay(t, 0.11)
+        x += 0.22 * (np.sin(2 * np.pi * hum_hz * t) + 0.5 * np.sin(2 * np.pi * 2 * hum_hz * t) + 0.2 * np.sin(2 * np.pi * 3 * hum_hz * t)) * swell
+        save(f"peil_ping_{i}", fade(x, 0.001, 0.08), 0.4)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld, dog, siren, factory_horn, train, radio, heartbeat, typewriter, fresh_random, dog_fight, boy_whistle, wind_gust, distant_shots, tram, foghorn, church_bell, shutter, gutter, piano, tram_hum, match, title_theme, menu_sounds):
+    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld, dog, siren, factory_horn, train, radio, heartbeat, typewriter, fresh_random, dog_fight, boy_whistle, wind_gust, distant_shots, tram, foghorn, church_bell, shutter, gutter, piano, tram_hum, match, title_theme, menu_sounds, peil_ping):
         make()
     files = list(OUT.glob("*.wav"))
     print(f"{len(files)} Geräusche, {sum(f.stat().st_size for f in files) // 1024} KiB")

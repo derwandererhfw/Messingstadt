@@ -33,6 +33,8 @@ MAX_SEAM = 6.0
 MAX_MATCH_ABOVE_4K = 10.0
 MAX_MENU_ABOVE_4K = 5.0
 MAX_MENU_BELOW_120 = 50.0
+MAX_PEIL_ABOVE_2K = 3.0
+MAX_PEIL_DBA = -34.0
 TITLE_SECONDS = 72
 MAX_FIGHT_BELOW_120 = 60.0
 MAX_HEART_BELOW_120 = 75.0
@@ -126,6 +128,11 @@ def main():
         x, rate = load(name)
         check(share(x, rate, 4000, 1e9) <= MAX_MENU_ABOVE_4K, f"{name}: über 4 kHz {share(x, rate, 4000, 1e9):.1f} %")
         check(share(x, rate, 0, 120) <= MAX_MENU_BELOW_120, f"{name}: unter 120 Hz {share(x, rate, 0, 120):.0f} %")
+
+    for i in range(3):
+        x, rate = load(f"peil_ping_{i}")
+        check(share(x, rate, 2000, 1e9) <= MAX_PEIL_ABOVE_2K, f"peil_ping_{i}: über 2 kHz {share(x, rate, 2000, 1e9):.2f} %")
+        check(dba(x, rate) <= MAX_PEIL_DBA, f"peil_ping_{i}: {dba(x, rate):.1f} dB(A) in der Datei, Grenze {MAX_PEIL_DBA}")
 
     x, rate = load("match")
     check(share(x, rate, 4000, 1e9) <= MAX_MATCH_ABOVE_4K, f"Streichholz über 4 kHz: {share(x, rate, 4000, 1e9):.1f} %")
