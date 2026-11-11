@@ -206,12 +206,6 @@ namespace Messingstadt
                 _nextSpawn = _time + Rand(MinSpawnPause, MaxSpawnPause);
                 Arrive();
             }
-            // Das Peilgerät im HUD liest diese Liste, in Bildpunkten der Welt.
-            Game.PeilCivilians.Clear();
-            foreach (var at in Positions)
-            {
-                Game.PeilCivilians.Add(Game.ToScreen((int)(at.X * World.TileUnits), (int)(at.Y * World.TileUnits)));
-            }
             for (int i = _people.Count - 1; i >= 0; i--)
             {
                 if (!Update(_people[i], dt))
