@@ -72,7 +72,7 @@ Eingabe (Godot) -> Befehle -> World.Tick() -> Zustand -> Darstellung (Godot)
 
 - **Weitere Karten:** `python tools/art/build_map.py <nr>` baut eine Karte aus dem Grundriss `data/scene_<nr>.json` der
   Level-Sitzung und dem Grafikthema ihres Viertels (`THEMES`: Farben der Baustoffe, Boden, Kulisse; je Gebäudeart ein
-  Baumeister). Geschrieben wird nach `game/assets/maps/<id>/` mit denselben Dateinamen wie im Kesselviertel, dazu
+  Baumeister). Geschrieben wird nach `game/assets/<id>/` mit denselben Dateinamen wie im Kesselviertel, dazu
   `data/light_<nr>.json`. Das Kesselviertel bleibt in `game/assets/` und entsteht weiter in `generate_concept.py`.
   Dächer steigen dort von Norden und Westen höchstens so steil wie die Blickrichtung, damit sie nicht mehr verdecken
   als die Quader des Grundrisses. `tools/art/check_cover.py <nr>` prüft das an den fertigen Bildern. Das Schleichlicht

@@ -6,7 +6,7 @@ Aufruf (aus dem Projektordner):
     python tools/art/build_map.py 02 --preview=bild.png   nur ein Übersichtsbild, nichts wird geschrieben
 
 Liest data/scene_<nr>.json (Level: Gebäude, Mauern, Requisiten, Laternen, Straßen) und schreibt nach
-game/assets/maps/<id>/ dieselben Dateien wie generate_concept.py für das Kesselviertel: ground.png, things/, hd/,
+game/assets/<id>/ dieselben Dateien wie generate_concept.py für das Kesselviertel: ground.png, things/, hd/,
 manifest.json, backdrop.png, nach dem Lichtbake light/ und panes.json, dazu data/light_<nr>.json. Die Regelkarte
 data/map_<nr>.json schreibt weiter tools/level/scene_to_map.py, hier wird nur geprüft, dass sie zu den Bildern passt.
 
@@ -19,6 +19,7 @@ kein Dach mehr verdeckt als der Quader, mit dem die Level-Sitzung die Sicht gepl
 """
 import json
 import math
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -529,7 +530,11 @@ def main():
         s.img.save(preview)
         print("Vorschau:", preview)
         return
-    assets = ROOT / "game" / "assets" / "maps" / scene["id"]
+    # Der Lader sucht die Stadt eines Einsatzes in game/assets/<scene>/. Was dort fehlt, nähme er aus dem Kesselviertel:
+    # Deshalb entsteht der Ordner jedes Mal vollständig neu.
+    assets = ROOT / "game" / "assets" / scene["id"]
+    if assets.exists():
+        shutil.rmtree(assets)
     solids = export(scene, theme, s, things, assets)
     # Die Regelkarte schreibt allein das Werkzeug der Level-Sitzung. Hier wird sie nur gelesen und mit den Bildern verglichen.
     map_file = ROOT / "data" / f"map_{nr}.json"
