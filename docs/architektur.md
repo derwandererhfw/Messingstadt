@@ -70,6 +70,14 @@ Eingabe (Godot) -> Befehle -> World.Tick() -> Zustand -> Darstellung (Godot)
   `title_*_lit.png` mit allen Fenstern und der Leuchtschrift. `title.json` nennt Lage und Tiefe der Ebenen, Fenster,
   Schild, Tor, Schlote, Laternen, Pfützen und den Weg der Arbeiter. Alles außer Rot ist entsättigt.
 
+- **Weitere Karten:** `python tools/art/build_map.py <nr>` baut eine Karte aus dem Grundriss `data/scene_<nr>.json` der
+  Level-Sitzung und dem Grafikthema ihres Viertels (`THEMES`: Farben der Baustoffe, Boden, Kulisse; je Gebäudeart ein
+  Baumeister). Geschrieben wird nach `game/assets/maps/<id>/` mit denselben Dateinamen wie im Kesselviertel, dazu
+  `data/light_<nr>.json`. Das Kesselviertel bleibt in `game/assets/` und entsteht weiter in `generate_concept.py`.
+  Dächer steigen dort von Norden und Westen höchstens so steil wie die Blickrichtung, damit sie nicht mehr verdecken
+  als die Quader des Grundrisses. `tools/art/check_cover.py <nr>` prüft das an den fertigen Bildern. Das Schleichlicht
+  einer neuen Karte wird beim ersten Lichtbake festgehalten (`rules_albedo_<nr>.json`, `rules_windows_<nr>.json`).
+
 ## Zeichenreihenfolge
 
 Statische Objekte sind beim Export vorsortiert. Eine Figur wird vor dem ersten Objekt eingereiht, das

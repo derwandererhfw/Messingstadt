@@ -2843,7 +2843,7 @@ def export_hd(assets, s, exported):
     s.use(1)
 
 
-def export_backdrop(assets):
+def export_backdrop(assets, keep=None):
     """Die Stadt jenseits der Karte: Die Straßen laufen weiter und verlieren sich zwischen Häuserblocks im Dunst.
 
     Reine Kulisse ohne Lichtberechnung und ohne Einfluss aufs Spiel. Läuft zuletzt, weil sie den Zufall der Fassaden mitbenutzt.
@@ -2872,6 +2872,8 @@ def export_backdrop(assets):
     blocks = [(x, y, 6, 6, 170 if ring else 128) for ring, x in ((0, -7), (1, -15)) for y in (-15, -7, 0, 14.5, 21, 28)]
     blocks += [(x, y, 5.5 if x == 0 else 6, 6, 170 if ring else 128) for ring, y in ((0, -7), (1, -15)) for x in (0, 12.5, 19, 26)]
     blocks += [(24, y, 6, 6, 86) for y in (-7, 0, 14.5, 21, 28)] + [(x, 24, 5.5 if x == 0 else 6, 6, 86) for x in (-7, 0, 12.5, 19)]
+    if keep:  # andere Karten lassen Blocks weg, etwa jenseits eines Stadtwalls (siehe build_map.py)
+        blocks = [b for b in blocks if keep(*b[:4])]
     for x, y, w, d, h in blocks:
         material = ("stone",) if hash01(int(x), int(y), 4) < 0.3 else ("brick",)
         left = tenement(int(w * HW), h, material=material, lit_rate=0.22)
