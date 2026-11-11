@@ -21,8 +21,8 @@ Was in der Welt von Messingstadt gilt, mit Kennzeichen und Quelle. Kennzeichen s
 | Ilse Marquardt | Ärztin der Krankenstube, erklärt den Dauertod | KANON, freigegeben 2026-11-06 | `texte/dauertod.md` |
 | Karl Hoffmann, Frieda Kranz, Willi Saß, Erwin Pohl, Lotte Becker, Max Kühn | Namen für Neue | KANON, freigegeben 2026-11-06 | `texte/dauertod.md` |
 | Kesselviertel, Nordwall, Gleisviertel, Kontorviertel, Altstadt | Die fünf Viertel des Stadtplans | VORSCHLAG Story 2026-11-11 (Altstadt ist KANON) | `stadtplan.md` |
-| Albert Dorn | Prokurist der Kontorbank, Einsatz 4 | VORSCHLAG Story 2026-11-11 | `stadtplan.md` |
-| Gustav Rademacher | Führer des Werkschutzes, Einsatz 5 | VORSCHLAG Story 2026-11-11 | `stadtplan.md` |
+| Albert Dorn | Prokurist der Kontorbank, Einsatz 4 | Rolle KANON (2026-11-11), Name VORSCHLAG | `stadtplan.md` |
+| Gustav Rademacher | Führer des Werkschutzes, Einsatz 5 | Rolle KANON (2026-11-11), Name VORSCHLAG | `stadtplan.md` |
 | Linie 7 | Straßenbahn im Kesselviertel | IM SPIEL laut Hauptsession 2026-11-11, von Story nicht nachgeprüft | `stadtplan.md` |
 | Messingstädter Anzeiger | Zeitung, druckt die Sicht der Wache | KANON | `src/Messingstadt.Core/Headlines.cs` |
 | Hotel Adler | Hotel an der Querstraße | IM SPIEL | `tools/art/generate_concept.py` (Dachschild) |

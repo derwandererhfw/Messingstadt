@@ -71,7 +71,7 @@ Der lange Auftrag im Einstieg bleibt, wie er in `data/mission_01.json` steht.
 | 4 | Einbruch ins Schließfach | Überzeugen: Prokurist Dorn schließt auf | Das Zweitbuch, Emils alter Arbeitsplatz, „Sperling ist Rehm“ |
 | 5 | Flucht aus dem Versteck | Ausschalten: Rademacher, Führer des Werkschutzes | Rehms Verrat, die Altstadt als Falle, der Notstand in derselben Nacht |
 
-Beides braucht die Freigabe des Nutzers. Bis dahin bleibt `../story.md` unverändert.
+Beides hat der Nutzer am 2026-11-11 freigegeben („Ja, beide ändern“), `../story.md` ist nachgezogen.
 
 Neue Namen (VORSCHLAG): Kesselviertel, Nordwall, Gleisviertel, Kontorviertel, Fischmarkt, Prokurist Albert Dorn, Werkschutzführer Gustav Rademacher.
 
@@ -114,6 +114,6 @@ Der Satz für gesperrte Viertel steht ausgeschrieben in der Vorlage, weil der Ar
 
 ## Offen
 
-- Freigabe der beiden Änderungen an Einsatz 4 und 5 und der neuen Namen.
+- Freigabe der neuen Namen (Viertel, Dorn, Rademacher, Fischmarkt). Die Änderungen an Einsatz 4 und 5 sind freigegeben.
 - Ob ein Viertel wieder an Brandt fallen kann, etwa nach einer Niederlage. Vorschlag Story: nein, einmal gehalten bleibt gehalten.
 - Wie der Notstand nach Einsatz 5 auf dem Plan aussieht. Vorschlag: Der Plan bleibt rot, aber über allem liegt der Stempel `NOTSTAND`. Die Leute halten zum Hammer, die Straße gehört trotzdem dem Werkschutz.

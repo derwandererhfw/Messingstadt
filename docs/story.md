@@ -51,8 +51,8 @@ Sechs Einsätze zwischen dem 22. November und dem 5. Dezember 1927. Ort und Uhrz
 | 1 | Das Kontobuch | Diebstahl | Querstraße, hinter dem Mietshaus. Di, 22. Nov., 2:40 | Ein Kurier hat das Kontobuch der Brandt-Werke im Mietshaus abgelegt, weil es dort am nächsten Morgen ein Bote abholt. Der Trupp holt es. Emil findet darin Zahlungen an Streikbrecher, die Stadtwache und an einen „Sperling“ |
 | 2 | Die Wachstube | Befreiung | Wachstube Nord. Do, 24. Nov., 4:10 | Die Wache hat Paul Roth und den Drucker Anton Weiß festgesetzt. Greta kennt den Dienstplan. Bestechen lohnt sich hier besonders |
 | 3 | Der Güterbahnhof | Sabotage | Güterbahnhof Ost. So, 27. Nov., 23:15 | Ein Zug bringt Streikbrecher aus dem Umland. Der Hinweis kam von Rehm. Die Wachen wissen erstaunlich gut Bescheid |
-| 4 | Das Schließfach | Einbruch | Kontorbank, Hintereingang. Mi, 30. Nov., 1:30 | In Valks Schließfach liegt das Zweitbuch mit den Klarnamen. Emil kehrt an seinen alten Arbeitsplatz zurück und liest: Sperling ist Rehm. Ersatzweg siehe „Wenn ein Agent fällt“ |
-| 5 | Die Falle | Flucht | Altstadt, das Versteck. Fr, 2. Dez., 3:00 | Rehm verrät das Versteck. Der Trupp muss mit Buch und Verwundeten durch die eigene Stadt. In der Nacht wird der Notstand ausgerufen |
+| 4 | Das Schließfach | Überzeugen | Kontorbank, Hintereingang. Mi, 30. Nov., 1:30 | In Valks Schließfach liegt das Zweitbuch mit den Klarnamen. Ein Prokurist der Bank hat den Schlüssel, der Trupp bringt ihn dazu, aufzuschließen. Emil kehrt an seinen alten Arbeitsplatz zurück und liest: Sperling ist Rehm. Ersatzweg siehe „Wenn ein Agent fällt“ |
+| 5 | Die Falle | Ausschalten | Altstadt, das Versteck. Fr, 2. Dez., 3:00 | Rehm verrät das Versteck. Der Werkschutz riegelt die Altstadt ab, der Trupp sitzt mit Buch und Verwundeten fest. Erst wenn der Führer des Werkschutzes ausfällt, fällt die Sperre. In der Nacht wird der Notstand ausgerufen |
 | 6 | Der Anzeiger | Finale | Druckhaus des Anzeigers. Mo, 5. Dez., 0:20 | Generalstreik. Der Trupp besetzt die Druckerei für eine Nacht. Der Spieler entscheidet, was gedruckt wird |
 
 ### Das Ende
