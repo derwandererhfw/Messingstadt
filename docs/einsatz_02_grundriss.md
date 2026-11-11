@@ -40,6 +40,7 @@ Regel für alle Karten, Entscheidung der Leitung: Zielorte, Türen mit Spielbede
 | Laterne der Wachstube | (10,5, 9,6) | (11,5, 10,1) über der Haupttür | Folgt der Tür |
 | Lampe im Arresthof | (10,5, 4,8) | (10,5, 6,2) über den Zellentüren | Folgt den Zellen |
 | Beamtenhäuser | y 13–18, vier Geschosse (128) | y 14–18, zwei Geschosse (84), davor ein Feld Vorgarten | Sie verdeckten die Wallstraße |
+| Pforte zur Gerichtsgasse, Bild | Tür in der Westseite der Hofmauer, die die Kamera nie sieht | Lücke in der Mauer bei [7, 7] mit einem Tor aus Eisenblech, etwas niedriger als die Mauer (`gates` im Grundriss) | Der leise Weg führt hier durch, die Stelle muss lesbar sein. In der Südseite läge sie an der hellen Wallstraße. Blech statt Gitter, weil die Regeln die Sicht dort sperren |
 | Kohlenkiste | nicht vorhanden | (8,5, 8,5) im Arresthof, versperrt den Weg, nicht die Sicht | Deckung im Hof |
 
 Unverändert: Stadtwall, Amtsgericht, Gerichtsgasse, Kaserne, Remise, Wallstraße, Wallgasse, Start, Ziel, Verstärkung, die mittlere und die östliche Laterne der Wallstraße, Hundeführer mit Hund, Wallposten, Bote.

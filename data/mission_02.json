@@ -76,11 +76,14 @@
       "Die Pforte zur Gerichtsgasse ist zu. Aber da schaut nie einer nach.",
       "Der mit dem Hund geht die Gasse rauf und runter.",
       "Am Wall steht einer mit Gewehr und friert.",
-      "Der Junge trägt Zettel zwischen Wache und Gericht."
+      "Der Junge trägt Zettel zwischen Wache und Gericht.",
+      "Auf der Wallstraße kommt immer gerade einer. Lange ist die nie leer.",
+      "Der an der Tür hat den Schlüssel zur Pforte am Gürtel."
     ],
     "others": [],
     "bribed": {
-      "Schließer": "Zelle eins und zwei. Ich war die ganze Nacht am Ofen.",
+      "Schließer": "Hier, der Bund. Zelle eins und zwei. Ich war die ganze Nacht am Ofen.",
+      "Türposten": "Der kleine ist für die Pforte. Ich hab ihn wohl verloren.",
       "Hundeführer": "Ich geh mit dem Hund ums Gericht. Lange.",
       "Bote": "Ich hab keinen gesehen. Krieg ich noch einen Groschen?"
     }

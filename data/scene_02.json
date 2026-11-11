@@ -144,22 +144,24 @@
  ],
  "walls": [
   {
-   "id": "hofmauer_west",
+   "id": "hofmauer_west_nord",
    "kind": "hofmauer",
    "x0": 7,
    "y0": 6,
    "x1": 8,
+   "y1": 7,
+   "height": 34,
+   "opaque": true
+  },
+  {
+   "id": "hofmauer_west_sued",
+   "kind": "hofmauer",
+   "x0": 7,
+   "y0": 8,
+   "x1": 8,
    "y1": 9,
    "height": 34,
-   "opaque": true,
-   "doors": [
-    {
-     "side": "west",
-     "at": 1.5,
-     "kind": "pforte",
-     "door": "Pforte zur Gerichtsgasse"
-    }
-   ]
+   "opaque": true
   },
   {
    "id": "hofmauer_ost",
@@ -403,6 +405,19 @@
    "name": "Bußgeldkasse",
    "x": 13.5,
    "y": 9.5
+  }
+ ],
+ "gates": [
+  {
+   "id": "pforte",
+   "door": "Pforte zur Gerichtsgasse",
+   "kind": "blechtor",
+   "x0": 7,
+   "y0": 7,
+   "x1": 8,
+   "y1": 8,
+   "height": 28,
+   "text": "Lücke in der Hofmauer mit einem Tor aus genietetem Eisenblech, etwas niedriger als die Mauer, damit man sie von oben als Lücke erkennt. Blickdicht. Die Regeln sperren das Feld über die Tür der Mission, nicht über die Karte."
   }
  ]
 }
