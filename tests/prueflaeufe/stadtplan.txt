@@ -12,8 +12,8 @@ seetext Belohnung: 300 bis 600, je leiser, desto mehr
 # Pfeiltasten wandern durch die Viertel. Ein gesperrtes zeigt, warum, und lässt sich nicht nehmen
 key Down
 expect citymap viertel_2: brandt brandt brandt brandt brandt
-expect focus 2  Nordwall   kein Auftrag
-seetext Für dieses Viertel liegt noch kein Auftrag vor. K. meldet sich.
+expect focus 2  Nordwall   gesperrt
+seetext Kein Weg hinein. Erst das Kesselviertel halten.
 key Enter
 expect citymap viertel_2: brandt brandt brandt brandt brandt
 clickany Einsatz annehmen

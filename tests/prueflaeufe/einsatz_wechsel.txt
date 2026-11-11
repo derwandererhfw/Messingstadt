@@ -1,0 +1,38 @@
+# Vom ersten Einsatz zum zweiten: Nach dem Sieg im Kesselviertel ist der Nordwall offen, das Spiel lädt dessen Stadt und Einsatz.
+# Aufruf mit --menu --fresh. Prüfläufe schreiben nichts.
+wait 20
+click Neues Spiel
+wait 10
+expect mission mission_01
+key Down
+expect focus 2  Nordwall   gesperrt
+key Up
+click Einsatz annehmen
+click Zum Einsatz
+wait 20
+expect state Running
+place item
+waitfor item True
+place exit
+waitfor state Won
+wait 20
+click Nächster Einsatz
+wait 5
+expect citymap viertel_1: hammer brandt brandt brandt brandt
+key Down
+expect citymap viertel_2: hammer brandt brandt brandt brandt
+seetext Befreien: Die Wachstube
+click Einsatz annehmen
+click Zum Einsatz
+# Die Szene lädt neu, der Ablauf geht hier weiter
+waitfor mission mission_02
+wait 40
+expect scene nordwall
+expect hud True
+expect state Running
+expect prisoners Anton Weiß:Zelle, Paul Roth:Zelle
+expect money 950
+calm
+place exit
+wait 40
+expect state Running
