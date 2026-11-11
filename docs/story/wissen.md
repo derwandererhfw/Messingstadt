@@ -24,6 +24,7 @@ Was der Trupp und die Stadt vor und nach jedem Einsatz wissen. Texte dürfen nur
 | Nach | Neu bekannt | Kennzeichen |
 |---|---|---|
 | 2 | Paul Roth und Anton Weiß sind frei, falls der Einsatz gelingt | KANON |
+| 2 | Beim Verhör saß einer vom Werkschutz mit am Tisch. Die Wache liefert Gefangene an Brandt aus | VORSCHLAG, `einsatz_02_nordwall.md` |
 | 3 | Die Wachen wussten vom Anschlag auf den Zug. Den Hinweis gab Rehm | KANON, dass der Trupp den Zusammenhang schon sieht, ist OFFEN |
 | 4 | „Sperling“ ist Rehm, aus Valks Zweitbuch | KANON |
 | 5 | Rehm hat das Versteck verraten. Der Notstand ist ausgerufen | KANON |
