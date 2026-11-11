@@ -20,7 +20,7 @@
   ],
   "loot": { "name": "Bußgeldkasse", "x": 13.5, "y": 9.5, "value": 300 },
   "prisoners": [
-    { "name": "Anton Weiß", "short": "WEISS", "sprite": "Arbeiter", "x": 9.5, "y": 4.5, "door": "Zelle 1", "hp": 60,
+    { "name": "Anton Weiß", "short": "WEISS", "sprite": "Gefangener_Weiss", "x": 9.5, "y": 4.5, "door": "Zelle 1", "hp": 60,
       "lines": {
         "freed": "Na endlich. Ich dachte, ihr druckt ohne mich.",
         "follow": "Ich bin Drucker, kein Läufer.",
@@ -28,7 +28,7 @@
         "shots": "Runter, Junge!",
         "wagon": "Steht die Maschine noch? Dann drucken wir morgen."
       } },
-    { "name": "Paul Roth", "short": "ROTH", "sprite": "Laufbursche", "x": 11.5, "y": 4.5, "door": "Zelle 2", "hp": 60,
+    { "name": "Paul Roth", "short": "ROTH", "sprite": "Gefangener_Roth", "x": 11.5, "y": 4.5, "door": "Zelle 2", "hp": 60,
       "lines": {
         "freed": "Ist Hanna dabei?",
         "freedAnswerHanna": "Komm, Paul. Reden später.",
