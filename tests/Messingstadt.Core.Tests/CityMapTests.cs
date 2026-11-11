@@ -215,6 +215,16 @@ namespace Messingstadt.Core.Tests
             Assert.All(city.Districts.Skip(1), d => Assert.Equal("", d.Mission));
             Assert.All(city.Districts, d => Assert.False(string.IsNullOrWhiteSpace(d.Name) || string.IsNullOrWhiteSpace(d.Kind) || string.IsNullOrWhiteSpace(d.Briefing)));
             Assert.All(city.Districts, d => Assert.True(d.Reward > 0));
+            Assert.Equal(new[] { "Kesselviertel", "Nordwall", "Gleisviertel", "Kontorviertel", "Altstadt" }, city.Districts.Select(d => d.Name));
+            Assert.All(city.Districts, d => Assert.False(string.IsNullOrWhiteSpace(d.Title) || string.IsNullOrWhiteSpace(d.Time) || string.IsNullOrWhiteSpace(d.Character) || string.IsNullOrWhiteSpace(d.Stakes)));
+            // Jedes Viertel mit Voraussetzung bringt seinen Satz für „gesperrt“ mit, das erste braucht keinen.
+            Assert.All(city.Districts, d => Assert.Equal(d.Requires.Count > 0, d.Locked.Length > 0));
+            Assert.Equal("Kein Weg hinein. Erst den Nordwall halten.", city.Get("viertel_3")!.Locked);
+            // Jedes Viertel sperrt das nächste.
+            for (int i = 1; i < city.Districts.Count; i++)
+            {
+                Assert.Equal(new[] { city.Districts[i - 1].Id }, city.Districts[i].Requires);
+            }
             Assert.All(city.Districts, d => Assert.All(d.Requires, r => Assert.NotNull(city.Get(r))));
 
             var c = new Campaign();

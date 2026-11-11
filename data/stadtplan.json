@@ -1,29 +1,82 @@
 {
   "districts": [
     {
-      "id": "viertel_1", "name": "Querstraße", "kind": "Diebstahl",
-      "briefing": "Im Mietshaus liegt das Kontobuch der Brandt-Werke. Holt es, bevor der Bote kommt.",
-      "mission": "mission_01", "reward": 300, "requires": []
+      "id": "viertel_1",
+      "name": "Kesselviertel",
+      "kind": "Holen",
+      "title": "Das Kontobuch",
+      "time": "Dienstag, 22. November 1927, 2:40 Uhr",
+      "character": "Arbeiterfamilien in Mietshäusern vor dem Werkstor, dazu die Zweigstelle der Bank, das Hotel Adler, das Lager und die Haltestelle der Linie 7. Hier liegen Brandts Kessel und seine Lohnkasse.",
+      "briefing": "Kontobuch der Brandt-Werke liegt bis zum Morgen am Mietshaus. Holen und zum Wagen in der Querstraße bringen. K.",
+      "stakes": "Ohne das Buch ist das Schwarzgeld ein Gerücht. Mit ihm ist es ein Beweis.",
+      "locked": "",
+      "mission": "mission_01",
+      "reward": 300,
+      "requires": []
     },
     {
-      "id": "viertel_2", "name": "Nordviertel", "kind": "Befreiung",
-      "briefing": "Die Wachstube Nord hält zwei von uns fest. Holt sie heraus.",
-      "mission": "", "reward": 350, "requires": ["viertel_1"]
+      "id": "viertel_2",
+      "name": "Nordwall",
+      "kind": "Befreien",
+      "title": "Die Wachstube",
+      "time": "Donnerstag, 24. November 1927, 4:10 Uhr",
+      "character": "Beamte, Wachleute und ihre Familien am alten Stadtwall, mit Wachstube Nord, Arrestzellen und Amtsgericht. Die Wache sperrt hier für Brandt weg, wen er nennt.",
+      "briefing": "Zwei von uns sitzen in der Wachstube Nord: Paul Roth und der Drucker Anton Weiß. Am Morgen übergibt die Wache sie dem Werkschutz. Vorher raus mit beiden. K.",
+      "stakes": "Ohne Weiß druckt der Hammer kein Blatt mehr. Und was der Werkschutz mit Gefangenen macht, steht in keiner Zeitung.",
+      "locked": "Kein Weg hinein. Erst das Kesselviertel halten.",
+      "mission": "",
+      "reward": 350,
+      "requires": [
+        "viertel_1"
+      ]
     },
     {
-      "id": "viertel_3", "name": "Güterbahnhof", "kind": "Sabotage",
-      "briefing": "Ein Zug bringt Streikbrecher aus dem Umland. Er darf nicht ankommen.",
-      "mission": "", "reward": 400, "requires": ["viertel_2"]
+      "id": "viertel_3",
+      "name": "Gleisviertel",
+      "kind": "Sabotieren",
+      "title": "Der Güterbahnhof",
+      "time": "Sonntag, 27. November 1927, 23:15 Uhr",
+      "character": "Rangierer, Lokführer und Schlafgänger in Baracken zwischen den Gleisen, am Güterbahnhof Ost mit Stellwerk und Kohlenlager. Über diese Gleise kommen Brandts Kohle und seine Streikbrecher.",
+      "briefing": "Um Mitternacht rollt ein Zug mit dreihundert Streikbrechern in den Güterbahnhof Ost. Stellwerk und Einfahrweiche lahmlegen. Der Zug bleibt draußen. K.",
+      "stakes": "Kommen sie an, laufen am Montag die Maschinen. Dann war alles umsonst.",
+      "locked": "Kein Weg hinein. Erst den Nordwall halten.",
+      "mission": "",
+      "reward": 400,
+      "requires": [
+        "viertel_2"
+      ]
     },
     {
-      "id": "viertel_4", "name": "Kontorviertel", "kind": "Einbruch",
-      "briefing": "Im Schließfach der Kontorbank liegt das Zweitbuch mit den Klarnamen.",
-      "mission": "", "reward": 450, "requires": ["viertel_3"]
+      "id": "viertel_4",
+      "name": "Kontorviertel",
+      "kind": "Überzeugen",
+      "title": "Das Schließfach",
+      "time": "Mittwoch, 30. November 1927, 1:30 Uhr",
+      "character": "Prokuristen, Anwälte und Herrschaften mit Dienstboten, rund um den Hauptsitz der Kontorbank, den Börsensaal und die Villen am Kanal. Hier liegen Brandts Kredit und seine Geheimnisse.",
+      "briefing": "Prokurist Dorn hat den Schlüssel zu Valks Schließfach und drei Monate Mietschulden. Bringt ihn dazu, aufzuschließen. Mit Geld oder mit Worten. K.",
+      "stakes": "Im Fach liegt das zweite Buch, das mit den richtigen Namen. Ohne Dorn kommt keiner hinein, ohne dass die halbe Stadt es hört.",
+      "locked": "Kein Weg hinein. Erst das Gleisviertel halten.",
+      "mission": "",
+      "reward": 450,
+      "requires": [
+        "viertel_3"
+      ]
     },
     {
-      "id": "viertel_5", "name": "Altstadt", "kind": "Flucht",
-      "briefing": "Das Versteck ist verraten. Bringt Buch und Verwundete durch die Stadt.",
-      "mission": "", "reward": 500, "requires": ["viertel_4"]
+      "id": "viertel_5",
+      "name": "Altstadt",
+      "kind": "Ausschalten",
+      "title": "Die Falle",
+      "time": "Freitag, 2. Dezember 1927, 3:00 Uhr",
+      "character": "Handwerker, Wäscherinnen und Drucker in engen Gassen um den Fischmarkt, mit dem Druckhaus des Anzeigers und der Krankenstube im Keller einer Wäscherei. Hier sitzt der Hammer, und Brandt will das Viertel abriegeln.",
+      "briefing": "Der Werkschutz riegelt die Altstadt ab. Sein Führer Rademacher steht am Fischmarkt und gibt die Befehle. Fällt er aus, fällt die Sperre. Wie, ist eure Sache. K.",
+      "stakes": "Hinter der Sperre liegen die Krankenstube, die Bücher und alle, die uns bisher die Tür aufgemacht haben.",
+      "locked": "Kein Weg hinein. Erst das Kontorviertel halten.",
+      "mission": "",
+      "reward": 500,
+      "requires": [
+        "viertel_4"
+      ]
     }
   ]
 }

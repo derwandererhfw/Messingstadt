@@ -30,9 +30,26 @@ namespace Messingstadt.Core
         public string Id { get; set; } = "";
         public string Name { get; set; } = "";
 
-        /// <summary>Auftragsart, etwa Diebstahl oder Sabotage.</summary>
+        /// <summary>Auftragsart, etwa Holen oder Sabotieren.</summary>
         public string Kind { get; set; } = "";
+
+        /// <summary>Name des Einsatzes, etwa „Das Kontobuch“.</summary>
+        public string Title { get; set; } = "";
+
+        /// <summary>Tag und Uhrzeit des Einsatzes.</summary>
+        public string Time { get; set; } = "";
+
+        /// <summary>Wer im Viertel wohnt und was Brandt dort hat.</summary>
+        public string Character { get; set; } = "";
+
+        /// <summary>Der Auftrag als Telegramm von K.</summary>
         public string Briefing { get; set; } = "";
+
+        /// <summary>Was auf dem Spiel steht.</summary>
+        public string Stakes { get; set; } = "";
+
+        /// <summary>Fertiger Satz für den Zustand Locked, etwa „Kein Weg hinein. Erst den Nordwall halten.“ Leer beim ersten Viertel.</summary>
+        public string Locked { get; set; } = "";
 
         /// <summary>Kennung der Mission, etwa mission_01. Leer, solange es keinen Einsatz gibt.</summary>
         public string Mission { get; set; } = "";
