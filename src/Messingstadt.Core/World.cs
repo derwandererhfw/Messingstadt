@@ -7,6 +7,9 @@ namespace Messingstadt.Core
     {
         Agent,
         Guard,
+
+        /// <summary>Gefangene in einem Einsatz der Art Befreien, siehe World.Rescue.cs.</summary>
+        Prisoner,
     }
 
     public enum MissionState
@@ -114,6 +117,7 @@ namespace Messingstadt.Core
         private const int AgentHp = 100;
         private const int AgentSpeed = 120;
         private const int WeaponRange = 7 * TileUnits;
+        private const int PrisonerAimPenalty = 3 * TileUnits;
         private const int HitChanceBase = 85;
         private const int HitChancePerTile = 5;
         private const int AgentSightRange = 10 * TileUnits;
@@ -282,6 +286,10 @@ namespace Messingstadt.Core
                     Units[mission.Agents.Count + i].LeashedTo = leader.Id;
                 }
             }
+            // Gefangene kommen nach den Wachen, damit Agenten und Wachen ihre Nummern behalten.
+            IsRescue = mission.Prisoners.Count > 0;
+            GiveKeys(mission);
+            AddPrisoners(mission);
         }
 
         private static int ToUnits(double tiles) => (int)Math.Round(tiles * TileUnits);
@@ -359,7 +367,7 @@ namespace Messingstadt.Core
         {
             var u = Units[unitId];
             var door = Doors[doorId];
-            if (!u.Alive || !CanPickLocks(u) || door.Open || State != MissionState.Running)
+            if (!u.Alive || !(CanPickLocks(u) || HasKey(u, doorId)) || door.Open || State != MissionState.Running)
             {
                 return false;
             }
@@ -399,7 +407,7 @@ namespace Messingstadt.Core
             var u = Units[unitId];
             var g = Units[guardId];
             if (!u.Alive || u.Skill != SkillBookkeeper || !g.Alive || g.Faction != Faction.Guard || g.Bribed
-                || g.GuardState == GuardState.Combat || g.Type.BribeCost == 0 || Money < g.Type.BribeCost || State != MissionState.Running)
+                || g.GuardState == GuardState.Combat || g.Type.BribeCost == 0 || Money < BribePrice(g) || State != MissionState.Running)
             {
                 return false;
             }
@@ -453,7 +461,7 @@ namespace Messingstadt.Core
         {
             var u = Units[unitId];
             var target = Units[targetId];
-            if (!u.Alive || !target.Alive || target.Bribed || State != MissionState.Running)
+            if (!u.Alive || !target.Alive || target.Bribed || !Hostile(u, target) || State != MissionState.Running)
             {
                 return false;
             }
@@ -485,6 +493,10 @@ namespace Messingstadt.Core
                 {
                     ThinkGuard(u);
                 }
+                else if (u.IsPrisoner)
+                {
+                    ThinkPrisoner(u);
+                }
                 else
                 {
                     ThinkAgent(u);
@@ -494,6 +506,7 @@ namespace Messingstadt.Core
                 Fight(u);
             }
             Smokes.RemoveAll(s => s.UntilTick <= Tick);
+            PickUpKeys();
             SpawnReinforcement();
             CheckMission();
         }
@@ -507,7 +520,7 @@ namespace Messingstadt.Core
             _reinforcedCount++;
             AddUnit(new UnitData
             {
-                Name = $"Verstärkung {_reinforcedCount}", Sprite = _reinforcements.Sprite,
+                Name = $"Verstärkung {_reinforcedCount}", Sprite = _reinforcements.Sprite, Type = _reinforcements.Type,
                 X = _reinforcements.X, Y = _reinforcements.Y,
             }, Faction.Guard, 0);
             var g = Units[^1];
@@ -528,7 +541,7 @@ namespace Messingstadt.Core
             }
             else if (a.Path.Count == 0)
             {
-                door.Progress += DoorStep(a);
+                door.Progress += HasKey(a, a.DoorTarget) ? KeyDoorStep : DoorStep(a);
                 if (door.Progress >= DoorTicks)
                 {
                     door.Open = true;
@@ -544,15 +557,16 @@ namespace Messingstadt.Core
         private void WorkOnBribe(Unit a)
         {
             var g = Units[a.BribeTarget];
-            if (!g.Alive || g.Bribed || g.GuardState == GuardState.Combat || Money < g.Type.BribeCost)
+            if (!g.Alive || g.Bribed || g.GuardState == GuardState.Combat || Money < BribePrice(g))
             {
                 a.BribeTarget = -1;
                 a.Path.Clear();
             }
             else if (CanSee(a, g, BribeRange))
             {
-                Money -= g.Type.BribeCost;
+                Money -= BribePrice(g);
                 g.Bribed = true;
+                HandOverKeys(g, a);
                 foreach (var dog in Units)
                 {
                     if (dog.LeashedTo == g.Id)
@@ -1146,6 +1160,7 @@ namespace Messingstadt.Core
         /// <summary>Tempo beim Gehen in Einheiten pro Takt.</summary>
         public static int WalkSpeed(Unit u) => u.Faction == Faction.Agent
             ? (u.CarriesItem ? CarrierSpeed : AgentSpeed)
+            : u.IsPrisoner ? PrisonerSpeed
             : (u.Alerted ? u.Type.AlertSpeed : u.Type.PatrolSpeed);
 
         private void Move(Unit u)
@@ -1317,6 +1332,7 @@ namespace Messingstadt.Core
             {
                 target.Path.Clear();
                 target.Moving = false;
+                DropKeys(target);
                 if (target.CarriesItem)
                 {
                     target.CarriesItem = false;
@@ -1400,6 +1416,14 @@ namespace Messingstadt.Core
             if (!anyAgent && _hasAgents)
             {
                 State = MissionState.Lost;
+            }
+            if (IsRescue)
+            {
+                if (State == MissionState.Running && _hasAgents)
+                {
+                    CheckRescue(anyAgent);
+                }
+                return;
             }
             // Einsteigen braucht Zeit im Stand: Es reicht nicht, die Zone unter Feuer kurz zu berühren.
             EscapeProgress = boarding ? EscapeProgress + 1 : 0;
@@ -1514,11 +1538,13 @@ namespace Messingstadt.Core
             foreach (var o in Units)
             {
                 // Auf Hund und Laufbursche schießt ein Agent nur auf Befehl: Der Schuss macht den Einsatz laut, das entscheidet der Spieler.
-                if (o.Alive && o.Faction != u.Faction && !o.Bribed && !(u.Faction == Faction.Agent && o.Type.OrderOnly)
-                    && Distance(u, o) < bestDist && CanSee(u, o, range))
+                // Wachen nehmen zuerst die Agenten: Ein Befreiter zählt für sie wie drei Felder weiter weg.
+                int dist = Distance(u, o) + (o.IsPrisoner ? PrisonerAimPenalty : 0);
+                if (o.Alive && Hostile(u, o) && !o.Bribed && !(u.Faction == Faction.Agent && o.Type.OrderOnly)
+                    && dist < bestDist && CanSee(u, o, range))
                 {
                     best = o;
-                    bestDist = Distance(u, o);
+                    bestDist = dist;
                 }
             }
             return best;
@@ -1532,7 +1558,7 @@ namespace Messingstadt.Core
             foreach (var o in Units)
             {
                 int close = Math.Max(o.Sprinting ? SprintHeardRange : GuardCloseRange, g.Type.HearRange);
-                if (o.Alive && o.Faction != g.Faction && Distance(g, o) < bestDist
+                if (o.Alive && Hostile(g, o) && Distance(g, o) < bestDist
                     && CanSee(g, o, Math.Max(NoticeRangeAt(o.X, o.Y), close))
                     && (Distance(g, o) <= close || (InCone(g, o) && Distance(g, o) <= NoticeRangeAt(o.X, o.Y))))
                 {
@@ -1602,6 +1628,9 @@ namespace Messingstadt.Core
                 Mix(u.Weapon);
                 Mix(u.ReloadTicks);
                 Mix(u.BandageTicks);
+                Mix(u.Captive ? 1 : 0);
+                Mix(u.FollowId);
+                Mix(u.Keys.Count);
                 Mix(ActiveWeapon(u)?.Ammo ?? -1);
             }
             Mix(Smokes.Count);

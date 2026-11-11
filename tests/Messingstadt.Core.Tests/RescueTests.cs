@@ -1,0 +1,399 @@
+using System.Collections.Generic;
+using System.Linq;
+using Messingstadt.Core;
+using Xunit;
+
+namespace Messingstadt.Core.Tests
+{
+    public class RescueTests
+    {
+        /// <summary>Zellenblock bei x 15 bis 18. Zelle 1 öffnet nach Westen, Zelle 2 liegt darunter. Der Wagen steht oben links.</summary>
+        private static MapData Map()
+        {
+            var map = new MapData { Width = 30, Height = 12 };
+            map.Solids.Add(new SolidData { X0 = 15, Y0 = 3, X1 = 18, Y1 = 9 });
+            return map;
+        }
+
+        private static UnitData Agent(double x, double y, string skill = "", params string[] items) =>
+            new() { Name = "A" + x, Sprite = "Agent", X = x, Y = y, Skill = skill, Items = items.Length > 0 ? items.ToList() : null };
+
+        private static UnitData Guard(double x, double y, string type = "", params string[] keys) =>
+            new() { Name = "W" + x, Sprite = "Wachmann", Type = type, X = x, Y = y, Facing = new[] { 1.0, 0.0 }, Keys = keys.ToList() };
+
+        private static MissionData Mission(List<UnitData> agents, List<UnitData> guards, int prisoners = 2, int money = 1000) => new()
+        {
+            Seed = 7, Agents = agents, Guards = guards, Money = money, Item = new[] { 0.5, 0.5 },
+            Exit = new ZoneData { X0 = 0, Y0 = 0, X1 = 3, Y1 = 3 },
+            Doors = new()
+            {
+                new DoorData { Name = "Zelle 1", Tiles = new() { new[] { 15.0, 5.0 }, new[] { 16.0, 5.0 } } },
+                new DoorData { Name = "Zelle 2", Tiles = new() { new[] { 15.0, 7.0 }, new[] { 16.0, 7.0 } } },
+            },
+            Prisoners = new List<PrisonerData>
+            {
+                new() { Name = "Anton Weiß", Short = "WEISS", Sprite = "Weiss", X = 16.5, Y = 5.5, Door = "Zelle 1" },
+                new() { Name = "Paul Roth", Short = "ROTH", Sprite = "Roth", X = 16.5, Y = 7.5, Door = "Zelle 2" },
+            }.Take(prisoners).ToList(),
+            Reinforcements = new ReinforcementData { X = 28.5, Y = 10.5, Sprite = "Werkschutz", Type = "werkschutz", FirstDelay = 1, Interval = 1, Count = 1 },
+        };
+
+        private static void Run(World w, int ticks)
+        {
+            for (int i = 0; i < ticks && w.State == MissionState.Running; i++)
+            {
+                w.Step();
+            }
+        }
+
+        private static Unit Weiss(World w) => w.Prisoners.First(p => p.Name == "Anton Weiß");
+
+        private static Unit Roth(World w) => w.Prisoners.First(p => p.Name == "Paul Roth");
+
+        /// <summary>Der Schlosser öffnet Zelle 1 und bleibt davor stehen, bis Weiß ihm folgt.</summary>
+        private static World FreedWeiss(List<UnitData>? guards = null, int prisoners = 2)
+        {
+            var w = new World(Map(), Mission(new() { Agent(13.5, 5.5, World.SkillLocksmith), Agent(5.5, 5.5) }, guards ?? new(), prisoners));
+            Assert.True(w.OrderOpenDoor(0, 0));
+            Run(w, 20 + World.DoorTicks + World.FreeTicks + 5);
+            Assert.False(Weiss(w).Captive);
+            return w;
+        }
+
+        [Fact]
+        public void PrisonersComeAfterGuardsAndStartCaptive()
+        {
+            var w = new World(Map(), Mission(new() { Agent(5.5, 5.5) }, new() { Guard(25.5, 1.5) }));
+            Assert.True(w.IsRescue);
+            Assert.Equal(Faction.Guard, w.Units[1].Faction);
+            Assert.Equal(2, w.Prisoners.Count());
+            Assert.All(w.Prisoners, p => Assert.True(p.Captive && p.Hp == 60 && p.Items.Count == 0));
+        }
+
+        [Fact]
+        public void NobodyIsFreedThroughAClosedDoor()
+        {
+            var w = new World(Map(), Mission(new() { Agent(14.5, 5.5) }, new()));
+            Run(w, 200);
+            Assert.True(Weiss(w).Captive);
+            Assert.Equal(0, Weiss(w).FreeProgress);
+        }
+
+        [Fact]
+        public void OpenCellAndTwoSecondsNextToHimFreeThePrisoner()
+        {
+            var w = new World(Map(), Mission(new() { Agent(13.5, 5.5, World.SkillLocksmith) }, new()));
+            w.OrderOpenDoor(0, 0);
+            Run(w, 20 + World.DoorTicks);
+            Assert.True(w.Doors[0].Open);
+            Assert.True(Weiss(w).Captive);
+            Run(w, World.FreeTicks + 2);
+            Assert.False(Weiss(w).Captive);
+            Assert.Equal(0, Weiss(w).FollowId);
+            Assert.True(Roth(w).Captive);
+        }
+
+        [Fact]
+        public void WalkingPastDoesNotFree()
+        {
+            var w = new World(Map(), Mission(new() { Agent(13.5, 5.5, World.SkillLocksmith) }, new()));
+            w.OrderOpenDoor(0, 0);
+            Run(w, 20 + World.DoorTicks + World.FreeTicks / 2);
+            w.OrderMove(0, 5, 5);
+            Run(w, 100);
+            Assert.True(Weiss(w).Captive);
+        }
+
+        [Fact]
+        public void FreedPrisonerFollowsSlowlyAndStopsNearby()
+        {
+            var w = FreedWeiss();
+            Assert.Equal(World.PrisonerSpeed, World.WalkSpeed(Weiss(w)));
+            w.OrderMove(0, 4, 9);
+            Run(w, 300);
+            Assert.True(World.Distance(w.Units[0], Weiss(w)) <= 2 * World.TileUnits);
+            Assert.False(Weiss(w).Moving);
+        }
+
+        [Fact]
+        public void RightClickSwitchesLeaderOrMakesHimWait()
+        {
+            var w = FreedWeiss();
+            int weiss = Weiss(w).Id;
+            Assert.True(w.OrderPrisoner(weiss, 1));
+            Assert.Equal(1, Weiss(w).FollowId);
+            Assert.True(w.OrderPrisoner(weiss, 1));
+            Assert.True(Weiss(w).Waiting);
+            var (x, y) = (Weiss(w).X, Weiss(w).Y);
+            w.OrderMove(1, 3, 10);
+            Run(w, 150);
+            Assert.Equal((x, y), (Weiss(w).X, Weiss(w).Y));
+            Assert.True(w.OrderPrisoner(weiss, 0));
+            Assert.False(Weiss(w).Waiting);
+            Assert.False(w.OrderPrisoner(Roth(w).Id, 0));
+        }
+
+        [Fact]
+        public void WhenTheLeaderFallsHeWaitsForTheNextAgent()
+        {
+            var w = FreedWeiss();
+            w.Units[0].Hp = 0;
+            Run(w, 60);
+            Assert.Equal(-1, Weiss(w).FollowId);
+            w.OrderMove(1, 13, 5);
+            Run(w, 200);
+            Assert.Equal(1, Weiss(w).FollowId);
+        }
+
+        [Fact]
+        public void GuardsIgnoreCaptivesButNoticeTheFreed()
+        {
+            // Die Wache steht vor der offenen Zelle und schaut hinein: Solange er sitzt, geschieht nichts.
+            var w = new World(Map(), Mission(new() { Agent(27.5, 10.5) }, new() { Guard(13.5, 5.5) }, prisoners: 1));
+            w.Doors[0].Open = true;
+            foreach (var (x, y) in w.Doors[0].Tiles)
+            {
+                w.Map.Unblock(x, y);
+            }
+            Run(w, 100);
+            Assert.Equal(MissionRating.Unseen, w.Rating);
+            // Sobald er frei vor der Zelle steht, zählt er wie ein Agent.
+            Weiss(w).Captive = false;
+            Weiss(w).Waiting = true;
+            (Weiss(w).X, Weiss(w).Y) = (14500, 5500);
+            Run(w, 60);
+            Assert.NotEqual(MissionRating.Unseen, w.Rating);
+        }
+
+        [Fact]
+        public void AgentsNeverAttackPrisoners()
+        {
+            var w = FreedWeiss();
+            Assert.False(w.OrderAttack(0, Weiss(w).Id));
+            Assert.False(w.OrderAttack(0, Roth(w).Id));
+            Run(w, 100);
+            Assert.Empty(w.Shots);
+        }
+
+        [Fact]
+        public void GuardsShootAgentsBeforePrisoners()
+        {
+            // Der Befreite steht näher an der Wache als der Agent, sie nimmt trotzdem den Agenten.
+            var w = FreedWeiss(new() { Guard(8.5, 9.5, "werkschutz") });
+            w.Units[2].Cooldown = 10000;
+            Weiss(w).Waiting = true;
+            (Weiss(w).X, Weiss(w).Y) = (10500, 9500);
+            (w.Units[0].X, w.Units[0].Y) = (11500, 9500);
+            (w.Units[1].X, w.Units[1].Y) = (28500, 1500);
+            w.Units[2].GuardState = GuardState.Combat;
+            w.Units[2].Cooldown = 0;
+            w.Units[0].Hp = 100000;
+            Run(w, 60);
+            Assert.Equal(60, Weiss(w).Hp);
+            Assert.Contains(w.Shots, s => s.ShooterId == 2);
+        }
+
+        [Fact]
+        public void WinNeedsEveryLivingPrisonerAndAnAgentInTheWagon()
+        {
+            var w = FreedWeiss(prisoners: 1);
+            (w.Units[0].X, w.Units[0].Y) = (1500, 1500);
+            Run(w, 2 * World.EscapeTicks);
+            Assert.Equal(MissionState.Running, w.State);
+            (Weiss(w).X, Weiss(w).Y) = (500, 1500);
+            Weiss(w).Path.Clear();
+            Run(w, World.EscapeTicks + 2);
+            Assert.Equal(MissionState.Won, w.State);
+        }
+
+        [Fact]
+        public void APrisonerStillInHisCellBlocksTheWin()
+        {
+            var w = FreedWeiss();
+            (w.Units[0].X, w.Units[0].Y) = (1500, 1500);
+            (Weiss(w).X, Weiss(w).Y) = (500, 1500);
+            Weiss(w).Path.Clear();
+            Run(w, 3 * World.EscapeTicks);
+            Assert.Equal(MissionState.Running, w.State);
+            Assert.Equal(0, w.EscapeProgress);
+        }
+
+        [Fact]
+        public void PrisonersAloneInTheWagonDoNotWin()
+        {
+            var w = FreedWeiss(prisoners: 1);
+            Weiss(w).Waiting = true;
+            (Weiss(w).X, Weiss(w).Y) = (500, 1500);
+            Run(w, 3 * World.EscapeTicks);
+            Assert.Equal(MissionState.Running, w.State);
+        }
+
+        [Fact]
+        public void OneDeadGoesOnAllDeadIsLost()
+        {
+            var w = FreedWeiss();
+            Roth(w).Hp = 0;
+            Run(w, 5);
+            Assert.Equal(MissionState.Running, w.State);
+            (w.Units[0].X, w.Units[0].Y) = (1500, 1500);
+            (Weiss(w).X, Weiss(w).Y) = (500, 1500);
+            Weiss(w).Path.Clear();
+            Run(w, World.EscapeTicks + 2);
+            Assert.Equal(MissionState.Won, w.State);
+
+            var lost = FreedWeiss();
+            Roth(lost).Hp = 0;
+            Weiss(lost).Hp = 0;
+            lost.Step();
+            Assert.Equal(MissionState.Lost, lost.State);
+        }
+
+        [Fact]
+        public void TheItemPlaysNoPartInARescue()
+        {
+            var w = new World(Map(), Mission(new() { Agent(0.5, 0.5) }, new()));
+            Run(w, 3 * World.PickupTicks);
+            Assert.False(w.ItemTaken);
+            Assert.Equal(MissionState.Running, w.State);
+        }
+
+        [Fact]
+        public void ABribedKeeperHandsOverHisKeys()
+        {
+            var w = new World(Map(), Mission(new() { Agent(11.5, 5.5, World.SkillBookkeeper) }, new() { Guard(13.5, 2.5, "", "Zelle 1", "Zelle 2") }));
+            Assert.False(w.OrderOpenDoor(0, 0));
+            Assert.True(w.OrderBribe(0, 1));
+            Run(w, 40);
+            Assert.True(w.Units[1].Bribed);
+            Assert.Equal(new[] { 0, 1 }, w.Units[0].Keys);
+            Assert.True(w.OrderOpenDoor(0, 1));
+            int before = w.Tick;
+            while (!w.Doors[1].Open && w.Tick < before + 400)
+            {
+                w.Step();
+            }
+            Assert.True(w.Doors[1].Open);
+            Assert.NotEqual(MissionRating.Loud, w.Rating);
+        }
+
+        [Fact]
+        public void KeysOpenFasterThanALocksmith()
+        {
+            var w = new World(Map(), Mission(new() { Agent(14.5, 5.5) }, new()));
+            w.Units[0].Keys.Add(0);
+            Assert.True(w.OrderOpenDoor(0, 0));
+            Run(w, World.DoorTicks / World.KeyDoorStep + 1);
+            Assert.True(w.Doors[0].Open);
+        }
+
+        [Fact]
+        public void AKnockedOutKeeperDropsHisKeysForWhoeverComes()
+        {
+            var w = new World(Map(), Mission(new() { Agent(12.5, 2.5, "", "totschlaeger"), Agent(3.5, 9.5) }, new() { Guard(13.5, 2.5, "", "Zelle 1") }));
+            w.Units[2].Hp = 0;
+            w.Units[2].Keys.Clear();
+            w.KeysOnGround.Add(new DroppedKeys { X = 13500, Y = 2500, Doors = new() { 0 } });
+            Assert.Empty(w.Units[0].Keys);
+            w.OrderMove(0, 13, 2);
+            Run(w, 40);
+            Assert.Equal(new[] { 0 }, w.Units[0].Keys);
+            Assert.Empty(w.KeysOnGround);
+        }
+
+        [Fact]
+        public void AGuardWhoFallsDropsHisKeys()
+        {
+            var w = new World(Map(), Mission(new() { Agent(10.5, 2.5) }, new() { Guard(13.5, 2.5, "", "Zelle 1", "Zelle 2") }));
+            w.Units[0].Hp = 100000;
+            w.OrderAttack(0, 1);
+            for (int i = 0; i < 2000 && w.Units[1].Alive; i++)
+            {
+                w.Step();
+            }
+            Assert.False(w.Units[1].Alive);
+            Assert.Single(w.KeysOnGround);
+            Assert.Equal(2, w.KeysOnGround[0].Doors.Count);
+        }
+
+        [Fact]
+        public void ReinforcementsCanBeAnotherKind()
+        {
+            var w = new World(Map(), Mission(new() { Agent(5.5, 5.5) }, new() { Guard(9.5, 5.5, "werkschutz") }));
+            w.Units[0].Hp = 100000;
+            w.Units[1].Hp = 100000;
+            w.OrderAttack(0, 1);
+            Run(w, 100);
+            var extra = w.Units.Last(u => u.Faction == Faction.Guard);
+            Assert.StartsWith("Verstärkung", extra.Name);
+            Assert.Equal(GuardType.Werkschutz, extra.Type);
+        }
+
+        [Fact]
+        public void TelegramFollowsTheRescue()
+        {
+            var texts = new RescueTextData();
+            var w = new World(Map(), Mission(new() { Agent(13.5, 5.5, World.SkillLocksmith) }, new()));
+            Assert.Equal(texts.Start, w.RescueLine());
+            w.OrderOpenDoor(0, 0);
+            Run(w, 20);
+            Assert.Equal(texts.Opening, w.RescueLine());
+            Run(w, World.DoorTicks + World.FreeTicks + 5);
+            Assert.Equal("WEISS FREI STOP DER ZWEITE FEHLT NOCH STOP", w.RescueLine());
+            Roth(w).Captive = false;
+            Assert.Equal(texts.AllFree, w.RescueLine());
+            Roth(w).Hp = 0;
+            Assert.Equal("ROTH TOT STOP DEN ANDEREN RAUSBRINGEN STOP", w.RescueLine());
+        }
+
+        [Fact]
+        public void TheCampaignRemembersWhoCameOutAlive()
+        {
+            var c = new Campaign();
+            var m = Mission(new() { Agent(13.5, 5.5, World.SkillLocksmith) }, new());
+            c.Prepare(m, "mission_02");
+            Assert.Null(c.PrisonerAlive("Anton Weiß"));
+            var w = new World(Map(), m);
+            w.OrderOpenDoor(0, 0);
+            Run(w, 20 + World.DoorTicks + World.FreeTicks + 5);
+            Roth(w).Hp = 0;
+            (w.Units[0].X, w.Units[0].Y) = (1500, 1500);
+            (Weiss(w).X, Weiss(w).Y) = (500, 1500);
+            Weiss(w).Path.Clear();
+            Run(w, World.EscapeTicks + 2);
+            Assert.Equal(MissionState.Won, w.State);
+            c.Finish(w);
+            Assert.True(c.Records["mission_02"].Prisoners["Anton Weiß"]);
+            Assert.False(c.Records["mission_02"].Prisoners["Paul Roth"]);
+            var loaded = Campaign.FromJson(c.ToJson());
+            Assert.True(loaded.PrisonerAlive("Anton Weiß"));
+            Assert.False(loaded.PrisonerAlive("Paul Roth"));
+        }
+
+        [Fact]
+        public void ALostRescueLeavesThemInTheirCells()
+        {
+            var c = new Campaign();
+            var m = Mission(new() { Agent(13.5, 5.5) }, new());
+            c.Prepare(m, "mission_02");
+            var w = new World(Map(), m);
+            w.Units[0].Hp = 0;
+            w.Step();
+            c.Finish(w);
+            Assert.Null(c.PrisonerAlive("Anton Weiß"));
+            Assert.Empty(c.Records["mission_02"].Prisoners);
+        }
+
+        [Fact]
+        public void SameOrdersSameOutcome()
+        {
+            ulong Play()
+            {
+                var w = FreedWeiss(new() { Guard(8.5, 9.5) });
+                w.OrderMove(0, 2, 2);
+                Run(w, 300);
+                return w.StateHash();
+            }
+            Assert.Equal(Play(), Play());
+        }
+    }
+}

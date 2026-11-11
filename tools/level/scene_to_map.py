@@ -13,6 +13,38 @@ HH = 16  # halbe Feldhöhe im Bild, wie in generate_concept.py
 FIGURE = 40  # Höhe einer Figur im Bild
 
 
+def write_light(scene, nr, w, h):
+    """Vorläufige Lichtkarte nur aus den Laternen, bis bake_light.py die Szene rechnet. Gleiches Format wie light_01.json."""
+    cells = 4
+    opaque = [[False] * w for _ in range(h)]
+    for b in scene["buildings"] + scene["walls"]:
+        if b.get("opaque", True):
+            for y in range(b["y0"], b["y1"]):
+                for x in range(b["x0"], b["x1"]):
+                    opaque[y][x] = True
+
+    def lit(lx, ly, x, y):
+        steps = int(max(abs(x - lx), abs(y - ly)) * 4) + 1
+        for i in range(1, steps):
+            px, py = lx + (x - lx) * i / steps, ly + (y - ly) * i / steps
+            if opaque[min(h - 1, int(py))][min(w - 1, int(px))] and (int(px), int(py)) != (int(lx), int(ly)):
+                return False
+        return True
+
+    levels = []
+    for cy in range(h * cells):
+        for cx in range(w * cells):
+            x, y = (cx + 0.5) / cells, (cy + 0.5) / cells
+            level = 6.0
+            for lamp in scene["lamps"]:
+                if lit(lamp["x"], lamp["y"], x, y):
+                    power = 110 if lamp.get("kind") == "wandlampe" else 170
+                    d2 = (x - lamp["x"]) ** 2 + (y - lamp["y"]) ** 2
+                    level += power / (1 + d2 / 2.56)
+            levels.append(0 if opaque[cy // cells][cx // cells] else int(level))
+    (ROOT / "data" / f"light_{nr}.json").write_text(json.dumps({"cells": cells, "size": w * cells, "levels": levels, "provisional": True}), encoding="utf-8")
+
+
 def main():
     nr = sys.argv[1] if len(sys.argv) > 1 else "02"
     scene = json.loads((ROOT / "data" / f"scene_{nr}.json").read_text(encoding="utf-8"))
@@ -25,6 +57,9 @@ def main():
             solids.append({"x0": x + 0.3, "y0": y + 0.3, "x1": x + 0.7, "y1": y + 0.7, "opaque": p["opaque"]})
     if "--check" not in sys.argv:
         (ROOT / "data" / f"map_{nr}.json").write_text(json.dumps({"width": w, "height": h, "solids": solids}, indent=1), encoding="utf-8")
+
+    if "--check" not in sys.argv and "--no-light" not in sys.argv:
+        write_light(scene, nr, w, h)
 
     blocked = [[False] * w for _ in range(h)]
     for s in solids:
