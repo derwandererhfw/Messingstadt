@@ -1,0 +1,72 @@
+{
+  "id": "nordwall",
+  "mission": "mission_02",
+  "width": 20,
+  "height": 20,
+  "note": "Grundriss von Einsatz 2 nach docs/story/einsatz_02_nordwall.md. Felder wie in map_01.json, Norden ist y = 0. Rechtecke gelten von x0,y0 bis ausschließlich x1,y1. Höhen in Pixeln wie in generate_concept.py (Lager 70, Bank 84, Fabrik 110, Mietshaus 128, Hotel 170).",
+  "buildings": [
+    { "id": "stadtwall", "kind": "stadtwall", "x0": 0, "y0": 0, "x1": 20, "y1": 2, "height": 60, "roof": "wehrgang",
+      "text": "Backsteinmauer über die ganze Breite, oben Wehrgang, unten zugemauerte Bögen", "lit": 0.0 },
+    { "id": "amtsgericht", "kind": "amtsbau", "x0": 1, "y0": 3, "x1": 5, "y1": 9, "height": 150, "roof": "walm", "name": "AMTSGERICHT",
+      "text": "Großer dunkler Steinbau, Freitreppe nach Süden, kein Fenster brennt", "lit": 0.0,
+      "doors": [ { "side": "sued", "at": 2.0, "kind": "portal", "door": "" } ] },
+    { "id": "wachstube", "kind": "wachstube", "x0": 7, "y0": 5, "x1": 14, "y1": 9, "height": 96, "roof": "walm", "name": "WACHSTUBE NORD",
+      "text": "Hauptbau aus Backstein und Stein. Vorn nach Süden das Wachlokal mit Treppe und Laterne, hinten nach Norden der Arrest mit zwei Zellentüren zum Hof", "lit": 0.4,
+      "doors": [
+        { "side": "sued", "at": 3.5, "kind": "haupttuer", "door": "" },
+        { "side": "sued", "at": 6.5, "kind": "nebentuer", "door": "Schreibstube" },
+        { "side": "nord", "at": 2.5, "kind": "zellentuer", "door": "Zelle 1" },
+        { "side": "nord", "at": 4.5, "kind": "zellentuer", "door": "Zelle 2" }
+      ] },
+    { "id": "kaserne", "kind": "kaserne", "x0": 15, "y0": 3, "x1": 19, "y1": 8, "height": 120, "roof": "sattel", "name": "",
+      "text": "Mannschaftshaus der Stadtwache, einige Fenster hell", "lit": 0.35 },
+    { "id": "remise", "kind": "remise", "x0": 15, "y0": 13, "x1": 19, "y1": 17, "height": 56, "roof": "pult",
+      "text": "Offener Schuppen, darin der graue, vergitterte Gefangenenwagen als Requisit", "lit": 0.0 },
+    { "id": "beamtenhaus_west", "kind": "mietshaus", "x0": 2, "y0": 13, "x1": 6, "y1": 18, "height": 128, "roof": "mansarde",
+      "text": "Mietshaus der Beamten mit Vorgarten", "lit": 0.25 },
+    { "id": "beamtenhaus_ost", "kind": "mietshaus", "x0": 9, "y0": 13, "x1": 13, "y1": 18, "height": 128, "roof": "mansarde",
+      "text": "Wie das Westhaus. Dazwischen der dunkle Durchgang x 6 bis 9", "lit": 0.25 }
+  ],
+  "walls": [
+    { "id": "hofmauer_west", "kind": "hofmauer", "x0": 7, "y0": 2, "x1": 8, "y1": 5, "height": 34, "opaque": true,
+      "doors": [ { "side": "west", "at": 1.5, "kind": "pforte", "door": "Pforte zur Gerichtsgasse" } ] },
+    { "id": "hofmauer_ost", "kind": "hofmauer", "x0": 13, "y0": 2, "x1": 14, "y1": 5, "height": 34, "opaque": true,
+      "doors": [ { "side": "ost", "at": 1.5, "kind": "hoftor", "door": "Hoftor" } ] }
+  ],
+  "props": [
+    { "id": "litfasssaeule", "kind": "litfasssaeule", "x": 8.5, "y": 11.5, "solid": true, "opaque": false, "note": "Zusatz von Level: Deckung beim Überqueren der Wallstraße" },
+    { "id": "streukiste", "kind": "kiste", "x": 13.5, "y": 11.5, "solid": true, "opaque": false, "note": "Zusatz von Level: Deckung" },
+    { "id": "kohlenkiste", "kind": "kiste", "x": 12.5, "y": 4.5, "solid": true, "opaque": false, "note": "Zusatz von Level: Deckung im Arresthof" },
+    { "id": "gefangenenwagen", "kind": "gefangenenwagen", "x": 17, "y": 15, "solid": false, "opaque": false, "note": "steht in der Remise, nur Bild" },
+    { "id": "waeschereiwagen", "kind": "fluchtwagen", "x": 1, "y": 18.5, "solid": false, "opaque": false, "note": "Wagen der Wäscherei, Ziel" }
+  ],
+  "doors": [
+    { "name": "Pforte zur Gerichtsgasse", "tiles": [[7, 3]], "mark": [6.5, 3.5] },
+    { "name": "Hoftor", "tiles": [[13, 3]], "mark": [14.5, 3.5] },
+    { "name": "Zelle 1", "tiles": [[9, 5], [9, 6]], "mark": [9.5, 4.5] },
+    { "name": "Zelle 2", "tiles": [[11, 5], [11, 6]], "mark": [11.5, 4.5] },
+    { "name": "Schreibstube", "tiles": [[13, 8], [13, 7]], "mark": [13.5, 9.5] }
+  ],
+  "lamps": [
+    { "x": 4.5, "y": 10.5, "group": "wallstrasse" },
+    { "x": 10.5, "y": 10.5, "group": "wallstrasse" },
+    { "x": 16.5, "y": 10.5, "group": "wallstrasse" },
+    { "x": 10.5, "y": 9.6, "group": "wachstube", "kind": "wandlampe" },
+    { "x": 10.5, "y": 4.8, "group": "arresthof", "kind": "wandlampe" }
+  ],
+  "streets": [
+    { "id": "wallstrasse", "x0": 0, "y0": 10, "x1": 20, "y1": 12, "kind": "kopfsteinpflaster", "rails": true, "note": "Schienen ohne Bahn in dieser Nacht" },
+    { "id": "gerichtsgasse", "x0": 5, "y0": 2, "x1": 7, "y1": 9, "kind": "gasse" },
+    { "id": "arresthof", "x0": 8, "y0": 2, "x1": 13, "y1": 5, "kind": "hof" },
+    { "id": "wallgasse", "x0": 0, "y0": 13, "x1": 2, "y1": 20, "kind": "gasse" },
+    { "id": "durchgang", "x0": 6, "y0": 13, "x1": 9, "y1": 20, "kind": "gasse" }
+  ],
+  "marks": [
+    { "kind": "start", "x0": 6, "y0": 18, "x1": 9, "y1": 20 },
+    { "kind": "ziel", "x0": 0, "y0": 17, "x1": 2, "y1": 20 },
+    { "kind": "verstaerkung", "x": 19.5, "y": 11.5 },
+    { "kind": "gefangener", "name": "Anton Weiß", "x": 9.5, "y": 6.5 },
+    { "kind": "gefangener", "name": "Paul Roth", "x": 11.5, "y": 6.5 },
+    { "kind": "beute", "name": "Bußgeldkasse", "x": 13.5, "y": 7.5 }
+  ]
+}
