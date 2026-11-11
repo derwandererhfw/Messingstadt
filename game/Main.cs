@@ -234,6 +234,9 @@ void fragment() {
         private float _testRain = -1f;
         private bool _testSmoke;
         private Vector2? _testPot;
+
+        /// <summary>Die Passanten der Kulisse, null vor dem Aufbau der Stadt. Ihre Orte liefert Passersby.Positions.</summary>
+        public Passersby? Passersby { get; private set; }
         private Vector2? _testShip;
         private bool _forcePlan;
         // --intro zeigt im Prüflauf alle Sequenzen, --seq=<id> beginnt mit dieser, --seq-time=<s> springt in ihr vor.
@@ -885,7 +888,8 @@ void fragment() {
             _critterGlow = glow;
             AddChild(new Haze { Game = this });
             AddChild(new Drains { Game = this });
-            AddChild(new Passersby { Game = this, FiguresPath = ProjectSettings.GlobalizePath("res://assets/figures.json") });
+            Passersby = new Passersby { Game = this, FiguresPath = ProjectSettings.GlobalizePath("res://assets/figures.json") };
+            AddChild(Passersby);
             AddChild(new SmokePot { Game = this, TestAt = _testPot });
             AddChild(new RainLayer { Game = this, ZIndex = 3900 });
         }

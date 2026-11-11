@@ -123,6 +123,8 @@ namespace Messingstadt
 
         private readonly Random _rng = new();
         private readonly List<Person> _people = new();
+        private readonly List<Vector2> _positions = new();
+        private const float MapTiles = 20f;
         private readonly Dictionary<string, (int Start, int Count)> _columns = new();
         private readonly Dictionary<string, (float Walk, float Run)> _strides = new();
         private int _views = 5;
@@ -139,6 +141,27 @@ namespace Messingstadt
 
         /// <summary>Wie viele Passanten gerade zu sehen sind. Für Prüfläufe.</summary>
         public int Count => _people.Count;
+
+        /// <summary>
+        /// Wo die Passanten gerade stehen, in Feldern der Karte (0 bis 20, mit Nachkommastellen), etwa für ein Peilgerät.
+        /// Nur wer auf der Karte ist: Wer am Rand hinein- oder hinausgeht, fehlt. Die Liste wird bei jedem Aufruf neu
+        /// gefüllt und gehört dem Aufrufer nicht, also nicht aufbewahren und nicht ändern.
+        /// </summary>
+        public IReadOnlyList<Vector2> Positions
+        {
+            get
+            {
+                _positions.Clear();
+                foreach (var p in _people)
+                {
+                    if (p.Tile.X >= 0f && p.Tile.Y >= 0f && p.Tile.X < MapTiles && p.Tile.Y < MapTiles)
+                    {
+                        _positions.Add(p.Tile);
+                    }
+                }
+                return _positions;
+            }
+        }
 
         private float Rand(float min, float max) => min + (float)_rng.NextDouble() * (max - min);
 
