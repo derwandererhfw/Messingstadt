@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Godot;
 using Messingstadt.Core;
 
@@ -58,6 +59,7 @@ namespace Messingstadt
         private const string PeilPing = "peil_ping";
         private const float PeilAlarmPitch = 1.18f;
         private const float HeartDb = -10f;
+        private const float PrisonerStepDb = -24f;
         private const float HeartRisePerSecond = 4f;
         private const float HeartFallPerSecond = 0.5f;
         private const string MusicBus = "Musik";
@@ -69,6 +71,8 @@ namespace Messingstadt
         private readonly Dictionary<string, AudioStreamWav> _sounds = new();
         private readonly Dictionary<string, int> _variants = new();
         private readonly HashSet<int> _reloading = new();
+        private readonly Dictionary<int, int> _keysHeld = new();
+        private int _keysOnGround;
         private readonly HashSet<int> _bandaging = new();
         private readonly HashSet<SmokeCloud> _smokes = new();
         private readonly Dictionary<string, float> _lastPlayed = new();
@@ -101,6 +105,7 @@ namespace Messingstadt
         private float _roomWanted;
         private float _nextRoomProbe;
         private string? _heldMusic;
+        private bool _logAtExit;
         private World? _world;
         private int _lastShot;
         private int _lastStrike;
@@ -134,6 +139,7 @@ namespace Messingstadt
             AudioServer.AddBusEffect(AudioServer.GetBusIndex(WeatherBus), _rainFilter);
             foreach (string a in OS.GetCmdlineUserArgs())
             {
+                _logAtExit |= a == "--sound-log";
                 if (a.StartsWith("--music="))
                 {
                     _heldMusic = a["--music=".Length..];
@@ -435,11 +441,22 @@ namespace Messingstadt
             PlayedByGroup[group] = PlayedByGroup.GetValueOrDefault(group) + 1;
         }
 
+        /// <summary>Mit --sound-log steht am Ende, was wie oft lief. Für Prüfläufe, die kein Bild schreiben.</summary>
+        public override void _ExitTree()
+        {
+            if (_logAtExit)
+            {
+                GD.Print("Geräusche abgespielt: " + string.Join(", ", PlayedByGroup.Select(g => $"{g.Key} {g.Value}")));
+            }
+        }
+
         private string Variant(string name) => _variants.TryGetValue(name, out int count) ? $"{name}_{_rng.Next(count)}" : name;
 
         private void Reset(World world)
         {
             _reloading.Clear();
+            _keysHeld.Clear();
+            _keysOnGround = 0;
             _bandaging.Clear();
             _smokes.Clear();
             _world = world;
@@ -470,6 +487,7 @@ namespace Messingstadt
             }
             ListenToShots(world);
             ListenToSmoke(world);
+            ListenToDroppedKeys(world);
             ListenToMission(world);
             UpdateMusic(world, (float)delta);
             UpdateRoom(world, (float)delta);
@@ -503,15 +521,18 @@ namespace Messingstadt
                         }
                         return;
                     }
-                    string kind = u.Sprinting ? "step_run" : u.Faction == Faction.Agent ? "step_soft" : "step_boot";
-                    float volume = u.Sprinting ? -13f : u.Faction == Faction.Agent ? -19f : -22f;
+                    // Befreite gehen in Strümpfen oder schlechten Schuhen hinterher: wie die Agenten, nur leiser.
+                    bool quiet = u.Faction == Faction.Agent || u.IsPrisoner;
+                    string kind = u.Sprinting ? "step_run" : quiet ? "step_soft" : "step_boot";
+                    float volume = u.Sprinting ? -13f : u.IsPrisoner ? PrisonerStepDb : u.Faction == Faction.Agent ? -19f : -22f;
                     // Wachen hört man erst aus der Nähe, sonst klappern alle Rundgänge der Karte zugleich.
-                    float reach = u.Faction == Faction.Agent ? AgentStepReach : GuardStepReach;
+                    float reach = quiet ? AgentStepReach : GuardStepReach;
                     PlayStep($"{kind}_{_rng.Next(4)}", at, volume, reach);
                 }
                 _stepCount[u.Id] = count;
             }
             ListenToKit(u, at);
+            ListenToKeys(u, at);
             if (u.Bribed && _bribed.Add(u.Id))
             {
                 Play("coins", at, -4f, StepReach);
@@ -564,6 +585,31 @@ namespace Messingstadt
             {
                 Play("bandage", at, -12f, AgentStepReach, 0.04f);
             }
+        }
+
+        /// <summary>Der Schlüsselbund klimpert, wenn ein Agent ihn bekommt: abgenommen oder vom Boden aufgehoben.</summary>
+        private void ListenToKeys(Unit u, Vector2 at)
+        {
+            if (u.Faction != Faction.Agent)
+            {
+                return;
+            }
+            if (_keysHeld.TryGetValue(u.Id, out int before) && u.Keys.Count > before)
+            {
+                Play("keys", at, -10f, StepReach);
+            }
+            _keysHeld[u.Id] = u.Keys.Count;
+        }
+
+        /// <summary>Fällt ein Schließer, schlägt sein Bund aufs Pflaster.</summary>
+        private void ListenToDroppedKeys(World world)
+        {
+            if (world.KeysOnGround.Count > _keysOnGround)
+            {
+                var keys = world.KeysOnGround[^1];
+                Play("keys", Game.ToScreen(keys.X, keys.Y), -13f, StepReach);
+            }
+            _keysOnGround = world.KeysOnGround.Count;
         }
 
         /// <summary>Ein neuer Rauchtopf schlägt auf und zischt.</summary>
@@ -700,7 +746,9 @@ namespace Messingstadt
                 if (door.Open && !_doorsOpen[i])
                 {
                     _doorsOpen[i] = true;
-                    Play("door_open", at, -2f);
+                    // Zellen haben schwere Eisentüren, alles andere knarrt nur.
+                    bool cell = world.Units.Exists(u => u.IsPrisoner && u.CellDoor == i);
+                    Play(cell ? "cell_door" : "door_open", at, cell ? -6f : -2f);
                 }
             }
             if (picking != _lockpick.Playing)
