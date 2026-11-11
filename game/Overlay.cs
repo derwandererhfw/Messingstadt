@@ -22,7 +22,7 @@ namespace Messingstadt
         {
             var world = Game.World;
             DrawExit(world);
-            if (!world.ItemTaken)
+            if (!world.ItemTaken && !world.IsRescue)
             {
                 // Pulsierende Markierung: Das Missionsziel bleibt sichtbar, auch wenn etwas davorsteht.
                 var item = Game.ToScreen(world.ItemX, world.ItemY);
@@ -203,7 +203,8 @@ namespace Messingstadt
                 {
                     DrawRect(new Rect2(p + new Vector2(-3, -3), new Vector2(6, 5)), green);
                     DrawArc(p + new Vector2(3, -3), 2.5f, Mathf.Pi, Mathf.Tau, 6, green, 1f);
-                    if (w.HasLoot && !w.LootTaken)
+                    // Nur an der Tür, hinter der die Beute wirklich liegt.
+                    if (w.HasLoot && !w.LootTaken && door.Tiles.Contains((w.LootX / World.TileUnits, w.LootY / World.TileUnits)))
                     {
                         DrawString(ThemeDB.FallbackFont, p + new Vector2(-16, -8), $"{w.LootName} drinnen", HorizontalAlignment.Left, -1, 8, green);
                     }

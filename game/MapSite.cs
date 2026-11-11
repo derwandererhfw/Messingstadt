@@ -34,7 +34,7 @@ namespace Messingstadt
         private static bool TestWithoutKessel() => System.Array.IndexOf(OS.GetCmdlineUserArgs(), "--ohne-kessel") >= 0;
 
         /// <summary>Stellt auf das Manifest einer Karte um. kessel erzwingt oder verbietet die Vorgaben des Kesselviertels.</summary>
-        public static void Use(string manifestPath, bool? kessel = null) => _current = Load(manifestPath, kessel);
+        public static void Use(string manifestPath, bool? kessel = null) => _current = Load(manifestPath, TestWithoutKessel() ? false : kessel);
 
         public string ManifestPath { get; private set; } = "";
 

@@ -50,6 +50,14 @@ namespace Messingstadt
         private const float MaxReactSeconds = 0.7f;
         private const float CowerShare = 0.3f;
         private const float GetUpSeconds = 4f;
+        // Klänge der Ton-Session. Die Pegel sind deren Vorschläge, gehört hat sie noch niemand.
+        private const float StepDb = -24f;
+        private const float StepReach = 220f;
+        private const float StepPause = 0.34f;
+        private const float StepHeardPixels = 190f;
+        private const float GaspDb = -8f;
+        private const float GaspReach = 400f;
+        private const float GaspPause = 6f;
         // DepthZ liegt 20 über dem Objekt dahinter, Einheiten beginnen 2 darüber. So bleiben Passanten unter ihnen.
         private const int UnitsAbove = 19;
 
@@ -116,6 +124,8 @@ namespace Messingstadt
         private float _calmAt;
         private float _nextSpawn;
         private float _nextBodyCheck;
+        private float _nextStep;
+        private float _nextGasp;
         private int _testScareFrame = -1;
         private int _frames;
         private static readonly Vector2 TestScareTile = new(9f, 9f);
@@ -414,8 +424,35 @@ namespace Messingstadt
             }
         }
 
+        /// <summary>
+        /// Schritte nur für Passanten nahe der Bildmitte und nie dichter als StepPause, sonst klappert die ganze Straße.
+        /// Ein Schritt fällt, wenn der halbe Doppelschritt voll ist.
+        /// </summary>
+        private void Footstep(Person p, float walkedBefore)
+        {
+            float half = Stride(p.Name, p.Mode == Mode.Flee ? "run" : "walk") / 2f;
+            if ((int)(walkedBefore / half) == (int)(p.Walked / half) || _time < _nextStep)
+            {
+                return;
+            }
+            var at = Game.ToScreen((int)(p.Tile.X * World.TileUnits), (int)(p.Tile.Y * World.TileUnits));
+            var camera = GetViewport().GetCamera2D();
+            if (camera == null || at.DistanceTo(camera.GetScreenCenterPosition()) > StepHeardPixels)
+            {
+                return;
+            }
+            _nextStep = _time + StepPause;
+            Game.Sound.Play("step_soft", at, StepDb, StepReach);
+        }
+
         private void Startle(Person p, Vector2 noise)
         {
+            // Ein scharfes Einatmen, aber nur von einem: Erschrecken alle zugleich, hört man es sonst als Chor.
+            if (_time >= _nextGasp)
+            {
+                _nextGasp = _time + GaspPause;
+                Game.Sound.Play("gasp", Game.ToScreen((int)(p.Tile.X * World.TileUnits), (int)(p.Tile.Y * World.TileUnits)), GaspDb, GaspReach);
+            }
             p.Mode = Mode.Startled;
             p.Timer = Rand(MinReactSeconds, MaxReactSeconds);
             p.Noise = noise;
@@ -525,7 +562,12 @@ namespace Messingstadt
 
         private void Place(Person p, float movedTiles)
         {
+            float before = p.Walked;
             p.Walked += movedTiles * World.TileUnits;
+            if (movedTiles > 0f)
+            {
+                Footstep(p, before);
+            }
             p.ModeTime = p.Mode == p.Shown ? p.ModeTime + (float)GetProcessDeltaTime() : 0f;
             p.Shown = p.Mode;
             string motion;

@@ -11,7 +11,9 @@ namespace Messingstadt
     /// Prüflauf für die Bedienung: --script=&lt;datei&gt; schickt Tasten und Klicks durch den echten Eingabeweg und vergleicht den Zustand.
     /// Zeilen: wait n, key Name, hold Name, release Name, click Text, clickat x y, shot Datei, print,
     /// expect Größe Wert, remember Größe, same Größe, changed Größe, waitfor Größe Wert, attack, bribe, close,
-    /// pointat Name dx dy (Maus über das Feld neben einem Agenten, ohne Klick), hurt Name Punkte.
+    /// pointat Name dx dy (Maus über das Feld neben einem Agenten, ohne Klick), hurt Name Punkte,
+    /// clickfield x y und rclickunit Name und rclickdoor Name (echte Klicks an der Stelle im Bild), calm (alle Wachen sind gekauft),
+    /// waitcontains Größe Text.
     /// Am Ende steht die Zahl der Fehler.
     /// </summary>
     public partial class TestScript : Node
@@ -19,13 +21,15 @@ namespace Messingstadt
         private const int FramesAfterAction = 4;
         private const int MaxWaitFrames = 6000;
 
-        private readonly Dictionary<string, string> _remembered = new();
+        // Statisch, weil ein Wechsel der Stadt die Szene neu lädt: Der Ablauf geht danach an derselben Zeile weiter.
+        private static readonly Dictionary<string, string> _remembered = new();
         private string[] _lines = Array.Empty<string>();
-        private int _next;
+        private static int _next;
         private int _wait = 30;
-        private int _errors;
+        private static int _errors;
         private string _waitName = "", _waitValue = "";
         private int _waitLeft;
+        private bool _waitPart;
 
         public Main Game = null!;
         public string FilePath = "";
@@ -50,8 +54,12 @@ namespace Messingstadt
             if (_waitLeft > 0)
             {
                 _waitLeft--;
-                if (Probe(_waitName) != _waitValue)
+                if (_waitPart ? !Probe(_waitName).Contains(_waitValue) : Probe(_waitName) != _waitValue)
                 {
+                    if (_waitLeft == 0)
+                    {
+                        Check($"warten auf {_waitName} {_waitValue}", false, Probe(_waitName));
+                    }
                     return;
                 }
                 _waitLeft = 0;
@@ -108,7 +116,7 @@ namespace Messingstadt
                     break;
                 case "waitfor":
                     var until = arg.Split(' ', 2);
-                    (_waitName, _waitValue, _waitLeft) = (until[0], until[1], MaxWaitFrames);
+                    (_waitName, _waitValue, _waitLeft, _waitPart) = (until[0], until[1], MaxWaitFrames, false);
                     break;
                 case "attack":
                     var guard = Game.World.Units.First(u => u.Faction == Faction.Guard && u.Alive);
@@ -169,6 +177,37 @@ namespace Messingstadt
                         victim.Hp = Math.Max(1, victim.Hp - int.Parse(hurt[1]));
                     }
                     break;
+                case "clickfield":
+                    var tileAt = arg.Split(' ');
+                    MouseAt(Game.TileCenter(int.Parse(tileAt[0]), int.Parse(tileAt[1])), MouseButton.Left);
+                    break;
+                case "rclickunit":
+                    var clicked = Game.World.Units.FirstOrDefault(u => u.Name == arg);
+                    Check(line, clicked != null, arg);
+                    if (clicked != null)
+                    {
+                        MouseAt(Game.UnitPos(clicked) + new Vector2(0, -20), MouseButton.Right);
+                    }
+                    break;
+                case "rclickdoor":
+                    var doorHit = Game.World.Doors.Find(d => d.Name == arg);
+                    Check(line, doorHit != null, arg);
+                    if (doorHit != null)
+                    {
+                        MouseAt(Game.DoorMark(doorHit), MouseButton.Right);
+                    }
+                    break;
+                case "calm":
+                    // Alle Wachen sind gekauft und beachten den Trupp nicht: So lässt sich ein Ablauf prüfen, ohne ihn zu erschleichen.
+                    foreach (var g in Game.World.Units.Where(u => u.Faction == Faction.Guard))
+                    {
+                        g.Bribed = true;
+                    }
+                    break;
+                case "waitcontains":
+                    var part = arg.Split(' ', 2);
+                    (_waitName, _waitValue, _waitLeft, _waitPart) = (part[0], part[1], MaxWaitFrames, true);
+                    break;
                 case "seetext": Check(line, HasLabel(Game.ActiveUi(), arg.Replace("\\n", "\n")), arg); break;
                 case "close": Game.PropagateNotification((int)NotificationWMCloseRequest); break;
                 case "remember": _remembered[arg] = Probe(arg); break;
@@ -205,6 +244,17 @@ namespace Messingstadt
                 return;
             }
             ClickAt(button.GetGlobalRect().GetCenter());
+        }
+
+        /// <summary>Ein Klick an einer Stelle der Spielwelt, durch Kamera und Fensterstreckung umgerechnet wie bei einer echten Maus.</summary>
+        private void MouseAt(Vector2 world, MouseButton button)
+        {
+            var window = GetViewport().GetFinalTransform() * (Game.GetCanvasTransform() * world);
+            Input.ParseInputEvent(new InputEventMouseMotion { Position = window, GlobalPosition = window });
+            foreach (bool pressed in new[] { true, false })
+            {
+                Input.ParseInputEvent(new InputEventMouseButton { Position = window, GlobalPosition = window, ButtonIndex = button, Pressed = pressed });
+            }
         }
 
         private static Button? FindButton(Node node, string text, bool disabledToo = false)

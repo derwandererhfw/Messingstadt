@@ -204,7 +204,7 @@ void fragment() {
         private CanvasLayer _overlayLayer = null!;
         private Settings _settings = new();
         private bool _hadSave;
-        private readonly SaveFolder _saves = new(ProjectSettings.GlobalizePath("user://"));
+        private readonly SaveFolder _saves = new(Globalize("user://"));
         private int _slot = 1;
         private Button? _panelFocus;
         private Armory _armory = null!;
@@ -314,14 +314,29 @@ void fragment() {
             AddChild(new CanvasModulate { Color = Night });
             string root = ProjectSettings.GlobalizePath("res://");
             string data = Path.GetFullPath(Path.Combine(root, "..", "data"));
-            _map = Loader.ParseMap(File.ReadAllText(Path.Combine(data, "map_01.json")));
-            _lightData = Loader.ParseLight(File.ReadAllText(Path.Combine(data, "light_01.json")));
             Catalog = Loader.ParseCatalog(File.ReadAllText(Path.Combine(data, "waffen.json")));
             City = CityMap.Parse(File.ReadAllText(Path.Combine(data, "stadtplan.json")));
+            LoadCampaign();
+            bool resumed = s_resumeSlot >= 0;
+            if (resumed)
+            {
+                // Nach dem Wechsel der Stadt geht es mit derselben Akte weiter, auch wenn ein Prüflauf nichts speichert.
+                _slot = s_resumeSlot;
+                _campaign = s_campaign ?? _campaign;
+                _newCampaign = false;
+                s_resumeSlot = -1;
+                s_campaign = null;
+            }
+            MissionId = WantedMission();
+            s_missionId = MissionId;
+            (_map, _mission) = Loader.LoadMission(data, MissionId, Catalog);
+            _lightData = _mission.Light ?? new LightData { Cells = 1, Size = _map.Width, Levels = Enumerable.Repeat(World.BrightLevel, _map.Width * _map.Width).ToArray() };
+            s_scene = _mission.Scene;
+            // Die Atmosphäre liest ihre festen Orte je Karte: Vorgaben nur für die Stadt des ersten Einsatzes.
+            MapSite.Use(Globalize("res://assets/manifest.json"), FirstCity);
             _mission = LoadMission();
             Watch = WatchMap.Measure(_map, _mission);
 
-            LoadCampaign();
             ulong loadStart = Time.GetTicksMsec();
             LoadStatics();
             _loadStaticsMs = Time.GetTicksMsec() - loadStart;
@@ -336,7 +351,7 @@ void fragment() {
             _chatter = new Chatter { Game = this };
             _overlayLayer.AddChild(_chatter);
             BuildUi();
-            _playing = Testing && !_forceMenu;
+            _playing = resumed || (Testing && !_forceMenu);
             StartMission();
             _sound.Game = this;
             AddChild(_sound);
@@ -353,7 +368,11 @@ void fragment() {
             AddChild(_menus);
             ApplySound();
             ApplyWindow();
-            if (!Testing || _forceMenu)
+            if (resumed)
+            {
+                ContinueMission();
+            }
+            else if (!Testing || _forceMenu)
             {
                 OpenMainMenu();
             }
@@ -400,7 +419,7 @@ void fragment() {
         /// <summary>Beruf für die Akte im Einsatz, aus den Missionsdaten.</summary>
         public string AgentRole(int index) => index < _mission.Agents.Count ? _mission.Agents[index].RoleName() : "Agent";
 
-        private static string SettingsPath => ProjectSettings.GlobalizePath("user://einstellungen.json");
+        private static string SettingsPath => Globalize("user://einstellungen.json");
 
         private void LoadSettings()
         {
@@ -627,6 +646,13 @@ void fragment() {
             ["items"] = string.Join(", ", World.Units.Where(u => u.Faction == Faction.Agent).Select(u => $"{u.Name}:{string.Join("+", World.ItemIds(u))}")),
             ["hp"] = string.Join(",", World.Units.Where(u => u.Faction == Faction.Agent).Select(u => u.Hp)),
             ["smokes"] = World.Smokes.Count.ToString(),
+            ["mission"] = MissionId,
+            ["scene"] = s_scene,
+            ["telegram"] = _paper.TelegramText,
+            ["state"] = World.State.ToString(),
+            ["prisoners"] = string.Join(", ", World.Prisoners.Select(p => $"{p.Name}:{(!p.Alive ? "tot" : p.Captive ? "Zelle" : p.Waiting ? "wartet" : "folgt " + (p.FollowId >= 0 ? World.Units[p.FollowId].Name : "niemandem"))}")),
+            ["doors"] = string.Join(", ", World.Doors.Where(d => d.Open).Select(d => d.Name)),
+            ["keys"] = string.Join(", ", World.Units.Where(u => u.Keys.Count > 0).Select(u => $"{u.Name}:{u.Keys.Count}")),
             ["armory"] = _armory.State,
             ["citymap"] = _cityMap.State,
             ["mapsource"] = _cityMap.MapSource,
@@ -658,10 +684,9 @@ void fragment() {
 
         private MissionData LoadMission()
         {
-            string path = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data", "mission_01.json"));
-            var mission = Loader.ParseMission(File.ReadAllText(path));
+            string data = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data"));
+            var mission = Loader.LoadMission(data, MissionId, Catalog).Mission;
             mission.Light = _lightData;
-            mission.Catalog = Catalog;
             return mission;
         }
 
@@ -675,7 +700,7 @@ void fragment() {
             string key = PortraitNames.Contains(who) ? who : "rekrut";
             if (!_portraits.TryGetValue(key, out var picture))
             {
-                var image = Image.LoadFromFile(ProjectSettings.GlobalizePath($"res://assets/hud/portrait_{key}.png"));
+                var image = Image.LoadFromFile(Globalize($"res://assets/hud/portrait_{key}.png"));
                 // Das Bild ist viel größer als sein Feld, ohne Mipmaps flimmert es beim Verkleinern.
                 image.GenerateMipmaps();
                 picture = ImageTexture.CreateFromImage(image);
@@ -895,24 +920,30 @@ void fragment() {
             var weather = new Weather
             {
                 Game = this, Night = Night, LampColor = LampColor, HeldFlash = _testFlash, HeldRain = _testRain, Glow = _critterGlow,
-                ManifestPath = ProjectSettings.GlobalizePath("res://assets/manifest.json"),
+                ManifestPath = Globalize("res://assets/manifest.json"),
                 GroundLight = LoadTexture("res://assets/light/ground_a.png"), FogNoise = LoadTexture("res://assets/light/fog.png"),
                 GroundSize = _groundSize, GroundOrigin = new Vector2(_ox, _oy),
             };
             Climate = weather;
             AddChild(weather);
             weather.AddLampCones(_mission.Lamps, StutterLamp);
-            AddChild(new Water { Game = this, ManifestPath = ProjectSettings.GlobalizePath("res://assets/manifest.json") });
+            AddChild(new Water { Game = this, ManifestPath = Globalize("res://assets/manifest.json") });
             AddChild(new GunSmoke { Game = this });
-            var tram = new Tram { Game = this, ManifestPath = ProjectSettings.GlobalizePath("res://assets/manifest.json") };
-            AddChild(tram);
-            _puddleMirror.Tram = tram;
+            if (FirstCity)
+            {
+                var tram = new Tram { Game = this, ManifestPath = Globalize("res://assets/manifest.json") };
+                AddChild(tram);
+                _puddleMirror.Tram = tram;
+            }
             AddChild(new Breath { Game = this, Glow = _critterGlow, HeldSmoke = _testSmoke });
             AddChild(new Airship { Game = this, Glow = _critterGlow, Night = Night, ShipTexture = LoadTexture("res://assets/airship.png"), HeldAt = _testShip });
-            AddChild(new Strikers
+            if (FirstCity)
             {
-                Game = this, Glow = _critterGlow, BarrelTexture = LoadTexture("res://assets/barrel.png"), BannerTexture = LoadTexture("res://assets/banner.png"),
-            });
+                AddChild(new Strikers
+                {
+                    Game = this, Glow = _critterGlow, BarrelTexture = LoadTexture("res://assets/barrel.png"), BannerTexture = LoadTexture("res://assets/banner.png"),
+                });
+            }
             foreach (var p in _ambience.Fires)
             {
                 _ambience.Valves.Add(p - new Vector2(8, 46));
@@ -975,29 +1006,29 @@ void fragment() {
             };
             var fogNoise = LoadTexture("res://assets/light/fog.png");
             // Smog, Laternen und Hochbahn stehen in den Straßen der Häuser hinter der Karte, ohne diese hingen sie in der Luft.
-            if (File.Exists(ProjectSettings.GlobalizePath("res://assets/backdrop.png")))
+            if (File.Exists(Globalize("res://assets/backdrop.png")) && File.Exists(Globalize("res://assets/skyline.png")))
             {
                 AddChild(new Skyline
                 {
                     Game = this, ZIndex = -1, Backdrop = LoadTexture("res://assets/skyline.png"), Effects = LoadTexture("res://assets/skyline_fx.png"), Noise = fogNoise,
-                    DataPath = ProjectSettings.GlobalizePath("res://assets/skyline.json"),
+                    DataPath = Globalize("res://assets/skyline.json"),
                 });
             }
             var wet = new WetGround
             {
                 Game = this, ZIndex = 0, Windows = _windowLife, Noise = fogNoise, GroundSize = _groundSize,
-                ManifestPath = ProjectSettings.GlobalizePath("res://assets/manifest.json"),
+                ManifestPath = Globalize("res://assets/manifest.json"),
                 LampColor = LampColor, FireColor = FireColor, StutterLamp = StutterLamp, Lamps = _mission.Lamps, Fires = _ambience.Fires,
-                ExtraFires = Strikers.Present ? new[] { ToScreen((int)(Strikers.BarrelTile.X * World.TileUnits), (int)(Strikers.BarrelTile.Y * World.TileUnits)) } : System.Array.Empty<Vector2>(),
+                ExtraFires = FirstCity && Strikers.Present ? new[] { ToScreen((int)(Strikers.BarrelTile.X * World.TileUnits), (int)(Strikers.BarrelTile.Y * World.TileUnits)) } : Array.Empty<Vector2>(),
                 Puddles = _ambience.Puddles,
             };
             AddChild(wet);
             _puddleMirror = new PuddleMirror
             {
                 Game = this, ZIndex = 0, Wet = wet, Windows = _windowLife, Noise = fogNoise,
-                GroundPath = ProjectSettings.GlobalizePath("res://assets/ground.png"), GroundLight = LoadTexture("res://assets/light/ground_a.png"), GroundLightB = LoadTexture("res://assets/light/ground_b.png"),
+                GroundPath = Globalize("res://assets/ground.png"), GroundLight = LoadTexture("res://assets/light/ground_a.png"), GroundLightB = LoadTexture("res://assets/light/ground_b.png"),
                 LampColor = LampColor, FireColor = FireColor, StutterLamp = StutterLamp, Lamps = _mission.Lamps,
-                ManifestPath = ProjectSettings.GlobalizePath("res://assets/manifest.json"), Puddles = _ambience.Puddles,
+                ManifestPath = Globalize("res://assets/manifest.json"), Puddles = _ambience.Puddles,
             };
             AddChild(_puddleMirror);
             // Unter den Gebäuden gezeichnet: Was hinter einem Haus liegt, bleibt auch im Bild verdeckt.
@@ -1015,7 +1046,7 @@ void fragment() {
             _critterGlow = glow;
             AddChild(new Haze { Game = this });
             AddChild(new Drains { Game = this });
-            Passersby = new Passersby { Game = this, FiguresPath = ProjectSettings.GlobalizePath("res://assets/figures.json") };
+            Passersby = new Passersby { Game = this, FiguresPath = Globalize("res://assets/figures.json") };
             AddChild(Passersby);
             AddChild(new SmokePot { Game = this, TestAt = _testPot });
             AddChild(new RainLayer { Game = this, ZIndex = 3900 });
@@ -1099,6 +1130,10 @@ void fragment() {
                 {
                     _scriptWrites = true;
                 }
+                else if (a.StartsWith("--mission="))
+                {
+                    _forceMission = a["--mission=".Length..];
+                }
                 else if (a.StartsWith("--script="))
                 {
                     _scriptPath = a["--script=".Length..];
@@ -1148,7 +1183,7 @@ void fragment() {
             var list = files.ToList();
             var images = new Image[list.Count];
             System.Threading.Tasks.Parallel.For(0, list.Count, i =>
-                images[i] = Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/hd/" + list[i])));
+                images[i] = Image.LoadFromFile(Globalize("res://assets/hd/" + list[i])));
             for (int i = 0; i < list.Count; i++)
             {
                 _hdImages[list[i]] = images[i];
@@ -1157,8 +1192,44 @@ void fragment() {
 
         private static Texture2D LoadTexture(string resPath)
         {
-            var image = Image.LoadFromFile(ProjectSettings.GlobalizePath(resPath));
+            var image = Image.LoadFromFile(Globalize(resPath));
             return ImageTexture.CreateFromImage(image);
+        }
+
+        // Was über einen Neustart der Szene hinweg bleibt: Jeder Einsatz hat seine eigene Stadt, die beim Start geladen wird.
+        // Wählt der Spieler ein Viertel mit anderer Karte, lädt die Szene neu und setzt hier wieder an.
+        private static string s_missionId = "";
+        private static string s_scene = "";
+        private static Campaign? s_campaign;
+        private static int s_resumeSlot = -1;
+
+        /// <summary>Dateien, die zur Stadt eines Einsatzes gehören. Fehlen sie im Ordner der Szene, gibt es sie dort nicht.</summary>
+        private static readonly string[] SceneOnly = { "skyline.png", "skyline_fx.png", "skyline.json" };
+
+        /// <summary>Grafik der Stadt liegt je Szene in einem eigenen Ordner unter assets. Alles andere, etwa Figuren und Schrift, gilt für alle.</summary>
+        private static string Scened(string resPath)
+        {
+            const string root = "res://assets/";
+            if (s_scene.Length == 0 || !resPath.StartsWith(root))
+            {
+                return resPath;
+            }
+            string inScene = root + s_scene + "/" + resPath[root.Length..];
+            bool sceneOnly = Array.IndexOf(SceneOnly, resPath[root.Length..]) >= 0;
+            return sceneOnly || File.Exists(ProjectSettings.GlobalizePath(inScene)) ? inScene : resPath;
+        }
+
+        private static string Globalize(string resPath) => ProjectSettings.GlobalizePath(Scened(resPath));
+
+        /// <summary>Die Stadt des ersten Einsatzes mit ihrer festen Kulisse: Streikposten, Straßenbahn, Arbeiter am Hotel, Passanten.</summary>
+        private static bool FirstCity => s_scene.Length == 0;
+
+        /// <summary>Welcher Einsatz jetzt gespielt werden soll: der des gewählten Viertels, sofern es seine Dateien gibt.</summary>
+        private string WantedMission()
+        {
+            string id = _forceMission ?? _campaign.Selected(City)?.Mission ?? "";
+            string data = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data"));
+            return id.Length > 0 && File.Exists(Path.Combine(data, id + ".json")) ? id : DefaultMission;
         }
 
         private ShaderMaterial LitMaterial(string name)
@@ -1166,7 +1237,7 @@ void fragment() {
             var material = new ShaderMaterial { Shader = _litShader };
             material.SetShaderParameter("light_a", LoadTexture($"res://assets/light/{name}_a.png"));
             material.SetShaderParameter("light_b", LoadTexture($"res://assets/light/{name}_b.png"));
-            string panes = ProjectSettings.GlobalizePath($"res://assets/light/{name}_w.png");
+            string panes = Globalize($"res://assets/light/{name}_w.png");
             material.SetShaderParameter("pane_ids", File.Exists(panes) ? LoadTexture($"res://assets/light/{name}_w.png") : _noPanes);
             material.SetShaderParameter("pane_states", _windowLife.States);
             material.SetShaderParameter("night", Night);
@@ -1218,8 +1289,8 @@ void fragment() {
             var blank = Image.CreateEmpty(1, 1, false, Image.Format.Rgba8);
             blank.Fill(Colors.Black);
             _noPanes = ImageTexture.CreateFromImage(blank);
-            _lightGrid = Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/light/grid.png"));
-            using var manifest = JsonDocument.Parse(File.ReadAllText(ProjectSettings.GlobalizePath("res://assets/manifest.json")));
+            _lightGrid = Image.LoadFromFile(Globalize("res://assets/light/grid.png"));
+            using var manifest = JsonDocument.Parse(File.ReadAllText(Globalize("res://assets/manifest.json")));
             _ox = manifest.RootElement.GetProperty("ox").GetInt32();
             _oy = manifest.RootElement.GetProperty("oy").GetInt32();
             if (manifest.RootElement.TryGetProperty("hd", out var hd))
@@ -1229,7 +1300,7 @@ void fragment() {
                 files.AddRange(hd.GetProperty("things").EnumerateArray().Select(f => "things/" + f.GetString()));
                 LoadHdImages(files);
             }
-            var (groundTexture, groundScale) = Display("ground.png", () => Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/ground.png")));
+            var (groundTexture, groundScale) = Display("ground.png", () => Image.LoadFromFile(Globalize("res://assets/ground.png")));
             _groundSize = groundTexture.GetSize() * groundScale;
             AddChild(new Sprite2D
             {
@@ -1255,7 +1326,7 @@ void fragment() {
                     t.GetProperty("x1").GetSingle(), t.GetProperty("y1").GetSingle(), t.GetProperty("z1").GetSingle()));
                 string file = "things/" + t.GetProperty("file").GetString();
                 // Für die Verdeckung reicht das Bild, das ohnehin angezeigt wird: fein, wenn es eins gibt.
-                var image = _hdImages.TryGetValue(file, out var fineImage) ? fineImage : Image.LoadFromFile(ProjectSettings.GlobalizePath("res://assets/" + file));
+                var image = _hdImages.TryGetValue(file, out var fineImage) ? fineImage : Image.LoadFromFile(Globalize("res://assets/" + file));
                 var (texture, scale) = Display(file, () => (Image)image.Duplicate());
                 _thingImages.Add(image);
                 _thingImageScale.Add(scale.X);
@@ -1278,7 +1349,7 @@ void fragment() {
             _hdImages.Clear();
             _ambience.Smoke = ReadPoints(manifest.RootElement, "smoke");
             _ambience.Steam = ReadPoints(manifest.RootElement, "steam");
-            using (var panes = JsonDocument.Parse(File.ReadAllText(ProjectSettings.GlobalizePath("res://assets/panes.json"))))
+            using (var panes = JsonDocument.Parse(File.ReadAllText(Globalize("res://assets/panes.json"))))
             {
                 foreach (var p in panes.RootElement.EnumerateArray())
                 {
@@ -1291,7 +1362,7 @@ void fragment() {
             {
                 _ambience.Puddles.Add((new Vector2(p[0].GetInt32(), p[1].GetInt32()), p[2].GetInt32()));
             }
-            using var figures = JsonDocument.Parse(File.ReadAllText(ProjectSettings.GlobalizePath("res://assets/figures.json")));
+            using var figures = JsonDocument.Parse(File.ReadAllText(Globalize("res://assets/figures.json")));
             _cellW = figures.RootElement.GetProperty("w").GetInt32();
             _cellH = figures.RootElement.GetProperty("h").GetInt32();
             _figureViews = figures.RootElement.GetProperty("views").GetInt32();
@@ -1391,7 +1462,15 @@ void fragment() {
             layer.AddChild(_cityMap);
         }
 
-        private const string MissionId = "mission_01";
+        private const string DefaultMission = "mission_01";
+
+        /// <summary>Kennung des geladenen Einsatzes. Karte, Licht und Stadt gehören dazu und wechseln nur mit einem Neustart der Szene.</summary>
+        public string MissionId { get; private set; } = DefaultMission;
+
+        private string? _forceMission;
+
+        /// <summary>Gespräche nur für diesen Einsatz, null beim ersten.</summary>
+        public ChatterData? MissionChatter => _mission.Chatter;
 
         /// <summary>Der Stadtplan mit den Vierteln. Wem sie gehören und welches gewählt ist, weiß die Kampagne.</summary>
         public CityMapData City { get; private set; } = new();
@@ -1644,10 +1723,18 @@ void fragment() {
             _unitGlow.Clear();
             _animator.Clear();
             _tickFrom.Clear();
+            if (World != null && WantedMission() != MissionId)
+            {
+                // Das gewählte Viertel hat eine andere Stadt: Szene neu laden und dort mit dieser Akte weitermachen.
+                s_resumeSlot = _slot;
+                s_campaign = _campaign;
+                SaveCampaign();
+                GetTree().CallDeferred(SceneTree.MethodName.ReloadCurrentScene);
+                return;
+            }
             // Prepare verändert die Missionsdaten, deshalb jedes Mal frisch laden.
             _mission = LoadMission();
-            // Bisher gibt es nur die Karte von mission_01, das gewählte Viertel bestimmt den Eintrag in der Kampagne.
-            _campaign.Prepare(_mission, _campaign.Selected(City)?.Mission ?? MissionId);
+            _campaign.Prepare(_mission, MissionId);
             SaveCampaign();
             _finished = false;
             _abandoned = false;
@@ -1920,7 +2007,7 @@ void fragment() {
                 s.ZIndex = u.Alive ? depth + rank + 2 : depth + 1;
             }
             UpdateOcclusion();
-            _book.Visible = !World.ItemTaken;
+            _book.Visible = !World.ItemTaken && !World.IsRescue;
             _book.Position = ToScreen(World.ItemX, World.ItemY);
             _book.ZIndex = 1;
             _book.Modulate = LightFor(LightAt(World.ItemX, World.ItemY), BookMinLight);
@@ -2205,7 +2292,7 @@ void fragment() {
         private void UpdateUi()
         {
             string name = World.ItemName.ToUpperInvariant();
-            string telegram = World.ItemTaken
+            string telegram = World.IsRescue ? World.RescueLine() : World.ItemTaken
                 ? (World.EscapeProgress > 0 ? "EINSTEIGEN STOP STEHEN BLEIBEN STOP" : $"{name} GESICHERT STOP ZUM FLUCHTWAGEN IM OSTEN STOP")
                 : World.ItemProgress > 0 ? $"{name} WIRD GESICHERT STOP STEHEN BLEIBEN STOP"
                 : $"{name} AM MIETSHAUS HOLEN STOP GASSE NUTZEN STOP DANN ZUM FLUCHTWAGEN IM OSTEN STOP";
@@ -2362,7 +2449,23 @@ void fragment() {
                 {
                     WaitingIds.Clear();
                     var guard = UnitUnderCursor(worldPos, Faction.Guard);
-                    if (guard != null)
+                    var prisoner = UnitUnderCursor(worldPos, Faction.Prisoner);
+                    // Eine Türmarke geht vor: Vor den Zellen stehen oft Wachen oder Befreite genau davor.
+                    int marked = DoorUnderCursor(worldPos);
+                    bool opening = false;
+                    if (marked >= 0)
+                    {
+                        foreach (int id in Selected) opening |= World.OrderOpenDoor(id, marked);
+                    }
+                    if (opening)
+                    {
+                    }
+                    else if (prisoner != null && Selected.Count > 0)
+                    {
+                        // Ein Befreiter folgt dem ersten Gewählten. Folgt er ihm schon, wartet er.
+                        World.OrderPrisoner(prisoner.Id, Selected.Min());
+                    }
+                    else if (guard != null)
                     {
                         // Wer nur den Buchhalter gewählt hat, will verhandeln statt schießen.
                         bool bribed = Selected.Count == 1 && World.OrderBribe(Selected.First(), guard.Id);

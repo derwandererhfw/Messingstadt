@@ -90,6 +90,14 @@ namespace Messingstadt
 
         private static string Pick(Random rng, string[] lines) => lines[rng.Next(lines.Length)];
 
+        // Sätze mit Spielhinweis gelten nur für ihre Karte. Nennt die Mission eigene Listen, ersetzen sie die des ersten Einsatzes.
+        private string[] GuardLines => Game.MissionChatter is { Guards.Count: > 0 } c ? c.Guards.ToArray() : GuardTalk;
+
+        private string[] WorkerLines => Game.MissionChatter is { Others.Count: > 0 } c ? c.Others.ToArray() : WorkerTalk;
+
+        private string BribedLine(Unit u) =>
+            Game.MissionChatter is { } c && c.Bribed.TryGetValue(u.Name, out string? line) ? line : Pick(_rng, Bribed);
+
         private bool OnScreen(Vector2 p)
         {
             var view = GetViewportRect().Size / 2f / 2f + new Vector2(ViewMargin, ViewMargin);
@@ -158,7 +166,7 @@ namespace Messingstadt
             Func<Vector2?> where = () => u.Alive ? Game.UnitPos(u) : null;
             if (u.Bribed && _bribedSpoken.Add(u.Id))
             {
-                Say(where, Pick(_rng, Bribed), SpeechSeconds, new Color(0.7f, 0.95f, 0.7f));
+                Say(where, BribedLine(u), SpeechSeconds, new Color(0.7f, 0.95f, 0.7f));
             }
             if (_lastState.TryGetValue(u.Id, out var before) && before != u.GuardState && OnScreen(Game.UnitPos(u)) && !Game.IsHiddenByThing(u))
             {
@@ -193,12 +201,12 @@ namespace Messingstadt
             bool workerTurn = workers.Count > 0 && (guards.Count == 0 || _rng.NextDouble() < 0.4);
             if (workerTurn)
             {
-                Say(workers[_rng.Next(workers.Count)], Pick(_rng, WorkerTalk), SpeechSeconds, new Color(0.9f, 0.85f, 0.72f));
+                Say(workers[_rng.Next(workers.Count)], Pick(_rng, WorkerLines), SpeechSeconds, new Color(0.9f, 0.85f, 0.72f));
             }
             else if (guards.Count > 0)
             {
                 var g = guards[_rng.Next(guards.Count)];
-                Say(() => g.Alive ? Game.UnitPos(g) : null, Pick(_rng, GuardTalk), SpeechSeconds, new Color(0.82f, 0.86f, 0.9f));
+                Say(() => g.Alive ? Game.UnitPos(g) : null, Pick(_rng, GuardLines), SpeechSeconds, new Color(0.82f, 0.86f, 0.9f));
             }
         }
 

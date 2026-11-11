@@ -1,0 +1,34 @@
+# Einsatz 2 „Die Wachstube“: Otto öffnet Pforte und Zellen, beide Gefangenen folgen, warten auf Rechtsklick und steigen in den Wagen.
+# Aufruf mit --fresh --mission=mission_02. Die Wachen sind hier gekauft (calm), geprüft werden Laden, Bedienung und die Regel Befreien.
+wait 40
+expect mission mission_02
+expect scene nordwall
+expect hud True
+expect telegram GEFANGENE IM ARRESTHOF STOP PFORTE AN DER GERICHTSGASSE STOP DANN ZUM WAGEN IN DER WALLGASSE STOP
+expect prisoners Anton Weiß:Zelle, Paul Roth:Zelle
+expect keys Türposten:1, Schließer:2
+calm
+# Nur Otto: Er geht durch die Gerichtsgasse zur Pforte
+key Key2
+expect selected 1
+rclickdoor Pforte zur Gerichtsgasse
+waitcontains doors Pforte zur Gerichtsgasse
+rclickdoor Zelle 1
+waitcontains telegram ZELLE WIRD GEÖFFNET
+waitcontains prisoners Anton Weiß:folgt Otto
+expect telegram WEISS FREI STOP DER ZWEITE FEHLT NOCH STOP
+rclickdoor Zelle 2
+waitcontains prisoners Paul Roth:folgt Otto
+expect telegram BEIDE FREI STOP ZUM WAGEN IN DER WALLGASSE STOP SIE SIND LANGSAM STOP
+expect doors Pforte zur Gerichtsgasse, Zelle 1, Zelle 2
+# Rechtsklick auf einen Befreiten: Er wartet, beim zweiten Mal folgt er wieder
+rclickunit Anton Weiß
+expect prisoners Anton Weiß:wartet, Paul Roth:folgt Otto
+rclickunit Anton Weiß
+expect prisoners Anton Weiß:folgt Otto, Paul Roth:folgt Otto
+# Zum Wagen in der Wallgasse
+clickfield 1 18
+waitcontains telegram EINSTEIGEN
+waitfor state Won
+expect rating Unseen
+expect down 0

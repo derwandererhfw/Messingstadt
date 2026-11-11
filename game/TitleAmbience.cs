@@ -135,6 +135,17 @@ namespace Messingstadt
         private const float CatSeconds = 2.6f;
         private const float LeafletSeconds = 7f;
         private const int Drips = 10;
+        // Klänge der Ton-Session, bewusst unter deren Vorschlägen gehalten: Das Titelthema muss darüber gut hörbar bleiben.
+        private const float CrowdDb = -17f;
+        private const float CrowdQuietDb = -40f;
+        private const float CrowdReach = 600f;
+        private const float TramDb = -24f;
+        private const float SparkDb = -15f;
+        private const float SparkSoundPause = 1.3f;
+        private const float HornDb = -24f;
+        private const float FirstHorn = 3f;
+        private const float MinHornPause = 70f;
+        private const float MaxHornPause = 130f;
         private const float RingsPerSecond = 3.2f;
         private const float RingSeconds = 1.1f;
 
@@ -253,6 +264,9 @@ namespace Messingstadt
         private float _catFrom = -100f;
         private float _leafletFrom = -100f;
         private float _leafletY;
+        private AudioStreamPlayer2D? _crowd;
+        private float _nextSparkSound;
+        private float _nextHorn = FirstHorn;
 
         /// <summary>Wie stark alles wirkt, von 0 (aus) bis 1. Kleiner, wenn der Hintergrund schon unruhig ist.</summary>
         public float Strength = 1f;
@@ -277,6 +291,12 @@ namespace Messingstadt
         /// Scheibe verdunkelt. Ohne Bild wird das Feld um das Fenster abgedeckt.
         /// </summary>
         public Texture2D? Picture;
+
+        /// <summary>
+        /// Die Geräusche des Spiels. Mit ihnen hört man die Menge gehen, die Bahn fahren, die Funken knistern und ab und zu
+        /// das Schichthorn, alles leise unter dem Titelthema. Ohne bleibt die Szene stumm.
+        /// </summary>
+        public SoundScape? Sound;
 
         private float Rand(float min, float max) => min + (float)_rng.NextDouble() * (max - min);
 
@@ -680,6 +700,7 @@ namespace Messingstadt
                 {
                     _tramWay = _rng.Next(2) == 0 ? 1 : -1;
                     _tramX = _tramWay > 0 ? _at.TramFrom - _at.TramLength : _at.TramTo;
+                    Sound?.PlayEverywhere("tram", TramDb);
                 }
                 return;
             }
@@ -687,6 +708,12 @@ namespace Messingstadt
             if (_rng.NextDouble() < 1.6 * dt)
             {
                 _spark = Rand(0.6f, 1f);
+                if (_time > _nextSparkSound && TramShowing() > 0.2f)
+                {
+                    // Nicht jeder Funke knistert, sonst übertönt die Bahn die Musik.
+                    _nextSparkSound = _time + SparkSoundPause;
+                    Sound?.PlayEverywhere("tram_spark", SparkDb);
+                }
             }
             if (_tramX > _at.TramTo || _tramX < _at.TramFrom - _at.TramLength)
             {
@@ -698,6 +725,13 @@ namespace Messingstadt
         /// <summary>In Abständen geschieht eine Kleinigkeit, nie zweimal dieselbe hintereinander.</summary>
         private void UpdateEvents()
         {
+            if (_time > _nextHorn)
+            {
+                // Das Schichthorn ruft den Zug zum Tor: gleich zu Beginn und dann in langen Abständen.
+                _nextHorn = _time + Rand(MinHornPause, MaxHornPause);
+                Sound?.PlayEverywhere("factory_horn", HornDb);
+            }
+            UpdateCrowdSound();
             if (_time < _nextEvent)
             {
                 return;
@@ -726,6 +760,34 @@ namespace Messingstadt
                     _leafletY = Path(NearDepth * Rand(1.1f, 2.2f)).At.Y;
                     break;
             }
+        }
+
+        /// <summary>Die Schritte der Menge laufen als Schleife mit und werden mit dem Zug dichter und dünner.</summary>
+        private void UpdateCrowdSound()
+        {
+            if (Sound == null)
+            {
+                return;
+            }
+            if (_crowd == null)
+            {
+                _crowd = Sound.AddMovingLoop("crowd_steps", CrowdQuietDb, CrowdReach);
+                _crowd.Play();
+            }
+            // Der Spieler hängt an der Welt des Spiels: Er bleibt in der Bildmitte, damit er überall gleich klingt.
+            if (GetViewport().GetCamera2D() is Camera2D camera)
+            {
+                _crowd.GlobalPosition = camera.GetScreenCenterPosition();
+            }
+            float full = Mathf.Clamp(_workers.Count / 30f, 0f, 1f);
+            _crowd.VolumeDb = Mathf.MoveToward(_crowd.VolumeDb, Mathf.Lerp(CrowdQuietDb, CrowdDb, full) + Mathf.LinearToDb(Mathf.Max(0.01f, Strong)), 0.5f);
+        }
+
+        public override void _ExitTree()
+        {
+            // Mit dem Startbildschirm verstummt die Menge.
+            _crowd?.QueueFree();
+            _crowd = null;
         }
 
         /// <summary>Tropfen von den Traufen und Ringe in den Pfützen.</summary>
