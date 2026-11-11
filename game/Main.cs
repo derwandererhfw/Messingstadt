@@ -208,6 +208,12 @@ void fragment() {
         private int _slot = 1;
         private Button? _panelFocus;
         private Armory _armory = null!;
+        private CityMap _cityMap = null!;
+        // Vorbereitung vor dem Einsatz: Stadtplan, dann Waffenkammer. Danach geht es mit _afterBriefing weiter.
+        private Action? _afterBriefing;
+        private bool _briefingFromResult;
+        // Ein neues Spiel aus dem Menü: Nach dem Prolog kommen erst Stadtplan und Waffenkammer.
+        private bool _briefFirst;
         private float _hudShift;
         private float _peilSeconds = Hud.PeilSeconds;
         private const float HudShiftPerSecond = 240f;
@@ -365,7 +371,7 @@ void fragment() {
         private bool WritesFiles => !Testing || _scriptWrites;
 
         /// <summary>Menü offen, Einstieg läuft oder Einsatz vorbei: Das Spiel nimmt keine Befehle an.</summary>
-        private bool ControlsLocked => _introRunning || _finished || (_menus != null && _menus.IsOpen);
+        private bool ControlsLocked => _introRunning || _finished || Briefing || (_menus != null && _menus.IsOpen);
 
         public Settings Settings => _settings;
         public bool HasSave => _hadSave;
@@ -473,9 +479,11 @@ void fragment() {
             SaveSettings();
             _newCampaign = fresh || !SlotExists(_slot);
             _campaign = _newCampaign ? new Campaign() : LoadSlot(_slot);
+            _briefFirst = _newCampaign;
             SaveCampaign();
             _mission = LoadMission();
             StartMission();
+            Plan.Reset();
             ContinueMission();
         }
 
@@ -516,7 +524,21 @@ void fragment() {
             {
                 _armory.Refocus();
             }
+            else if (_cityMap.Visible)
+            {
+                _cityMap.Refocus();
+            }
         }
+
+        /// <summary>Stadtplan und Waffenkammer liegen offen: Der Einsatz dahinter ruht.</summary>
+        private bool Briefing => _cityMap != null && (_cityMap.Visible || _armory.Visible);
+
+        /// <summary>Woher der Stadtplan seine Viertel hat, siehe CityPlanSource.</summary>
+        public CityPlanSource Plan { get; private set; } = null!;
+
+        /// <summary>Der Einsatz, der gerade ansteht.</summary>
+        public MissionData Mission => _mission;
+        public string MissionKey => MissionId;
 
         /// <summary>Die Kampagne für die Waffenkammer. Nach jeder Änderung CampaignChanged rufen, das speichert.</summary>
         public Campaign Campaign => _campaign;
@@ -526,26 +548,36 @@ void fragment() {
         /// <summary>Wie der Weg aus Ergebnis und Waffenkammer heißt: nach einem Sieg weiter, sonst derselbe Einsatz noch einmal.</summary>
         public string NextMissionLabel => World.State == MissionState.Won ? "Nächster Einsatz" : "Nochmal";
 
-        /// <summary>Vor jedem Einsatz geht es durch die Waffenkammer. Mit Bericht führt Esc dorthin zurück.</summary>
-        private void OpenArmory(bool fromResult)
+        /// <summary>
+        /// Vor jedem Einsatz: erst der Stadtplan, dann die Waffenkammer, danach then. Mit Bericht führt Esc vom Plan dorthin zurück.
+        /// </summary>
+        private void OpenBriefing(bool fromResult, Action then)
         {
             // Telegramm und Akten des vergangenen Einsatzes zeigen alte Zahlen, die Kammer hat ihre eigene Kasse.
             _paper.Visible = false;
             _panel.Visible = false;
-            _armory.Open(fromResult);
+            _briefingFromResult = fromResult;
+            _afterBriefing = then;
+            _cityMap.Open(fromResult);
         }
 
-        public void ArmoryBack()
+        public void CityMapBack()
         {
             _paper.Visible = true;
             ShowPanel();
         }
 
+        public void CityMapChosen() => _armory.Open();
+
+        public void ArmoryBack() => _cityMap.Open(_briefingFromResult);
+
         public void LeaveArmory()
         {
             _armory.Close();
             _paper.Visible = true;
-            NextMission();
+            var then = _afterBriefing;
+            _afterBriefing = null;
+            then?.Invoke();
         }
 
         /// <summary>Wo im Prüflauf nach Knöpfen gesucht wird: im offenen Blatt, sonst überall.</summary>
@@ -592,6 +624,9 @@ void fragment() {
             ["hp"] = string.Join(",", World.Units.Where(u => u.Faction == Faction.Agent).Select(u => u.Hp)),
             ["smokes"] = World.Smokes.Count.ToString(),
             ["armory"] = _armory.State,
+            ["citymap"] = _cityMap.State,
+            ["state"] = World.State.ToString(),
+            ["item"] = World.ItemTaken.ToString(),
             ["fields"] = _paper.FieldTexts,
             ["slots"] = _paper.SlotTexts,
             ["peil"] = _paper.PeilState,
@@ -690,10 +725,18 @@ void fragment() {
         /// <summary>Beim Betreten des Einsatzes: nach einem neuen Spiel der ganze Einstieg, sonst nur der Übergang.</summary>
         private void MaybeStartIntro()
         {
+            // Ein neues Spiel aus dem Menü geht nach dem Prolog über Stadtplan und Waffenkammer in den Einsatz.
+            bool brief = _briefFirst;
+            _briefFirst = false;
             if (!_showIntro || !SequencesOn)
             {
                 _camera.PositionSmoothingEnabled = !Testing;
                 _camera.PositionSmoothingSpeed = CameraFollow;
+                if (brief)
+                {
+                    // Der Einsatz beginnt danach neu, damit die Einkäufe aus der Kammer mitkommen.
+                    OpenBriefing(false, StartMission);
+                }
                 return;
             }
             _showIntro = false;
@@ -703,7 +746,16 @@ void fragment() {
             _forceSequence = null;
             void Play(int i)
             {
-                if (i < ids.Length)
+                if (i == 1 && brief)
+                {
+                    brief = false;
+                    OpenBriefing(false, () =>
+                    {
+                        StartMission();
+                        Play(1);
+                    });
+                }
+                else if (i < ids.Length)
                 {
                     PlaySequence(ids[i], () => Play(i + 1));
                 }
@@ -1329,6 +1381,9 @@ void fragment() {
             layer.AddChild(_panel);
             _armory = new Armory { Game = this };
             layer.AddChild(_armory);
+            Plan = new CityPlanSource(this);
+            _cityMap = new CityMap { Game = this };
+            layer.AddChild(_cityMap);
         }
 
         private const string MissionId = "mission_01";
@@ -1389,7 +1444,7 @@ void fragment() {
             _lastReward = 0;
             if (!costs)
             {
-                PlaySequence("rueckzug", () => OpenArmory(false));
+                PlaySequence("rueckzug", () => OpenBriefing(false, NextMission));
                 return;
             }
             PlaySequence("niederlage", ShowResult);
@@ -1505,7 +1560,7 @@ void fragment() {
             buttons.AddChild(menu);
             var next = new Button { Text = NextMissionLabel, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
             PaperUi.InkButton(next);
-            next.Pressed += () => OpenArmory(true);
+            next.Pressed += () => OpenBriefing(true, NextMission);
             buttons.AddChild(next);
             _panelBody.AddChild(buttons);
             _panelFocus ??= next;
@@ -1590,6 +1645,7 @@ void fragment() {
             WaitingIds.Clear();
             _panel.Visible = false;
             _armory.Visible = false;
+            _cityMap.Visible = false;
             _smokeArmed = -1;
             World = new World(_map, _mission);
             foreach (var u in World.Units)
@@ -2185,7 +2241,7 @@ void fragment() {
             }
             // Die Leertaste schaltet Sequenzen weiter. Auf dem Ergebnis-Bildschirm löst sie keinen Knopf aus,
             // sonst rutscht ein Druck zu viel in "Nochmal". Enter und Maus wählen dort weiter.
-            if ((_panel.Visible || _armory.Visible) && !_menus.IsOpen && e is InputEventKey key && (key.Keycode == Key.Space || key.PhysicalKeycode == Key.Space))
+            if ((_panel.Visible || Briefing) && !_menus.IsOpen && e is InputEventKey key && (key.Keycode == Key.Space || key.PhysicalKeycode == Key.Space))
             {
                 GetViewport().SetInputAsHandled();
             }
@@ -2215,7 +2271,8 @@ void fragment() {
                     GetViewport().SetInputAsHandled();
                     return;
                 }
-                if (global.PhysicalKeycode == Key.Escape && !_menus.IsOpen && _armory.Visible && _armory.Back())
+                if (global.PhysicalKeycode == Key.Escape && !_menus.IsOpen
+                    && ((_armory.Visible && _armory.Back()) || (_cityMap.Visible && _cityMap.Back())))
                 {
                     GetViewport().SetInputAsHandled();
                     return;

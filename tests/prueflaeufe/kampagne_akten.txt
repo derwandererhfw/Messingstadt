@@ -5,6 +5,12 @@
 wait 20
 expect screen Startbildschirm
 click Neues Spiel
+wait 10
+# Vor dem Einsatz: Stadtplan, dann Waffenkammer
+expect citymap viertel_1: brandt brandt brandt brandt brandt
+click Zur Waffenkammer
+expect armory Greta:None:
+click Zum Einsatz
 wait 20
 expect slot 1
 expect money 300
@@ -34,9 +40,11 @@ changed money
 # Emil ist geflickt und wieder dabei. Der zweite Sturz ist tödlich, schon im Einsatz steht GEFALLEN.
 click Nochmal
 wait 5
-# Vor dem Einsatz die Waffenkammer, Emil ist dort wieder einsatzbereit
+# Vor dem Einsatz Stadtplan und Waffenkammer, Emil ist dort wieder einsatzbereit
+expect citymap viertel_1: brandt brandt brandt brandt brandt
+click Zur Waffenkammer
 expect armory Greta:None:
-click Nochmal
+click Zum Einsatz
 wait 30
 expect panel False
 # Hanna liegt noch in der Krankenstube: drei im Einsatz, die Hilfezeile nennt nur ihre Ziffern
