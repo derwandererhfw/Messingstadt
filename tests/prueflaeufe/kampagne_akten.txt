@@ -13,7 +13,7 @@ expect armory Greta:None:
 click Zum Einsatz
 wait 20
 expect slot 1
-expect money 300
+expect money 600
 key Space
 expect helpline Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen, Otto: Tür   Q halten: Lageplan   1-4 Leertaste   WASD F P M   Esc: Menü
 # Emil fällt zum ersten Mal: Krankenstube, und die Hilfezeile nennt ihn nicht mehr

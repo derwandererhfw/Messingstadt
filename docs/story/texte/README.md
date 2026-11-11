@@ -26,5 +26,7 @@ Nach jeder Änderung an Missionsdateien oder Core-Texten `dotnet test tests/Mess
 
 ## Redaktionsnotizen
 
+- Maschinenpistole in `data/waffen.json`: Der Text nennt ein Trommelmagazin, das Magazin fasst aber 20 Schuss. Vorschlag: `Zwanzig Schuss im Stangenmagazin, über einen Hafenarbeiter beschafft. Streut, frisst Patronen und weckt das ganze Viertel.` Noch nicht übernommen, die Datei gehört der Ausrüstung. Die Figur trägt laut `docs/ausruestung.md` eine sichtbare Trommel, das müsste die Grafik angleichen.
+
 - Der Rückzugstext (Schlagzeile und Telegramm) erscheint heute nie, siehe `../kanon.md`.
 - Der Auftrag von Einsatz 1 ist länger als früher. Ob er auf das Papier im Einstieg passt, wurde im Spiel nicht geprüft.

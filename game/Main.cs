@@ -317,6 +317,7 @@ void fragment() {
             _map = Loader.ParseMap(File.ReadAllText(Path.Combine(data, "map_01.json")));
             _lightData = Loader.ParseLight(File.ReadAllText(Path.Combine(data, "light_01.json")));
             Catalog = Loader.ParseCatalog(File.ReadAllText(Path.Combine(data, "waffen.json")));
+            City = CityMap.Parse(File.ReadAllText(Path.Combine(data, "stadtplan.json")));
             _mission = LoadMission();
             Watch = WatchMap.Measure(_map, _mission);
 
@@ -1388,6 +1389,9 @@ void fragment() {
 
         private const string MissionId = "mission_01";
 
+        /// <summary>Der Stadtplan mit den Vierteln. Wem sie gehören und welches gewählt ist, weiß die Kampagne.</summary>
+        public CityMapData City { get; private set; } = new();
+
         private void LoadCampaign()
         {
             _slot = _settings.LastSlot;
@@ -1479,8 +1483,9 @@ void fragment() {
         private void FinishMission()
         {
             _finished = true;
-            _lastReward = World.State == MissionState.Won ? Campaign.Reward(World.Rating) : 0;
-            _campaign.Finish(World);
+            var district = _campaign.Selected(City);
+            _lastReward = World.State == MissionState.Won ? Campaign.Reward(World.Rating, district?.Reward ?? Campaign.BaseReward) : 0;
+            _campaign.Finish(World, district);
             SaveCampaign();
             PlaySequence(World.State == MissionState.Won ? "sieg" : "niederlage", ShowResult);
         }
@@ -1637,7 +1642,8 @@ void fragment() {
             _tickFrom.Clear();
             // Prepare verändert die Missionsdaten, deshalb jedes Mal frisch laden.
             _mission = LoadMission();
-            _campaign.Prepare(_mission, MissionId);
+            // Bisher gibt es nur die Karte von mission_01, das gewählte Viertel bestimmt den Eintrag in der Kampagne.
+            _campaign.Prepare(_mission, _campaign.Selected(City)?.Mission ?? MissionId);
             SaveCampaign();
             _finished = false;
             _abandoned = false;
