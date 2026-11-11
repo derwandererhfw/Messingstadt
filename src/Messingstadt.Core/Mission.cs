@@ -192,8 +192,30 @@ namespace Messingstadt.Core
         public string? Retreat { get; set; }
     }
 
+    /// <summary>Sätze, die nur zu diesem Einsatz passen. Allgemeine Sätze ohne Spielhinweis stehen in game/Chatter.cs.</summary>
+    public sealed class ChatterData
+    {
+        public List<string> Guards { get; set; } = new();
+        public List<string> Others { get; set; } = new();
+
+        /// <summary>Was eine bestochene Wache sagt, nach ihrem Namen.</summary>
+        public Dictionary<string, string> Bribed { get; set; } = new();
+    }
+
     public sealed class MissionData
     {
+        /// <summary>Kennung der Regelkarte in data, etwa map_02. Ohne Angabe die Nummer der Mission.</summary>
+        public string MapId { get; set; } = "";
+
+        /// <summary>Kennung der Lichtkarte in data. Fehlt die Datei, gilt überall dieselbe Reichweite beim Bemerken.</summary>
+        public string LightId { get; set; } = "";
+
+        /// <summary>Ordner der Grafik unter game/assets. Leer für die Stadt des ersten Einsatzes.</summary>
+        public string Scene { get; set; } = "";
+
+        /// <summary>Gespräche nur für diesen Einsatz. Ohne Angabe gelten die Listen des ersten Einsatzes.</summary>
+        public ChatterData? Chatter { get; set; }
+
         public string Title { get; set; } = "";
         public string Briefing { get; set; } = "";
         public int Seed { get; set; }
@@ -244,5 +266,28 @@ namespace Messingstadt.Core
         public static LightData ParseLight(string json) => JsonSerializer.Deserialize<LightData>(json, Options)!;
 
         public static ItemCatalog ParseCatalog(string json) => JsonSerializer.Deserialize<ItemCatalog>(json, Options)!;
+
+        /// <summary>
+        /// Lädt einen Einsatz nach seiner Kennung aus dem Datenordner: Mission, dazu Karte und Licht, die sie nennt.
+        /// mission_02 nimmt ohne Angabe map_02 und light_02.
+        /// </summary>
+        public static (MapData Map, MissionData Mission) LoadMission(string dataDir, string missionId, ItemCatalog? catalog = null)
+        {
+            var mission = ParseMission(System.IO.File.ReadAllText(System.IO.Path.Combine(dataDir, missionId + ".json")));
+            string number = missionId.Contains('_') ? missionId[(missionId.LastIndexOf('_') + 1)..] : missionId;
+            if (mission.MapId.Length == 0)
+            {
+                mission.MapId = "map_" + number;
+            }
+            if (mission.LightId.Length == 0)
+            {
+                mission.LightId = "light_" + number;
+            }
+            string light = System.IO.Path.Combine(dataDir, mission.LightId + ".json");
+            mission.Light = System.IO.File.Exists(light) ? ParseLight(System.IO.File.ReadAllText(light)) : null;
+            mission.Catalog = catalog;
+            var map = ParseMap(System.IO.File.ReadAllText(System.IO.Path.Combine(dataDir, mission.MapId + ".json")));
+            return (map, mission);
+        }
     }
 }

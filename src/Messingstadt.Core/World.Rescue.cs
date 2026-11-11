@@ -233,6 +233,11 @@ namespace Messingstadt.Core
             {
                 return;
             }
+            if (InExit(leader) && leader.Path.Count == 0)
+            {
+                Board(p, leader);
+                return;
+            }
             int distance = Distance(p, leader);
             if (distance <= FollowStopRange)
             {
@@ -246,6 +251,38 @@ namespace Messingstadt.Core
             {
                 p.RepathTick = Tick + FollowRepathTicks;
                 WalkTo(p, leader.TileX, leader.TileY);
+            }
+        }
+
+        /// <summary>Steht der Führer im Wagenbereich, sucht sich der Befreite dort selbst ein freies Feld, statt neben der Zone stehen zu bleiben.</summary>
+        private void Board(Unit p, Unit leader)
+        {
+            if (InExit(p) && (p.Path.Count > 0 || !TileIsTaken(p, p.TileX, p.TileY)) || Tick < p.RepathTick)
+            {
+                return;
+            }
+            p.RepathTick = Tick + FollowRepathTicks;
+            (int X, int Y)? best = null;
+            int bestSteps = int.MaxValue;
+            for (int y = _exit.Y0 / TileUnits; y * TileUnits < _exit.Y1; y++)
+            {
+                for (int x = _exit.X0 / TileUnits; x * TileUnits < _exit.X1; x++)
+                {
+                    if (Map.IsBlocked(x, y) || TileIsTaken(p, x, y) || (x == leader.TileX && y == leader.TileY))
+                    {
+                        continue;
+                    }
+                    int steps = Map.FindPath(p.TileX, p.TileY, x, y)?.Count ?? int.MaxValue;
+                    if (steps < bestSteps)
+                    {
+                        best = (x, y);
+                        bestSteps = steps;
+                    }
+                }
+            }
+            if (best != null)
+            {
+                WalkTo(p, best.Value.X, best.Value.Y);
             }
         }
 
