@@ -49,19 +49,17 @@ namespace Messingstadt
         private const float SteamPerSecond = 2.2f;
         private const float SteamSeconds = 4.5f;
         private const float SteamAlpha = 0.13f;
-        private const float BreathZ = 2.4f;
         private const float BreathSeconds = 1.3f;
         private const int FogBanks = 5;
         private const float FogAlpha = 0.06f;
         private const float FogDrift = 9f;
 
         // Arbeiter
-        private const float MinStartZ = 0.6f;
-        private const float MaxStartZ = 0.74f;
-        private const float GateFadeZ = 0.7f;
-        private const float MinPace = 0.125f;
-        private const float MaxPace = 0.16f;
-        private const float StepsPerZ = 15f;
+        private const float MinPace = 0.95f;
+        private const float MaxPace = 1.2f;
+        private const float StepsPerMeter = 4.2f;
+        private const float LaneMeters = 1.5f;
+        private const float GateFade = 0.08f;
         private const float MinGroupPause = 0.9f;
         private const float MaxGroupPause = 4.2f;
         private const float LullChance = 0.12f;
@@ -69,8 +67,9 @@ namespace Messingstadt
         private const float BikeShare = 0.12f;
         private const float MirrorAlpha = 0.3f;
         private const float MirrorSquash = 0.62f;
-        private const float SimpleFromZ = 3.2f;
-        private const float MirrorUntilZ = 2.6f;
+        private const float SimpleBelowPixels = 77f;
+        private const float MirrorAbovePixels = 95f;
+        private const float BreathAbovePixels = 103f;
         private const float RimShift = 0.014f;
         private static readonly Color Shadow = new(0.012f, 0.014f, 0.02f);
         private static readonly Color FarShadow = new(0.03f, 0.036f, 0.05f);
@@ -78,7 +77,12 @@ namespace Messingstadt
 
         // Licht, vor dem die Gestalten stehen
         private const float PoolAlpha = 0.17f;
-        private const float PoolWidth = 360f;
+        private const float PoolMeters = 2.6f;
+        private const float HaloMeters = 1.05f;
+        // Die Kamera atmet: Das Bild driftet kaum merklich, nahe Ebenen weiter als ferne. Nur mit Ebenen aus title.json.
+        private const float DriftPixels = 11f;
+        private const float BaseZoom = 1.024f;
+        private const float BreatheZoom = 0.006f;
         private const float ForecourtAlpha = 0.16f;
         private static readonly Color ForecourtColor = new(0.55f, 0.66f, 0.9f);
         private const float GlintAlpha = 0.08f;
@@ -143,7 +147,8 @@ namespace Messingstadt
 
         private sealed class Worker
         {
-            public float Z;
+            public float At;
+            public float Meters;
             public float Lane;
             public float EndLane;
             public float Pace;
@@ -165,6 +170,7 @@ namespace Messingstadt
             public float PasserSeconds = 1f;
             public bool Flickers;
             public Texture2D? Mask;
+            public int Layer = -1;
         }
 
         private sealed class Drip
@@ -203,6 +209,11 @@ namespace Messingstadt
         private readonly List<Layer> _layers = new();
         private TitleLayout _at = new();
         private Pane? _sign;
+        private readonly List<Pane> _letters = new();
+        private readonly List<Texture2D?> _images = new();
+        private readonly List<Texture2D?> _lit = new();
+        private float _depth = 0.5f;
+        private int _deadLetter = -1;
         private Texture2D _round = null!;
         private Texture2D _sky = null!;
         private Texture2D _edge = null!;
@@ -265,10 +276,22 @@ namespace Messingstadt
 
         private float Rand(float min, float max) => min + (float)_rng.NextDouble() * (max - min);
 
-        // Das Titelbild füllt die Fläche und wird dabei mittig beschnitten. So liegt ein Bildpunkt des Bilds im Fenster.
-        private float ImageScale => Mathf.Max(Size.X / _at.Size.X, Size.Y / _at.Size.Y);
+        // Das Titelbild füllt die Fläche und wird dabei mittig beschnitten. Mit Ebenen kommt die Kamera dazu: leicht
+        // vergrößert, damit beim Driften kein Rand frei wird, und je Ebene nach ihrer Tiefe verschoben.
+        private float FitScale => Mathf.Max(Size.X / _at.Size.X, Size.Y / _at.Size.Y);
 
-        private Vector2 OnScreen(Vector2 pixel) => pixel * ImageScale + (Size - _at.Size * ImageScale) / 2f;
+        private float Zoom => _at.Layered ? BaseZoom + BreatheZoom * Mathf.Sin(_time * 0.09f) : 1f;
+
+        private float ImageScale => FitScale * Zoom;
+
+        private Vector2 Drift => _at.Layered ? new Vector2(Mathf.Sin(_time * 0.11f), 0.4f * Mathf.Sin(_time * 0.07f + 1f)) * DriftPixels : Vector2.Zero;
+
+        /// <summary>Ein Bildpunkt des Titelbilds im Fenster, für die Ebene, deren Tiefe gerade in _depth steht.</summary>
+        private Vector2 OnScreen(Vector2 pixel)
+        {
+            var middle = _at.Size / 2f;
+            return Size / 2f + (pixel - middle + Drift * (_depth - 0.5f) * 2f) * ImageScale;
+        }
 
         private Vector2 OnScreen(float x, float y) => OnScreen(new Vector2(x, y));
 
@@ -276,10 +299,26 @@ namespace Messingstadt
 
         private float Strong => Mathf.Clamp(Strength, 0f, 1f);
 
-        // Füße eines Arbeiters im Bild und seine Größe, aus Tiefe und seitlichem Abstand.
-        private Vector2 Ground(float z, float lane) => new(_at.Vanish.X + lane / z, _at.Vanish.Y + _at.GroundDrop / z);
+        private float Depth(string layer, float fallback) => _at.DepthOf(layer, fallback);
 
-        private float DepthOf(float groundY) => _at.GroundDrop / Mathf.Max(1f, groundY - _at.Vanish.Y);
+        /// <summary>Fußpunkt und Maßstab an einer Stelle des Wegs, 0 ist vorn, Walk.Count - 1 das Tor.</summary>
+        private (Vector2 At, float Scale) Path(float at)
+        {
+            int last = _at.Walk.Count - 1;
+            at = Mathf.Clamp(at, 0f, last);
+            int i = Mathf.Min((int)at, last - 1);
+            float f = at - i;
+            return (_at.Walk[i].At.Lerp(_at.Walk[i + 1].At, f), Mathf.Lerp(_at.Walk[i].Scale, _at.Walk[i + 1].Scale, f));
+        }
+
+        private float Progress(Worker w) => w.At / (_at.Walk.Count - 1);
+
+        /// <summary>Füße eines Arbeiters im Bild und sein Maßstab. Vorn streut der Zug, zum Tor hin läuft er zusammen.</summary>
+        private (Vector2 Foot, float Scale) Stand(Worker w)
+        {
+            var (at, scale) = Path(w.At);
+            return (at + new Vector2(Mathf.Lerp(w.Lane, w.EndLane, Progress(w)) * scale, 0f), scale);
+        }
 
         public override void _Ready()
         {
@@ -327,7 +366,13 @@ namespace Messingstadt
             {
                 return;
             }
-            using var picture = Picture?.GetImage();
+            string folder = ProjectSettings.GlobalizePath(LayoutPath).GetBaseDir();
+            foreach (var layer in _at.Layers)
+            {
+                _images.Add(LoadImage(folder.PathJoin(layer.File)));
+                _lit.Add(layer.Lit == null ? null : LoadImage(folder.PathJoin(layer.Lit)));
+            }
+            using var picture = _at.Layered ? null : Picture?.GetImage();
             if (picture != null && picture.IsCompressed())
             {
                 picture.Decompress();
@@ -335,24 +380,44 @@ namespace Messingstadt
             int flickers = _at.Windows.Count > 0 ? _rng.Next(_at.Windows.Count) : -1;
             for (int i = 0; i < _at.Windows.Count; i++)
             {
+                var (area, layer) = _at.Windows[i];
                 // Ein Teil der Fenster ist anfangs dunkel und geht erst später an.
                 bool on = _rng.NextDouble() >= StartDarkShare;
                 _panes.Add(new Pane
                 {
-                    Area = _at.Windows[i], On = on, Dark = on ? 0f : 1f, NextToggle = Rand(3f, MaxToggleSeconds), Flickers = i == flickers,
-                    Mask = picture == null ? null : MakeMask(picture, _at.Windows[i].Grow(1f)),
+                    Area = area, On = on, Dark = on ? 0f : 1f, NextToggle = Rand(3f, MaxToggleSeconds), Flickers = i == flickers,
+                    Mask = picture == null ? null : MakeMask(picture, area.Grow(1f)), Layer = _at.Layers.FindIndex(l => l.Name == layer),
                 });
             }
-            _sign = new Pane { Area = _at.Sign, Mask = picture == null ? null : MakeMask(picture, _at.Sign) };
+            int factory = _at.Layers.FindIndex(l => l.Name == "factory");
+            _sign = new Pane { Area = _at.Sign, Mask = picture == null ? null : MakeMask(picture, _at.Sign), Layer = factory };
+            foreach (var letter in _at.Letters)
+            {
+                _letters.Add(new Pane { Area = letter, Layer = factory });
+            }
+            // Ein Buchstabe der Leuchtschrift ist hinüber und fällt immer wieder aus.
+            _deadLetter = _letters.Count > 0 ? _rng.Next(_letters.Count) : -1;
             for (int i = 0; i < Drips; i++)
             {
                 _drips.Add(new Drip { Eave = i % Mathf.Max(1, _at.Eaves.Count), Wait = Rand(0f, 3f), Shift = Rand(-14f, 14f) });
             }
             // Die Straße ist schon bevölkert, wenn das Bild erscheint.
-            for (float z = 1f; z < _at.GateZ; z += Rand(0.25f, 0.8f))
+            for (float at = 0.6f; at < _at.Walk.Count - 1; at += Rand(0.12f, 0.5f))
             {
-                AddGroup(z);
+                AddGroup(at);
             }
+        }
+
+        private static Texture2D? LoadImage(string path)
+        {
+            if (!System.IO.File.Exists(path))
+            {
+                GD.PushWarning($"Ebene des Titelbilds fehlt: {path}");
+                return null;
+            }
+            var image = Image.LoadFromFile(path);
+            image.GenerateMipmaps();
+            return ImageTexture.CreateFromImage(image);
         }
 
         private void AddLayer(Action<CanvasItem> paint, bool add)
@@ -485,44 +550,49 @@ namespace Messingstadt
             if (_time > _nextGroup && _workers.Count < MaxWorkers)
             {
                 _nextGroup = _time + (_rng.NextDouble() < LullChance ? Rand(MaxGroupPause, MaxGroupPause * 2.2f) : Rand(MinGroupPause, MaxGroupPause));
-                AddGroup(Rand(MinStartZ, MaxStartZ));
+                AddGroup(Rand(0f, 0.25f));
             }
+            int last = _at.Walk.Count - 1;
             foreach (var w in _workers)
             {
-                w.Z += w.Pace * dt;
-                if (w.Z < BreathZ && _time > w.NextBreath)
+                // Gleichmäßiger Schritt in Metern: Im Bild werden die Gestalten zum Tor hin langsamer und kleiner.
+                int i = Mathf.Min((int)w.At, last - 1);
+                float stretch = Mathf.Max(1f, _at.Walk[i].At.DistanceTo(_at.Walk[i + 1].At));
+                float scale = Path(w.At).Scale;
+                w.At += w.Pace * scale * dt / stretch;
+                w.Meters += w.Pace * dt;
+                if (PersonPixels(w, scale) > BreathAbovePixels && _time > w.NextBreath)
                 {
                     // Atem in der kalten Luft, nur vorn zu sehen.
                     w.NextBreath = _time + Rand(2.2f, 3.4f);
-                    var head = Ground(w.Z, LaneOf(w)) - new Vector2(-_at.FigureHeight / w.Z * 0.1f, _at.FigureHeight / w.Z * w.Tall * 0.86f);
+                    var (foot, _) = Stand(w);
                     _puffs.Add(new Puff
                     {
-                        Pos = head, Drift = new Vector2(10f + 30f * _gust, -9f), Life = BreathSeconds, Size = 9f / w.Z + 4f, Grow = 1.6f,
-                        Color = new Color(SteamColor, 0.16f),
+                        Pos = foot + new Vector2(0.18f, -0.86f * w.Tall * TitleLayout.PersonMeters) * scale, Drift = new Vector2(10f + 30f * _gust, -9f),
+                        Life = BreathSeconds, Size = 0.07f * scale + 3f, Grow = 1.6f, Color = new Color(SteamColor, 0.16f),
                     });
                 }
             }
-            _workers.RemoveAll(w => w.Z >= _at.GateZ);
+            _workers.RemoveAll(w => w.At >= last);
             // Ferne zuerst zeichnen, Nahe darüber.
-            _workers.Sort((a, b) => b.Z.CompareTo(a.Z));
+            _workers.Sort((a, b) => b.At.CompareTo(a.At));
         }
 
-        private float LaneOf(Worker w)
-        {
-            float progress = Mathf.Clamp((w.Z - MinStartZ) / (_at.GateZ - MinStartZ), 0f, 1f);
-            return Mathf.Lerp(w.Lane, w.EndLane, Mathf.SmoothStep(0f, 1f, progress));
-        }
+        /// <summary>Höhe der Gestalt in Bildpunkten des Titelbilds.</summary>
+        private static float PersonPixels(Worker w, float scale) => TitleLayout.PersonMeters * w.Tall * scale;
 
-        private void AddGroup(float z)
+
+
+        private void AddGroup(float at)
         {
             int count = _rng.Next(10) switch { < 4 => 1, < 8 => 2, _ => 3 };
-            float lane = Rand(_at.StartLaneMin, _at.StartLaneMax), end = Rand(-_at.GateLane, _at.GateLane), pace = Rand(MinPace, MaxPace);
+            float lane = Rand(-LaneMeters, LaneMeters), end = Rand(-LaneMeters, LaneMeters) * 0.5f, pace = Rand(MinPace, MaxPace);
             bool bike = count == 1 && _rng.NextDouble() < BikeShare * 3f;
             for (int i = 0; i < count; i++)
             {
                 _workers.Add(new Worker
                 {
-                    Z = z + i * Rand(0.03f, 0.09f), Lane = lane + i * Rand(35f, 70f), EndLane = end + i * Rand(20f, 45f),
+                    At = at + i * Rand(0.02f, 0.06f), Lane = lane + i * Rand(0.5f, 0.9f), EndLane = end + i * Rand(0.4f, 0.7f),
                     // Wer zusammen geht, hält fast denselben Schritt.
                     Pace = pace * Rand(0.97f, 1.03f), Phase = Rand(0f, Mathf.Tau), Tall = Rand(0.9f, 1.06f), Stoop = Rand(0.5f, 1f),
                     Pail = !bike && _rng.Next(3) > 0, Bike = bike, NextBreath = _time + Rand(0f, 3f),
@@ -552,9 +622,16 @@ namespace Messingstadt
                 _signOutUntil = _time + (_rng.Next(4) == 0 ? Rand(0.8f, 1.6f) : Rand(0.25f, 0.6f));
                 _nextSignTrouble = _signOutUntil + Rand(5f, 14f);
             }
+            bool trouble = _time < _signOutUntil;
             if (_sign != null)
             {
-                _sign.Dark = _time < _signOutUntil && _rng.NextDouble() < 0.6 ? Rand(0.55f, 1f) : 0f;
+                _sign.Dark = trouble && _letters.Count == 0 && _rng.NextDouble() < 0.6 ? Rand(0.55f, 1f) : 0f;
+            }
+            for (int i = 0; i < _letters.Count; i++)
+            {
+                // Der kaputte Buchstabe zuckt bei jeder Störung und bleibt manchmal ganz weg, die anderen flackern nur selten mit.
+                bool hit = trouble && (i == _deadLetter || _rng.NextDouble() < 0.04);
+                _letters[i].Dark = hit && _rng.NextDouble() < 0.7 ? 1f : i == _deadLetter && Mathf.Sin(_time * 0.21f) > 0.86f ? 1f : 0f;
             }
         }
 
@@ -631,7 +708,7 @@ namespace Messingstadt
                     break;
                 default:
                     _leafletFrom = _time;
-                    _leafletY = Rand(760f, 900f);
+                    _leafletY = Path(Rand(1f, 2.6f)).At.Y;
                     break;
             }
         }
@@ -671,8 +748,8 @@ namespace Messingstadt
             while (_ringDebt >= 1f && _at.Puddles.Count > 0)
             {
                 _ringDebt -= 1f;
-                var puddle = _at.Puddles[_rng.Next(_at.Puddles.Count)];
-                _rings.Add(new Ring { At = new Vector2(puddle.X + Rand(-puddle.Z, puddle.Z), puddle.Y + Rand(-puddle.Z, puddle.Z) * 0.18f), Size = Rand(12f, 26f) * puddle.Y / 900f });
+                var (middle, radius) = _at.Puddles[_rng.Next(_at.Puddles.Count)];
+                _rings.Add(new Ring { At = middle + new Vector2(Rand(-radius.X, radius.X), Rand(-radius.Y, radius.Y)) * 0.8f, Size = Rand(0.2f, 0.42f) * radius.X });
             }
             foreach (var r in _rings)
             {
@@ -685,14 +762,15 @@ namespace Messingstadt
         private void UpdateSmoke(float dt)
         {
             float wind = 14f + 46f * _gust;
-            _smokeDebt += SmokePerSecond * _at.Chimneys.Count * dt;
-            while (_smokeDebt >= 1f && _at.Chimneys.Count > 0)
+            _smokeDebt += SmokePerSecond * _at.Stacks.Count * dt;
+            while (_smokeDebt >= 1f && _at.Stacks.Count > 0)
             {
                 _smokeDebt -= 1f;
-                var at = _at.Chimneys[_rng.Next(_at.Chimneys.Count)];
+                var stack = _at.Stacks[_rng.Next(_at.Stacks.Count)];
                 _puffs.Add(new Puff
                 {
-                    Pos = at + new Vector2(Rand(-7f, 7f), 0f), Drift = new Vector2(wind, -15f), Life = SmokeSeconds, Size = Rand(18f, 30f), Grow = 3.2f,
+                    Pos = new Vector2(stack.X + Rand(-0.25f, 0.25f) * stack.Z, stack.Y), Drift = new Vector2(wind, -15f), Life = SmokeSeconds,
+                    Size = Rand(0.6f, 1f) * stack.Z, Grow = 3.2f,
                     Color = new Color(SmokeColor, SmokeAlpha),
                 });
             }
@@ -725,29 +803,29 @@ namespace Messingstadt
                 return;
             }
             float scale = ImageScale;
+            if (_at.Layered)
+            {
+                // Von hinten: Himmel, das Luftschiff davor, dann das Werk mit seinen Lichtern und die Straße.
+                PaintLayer(c, "sky");
+                _depth = Depth("sky", 0f) * 0.5f + Depth("factory", 0.2f) * 0.5f;
+                DrawAirship(c, scale);
+                PaintLayer(c, "factory");
+                PaintLayer(c, "street");
+                return;
+            }
+            _depth = 0.5f;
             DrawAirship(c, scale);
             foreach (var pane in _panes)
             {
-                float dark = pane.Dark;
-                if (pane.Flickers && pane.On && Mathf.Sin(_time * 0.9f) > 0.2f && _rng.NextDouble() < 0.4)
-                {
-                    dark = Rand(0.4f, 0.95f);
-                }
-                var area = OnScreen(pane.Area.Grow(1f));
-                Cover(c, pane, area, dark);
-                float passing = (_time - pane.PasserFrom) / pane.PasserSeconds;
-                if (pane.On && passing is >= 0f and < 1f)
-                {
-                    // Breite Fenster: Der Schatten wandert quer durch. Schmale: Das ganze Fenster wird kurz dunkler.
-                    float band = area.Size.X > 12f * scale ? 0.45f : 1f;
-                    float x = area.Position.X + area.Size.X * (1f - band) * passing;
-                    c.DrawRect(new Rect2(x, area.Position.Y + area.Size.Y * 0.25f, area.Size.X * band, area.Size.Y * 0.75f),
-                        new Color(DarkGlass, PasserShade * Mathf.Sin(passing * Mathf.Pi)));
-                }
+                DrawPane(c, pane, scale);
             }
             if (_sign != null)
             {
                 Cover(c, _sign, OnScreen(_sign.Area), _sign.Dark);
+            }
+            if (!_at.OwnLaundry)
+            {
+                return;
             }
             // Wäsche auf der Leine: Die Tücher hängen schwer und heben sich in der Böe.
             Vector2 from = OnScreen(_at.LineFrom), to = OnScreen(_at.LineTo);
@@ -761,6 +839,89 @@ namespace Messingstadt
                 c.DrawPolygon(new[] { top, top + new Vector2(w, 0f), top + new Vector2(w, h) + swing, top + new Vector2(0f, h) + swing * 0.8f },
                     new[] { new Color(0.2f, 0.2f, 0.22f, 0.9f) });
             }
+        }
+
+        /// <summary>Zeichnet eine Ebene des Titelbilds und darüber ihre Fenster, soweit sie gerade leuchten.</summary>
+        private void PaintLayer(CanvasItem c, string name)
+        {
+            int index = _at.Layers.FindIndex(l => l.Name == name);
+            if (index < 0)
+            {
+                return;
+            }
+            var layer = _at.Layers[index];
+            _depth = layer.Depth;
+            if (_images[index] is Texture2D image)
+            {
+                c.DrawTextureRect(image, OnScreen(layer.Area), false);
+            }
+            if (_lit[index] == null)
+            {
+                return;
+            }
+            float scale = ImageScale;
+            foreach (var pane in _panes)
+            {
+                if (pane.Layer == index)
+                {
+                    DrawPane(c, pane, scale);
+                }
+            }
+            if (name != "factory")
+            {
+                return;
+            }
+            if (_letters.Count == 0 && _sign != null)
+            {
+                Light(c, _sign, 1f - _sign.Dark);
+            }
+            foreach (var letter in _letters)
+            {
+                Light(c, letter, 1f - letter.Dark);
+            }
+        }
+
+        /// <summary>Ein Fenster in seinem jetzigen Zustand: an, aus, flackernd oder mit einem Schatten, der vorbeigeht.</summary>
+        private void DrawPane(CanvasItem c, Pane pane, float scale)
+        {
+            float dark = pane.Dark;
+            if (pane.Flickers && pane.On && Mathf.Sin(_time * 0.9f) > 0.2f && _rng.NextDouble() < 0.4)
+            {
+                dark = Rand(0.4f, 0.95f);
+            }
+            var area = OnScreen(pane.Area.Grow(1f));
+            if (pane.Layer >= 0)
+            {
+                // Mit Ebenen liegt das Fenster dunkel im Bild und wird aus der Leuchtebene eingeschaltet.
+                Light(c, pane, 1f - dark);
+            }
+            else
+            {
+                Cover(c, pane, area, dark);
+            }
+            float passing = (_time - pane.PasserFrom) / pane.PasserSeconds;
+            if (pane.On && passing is >= 0f and < 1f)
+            {
+                // Breite Fenster: Der Schatten wandert quer durch. Schmale: Das ganze Fenster wird kurz dunkler.
+                float band = area.Size.X > 12f * scale ? 0.45f : 1f;
+                float x = area.Position.X + area.Size.X * (1f - band) * passing;
+                c.DrawRect(new Rect2(x, area.Position.Y + area.Size.Y * 0.25f, area.Size.X * band, area.Size.Y * 0.75f),
+                    new Color(DarkGlass, PasserShade * Mathf.Sin(passing * Mathf.Pi)));
+            }
+        }
+
+        /// <summary>Zeichnet den Ausschnitt eines Fensters oder Buchstabens aus der Leuchtebene über seine Ebene.</summary>
+        private void Light(CanvasItem c, Pane pane, float level)
+        {
+            if (level <= 0.01f || pane.Layer < 0 || _lit[pane.Layer] is not Texture2D lit)
+            {
+                return;
+            }
+            var layer = _at.Layers[pane.Layer].Area;
+            // Die Leuchtebene ist wie ihre Ebene zugeschnitten: Der Ausschnitt zählt ab deren Ecke, in deren Auflösung.
+            var factor = lit.GetSize() / layer.Size;
+            var source = new Rect2((pane.Area.Position - layer.Position) * factor, pane.Area.Size * factor);
+            c.DrawTextureRectRegion(lit, OnScreen(pane.Area), source, new Color(1f, 1f, 1f, level));
         }
 
         private void Cover(CanvasItem c, Pane pane, Rect2 area, float dark)
@@ -810,8 +971,9 @@ namespace Messingstadt
                 return;
             }
             float scale = ImageScale, strong = Strong;
+            _depth = Depth("factory", 0.5f);
             // Der Vorplatz des Werks liegt im Schein der hohen Fenster. Davor zeichnet sich der Zug ab.
-            var gate = OnScreen(_at.Gate);
+            var gate = OnScreen(_at.Gate - new Vector2(0f, 0.6f * _at.GateScale));
             Disc(c, gate + new Vector2(0f, 26f * scale), new Vector2(330f, 70f) * scale, new Color(ForecourtColor, ForecourtAlpha * strong));
             Disc(c, gate + new Vector2(0f, 150f * scale), new Vector2(240f, 170f) * scale, new Color(ForecourtColor, ForecourtAlpha * 0.5f * strong));
             // Ofenschein am Tor und auf dem Pflaster davor.
@@ -826,22 +988,24 @@ namespace Messingstadt
                 Disc(c, pane.GetCenter() + new Vector2(0f, 190f * scale), new Vector2(WeldHalo * 1.3f, WeldHalo * 0.7f) * scale, new Color(WeldColor, 0.16f * _weld * strong));
                 c.DrawRect(new Rect2(pane.Position.X, pane.End.Y + 100f * scale, pane.Size.X, pane.Size.Y * 1.1f), new Color(WeldColor, 0.2f * _weld * strong));
             }
+            _depth = Depth("front", 0.5f);
             for (int i = 0; i < _at.Lamps.Count; i++)
             {
-                var (head, foot, mirror) = _at.Lamps[i];
-                float z = DepthOf(foot.Y);
+                var (head, meter) = _at.Lamps[i];
+                Vector2 foot = _at.LampFoot(i), mirror = _at.LampMirror(i);
                 // Die pendelnde Laterne nimmt ihren Lichtkreis mit.
                 float swing = i == _at.SwingingLamp ? Mathf.Sin(_time * SwingPerSecond) * (0.5f + 0.5f * _gust) : 0f;
                 float level = i == _at.SwingingLamp ? _lamp : 0.94f + 0.06f * Mathf.Sin(_time * 2.1f + i);
-                var pool = OnScreen(foot + new Vector2(swing * SwingPixels * 6f, 4f));
-                float width = PoolWidth / z * scale;
-                Disc(c, pool, new Vector2(width, width * 0.24f), new Color(LampColor, PoolAlpha * level * strong));
-                Disc(c, OnScreen(head + new Vector2(swing * SwingPixels, 0f)), new Vector2(60f, 60f) / z * 2.4f * scale, new Color(LampColor, 0.2f * level * strong));
+                float width = PoolMeters * meter * scale;
+                Disc(c, OnScreen(foot + new Vector2(swing * SwingPixels * 6f, 4f)), new Vector2(width, width * 0.24f), new Color(LampColor, PoolAlpha * level * strong));
+                float halo = HaloMeters * meter * scale;
+                Disc(c, OnScreen(head + new Vector2(swing * SwingPixels, 0f)), new Vector2(halo, halo), new Color(LampColor, 0.2f * level * strong));
                 // Träge Spiegelung: Der Lichtstreifen im Pflaster schwillt langsam an und ab und wandert kaum merklich.
                 float swell = 0.5f + 0.5f * Mathf.Sin(_time * (0.35f + 0.07f * i) + i * 1.9f);
                 Disc(c, OnScreen(mirror + new Vector2(2.5f * Mathf.Sin(_time * 0.5f + i) + swing * SwingPixels * 3f, 0f)),
                     new Vector2(9f, (mirror.Y - foot.Y) * 0.45f) * scale, new Color(LampColor, GlintAlpha * (0.4f + swell) * level * strong));
             }
+            _depth = Depth("factory", 0.5f);
             if (!float.IsNaN(_tramX))
             {
                 // Das Wagenlicht wandert über Pflaster und Fassaden.
@@ -873,12 +1037,13 @@ namespace Messingstadt
                 return;
             }
             float scale = ImageScale, strong = Strong;
+            _depth = Depth("factory", 0.5f);
             for (int i = 0; i < FogBanks; i++)
             {
                 // Dunstbänke treiben in Straßenhöhe langsam nach rechts, nur rechts vom Menü.
                 float travel = (_fog[i] + _time * FogDrift * (1f + 2f * _gust) / 1300f * (0.7f + 0.15f * i)) % 1f;
                 var half = new Vector2(310f + 45f * i, 60f + 13f * i) * scale;
-                var at = OnScreen(_at.QuietUntil + travel * (_at.Size.X - _at.QuietUntil + 300f), 610f + 34f * i);
+                var at = OnScreen(_at.QuietUntil + travel * (_at.Size.X - _at.QuietUntil + 300f), _at.Gate.Y - 58f + 34f * i);
                 Disc(c, at, half, new Color(FogColor, FogAlpha * Mathf.Sin(travel * Mathf.Pi) * strong));
             }
             foreach (var p in _puffs)
@@ -889,35 +1054,32 @@ namespace Messingstadt
                 var color = new Color(p.Color.R + _flash * 0.3f, p.Color.G + _flash * 0.32f, p.Color.B + _flash * 0.4f, p.Color.A * strong * Mathf.Min(1f, f * 5f) * (1f - f));
                 Disc(c, OnScreen(p.Pos), new Vector2(radius, radius), color);
             }
+            _depth = Depth("street", 0.5f);
             DrawWater(c, scale);
-            bool tramDrawn = float.IsNaN(_tramX);
-            float tramZ = DepthOf(_at.TramGround);
-            bool guardDrawn = false;
+            // Die Bahn fährt vor dem Werk und hinter den Häuserzeilen: Mit Ebenen verdecken die Häuser sie von selbst.
+            _depth = Depth("factory", 0.5f) * 0.5f + Depth("street", 0.5f) * 0.5f;
+            DrawTram(c, scale);
+            DrawGuard(c, scale);
+            if (_at.Layered)
+            {
+                PaintLayer(c, "left");
+                PaintLayer(c, "right");
+            }
+            float far = Depth("factory", 0.5f), near = Depth("front", 0.5f);
             foreach (var w in _workers)
             {
-                if (!guardDrawn && w.Z < _at.GateZ - 0.5f)
-                {
-                    DrawGuard(c, scale);
-                    guardDrawn = true;
-                }
-                if (!tramDrawn && w.Z < tramZ)
-                {
-                    DrawTram(c, scale);
-                    tramDrawn = true;
-                }
+                // Der Zug kommt von vorn und geht in die Tiefe: Seine Ebene wandert mit.
+                _depth = Mathf.Lerp(near, far, Progress(w));
                 DrawWorker(c, w, scale);
             }
             c.DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
-            if (!guardDrawn)
-            {
-                DrawGuard(c, scale);
-            }
-            if (!tramDrawn)
-            {
-                DrawTram(c, scale);
-            }
+            _depth = near;
             DrawCat(c, scale);
             DrawLeaflet(c, scale);
+            if (_at.Layered)
+            {
+                PaintLayer(c, "front");
+            }
         }
 
         private void DrawWater(CanvasItem c, float scale)
@@ -948,25 +1110,27 @@ namespace Messingstadt
         /// </summary>
         private void DrawWorker(CanvasItem c, Worker w, float scale)
         {
-            var foot = OnScreen(Ground(w.Z, LaneOf(w)));
-            float height = _at.FigureHeight / w.Z * w.Tall * scale;
-            var color = Shadow.Lerp(FarShadow, Mathf.Clamp((w.Z - 1f) / 5f, 0f, 1f));
-            float alpha = Mathf.Clamp((_at.GateZ - w.Z) / GateFadeZ, 0f, 1f);
-            float step = w.Z * StepsPerZ + w.Phase;
-            if (w.Z > SimpleFromZ)
+            var (at, meter) = Stand(w);
+            var foot = OnScreen(at);
+            float tall = PersonPixels(w, meter), height = tall * scale;
+            float progress = Progress(w);
+            var color = Shadow.Lerp(FarShadow, progress);
+            float alpha = Mathf.Clamp((1f - progress) / GateFade, 0f, 1f);
+            float step = w.Meters * StepsPerMeter + w.Phase;
+            if (tall < SimpleBelowPixels)
             {
                 // Weit hinten ist die Gestalt nur noch ein paar Bildpunkte hoch: Der Umriss genügt.
                 c.DrawSetTransform(foot, 0f, new Vector2(height, height));
                 DrawOutline(c, step, new Color(color, alpha));
                 return;
             }
-            if (w.Z < MirrorUntilZ)
+            if (tall > MirrorAbovePixels)
             {
                 c.DrawSetTransform(foot, 0f, new Vector2(height, -height * MirrorSquash));
                 DrawOutline(c, step, new Color(color, alpha * MirrorAlpha));
             }
-            // Der Saum liegt auf der Seite zum Werk hin, also zur Straßenmitte.
-            float side = foot.X > OnScreen(_at.Vanish).X ? -1f : 1f;
+            // Der Saum liegt auf der Seite zum Tor hin.
+            float side = at.X > _at.Gate.X ? -1f : 1f;
             c.DrawSetTransform(foot + new Vector2(side * RimShift * height, -RimShift * 0.6f * height), 0f, new Vector2(height, height));
             DrawOutline(c, step, new Color(Rim, alpha * 0.55f));
             c.DrawSetTransform(foot, 0f, new Vector2(height, height));
@@ -1055,22 +1219,22 @@ namespace Messingstadt
                 return;
             }
             c.DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
-            float top = _at.TramGround - _at.TramHeight;
+            float top = _at.TramGround - _at.TramHeight, unit = _at.TramHeight / 64f;
             Clipped(c, new Rect2(_tramX, top, _at.TramLength, _at.TramHeight), TramBody);
-            Clipped(c, new Rect2(_tramX + 8f, top - 5f, _at.TramLength - 16f, 6f), TramBody);
+            Clipped(c, new Rect2(_tramX + 8f * unit, top - 5f * unit, _at.TramLength - 16f * unit, 6f * unit), TramBody);
             float light = 0.85f + 0.15f * Mathf.Sin(_time * 23f) * Mathf.Sin(_time * 7f);
-            for (float x = 10f; x < _at.TramLength - 22f; x += 24f)
+            for (float x = 10f * unit; x < _at.TramLength - 22f * unit; x += 24f * unit)
             {
-                Clipped(c, new Rect2(_tramX + x, top + 12f, 17f, 22f), new Color(TramLight, 0.82f * light));
+                Clipped(c, new Rect2(_tramX + x, top + 12f * unit, 17f * unit, 22f * unit), new Color(TramLight, 0.82f * light));
             }
-            // Stirnlampe in Fahrtrichtung und die Liniennummer als heller Fleck.
-            float front = _tramWay > 0 ? _tramX + _at.TramLength - 5f : _tramX + 1f;
-            Clipped(c, new Rect2(front, top + 40f, 4f, 5f), new Color(1f, 0.95f, 0.85f));
+            // Stirnlampe in Fahrtrichtung.
+            float front = _tramWay > 0 ? _tramX + _at.TramLength - 5f * unit : _tramX + unit;
+            Clipped(c, new Rect2(front, top + 40f * unit, 4f * unit, 5f * unit), new Color(1f, 0.95f, 0.85f));
             // Stromabnehmer bis zum Fahrdraht.
             float pole = _tramX + _at.TramLength * 0.5f;
             if (pole > _at.TramFrom && pole < _at.TramTo)
             {
-                Vector2 foot = OnScreen(pole, top - 5f), tip = OnScreen(pole - _tramWay * 14f, top - 30f);
+                Vector2 foot = OnScreen(pole, top - 5f * unit), tip = OnScreen(pole - _tramWay * 14f * unit, top - 30f * unit);
                 c.DrawLine(foot, tip, TramBody, 1.5f);
             }
         }
@@ -1095,9 +1259,9 @@ namespace Messingstadt
             // Hinüber, kurz stehen, zurück.
             float across = t < 0.42f ? t / 0.42f : t < 0.58f ? 1f : 1f - (t - 0.58f) / 0.42f;
             bool walking = t is < 0.42f or > 0.58f;
-            float z = _at.GateZ - 0.7f;
-            var foot = OnScreen(Ground(z, Mathf.Lerp(1050f, -700f, across)));
-            float height = _at.FigureHeight / z * 1.08f * scale;
+            var (spot, meter) = Path(_at.Walk.Count - 1.25f);
+            var foot = OnScreen(new Vector2(_at.Gate.X + Mathf.Lerp(4.5f, -3f, across) * meter, spot.Y));
+            float height = TitleLayout.PersonMeters * 1.08f * meter * scale;
             float way = t < 0.5f ? -1f : 1f;
             var color = new Color(Shadow, Mathf.Sin(Mathf.Clamp(t * 12f, 0f, 1f) * Mathf.Pi / 2f) * Mathf.Clamp((1f - t) * 12f, 0f, 1f));
             c.DrawSetTransform(foot, 0f, new Vector2(height, height));
@@ -1122,8 +1286,9 @@ namespace Messingstadt
             {
                 return;
             }
-            var at = OnScreen(Mathf.Lerp(_at.Size.X + 40f, 1480f, t), 842f - 26f * t);
-            float size = 30f * scale, leap = Mathf.Abs(Mathf.Sin(t * 26f));
+            var (spot, meter) = Path(1.4f);
+            var at = OnScreen(Mathf.Lerp(_at.Size.X + 40f, spot.X - 1.5f * meter, t), spot.Y - 0.2f * meter * t);
+            float size = 0.3f * meter * scale, leap = Mathf.Abs(Mathf.Sin(t * 26f));
             var color = new Color(Shadow, Mathf.Clamp((1f - t) * 5f, 0f, 1f));
             c.DrawSetTransform(at - new Vector2(0f, leap * 5f * scale), 0f, new Vector2(size, size));
             c.DrawRect(new Rect2(-0.5f, -0.42f, 1f, 0.3f), color);
@@ -1179,6 +1344,7 @@ namespace Messingstadt
                 if (Scene)
                 {
                     // Die Straße selbst: rechts vom Menü hell, zum Menü hin läuft das Licht aus.
+                    _depth = 0.5f;
                     var quiet = OnScreen(_at.QuietUntil, 0f);
                     c.DrawRect(new Rect2(quiet.X, 0f, Size.X - quiet.X, Size.Y), new Color(FlashColor, StreetFlashAlpha * _flash * strong));
                     Disc(c, new Vector2(quiet.X, Size.Y * 0.6f), new Vector2(Size.X * 0.22f, Size.Y * 0.7f), new Color(FlashColor, StreetFlashAlpha * 0.6f * _flash * strong));
@@ -1188,13 +1354,15 @@ namespace Messingstadt
             {
                 return;
             }
-            float pole = _tramX + _at.TramLength * 0.5f - _tramWay * 14f;
+            float unit = _at.TramHeight / 64f;
+            float pole = _tramX + _at.TramLength * 0.5f - _tramWay * 14f * unit;
             if (pole <= _at.TramFrom || pole >= _at.TramTo)
             {
                 return;
             }
-            float scale = ImageScale;
-            var tip = OnScreen(pole, _at.TramGround - _at.TramHeight - 30f);
+            float scale = ImageScale * unit;
+            _depth = Depth("factory", 0.5f) * 0.5f + Depth("street", 0.5f) * 0.5f;
+            var tip = OnScreen(pole, _at.TramGround - _at.TramHeight - 30f * unit);
             Disc(c, tip, new Vector2(26f, 26f) * scale * _spark, new Color(SparkColor, 0.9f * _spark));
             for (int i = 0; i < 7; i++)
             {
