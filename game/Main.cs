@@ -656,6 +656,8 @@ void fragment() {
             ["armory"] = _armory.State,
             ["citymap"] = _cityMap.State,
             ["mapsource"] = _cityMap.MapSource,
+            ["mapopen"] = _cityMap.Selectable,
+            ["sounds"] = _sound.PlayCount.ToString(),
             ["state"] = World.State.ToString(),
             ["item"] = World.ItemTaken.ToString(),
             ["fields"] = _paper.FieldTexts,

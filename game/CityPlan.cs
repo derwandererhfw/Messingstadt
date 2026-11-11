@@ -147,6 +147,7 @@ namespace Messingstadt
         private Button _go = null!, _back = null!;
         private int _selected;
         private bool _fromResult;
+        private bool _opening;
 
         /// <summary>Für den Prüflauf: gewähltes Viertel und wem jedes gehört.</summary>
         public string State => !Visible || _districts.Count == 0 ? ""
@@ -154,6 +155,9 @@ namespace Messingstadt
 
         /// <summary>Für den Prüflauf: ein Punkt im Viertel mit dieser Nummer, in Bildpunkten der Oberfläche.</summary>
         public Vector2 PointOf(int number) => _plan.PointOf(number - 1);
+
+        /// <summary>Für den Prüflauf: welche Viertel sich nehmen lassen.</summary>
+        public string Selectable => string.Join(" ", _districts.Where(d => d.Selectable).Select(d => d.Id));
 
         /// <summary>Für den Prüflauf: woher die Karte kommt.</summary>
         public string MapSource => _plan.FromFiles ? "dateien" : "platzhalter";
@@ -243,7 +247,9 @@ namespace Messingstadt
             }
             // Vorgewählt ist das Viertel der Kampagne, sonst das erste.
             string chosen = Game.Plan.SelectedId;
+            _opening = true;
             Select(Math.Max(0, _districts.FindIndex(d => d.Id == chosen)), true);
+            _opening = false;
         }
 
         private void BuildList()
@@ -311,6 +317,11 @@ namespace Messingstadt
             {
                 return;
             }
+            // Der Klang gehört zur Wahl des Spielers, nicht zum Öffnen des Plans.
+            if (index != _selected && !_opening)
+            {
+                Game.Sound.PlayEverywhere("map_select", -12f);
+            }
             _selected = index;
             var d = _districts[index];
             _name.Text = d.Name;
@@ -340,7 +351,7 @@ namespace Messingstadt
             {
                 return;
             }
-            Game.Sound.PlayEverywhere("menu_select", -14f);
+            Game.Sound.PlayEverywhere("map_accept", -10f);
             Close();
             Game.CityMapChosen();
         }
@@ -586,7 +597,13 @@ void fragment() {
                     }
                     if (_wipe[i] >= 0f)
                     {
+                        bool before = _wipe[i] < WipeSeconds;
                         _wipe[i] += (float)delta;
+                        if (before && _wipe[i] >= WipeSeconds)
+                        {
+                            // Der Stempel setzt auf.
+                            Screen.Game.Sound.PlayEverywhere("stamp", -6f);
+                        }
                     }
                     bool ours = _districts[i].Ours;
                     float wipe = !ours ? 0f : _wipe[i] < 0f ? 1f : Mathf.Clamp(_wipe[i] / WipeSeconds, 0f, 1f);

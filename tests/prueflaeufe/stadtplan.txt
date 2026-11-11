@@ -9,14 +9,20 @@ expect citymap viertel_1: brandt brandt brandt brandt brandt
 expect focus 1  Kesselviertel
 seetext Holen: Das Kontobuch
 seetext Belohnung: 300 bis 600, je leiser, desto mehr
-# Pfeiltasten wandern durch die Viertel. Ein gesperrtes zeigt, warum, und lässt sich nicht nehmen
+# Pfeiltasten wandern durch die Viertel, jede Wahl klingt. Ein gesperrtes zeigt, warum, und lässt sich nicht nehmen
+remember sounds
 key Down
+changed sounds
 expect citymap viertel_2: brandt brandt brandt brandt brandt
 expect focus 2  Nordwall   gesperrt
+expect mapopen viertel_1
 seetext Kein Weg hinein. Erst das Kesselviertel halten.
+# Der Versuch, ein gesperrtes Viertel zu nehmen, bleibt stumm
+remember sounds
 key Enter
 expect citymap viertel_2: brandt brandt brandt brandt brandt
 clickany Einsatz annehmen
+same sounds
 expect citymap viertel_2: brandt brandt brandt brandt brandt
 expect armory
 # Die Leertaste löst hier nichts aus, Esc öffnet ohne Bericht die Pausenmappe
@@ -60,6 +66,22 @@ wait 5
 expect citymap viertel_1: hammer brandt brandt brandt brandt
 expect focus 1  Kesselviertel   Hammer hält
 seetext Hammer hält. Bis neue Aufträge kommen, lässt sich dieser Einsatz noch einmal spielen.
+# Der Nordwall ist jetzt offen: wählbar, mit Auftrag, und er lässt sich annehmen
+expect mapopen viertel_1 viertel_2
+key Down
+expect citymap viertel_2: hammer brandt brandt brandt brandt
+expect focus 2  Nordwall
+seetext Befreien: Die Wachstube
+remember sounds
+click Einsatz annehmen
+changed sounds
+expect citymap
+expect armory Greta:None:
+# Zurück auf den Plan: Der Nordwall bleibt gewählt. Dann wieder das Kesselviertel
+key Escape
+expect citymap viertel_2: hammer brandt brandt brandt brandt
+key Up
+expect citymap viertel_1: hammer brandt brandt brandt brandt
 # Mit Bericht führt Esc dorthin zurück
 key Escape
 expect citymap
