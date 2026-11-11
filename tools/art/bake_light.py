@@ -186,13 +186,13 @@ def encode(light):
 
 
 def main():
-    """Ohne Argumente das Kesselviertel. Mit --map=<id> --nr=<nr> eine weitere Karte aus game/assets/<id>/."""
+    """Ohne Argumente das Kesselviertel. Mit --map=<id> --nr=<nr> eine weitere Karte aus game/assets/maps/<id>/."""
     global ASSETS, OUT, WORK, RULES_WINDOWS
     args = dict(a[2:].split("=", 1) for a in sys.argv[1:] if a.startswith("--") and "=" in a)
     light_file = ROOT / "data" / "light_01.json"
     albedo_file = Path(__file__).with_name("rules_albedo.json")
     if "map" in args:
-        ASSETS = ROOT / "game" / "assets" / args["map"]
+        ASSETS = ROOT / "game" / "assets" / "maps" / args["map"]
         OUT = ASSETS / "light"
         WORK = ROOT / "work" / f"light_{args['map']}"
         light_file = ROOT / "data" / f"light_{args['nr']}.json"

@@ -18,7 +18,7 @@ FIGURE = 40
 def main():
     nr = sys.argv[1] if len(sys.argv) > 1 else "02"
     scene = json.loads((ROOT / "data" / f"scene_{nr}.json").read_text(encoding="utf-8"))
-    assets = ROOT / "game" / "assets" / scene["id"]
+    assets = ROOT / "game" / "assets" / "maps" / scene["id"]
     manifest = json.loads((assets / "manifest.json").read_text(encoding="utf-8"))
     solids = json.loads((ROOT / "data" / f"map_{nr}.json").read_text(encoding="utf-8"))["solids"]
     w, h = scene["width"], scene["height"]

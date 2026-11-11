@@ -296,12 +296,6 @@ def nordwall_building(b, s, things):
                 dr.fine_line((u, 16, u + 22, 16), fill=g.C["iron"])
                 dr.fine_line((u, h - 6, u + 22, h - 6), fill=g.C["iron"])
         roof = roof_flat(2)
-        hidden = [door for door in b.get("doors", ()) if door["side"] == "west"]
-        if hidden:
-            # Die Pforte liegt auf der abgewandten Seite. Zu sehen ist nur ihr Sturz aus Granit über der Mauerkrone.
-            at = b["y0"] + hidden[0]["at"]
-            plain = roof
-            roof = lambda x0, y0, x1, y1, hh: plain(x0, y0, x1, y1, hh) + [R.block(x0, at - 0.42, x0 + 0.3, at + 0.42, hh, hh + 9, mat_walk, "lintel")]  # noqa: E731
     else:  # Mietshaus der Beamten und alles Unbekannte: Klinker mit Granitbändern, schlicht
         left, d = office_front(wl, h, lit, floors=2, door_at=wl // 2)
         g.door(d, wl // 2 - 8, h - 1, 16, 30, "wood", True)
@@ -313,6 +307,31 @@ def nordwall_building(b, s, things):
         items = [g.chimney(0.72, 0.66, 14, False)]
     g.building(b["x0"], b["y0"], w, depth, h, left, right, s, things, items, roof=roof)
     things[-1].opaque = b.get("opaque", True)
+
+
+def sheet_gate(gate, s, things):
+    """Tor aus genietetem Eisenblech in einer Mauerlücke: ein dünnes Blatt, niedriger als die Mauer, blickdicht.
+
+    Es sperrt kein Feld, das tut die Tür der Mission. Das Blatt steht leicht hinter der Mauerflucht, so liest man die Lücke.
+    """
+    h, depth = gate["height"], gate["y1"] - gate["y0"]
+    wr = int(depth * HW)
+    left, _ = g.wall(4, h, ("iron",))
+    right, d = g.wall(wr, h, ("iron",))
+    d.rectangle((0, 0, wr - 1, h - 1), fill=g.C["iron"])
+    d.rectangle((0, 0, wr - 1, 1), fill=g.C["steel"])
+    d.rectangle((0, h - 3, wr - 1, h - 1), fill=g.C["black"])
+    for u in (0, wr // 2, wr - 1):  # Rahmen und Stoß der beiden Bleche
+        d.fine_line((u, 0, u, h), fill=g.C["black"])
+    for v in (6, h - 8):  # Bänder mit Nietköpfen
+        d.rectangle((1, v, wr - 2, v + 1), fill=g.C["grey_d"])
+        for u in range(3, wr - 2, 4):
+            d.fine_line((u, v, u, v), fill=g.C["steel"])
+    d.rectangle((wr // 2 + 2, h // 2 - 1, wr // 2 + 4, h // 2 + 2), fill=g.C["black"])  # Schlosskasten
+    d.shade((0, 2, wr, 4), 0.7)
+    g.building(gate["x0"] + 0.36, gate["y0"], 0.12, depth, h, left, right, s, things)
+    things[-1].solid = False
+    things[-1].kind = "gate"
 
 
 def prison_van(d, x, base):
@@ -444,6 +463,8 @@ def build(scene, theme):
     things, glows = [], []
     for b in scene["buildings"] + scene["walls"]:
         nordwall_building(b, s, things)
+    for gate in scene.get("gates", ()):
+        sheet_gate(gate, s, things)
     for lamp in scene["lamps"]:
         if lamp.get("kind") == "wandlampe":
             wall_lamp(lamp["x"], lamp["y"], 30 if lamp["group"] == "wachstube" else 44, s, things)
@@ -530,16 +551,15 @@ def main():
         s.img.save(preview)
         print("Vorschau:", preview)
         return
-    # Der Lader sucht die Stadt eines Einsatzes in game/assets/<scene>/. Was dort fehlt, nähme er aus dem Kesselviertel:
-    # Deshalb entsteht der Ordner jedes Mal vollständig neu.
-    assets = ROOT / "game" / "assets" / scene["id"]
+    # Das Kesselviertel liegt direkt in game/assets, jede weitere Karte in game/assets/maps/<id>/. Was dort fehlt, nimmt der
+    # Lader aus dem Kesselviertel: Deshalb entsteht der Ordner jedes Mal vollständig neu.
+    assets = ROOT / "game" / "assets" / "maps" / scene["id"]
     if assets.exists():
         shutil.rmtree(assets)
     solids = export(scene, theme, s, things, assets)
-    # Die Regelkarte schreibt allein das Werkzeug der Level-Sitzung. Hier wird sie nur gelesen und mit den Bildern verglichen.
+    # Die Regelkarte schreibt allein das Werkzeug der Level-Sitzung, hier ohne sein vorläufiges Licht. Danach wird verglichen.
     map_file = ROOT / "data" / f"map_{nr}.json"
-    if not map_file.exists():
-        subprocess.run([sys.executable, str(ROOT / "tools" / "level" / "scene_to_map.py"), nr], check=True)
+    subprocess.run([sys.executable, str(ROOT / "tools" / "level" / "scene_to_map.py"), nr, "--no-light"], check=True, stdout=subprocess.DEVNULL)
     print("Regelkarte passt zu den Bildern" if same_solids(solids, map_file) else "Regelkarte bitte prüfen")
     print(f"{len(things)} Objekte nach {assets}")
     if "--no-bake" not in sys.argv:

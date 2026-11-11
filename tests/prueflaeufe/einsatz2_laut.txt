@@ -1,0 +1,29 @@
+# Einsatz 2 laut, mit echten Wachen: Der Trupp kämpft mit Maschinenpistolen, bis keine Wache mehr steht, öffnet dann Hoftor und Zellen und fährt ab.
+# Aufruf mit --menu --script-writes --mission=mission_02 in einem eigenen APPDATA-Ordner, in dem einsatz2_laut_akte.json als Godot/app_userdata/Messingstadt/kampagne.json liegt.
+# Jeder trägt Maschinenpistole, Dietrich und Verband. Der Ausgang hängt vom Gefecht ab: Fällt der ganze Trupp, meldet der Lauf das als Fehler.
+wait 20
+click Spiel laden
+key Enter
+wait 30
+expect mission mission_02
+expect hud True
+expect guards 10
+key Space
+fight
+print
+expect rating Loud
+# Der Schließer steht noch im verschlossenen Hof. Erst das Hoftor, dann er
+key Space
+rclickdoor Hoftor
+waitcontains doors Hoftor
+fight
+expect guards 0
+rclickdoor Zelle 1
+waitcontains prisoners Anton Weiß:folgt
+key Space
+rclickdoor Zelle 2
+waitcontains prisoners Paul Roth:folgt
+key Space
+clickfield 1 18
+waitfor state Won
+print

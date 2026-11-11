@@ -66,7 +66,7 @@ def main():
         for y in range(int(s["y0"]), math.ceil(s["y1"])):
             for x in range(int(s["x0"]), math.ceil(s["x1"])):
                 blocked[y][x] = True
-    tall = [(b["x0"], b["y0"], b["x1"], b["y1"], b["height"]) for b in scene["buildings"] + scene["walls"]]
+    tall = [(b["x0"], b["y0"], b["x1"], b["y1"], b["height"]) for b in scene["buildings"] + scene["walls"] + scene.get("gates", [])]
 
     def hidden(x, y):
         """0 sichtbar, 1 nur die Füße verdeckt, 2 auch der Kopf einer Figur."""

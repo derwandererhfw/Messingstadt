@@ -13,7 +13,7 @@ namespace Messingstadt
     /// expect Größe Wert, remember Größe, same Größe, changed Größe, waitfor Größe Wert, attack, bribe, close,
     /// pointat Name dx dy (Maus über das Feld neben einem Agenten, ohne Klick), hurt Name Punkte,
     /// clickfield x y und rclickunit Name und rclickdoor Name (echte Klicks an der Stelle im Bild), calm (alle Wachen sind gekauft),
-    /// waitcontains Größe Text.
+    /// waitcontains Größe Text, fight (der Trupp greift an, bis keine Wache mehr steht und keine Verstärkung mehr kommt).
     /// Am Ende steht die Zahl der Fehler.
     /// </summary>
     public partial class TestScript : Node
@@ -30,6 +30,8 @@ namespace Messingstadt
         private string _waitName = "", _waitValue = "";
         private int _waitLeft;
         private bool _waitPart;
+        private bool _fighting;
+        private int _fightLeft;
 
         public Main Game = null!;
         public string FilePath = "";
@@ -49,6 +51,37 @@ namespace Messingstadt
         {
             if (_wait-- > 0)
             {
+                return;
+            }
+            if (_fighting)
+            {
+                // Wie ein Spieler, der immer wieder die nächste Wache anklickt. Die Wachen sind dabei echt und schießen zurück.
+                var world = Game.World;
+                var squad = world.Units.Where(u => u.Faction == Faction.Agent && u.Alive).ToList();
+                // Nur Wachen, zu denen ein Weg führt: Wer hinter einer verschlossenen Tür steht, bleibt für später.
+                var guards = world.Units.Where(u => u.Faction == Faction.Guard && u.Alive && !u.Bribed
+                    && squad.Exists(a => world.Map.FindPath(a.TileX, a.TileY, u.TileX, u.TileY) != null)).ToList();
+                bool over = world.State != MissionState.Running || squad.Count == 0 || (guards.Count == 0 && world.TicksUntilReinforcement < 0);
+                if (over || --_fightLeft <= 0)
+                {
+                    _fighting = false;
+                    Check("fight", world.State == MissionState.Running && guards.Count == 0, $"Wachen {guards.Count}, Agenten {squad.Count}, {world.State}");
+                }
+                else if (_fightLeft % 20 == 0)
+                {
+                    if (_fightLeft % 600 == 0)
+                    {
+                        GD.Print($"       Gefecht: {string.Join(", ", guards.Select(g => $"{g.Name} {g.Hp} bei {g.TileX},{g.TileY}"))} | Agenten {string.Join(", ", squad.Select(a => $"{a.Name} {a.Hp} bei {a.TileX},{a.TileY}"))} | Verstärkung in {world.TicksUntilReinforcement}");
+                    }
+                    foreach (var a in squad.Where(a => a.TargetId < 0 || !guards.Contains(world.Units[a.TargetId])))
+                    {
+                        var target = guards.OrderBy(g => World.Distance(a, g)).FirstOrDefault();
+                        if (target != null)
+                        {
+                            world.OrderAttack(a.Id, target.Id);
+                        }
+                    }
+                }
                 return;
             }
             if (_waitLeft > 0)
@@ -196,6 +229,9 @@ namespace Messingstadt
                     {
                         MouseAt(Game.DoorMark(doorHit), MouseButton.Right);
                     }
+                    break;
+                case "fight":
+                    (_fighting, _fightLeft) = (true, 2 * MaxWaitFrames);
                     break;
                 case "calm":
                     // Alle Wachen sind gekauft und beachten den Trupp nicht: So lässt sich ein Ablauf prüfen, ohne ihn zu erschleichen.

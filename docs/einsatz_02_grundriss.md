@@ -33,17 +33,21 @@ Regel für alle Karten, Entscheidung der Leitung: Zielorte, Türen mit Spielbede
 | Wachhabender | (12,5, 9,5), Blick Süd | (14,5, 9,5), Blick Süd, an der Ecke neben der Schreibstube | Ebenso. Er sieht die Straße und den Gang zum Hoftor |
 | Schließer | Rundgang (8, 3) – (12, 3) | Rundgang (8, 7) – (12, 7) | Folgt dem Hof |
 | Mann vom Werk | (14,5, 3,5), Blick Ost | (14,5, 7,5), Blick Süd | Folgt dem Hoftor. Nach Osten sähe er nur die Kasernenwand |
-| Wallstreife 1 | Rundgang (3, 10) – (17, 10) | Rundgang (3, 11) – (17, 11) | Auf Reihe 10 stehen jetzt Türposten und Laternen |
+| Wallstreife 1 | Rundgang (3, 10) – (17, 10) | Rundgang (0, 11) – (13, 11) | Auf Reihe 10 stehen jetzt Türposten und Laternen. Die Strecke liegt so, dass die Querung bei x 6 bis 7 in ihrer Mitte ist, sonst blieb dort kein Fenster von einer Sekunde |
+| Wallstreife 2 | Rundgang (17, 12) – (3, 12) | Rundgang (13, 12) – (0, 12) | Ebenso, weiter gegenläufig |
+| Westliche Laterne der Wallstraße | (4,5, 10,5) | (2,5, 10,5) | Die Querung liegt jetzt im Halbdunkel. Mit der Laterne daneben fiel der leise Weg schon bei 0,25 s Verspätung auf 16 % |
+| Schlüssel zur Pforte | niemand | Der Türposten trägt ihn | Ohne Schlosser und Dietrich kam man sonst nicht in den Hof zum Schließer |
 | Laterne der Wachstube | (10,5, 9,6) | (11,5, 10,1) über der Haupttür | Folgt der Tür |
 | Lampe im Arresthof | (10,5, 4,8) | (10,5, 6,2) über den Zellentüren | Folgt den Zellen |
 | Beamtenhäuser | y 13–18, vier Geschosse (128) | y 14–18, zwei Geschosse (84), davor ein Feld Vorgarten | Sie verdeckten die Wallstraße |
+| Pforte zur Gerichtsgasse, Bild | Tür in der Westseite der Hofmauer, die die Kamera nie sieht | Lücke in der Mauer bei [7, 7] mit einem Tor aus Eisenblech, etwas niedriger als die Mauer (`gates` im Grundriss) | Der leise Weg führt hier durch, die Stelle muss lesbar sein. In der Südseite läge sie an der hellen Wallstraße. Blech statt Gitter, weil die Regeln die Sicht dort sperren |
 | Kohlenkiste | nicht vorhanden | (8,5, 8,5) im Arresthof, versperrt den Weg, nicht die Sicht | Deckung im Hof |
 
-Unverändert: Stadtwall, Amtsgericht, Gerichtsgasse, Kaserne, Remise, Wallstraße, Wallgasse, Start, Ziel, Verstärkung, die drei Laternen der Wallstraße, Hundeführer mit Hund, Wallposten, Bote, Wallstreife 2.
+Unverändert: Stadtwall, Amtsgericht, Gerichtsgasse, Kaserne, Remise, Wallstraße, Wallgasse, Start, Ziel, Verstärkung, die mittlere und die östliche Laterne der Wallstraße, Hundeführer mit Hund, Wallposten, Bote.
 
 ## Sätze mit Spielhinweis
 
-Alle acht Sätze aus der Vorlage stimmen weiter: Die Pforte liegt an der Gerichtsgasse, am Hoftor steht der Mann vom Werk, der Schütze steht im Osten am Wall, der Hund geht die Gasse ab. „Am Wall steht einer mit Gewehr“ gilt, sein Rundgang ist unverändert (14, 2) – (19, 2). Die Zeit der Wallstreifen messe ich nach dem Bau nach.
+Alle acht Sätze aus der Vorlage stimmen weiter: Die Pforte liegt an der Gerichtsgasse, am Hoftor steht der Mann vom Werk, der Schütze steht im Osten am Wall, der Hund geht die Gasse ab. „Am Wall steht einer mit Gewehr“ gilt, sein Rundgang ist unverändert (14, 2) – (19, 2). Der Satz „Auf der Wallstraße laufen wir uns alle zwei Minuten über den Weg“ fehlt in der Missionsdatei: Bei 13 Feldern Rundgang begegnen sich die Streifen überschlagen etwa alle 8 Sekunden.
 
 ## Was verdeckt bleibt
 

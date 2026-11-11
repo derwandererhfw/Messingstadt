@@ -60,6 +60,10 @@ Wer aussetzt, angeschlagen oder in der Krankenstube, steht im Aktenschrank unter
 
 Waffenwechsel, Rauchtopf und Verband prüft `waffen_wechsel.txt`, genauso aufgerufen, nur mit `tests/prueflaeufe/waffen_akte.json` als Spielstand.
 
+Einsatz 2 prüfen `einsatz2_befreien.txt` (`--fresh --mission=mission_02`: Pforte, Zellen, Folgen, Warten, Einsteigen) und `einsatz_wechsel.txt` (`--menu --fresh`: Sieg im Kesselviertel, Nordwall wählen, Stadt und Einsatz laden). `einsatz2_laut.txt` spielt den lauten Weg mit echten Wachen, sein Aufruf steht in der zweiten Zeile. `--mission=<kennung>` startet einen Einsatz direkt.
+
+Grundriss eines Einsatzes ändern: `data/scene_02.json` bearbeiten, dann `python tools/level/scene_to_map.py 02` (Regelkarte, Verdeckung) und `python tools/level/placeholder_city.py 02` (Platzhalterstadt und Licht, etwa eine Minute).
+
 Grafik neu erzeugen: `python tools/art/generate_concept.py`
 
 ## Steuerung
