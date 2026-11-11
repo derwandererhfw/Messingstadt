@@ -539,7 +539,7 @@ namespace Messingstadt
                 return;
             }
             _nextStep = _time + StepPause;
-            Game.Sound.Play("step_soft", at, StepDb, StepReach);
+            Game.PlayScenery("step_soft", at, StepDb, StepReach);
         }
 
         private void Startle(Person p, Vector2 noise)
@@ -548,7 +548,7 @@ namespace Messingstadt
             if (_time >= _nextGasp)
             {
                 _nextGasp = _time + GaspPause;
-                Game.Sound.Play("gasp", Game.ToScreen((int)(p.Tile.X * World.TileUnits), (int)(p.Tile.Y * World.TileUnits)), GaspDb, GaspReach);
+                Game.PlayScenery("gasp", Game.ToScreen((int)(p.Tile.X * World.TileUnits), (int)(p.Tile.Y * World.TileUnits)), GaspDb, GaspReach);
             }
             p.Mode = Mode.Startled;
             p.Timer = Rand(MinReactSeconds, MaxReactSeconds);

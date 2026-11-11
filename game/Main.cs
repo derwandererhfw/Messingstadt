@@ -554,8 +554,20 @@ void fragment() {
         /// <summary>Stadtplan und Waffenkammer liegen offen: Der Einsatz dahinter ruht.</summary>
         private bool Briefing => _cityMap != null && (_cityMap.Visible || _armory.Visible);
 
-        /// <summary>Ein bildfüllender Bildschirm (Startbildschirm, Menü, Stadtplan, Waffenkammer) verdeckt die Welt. Dann soll sie auch nicht zu hören sein.</summary>
-        public bool WorldCovered => Briefing || (_menus != null && _menus.IsOpen);
+        /// <summary>
+        /// Ein Bildschirm deckt die Stadt zu: Startbildschirm, Menü, Stadtplan, Waffenkammer, Ergebnis, Sequenz oder die Mappe der Pause.
+        /// Dann schweigen die Einzelklänge der Kulisse. Regen und Musik laufen weiter.
+        /// </summary>
+        public bool WorldCovered => Briefing || (_panel != null && _panel.Visible) || _sequence != null || (_menus != null && _menus.IsOpen);
+
+        /// <summary>Ein Einzelklang der Kulisse an einem Ort der Stadt: Schritte, Tauben, Ratten, Dampf. Stumm, solange die Stadt verdeckt ist.</summary>
+        public void PlayScenery(string name, Vector2 position, float volume, float reach, float pitchSpread = 0.06f)
+        {
+            if (!WorldCovered)
+            {
+                _sound.Play(name, position, volume, reach, pitchSpread);
+            }
+        }
 
         /// <summary>Woher der Stadtplan seine Viertel hat, siehe CityPlanSource.</summary>
         public CityPlanSource Plan { get; private set; } = null!;
