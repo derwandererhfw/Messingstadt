@@ -24,6 +24,7 @@ Was in der Welt von Messingstadt gilt, mit Kennzeichen und Quelle. Kennzeichen s
 | Albert Dorn | Prokurist der Kontorbank, Einsatz 4 | KANON, freigegeben 2026-11-11 | `stadtplan.md` |
 | Gustav Rademacher | Führer des Werkschutzes, Einsatz 5 | KANON, freigegeben 2026-11-11 | `stadtplan.md` |
 | Linie 7 | Straßenbahn im Kesselviertel | IM SPIEL laut Hauptsession 2026-11-11, von Story nicht nachgeprüft | `stadtplan.md` |
+| Wachstube Nord, Amtsgericht, Gerichtsgasse, Wallstraße, Wallgasse, Arresthof | Orte im Nordwall, Einsatz 2 | VORSCHLAG Story 2026-11-11 (Wachstube Nord ist KANON) | `einsatz_02_nordwall.md` |
 | Messingstädter Anzeiger | Zeitung, druckt die Sicht der Wache | KANON | `src/Messingstadt.Core/Headlines.cs` |
 | Hotel Adler | Hotel an der Querstraße | IM SPIEL | `tools/art/generate_concept.py` (Dachschild) |
 | Kurt | Laufbursche der Wache, in einem Arbeiter-Satz | IM SPIEL | `game/Chatter.cs` |

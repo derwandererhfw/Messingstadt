@@ -36,12 +36,14 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 | 2026-11-11 | Stadtplan zur Einsatzwahl: fünf Viertel, anfangs alle bei den Brandt-Werken, nach einem gelungenen Einsatz hält der Hammer das Viertel. Inhalt in `stadtplan.md` | Nutzer über die Hauptsession |
 | 2026-11-11 | Einsatz 4 wird Überzeugen (ein Prokurist schließt Valks Schließfach auf), Einsatz 5 wird Ausschalten (Führer des Werkschutzes, der die Altstadt abriegelt). „Der Anzeiger“ bleibt sechster Einsatz | Nutzer über die Hauptsession („Ja, beide ändern“) |
 | 2026-11-11 | Namen freigegeben: Kesselviertel, Nordwall, Gleisviertel, Kontorviertel, Altstadt, Fischmarkt, Prokurist Albert Dorn, Werkschutzführer Gustav Rademacher | Nutzer („Ja, freigeben“) |
+| 2026-11-11 | Auftrag: Story weiterschreiben. Zuerst Einsatz 2 als Bauvorlage, dann Grafikthema je Viertel, dann Einsatz 3 bis 5 und Finale | Nutzer über die Hauptsession |
 
 ## Offene Entscheidungen
 
 | Frage | Wer entscheidet | Folgen |
 |---|---|---|
 | Stadtplan: Kann ein Viertel an Brandt zurückfallen? Wie sieht der Notstand auf dem Plan aus? | Nutzer mit Kampagne | Vorschläge in `stadtplan.md`, Abschnitt Offen |
+| Einsatz 2: Gefangene als eigene Regel (volle Fassung) oder als Gegenstand (kleine Fassung)? Halber Bestechungspreis, wenn Greta dabei ist? | Nutzer mit Mechanik | `einsatz_02_nordwall.md`, Abschnitt 4 |
 | Eigene Fähigkeiten für Greta und Hanna? | Nutzer mit Mechanik | Vorschlag Story: Greta fälscht Papiere, Hanna bringt Beute schneller weg |
 | Wann erfährt der Trupp vom Plan mit dem Notstand? | Nutzer | Siehe `wissen.md`, betrifft Einsatz 2 bis 4 |
 | Welche Währung gilt in Messingstadt? | Nutzer | Im Spiel stehen nur Zahlen (200, 300). Ein Arbeiter sagt „Groschen“ |
