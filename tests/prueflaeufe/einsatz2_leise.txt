@@ -1,0 +1,59 @@
+# Einsatz 2 leise, mit echten Wachen: Otto und Emil queren die Wallstraße im Fenster, Emil kauft Hundeführer und Schließer,
+# beide holen je einen Gefangenen und gehen im nächsten Fenster zurück zum Wagen. Greta und Hanna bleiben am Start.
+# Aufruf mit --fresh --mission=mission_02. Die Takte stammen aus der Spur des Messwerkzeugs
+# (dotnet run --project tools/Messingstadt.Balance -- --mission=mission_02 --spur geld). Im Prüflauf ist die Spielzeit fest,
+# die Streifen stehen also jedes Mal an derselben Stelle.
+wait 40
+expect mission mission_02
+expect cash 600
+expect guards 10
+# In den Durchgang zwischen den Beamtenhäusern
+key Key2
+clickfield 7 15
+key Key3
+clickfield 6 15
+waittick 260
+# Fenster: beide Wallstreifen laufen auseinander
+clickfield 6 9
+key Key2
+clickfield 6 10
+waittick 300
+key Key3
+rclickunit Hundeführer
+waitcontains bribed Hundeführer
+expect cash 300
+key Key2
+rclickdoor Pforte zur Gerichtsgasse
+waitcontains doors Pforte zur Gerichtsgasse
+key Key3
+rclickunit Schließer
+waitcontains bribed Schließer
+expect cash 100
+expect keys Emil:2, Türposten:1
+# Otto öffnet Zelle 1 als Schlosser, Emil Zelle 2 mit dem Schlüssel des Schließers
+key Key2
+rclickdoor Zelle 1
+key Key3
+rclickdoor Zelle 2
+waitcontains prisoners Anton Weiß:folgt Otto
+waitcontains prisoners Paul Roth:folgt Emil
+# Tief in der dunklen Gasse auf das Fenster warten
+key Key2
+clickfield 5 6
+key Key3
+clickfield 6 6
+waittick 1070
+expect rating Quiet
+clickfield 6 15
+key Key2
+clickfield 7 15
+waittick 1160
+clickfield 1 18
+key Key3
+clickfield 0 18
+waitcontains telegram EINSTEIGEN
+waitfor state Won
+expect rating Quiet
+expect down 0
+expect guards 10
+print

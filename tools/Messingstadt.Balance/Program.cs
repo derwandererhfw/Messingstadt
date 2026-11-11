@@ -29,6 +29,8 @@ var catalog = Loader.ParseCatalog(File.ReadAllText(Path.Combine(dataDir, "waffen
 
 // Ausrüstung je Agent in der Reihenfolge der Mission. Null heißt Grundausstattung, ohne Katalog die Pistole ohne Nachladen.
 string[][]? loadout = null;
+// Ändert den Einsatz für eine Messreihe, ohne die Datei anzufassen, etwa ein zusätzlicher Posten.
+Action<MissionData>? variant = null;
 bool withCatalog = true;
 if (args.Length > 0 && args[0] == "--ohne-magazin")
 {
@@ -64,6 +66,7 @@ MissionData LitMission()
     {
         mission.Agents[i].Items = loadout[Math.Min(i, loadout.Length - 1)].ToList();
     }
+    variant?.Invoke(mission);
     return mission;
 }
 
@@ -670,8 +673,9 @@ Func<Action<World>> Bandaged(Func<Action<World>> make) => () =>
 // bleibt stehen, bis der Gefangene folgt, und führt alle zum Wagen.
 // alone: Nur der Schlosser geht, der Rest wartet am Start. fightFirst: Erst alle erreichbaren Wachen ausschalten.
 // bribes: Namen der Wachen, die der Buchhalter vorher kauft. plan: Der Schlosser wartet, bis der Lageplan den Weg frei zeigt.
-Func<Action<World>> Rescue(bool alone, bool fightFirst, string[]? bribes = null, bool plan = false, string? gate = null) => () =>
+Func<Action<World>> Rescue(bool alone, bool fightFirst, string[]? bribes = null, bool plan = false, string? gate = null, (int X, int Y)? smoke = null) => () =>
 {
+    bool smoked = false;
     var attack = AttackAll();
     WatchMap? watch = plan ? WatchMap.Measure(Loader.ParseMap(mapJson), LitMission()) : null;
     int stage = fightFirst ? 0 : 1, quiet = 0, bribeIndex = 0;
@@ -684,6 +688,11 @@ Func<Action<World>> Rescue(bool alone, bool fightFirst, string[]? bribes = null,
             return;
         }
         var guards = w.Units.Where(u => u.Faction == Faction.Guard && u.Alive && !u.Bribed).ToList();
+        if (smoke is { } cloud && !smoked)
+        {
+            // Der Rauchtopf fliegt, sobald einer in Wurfweite ist und das Feld sieht.
+            smoked = squad.Any(a => w.OrderThrowSmoke(a.Id, cloud.X, cloud.Y));
+        }
         if (stage == 0)
         {
             bool near = guards.Any(g => squad.Any(a => World.Distance(a, g) <= 12 * World.TileUnits));
@@ -775,7 +784,7 @@ Func<Action<World>> Rescue(bool alone, bool fightFirst, string[]? bribes = null,
 // lag: Der Klick kommt zufällig bis zu so viele Takte zu spät.
 int quietRun = 0;
 WatchMap? quietWatch = null;
-Func<Action<World>> QuietWithMoney(int lag) => () =>
+Func<Action<World>> QuietWithMoney(int lag, string[]? club = null) => () =>
 {
     var watch = quietWatch ??= WatchMap.Measure(Loader.ParseMap(mapJson), LitMission());
     // Jeder Lauf verspätet sich anders, sonst gäbe es nur ganz oder gar nicht.
@@ -845,29 +854,25 @@ Func<Action<World>> QuietWithMoney(int lag) => () =>
                 }
                 break;
             case 3:
-                if (w.Doors[Door("Pforte zur Gerichtsgasse")].Open)
+                if (w.Doors[Door("Pforte zur Gerichtsgasse")].Open && YardDone(w, otto, emil, club, true))
                 {
-                    if (!keeper.Bribed && keeper.Alive && keeper.GuardState != GuardState.Combat && emil.BribeTarget != keeper.Id)
-                    {
-                        w.OrderBribe(emil.Id, keeper.Id);
-                    }
-                    else if (keeper.Bribed || !keeper.Alive || keeper.GuardState == GuardState.Combat)
-                    {
-                        stage = 4;
-                    }
+                    stage = 4;
                 }
                 break;
             case 4:
+                bool ottoBusy = false;
                 foreach (var p in w.Prisoners.Where(p => p.Alive && p.Captive))
                 {
                     var helper = p.Name.StartsWith("Paul") && emil.Keys.Contains(p.CellDoor) ? emil : otto;
+                    if (helper == otto && ottoBusy)
+                    {
+                        // Erst wenn der erste frei ist, geht Otto zur nächsten Zelle.
+                        continue;
+                    }
+                    ottoBusy |= helper == otto;
                     if (!w.Doors[p.CellDoor].Open && helper.DoorTarget < 0)
                     {
                         w.OrderOpenDoor(helper.Id, p.CellDoor);
-                        if (helper == otto)
-                        {
-                            break;
-                        }
                     }
                 }
                 if (!w.Prisoners.Any(p => p.Alive && p.Captive))
@@ -901,7 +906,7 @@ Func<Action<World>> QuietWithMoney(int lag) => () =>
 
 // Der leise Weg ohne Geld: Otto allein mit Totschläger. Er passt Hund und Streifen nach dem Lageplan ab, öffnet die Pforte,
 // schlägt den Schließer nieder, holt beide und wartet im Hof auf das Fenster für den Rückweg.
-Func<Action<World>> QuietLocksmith(int lag) => () =>
+Func<Action<World>> QuietLocksmith(int lag, string[]? buy = null) => () =>
 {
     var watch = quietWatch ??= WatchMap.Measure(Loader.ParseMap(mapJson), LitMission());
     var rng = new Random(4711 + quietRun++);
@@ -914,7 +919,7 @@ Func<Action<World>> QuietLocksmith(int lag) => () =>
             return;
         }
         int pforte = w.Doors.FindIndex(d => d.Name == "Pforte zur Gerichtsgasse");
-        var keeper = w.Units.First(u => u.Name == "Schließer");
+        var emil = buy == null ? null : w.Units.Find(u => u.Skill == World.SkillBookkeeper && u.Alive);
         bool At(int x, int y) => otto.Path.Count == 0 && otto.TileX == x && otto.TileY == y;
         bool Clear(int x, int y, int speed, int hold)
         {
@@ -938,32 +943,39 @@ Func<Action<World>> QuietLocksmith(int lag) => () =>
         {
             case 0:
                 w.OrderMove(otto.Id, 7, 15);
+                if (emil != null)
+                {
+                    w.OrderMove(emil.Id, 6, 15);
+                }
                 stage = 1;
                 break;
             case 1:
                 int doorTicks = w.HasItem(otto, ItemKind.Lockpick) ? World.DoorTicks / 2 : World.DoorTicks;
-                if (At(7, 15) && Go(Clear(6, 7, World.WalkSpeed(otto), doorTicks + 10)))
+                if (At(7, 15) && (emil == null || emil.Path.Count == 0) && Go(Clear(6, 7, World.WalkSpeed(otto), doorTicks + (emil == null ? 10 : 40))))
                 {
                     w.OrderOpenDoor(otto.Id, pforte);
+                    if (emil != null)
+                    {
+                        w.OrderMove(emil.Id, 6, 8);
+                    }
                     stage = 2;
                 }
                 break;
             case 2:
                 if (w.Doors[pforte].Open)
                 {
-                    int club = otto.Items.FindIndex(i => i.Def.Kind == ItemKind.Melee);
-                    if (club >= 0)
+                    if (emil != null)
                     {
-                        w.SelectWeapon(otto.Id, club);
+                        // Beide aus der Gasse in den Hof, ehe der Hund zurückkommt. Emil geht gleich zum Schließer.
+                        w.OrderMove(otto.Id, 8, 6);
                     }
-                    w.OrderAttack(otto.Id, keeper.Id);
                     stage = 3;
                 }
                 break;
             case 3:
-                if (!keeper.Alive || w.Tick % 200 == 0)
+                if (YardDone(w, otto, emil, buy, false))
                 {
-                    stage = keeper.Alive ? 3 : 4;
+                    stage = 4;
                 }
                 break;
             case 4:
@@ -971,6 +983,10 @@ Func<Action<World>> QuietLocksmith(int lag) => () =>
                 if (captive == null)
                 {
                     w.OrderMove(otto.Id, 8, 7);
+                    if (emil != null)
+                    {
+                        w.OrderMove(emil.Id, 9, 7);
+                    }
                     stage = 5;
                 }
                 else if (!w.Doors[captive.CellDoor].Open && otto.DoorTarget < 0)
@@ -982,6 +998,10 @@ Func<Action<World>> QuietLocksmith(int lag) => () =>
                 if (At(8, 7) && w.Prisoners.Where(p => p.Alive).All(p => p.Path.Count == 0) && Go(Clear(7, 15, World.PrisonerSpeed, 0)))
                 {
                     w.OrderMove(otto.Id, 7, 15);
+                    if (emil != null)
+                    {
+                        w.OrderMove(emil.Id, 6, 15);
+                    }
                     stage = 6;
                 }
                 break;
@@ -989,12 +1009,59 @@ Func<Action<World>> QuietLocksmith(int lag) => () =>
                 if (At(7, 15) && w.Prisoners.Where(p => p.Alive).All(p => p.TileY >= 13))
                 {
                     w.OrderMove(otto.Id, 1, 18);
+                    if (emil != null)
+                    {
+                        w.OrderMove(emil.Id, 0, 18);
+                    }
                     stage = 7;
                 }
                 break;
         }
     };
 };
+
+// Die Posten im Hof der Reihe nach: Wer in names steht, wird gekauft (namesAreBought false) oder niedergeschlagen (true),
+// die übrigen bekommen das jeweils andere. True, sobald keiner mehr im Weg ist.
+static bool YardDone(World w, Unit otto, Unit? emil, string[]? names, bool namesAreClubbed)
+{
+    foreach (var g in w.Units.Where(u => u.Faction == Faction.Guard && (u.Name == "Schließer" || u.Name == "Hofposten")))
+    {
+        if (g.Bribed || !g.Alive)
+        {
+            continue;
+        }
+        bool named = names != null && names.Contains(g.Name);
+        bool clubbed = named == namesAreClubbed;
+        if (!clubbed && g.GuardState == GuardState.Combat)
+        {
+            // Wer schon schießt, nimmt kein Geld mehr.
+            continue;
+        }
+        if (!clubbed && (emil == null || w.Money < w.BribePrice(g)))
+        {
+            // Kein Geld mehr: Er bleibt, wie er ist.
+            continue;
+        }
+        if (clubbed)
+        {
+            int slot = otto.Items.FindIndex(i => i.Def.Kind == ItemKind.Melee);
+            if (slot >= 0 && otto.Weapon != slot)
+            {
+                w.SelectWeapon(otto.Id, slot);
+            }
+            if (otto.TargetId != g.Id)
+            {
+                w.OrderAttack(otto.Id, g.Id);
+            }
+        }
+        else if (emil.BribeTarget != g.Id)
+        {
+            w.OrderBribe(emil.Id, g.Id);
+        }
+        return false;
+    }
+    return true;
+}
 
 void ReportRescue(string name, Func<Action<World>> make, int money = 600)
 {
@@ -1030,18 +1097,43 @@ void ReportRescue(string name, Func<Action<World>> make, int money = 600)
 // Ein Lauf des leisen Wegs im Einzelnen: wer wann etwas bemerkt und wo der Trupp dann steht.
 if (args.Length > 0 && args[0] == "--spur")
 {
+    // Mit dem Seed der Missionsdatei, also derselbe Ablauf wie im Spiel: Die Zeiten taugen als Vorlage für einen Prüflauf.
+    // Zweites Wort wählt die Spielweise: geld (Vorgabe), schlag, kauf, allein, dazu "hof" für den zweiten Posten.
+    string way = args.Length > 1 ? args[1] : "geld";
+    var p1 = new[] { "pistole" };
+    if (args.Contains("hof"))
+    {
+        variant = m => m.Guards.Add(new UnitData { Name = "Hofposten", Sprite = "Wachmann", X = 12.5, Y = 8.5, Patrol = { new double[] { 9, 8 }, new double[] { 12, 8 } } });
+    }
+    loadout = new[] { p1, new[] { "pistole", "totschlaeger", "dietrich" }, p1, p1 };
     var mission = LitMission();
-    mission.Seed = 7919;
-    mission.Money = 600;
+    mission.Money = way == "allein" ? 0 : way == "geld" ? 600 : 400;
     var w = new World(Loader.ParseMap(mapJson), mission);
-    var strategy = QuietWithMoney(0)();
+    var strategy = (way switch
+    {
+        "schlag" => QuietWithMoney(0, new[] { "Schließer", "Hofposten" }),
+        "kauf" => QuietLocksmith(0, new[] { "Schließer", "Hofposten" }),
+        "allein" => QuietLocksmith(0),
+        _ => QuietWithMoney(0),
+    })();
     var states = w.Units.ToDictionary(u => u.Id, u => u.GuardState);
+    var goals = new Dictionary<int, string>();
     string last = "";
     for (int i = 0; i < MaxTicks && w.State == MissionState.Running; i++)
     {
         if (i % 10 == 0)
         {
             strategy(w);
+        }
+        foreach (var a in w.Units.Where(u => u.Faction == Faction.Agent))
+        {
+            string goal = a.BribeTarget >= 0 ? "kauft " + w.Units[a.BribeTarget].Name : a.DoorTarget >= 0 ? "öffnet " + w.Doors[a.DoorTarget].Name
+                : a.Path.Count > 0 ? $"geht nach {a.Path[^1].X},{a.Path[^1].Y}" : "";
+            if (goal.Length > 0 && goals.GetValueOrDefault(a.Id) != goal)
+            {
+                Console.WriteLine($"{w.Tick,6} Tick: {a.Name} {goal}");
+            }
+            goals[a.Id] = goal;
         }
         w.Step();
         foreach (var g in w.Units.Where(u => u.Faction == Faction.Guard))
@@ -1063,9 +1155,13 @@ if (args.Length > 0 && args[0] == "--spur")
     return;
 }
 
-if (LitMission().Prisoners.Count > 0 && args.Length == 0)
+bool knobsOnly = args.Length > 0 && args[0] == "--schrauben";
+if (LitMission().Prisoners.Count > 0 && (args.Length == 0 || knobsOnly))
 {
     Console.WriteLine($"{missionId}, je {Runs} Läufe, Kasse 600");
+    var pistol = new[] { "pistole" };
+    if (!knobsOnly)
+    {
     ReportRescue("Alle zur Pforte, Otto öffnet", Rescue(false, false));
     ReportRescue("Erst kämpfen, dann befreien", Rescue(false, true));
     ReportRescue("Otto allein", Rescue(true, false));
@@ -1073,7 +1169,6 @@ if (LitMission().Prisoners.Count > 0 && args.Length == 0)
     ReportRescue("Emil kauft Hundeführer, Otto allein", Rescue(true, false, new[] { "Hundeführer" }));
     ReportRescue("Emil kauft Hundef. und Schließer", Rescue(true, false, new[] { "Hundeführer", "Schließer" }));
     // Otto trägt je nach Zeile Totschläger und Dietrich, die anderen bleiben bei der Pistole.
-    var pistol = new[] { "pistole" };
     foreach (var (label, kit) in new[] { ("Totschläger", new[] { "pistole", "totschlaeger" }), ("Totschl. + Dietrich", new[] { "pistole", "totschlaeger", "dietrich" }) })
     {
         loadout = new[] { pistol, kit, pistol, pistol };
@@ -1082,6 +1177,13 @@ if (LitMission().Prisoners.Count > 0 && args.Length == 0)
     }
     loadout = null;
     ReportRescue("Laut durchs Hoftor, Pistolen", Rescue(false, true, gate: "Hoftor"));
+    // Der Rauch steht im Postengang zwischen Wall und Hoftor und nimmt dem Wallposten die Sicht.
+    var smokeKit = new[] { new[] { "pistole", "rauchtopf" } };
+    ReportRescue("Direkt zum Hoftor, Pistolen", Rescue(false, false, gate: "Hoftor"));
+    loadout = smokeKit;
+    ReportRescue("Direkt zum Hoftor, Rauch (240)", Rescue(false, false, gate: "Hoftor", smoke: (14, 5)));
+    ReportRescue("Laut durchs Hoftor, Rauch (240)", Rescue(false, true, gate: "Hoftor", smoke: (14, 5)));
+    loadout = null;
     loadout = new[] { new[] { "maschinenpistole" }, pistol, pistol, pistol };
     ReportRescue("Erst kämpfen, eine MP (600)", Rescue(false, true));
     loadout = new[] { new[] { "schrotflinte", "verbandszeug" }, new[] { "pistole", "rauchtopf" }, pistol, new[] { "pistole", "verbandszeug" } };
@@ -1096,6 +1198,56 @@ if (LitMission().Prisoners.Count > 0 && args.Length == 0)
         loadout = new[] { kit.Items };
         ReportRescue($"Erst kämpfen, {kit.Name}", Rescue(false, true));
     }
+    loadout = null;
+    }
+
+    // Stellschrauben für den leisen Weg, nur gemessen, nicht eingebaut. Allein mit --schrauben.
+    var full = new[] { "pistole", "totschlaeger", "dietrich" };
+    loadout = new[] { pistol, full, pistol, pistol };
+    foreach (int lag in new[] { 0, 5, 10 })
+    {
+        ReportRescue($"Jetzt: Otto allein, {lag / 20.0:0.0#} s", QuietLocksmith(lag), 0);
+    }
+    loadout = null;
+    foreach (int lag in new[] { 0, 10, 20, 30, 40 })
+    {
+        ReportRescue($"Jetzt: beide kaufen, {lag / 20.0:0.0#} s", QuietWithMoney(lag));
+    }
+    Console.WriteLine("Stellschraube A: Das Geld reicht nur für eine Bestechung (Schließer 350 statt 200)");
+    foreach (int lag in new[] { 0, 10, 20 })
+    {
+        loadout = new[] { pistol, new[] { "pistole", "totschlaeger" }, pistol, pistol };
+        ReportRescue($"  Hundef. kaufen, Schließer schlagen, {lag / 20.0:0.0#} s", QuietWithMoney(lag, new[] { "Schließer" }), 480);
+        loadout = new[] { pistol, new[] { "pistole", "dietrich" }, pistol, pistol };
+        ReportRescue($"  Schließer kaufen, Hund abpassen, {lag / 20.0:0.0#} s", QuietLocksmith(lag, new[] { "Schließer" }), 520);
+    }
+    Console.WriteLine("Stellschraube B: Zweiter Posten im Hof, Preise wie jetzt");
+    variant = m => m.Guards.Add(new UnitData { Name = "Hofposten", Sprite = "Wachmann", X = 12.5, Y = 8.5, Patrol = { new double[] { 9, 8 }, new double[] { 12, 8 } } });
+    quietWatch = null;
+    foreach (int lag in new[] { 0, 10 })
+    {
+        loadout = new[] { pistol, pistol, pistol, pistol };
+        ReportRescue($"  Hundef. und Schließer kaufen, {lag / 20.0:0.0#} s", QuietWithMoney(lag), 600);
+        loadout = new[] { pistol, new[] { "pistole", "totschlaeger" }, pistol, pistol };
+        ReportRescue($"  Hundef. kaufen, beide schlagen, {lag / 20.0:0.0#} s", QuietWithMoney(lag, new[] { "Schließer", "Hofposten" }), 480);
+        loadout = new[] { pistol, new[] { "pistole", "dietrich" }, pistol, pistol };
+        ReportRescue($"  Beide im Hof kaufen, Hund abpassen, {lag / 20.0:0.0#} s", QuietLocksmith(lag, new[] { "Schließer", "Hofposten" }), 520);
+        loadout = new[] { pistol, full, pistol, pistol };
+        ReportRescue($"  Otto allein, beide schlagen, {lag / 20.0:0.0#} s", QuietLocksmith(lag), 0);
+    }
+    Console.WriteLine("Stellschraube C: Ein Bursche im Hof, unbewaffnet, läuft zum Melden, kostet 50");
+    variant = m => m.Guards.Add(new UnitData { Name = "Hofposten", Sprite = "Laufbursche", Type = "laufbursche", X = 12.5, Y = 8.5, Patrol = { new double[] { 9, 8 }, new double[] { 12, 8 } } });
+    quietWatch = null;
+    foreach (int lag in new[] { 0, 10, 20 })
+    {
+        loadout = null;
+        ReportRescue($"  Alle drei kaufen (550), {lag / 20.0:0.0#} s", QuietWithMoney(lag), 600);
+        ReportRescue($"  Burschen nicht beachten, {lag / 20.0:0.0#} s", QuietWithMoney(lag), 500);
+        loadout = new[] { pistol, new[] { "pistole", "totschlaeger" }, pistol, pistol };
+        ReportRescue($"  Hundef. + Bursche kaufen, Schließer schlagen, {lag / 20.0:0.0#} s", QuietWithMoney(lag, new[] { "Schließer" }), 350);
+    }
+    variant = null;
+    quietWatch = null;
     loadout = null;
     return;
 }

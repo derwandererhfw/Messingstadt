@@ -169,10 +169,16 @@ Gemessen mit `dotnet run -c Release --project tools/Messingstadt.Balance -- --mi
 | Erst kämpfen, vier Maschinenpistolen | 2400 | 98 % | 0,20 | Laut |
 | Leise ohne Geld: Otto allein nach Lageplan, Totschläger | 120 | 0 % | 0 | kommt nicht los |
 | Dasselbe mit Dietrich | 200 | 100 % | 0 | Leise |
-| Dasselbe, Klicks bis 0,5 s zu spät | 200 | 100 % | 0,91 | 9 % Leise, 91 % Laut |
+| Dasselbe, Klicks bis 0,25 s zu spät | 200 | 16 % | 0,97 | 96 % Laut |
+| Dasselbe, Klicks bis 0,5 s zu spät | 200 | 9 % | 0,99 | 99 % Laut |
 | Leise mit Geld: Otto und Emil nach Lageplan, Hundeführer und Schließer gekauft | 500 Bestechung | 100 % | 0 | Leise |
 | Dasselbe, Klicks bis 0,5 s zu spät | 500 Bestechung | 100 % | 0 | Leise |
-| Dasselbe, Klicks bis 1 s zu spät | 500 Bestechung | 100 % | 0,01 | 52 % Leise, 47 % Laut |
+| Dasselbe, Klicks bis 1 s zu spät | 500 Bestechung | 100 % | 0,01 | 52 % Leise, 48 % Laut |
+| Dasselbe, Klicks bis 1,5 s zu spät | 500 Bestechung | 67 % | 1,14 | 24 % Leise, 75 % Laut |
+| Dasselbe, Klicks bis 2 s zu spät | 500 Bestechung | 51 % | 1,71 | 12 % Leise, 87 % Laut |
+| Direkt zum Hoftor, ohne vorher zu kämpfen | | 0 % | 3,97 | Laut |
+| Dasselbe mit Rauchtopf im Postengang | 60 | 0 % | 3,99 | Laut |
+| Laut durchs Hoftor mit Rauchtopf im Postengang | 60 | 40 % | 2,64 | Laut |
 
 In jedem Sieg kamen beide Gefangenen lebend heraus. Was die Zahlen sagen:
 
@@ -182,7 +188,23 @@ In jedem Sieg kamen beide Gefangenen lebend heraus. Was die Zahlen sagen:
 - Leise mit Geld ist der verlässliche Weg und kostet 500.
 - „Unentdeckt“ erreicht keine gemessene Spielweise: Wer gekauft oder niedergeschlagen wird, hat den Trupp vorher bemerkt.
 
-Nicht gemessen ist das Hoftor mit Rauchtopf gegen den Wallposten. Im Spiel mit echten Wachen gespielt ist der laute Weg (`einsatz2_laut.txt`): vier Maschinenpistolen, 13 Wachen ausgeschaltet, ein Agent gefallen, beide Gefangenen im Wagen.
+- Der Rauchtopf im Postengang ändert am Hoftor nichts (41 gegen 40 %): Das Gefecht entscheidet sich auf der Wallstraße gegen Streifen, Türposten und Verstärkung, nicht am Wallposten.
+- Otto allein mit Dietrich ist eine Klickprüfung: Schon 0,25 s Verspätung lassen ihn in 96 % der Läufe auffliegen. In einer früheren Fassung dieser Tabelle stand für 0,5 s fälschlich „100 % Siege“, richtig sind 9 %.
+
+Im Spiel mit echten Wachen gespielt sind beide Wege. Laut (`einsatz2_laut.txt`): vier Maschinenpistolen, 13 Wachen ausgeschaltet, ein Agent gefallen, beide Gefangenen im Wagen; mit sechs verschobenen Startzeiten sechs Siege mit keinem oder einem Gefallenen. Leise (`einsatz2_leise.txt`): Otto und Emil kaufen Hundeführer und Schließer, Wertung leise, niemand fällt, alle zehn Wachen stehen noch.
+
+Stellschrauben für den leisen Weg, nur gemessen (`--schrauben`), nicht eingebaut:
+
+| Stellschraube | Spielweise | Kosten | genau | 0,5 s spät | 1 s spät |
+|---|---|---|---|---|---|
+| A: Schließer kostet 350, das Geld reicht nur für einen | Hundeführer kaufen, Schließer niederschlagen | 420 | 100 % leise | 100 % leise | 52 % leise |
+| | Schließer kaufen, Hund zu zweit abpassen | 430 | kein Fenster | | |
+| B: Zweiter Wachmann im Hof | vier Spielweisen | | 0 % Siege | 0 % Siege | |
+| C: Laufbursche im Hof, unbewaffnet, meldet, kostet 50 | alle drei kaufen | 550 | 100 % leise | 100 % leise | 52 % leise |
+| | Hundeführer und Bursche kaufen, Schließer niederschlagen | 470 | 100 % leise | 100 % leise | 52 % leise |
+| | Bursche nicht beachtet | 500 | 0 % Siege | 0 % Siege | 0 % Siege |
+
+A und C machen den Weg teurer, aber nicht riskanter: Das Wagnis liegt in den zwei Querungen der Wallstraße, nicht im Hof. B macht ihn mit den gemessenen Spielweisen unmöglich. Eine Uhr („Um sechs kommt der Werkschutz“) bräuchte eine neue Regel und ist nicht gemessen.
 
 ### Mehrere Einsätze
 

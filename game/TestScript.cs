@@ -30,6 +30,7 @@ namespace Messingstadt
         private string _waitName = "", _waitValue = "";
         private int _waitLeft;
         private bool _waitPart;
+        private int _waitTick;
         private bool _fighting;
         private int _fightLeft;
 
@@ -99,6 +100,7 @@ namespace Messingstadt
             }
             if (_next >= _lines.Length)
             {
+                GD.Print($"       Stand: Tick {Game.World.Tick}, Prüfsumme {Game.World.StateHash()}");
                 GD.Print($"PRUEFLAUF ENDE: {_errors} Fehler");
                 GetTree().Quit(_errors == 0 ? 0 : 1);
                 return;
@@ -233,6 +235,11 @@ namespace Messingstadt
                 case "fight":
                     (_fighting, _fightLeft) = (true, 2 * MaxWaitFrames);
                     break;
+                case "waittick":
+                    // Bis zu einem Takt der Spielwelt warten. Im Prüflauf ist die Spielzeit fest, der Ablauf also jedes Mal derselbe.
+                    (_waitName, _waitValue, _waitLeft, _waitPart) = ("tickreached", "True", MaxWaitFrames, false);
+                    _waitTick = int.Parse(arg);
+                    break;
                 case "calm":
                     // Alle Wachen sind gekauft und beachten den Trupp nicht: So lässt sich ein Ablauf prüfen, ohne ihn zu erschleichen.
                     foreach (var g in Game.World.Units.Where(u => u.Faction == Faction.Guard))
@@ -257,7 +264,7 @@ namespace Messingstadt
         private static bool HasLabel(Node node, string text) =>
             (node is Label label && label.IsVisibleInTree() && label.Text == text) || node.GetChildren().Any(child => HasLabel(child, text));
 
-        private string Probe(string name) => Game.Probe().GetValueOrDefault(name, "?");
+        private string Probe(string name) => name == "tickreached" ? (Game.World.Tick >= _waitTick).ToString() : Game.Probe().GetValueOrDefault(name, "?");
 
         private void Check(string line, bool ok, string found)
         {

@@ -647,6 +647,8 @@ void fragment() {
             ["mission"] = MissionId,
             ["guards"] = World.Units.Count(u => u.Faction == Faction.Guard && u.Alive).ToString(),
             ["agents"] = World.Units.Count(u => u.Faction == Faction.Agent && u.Alive).ToString(),
+            ["bribed"] = string.Join(", ", World.Units.Where(u => u.Bribed).Select(u => u.Name)),
+            ["where"] = string.Join(", ", World.Units.Where(u => u.Faction == Faction.Agent && u.Alive).Select(u => $"{u.Name}:{u.TileX},{u.TileY}")),
             ["scene"] = s_scene,
             ["telegram"] = _paper.TelegramText,
             ["state"] = World.State.ToString(),
@@ -1805,7 +1807,8 @@ void fragment() {
             Selected.RemoveWhere(id => !World.Units[id].Alive);
             if (!_paused && !ControlsLocked)
             {
-                _accumulator += (float)delta;
+                // Im Prüflauf zählt jedes Bild als ein Sechzigstel: gleiche Befehle, gleicher Ablauf, egal wie schnell der Rechner zeichnet.
+                _accumulator += _scriptPath != null ? 1f / 60f : (float)delta;
                 while (_accumulator >= TickSeconds)
                 {
                     _accumulator -= TickSeconds;
