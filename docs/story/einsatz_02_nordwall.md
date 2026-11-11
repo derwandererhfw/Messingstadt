@@ -65,7 +65,7 @@ Laternen: (4,5, 10,5), (10,5, 10,5), (16,5, 10,5) auf der Wallstraße, (11,5, 10
 
 ### Türen
 
-Alle fünf sind verschlossen. Regeln wie in `../konzept.md`: Schlosser 2 s, mit Dietrich 1 s, alle anderen nur mit Dietrich in 4 s.
+Alle fünf sind verschlossen. Regeln wie in `../konzept.md`: Schlosser 2 s, mit Dietrich 1 s, alle anderen nur mit Dietrich in 4 s. Dazu kommen Schlüssel, so gebaut am 2026-11-11: Der Türposten trägt den Schlüssel zur Pforte, der Schließer die Schlüssel zu beiden Zellen. Wer einen der beiden besticht, bekommt seine Schlüssel und schließt selbst auf, 0,5 s je Tür. So ist der Einsatz auch ohne Schlosser und Dietrich lösbar.
 
 | Tür | Felder | Marke | Wozu |
 |---|---|---|---|
@@ -89,9 +89,9 @@ Alle aus dem Bestand. Die Stadtwache ist die Polizei von Messingstadt, eine neue
 |---|---|---|---|---|
 | Wallstreife 1 | Wachmann | Wallstraße | Rundgang (3, 11) – (17, 11) | 200 |
 | Wallstreife 2 | Wachmann | Wallstraße | Rundgang (17, 12) – (3, 12), läuft gegenläufig | 200 |
-| Türposten | Wachmann | (11,5, 10,5), Blick nach Süden, vor der Haupttür | Posten, dreht sich | 200 |
+| Türposten | Wachmann | (11,5, 10,5), Blick nach Süden, vor der Haupttür | Posten, dreht sich. Trägt den Schlüssel zur Pforte | 200 |
 | Wachhabender | Offizier | (14,5, 9,5), Blick nach Süden, an der Ecke neben der Schreibstube | Posten. Sieht die Straße und den Gang zum Hoftor | 400 |
-| Schließer | Wachmann | Arresthof | Rundgang (8, 7) – (12, 7). Trägt den Schlüsselbund | 200 |
+| Schließer | Wachmann | Arresthof | Rundgang (8, 7) – (12, 7). Trägt die Schlüssel zu beiden Zellen | 200 |
 | Hundeführer mit Hund | Hundeführer, Wachhund | Gerichtsgasse | Rundgang (5, 9) – (5, 2) – (6, 2) – (6, 9) | 300 |
 | Wallposten | Schütze | Am Fuß des Walls, Ostseite | Rundgang (14, 2) – (19, 2). Sieht durch den Postengang zwischen Wachstube und Kaserne zum Hoftor. Für die Kamera meist verdeckt | 200 |
 | Bote | Laufbursche | Zwischen Remise und Gericht | Rundgang (16, 12) – (6, 12) | 50 |
@@ -115,7 +115,7 @@ Der Rückweg ist der schwere Teil: Die Gefangenen sind langsam, und die Wallstra
 
 - Die Wallstreifen laufen gegenläufig. Der Lageplan zeigt das Fenster, in dem die Straße frei ist. In der Geschichte ist das Gretas alter Dienstplan.
 - Der Hund wittert in der Gasse jeden. Entweder kauft der Buchhalter den Hundeführer, oder der Trupp wartet am Südende, bis beide am Wall wenden.
-- Otto öffnet Pforte und Zellen. Der Schließer geht im Hof auf und ab: bestechen, mit dem Totschläger niederschlagen oder seinen Rundgang abpassen.
+- Otto öffnet Pforte und Zellen. Ohne ihn kauft der Buchhalter erst den Türposten (Schlüssel zur Pforte), dann den Schließer (Schlüssel zu den Zellen). Der Schließer geht im Hof auf und ab: bestechen, mit dem Totschläger niederschlagen oder seinen Rundgang abpassen.
 - Der Bote läuft die Wallstraße ab. Sieht er den Trupp mit den Gefangenen, rennt er zum Türposten. Hanna ist die Einzige, die ihn sicher einholt. Für 50 schweigt er.
 
 ### Laut
@@ -129,7 +129,7 @@ Der Rückweg ist der schwere Teil: Die Gefangenen sind langsam, und die Wallstra
 | Wer | Beitrag |
 |---|---|
 | Otto, Schlosser | Drei Schlösser auf dem leisen Weg. Ohne ihn braucht jede Tür einen Dietrich und 4 s |
-| Emil, Buchhalter | Hundeführer, Schließer und Bote sind käuflich. Für 550 ist der leise Weg fast frei |
+| Emil, Buchhalter | Hundeführer, Schließer und Bote sind käuflich, für 550 ist der leise Weg fast frei. Türposten und Schließer geben dabei ihre Schlüssel her, zusammen 400 |
 | Hanna, Kurierin | Fängt den Boten ab, lockt eine Wallstreife weg, ist als Erste am Wagen. Paul ist ihr Bruder |
 | Greta, Truppführerin | Kennt die Wache. Vorschlag für die Mechanik: Schließer und Hundeführer nehmen von ihrem Trupp nur die Hälfte, wenn Greta dabei ist |
 | Dietrich | Macht den Einsatz ohne Schlosser möglich |
@@ -147,7 +147,7 @@ Empfohlen ist die volle Fassung. Die kleine Fassung kommt ohne neue Regel aus un
 - Ein Gefangener geht 2,0 Felder pro Sekunde, rennt nicht, kämpft nicht und hat 60 Lebenspunkte. Wachen bemerken ihn wie einen Agenten.
 - Gewonnen ist, wenn alle lebenden Gefangenen und ein Agent 1 s in der Zielzone stehen. Stirbt einer, geht der Einsatz weiter. Sterben beide, ist er verloren.
 - Die Kampagne merkt sich je Gefangenem, ob er lebt. Spätere Texte fragen das ab.
-- Ein bestochener oder niedergeschlagener Schließer lässt beide Zellen offen. So bleibt der Einsatz auch ohne Schlosser und ohne Dietrich lösbar.
+- Wer Türposten oder Schließer besticht, bekommt deren Schlüssel und schließt selbst auf. So bleibt der Einsatz auch ohne Schlosser und ohne Dietrich lösbar. Ob ein Niedergeschlagener seine Schlüssel verliert, entscheidet die Level-Session. Aus Sicht der Geschichte spricht nichts dagegen.
 
 **Kleine Fassung, ohne neue Regel:**
 
@@ -208,11 +208,13 @@ Mit Spielhinweis, geprüft gegen die Karte oben. Wer die Karte ändert, prüft s
 - „Der mit dem Hund geht die Gasse rauf und runter.“ (Rundgang des Hundeführers)
 - „Am Wall steht einer mit Gewehr und friert.“ (Schütze im Osten)
 - „Der Junge trägt Zettel zwischen Wache und Gericht.“ (Rundgang des Boten)
-- „Auf der Wallstraße laufen wir uns alle zwei Minuten über den Weg.“ (gegenläufige Streifen, Zeit beim Bau nachmessen und anpassen)
+- „Auf der Wallstraße kommt immer gerade einer. Lange ist die nie leer.“ (gegenläufige Streifen, sie begegnen sich im gebauten Einsatz etwa alle 9 s)
+- „Der an der Tür hat den Schlüssel zur Pforte am Gürtel.“ (Türposten)
 
 Bestochen:
 
-- Schließer: „Zelle eins und zwei. Ich war die ganze Nacht am Ofen.“
+- Schließer: „Hier, der Bund. Zelle eins und zwei. Ich war die ganze Nacht am Ofen.“
+- Türposten: „Der kleine ist für die Pforte. Ich hab ihn wohl verloren.“
 - Hundeführer: „Ich geh mit dem Hund ums Gericht. Lange.“
 - Bote: „Ich hab keinen gesehen. Krieg ich noch einen Groschen?“
 
@@ -244,7 +246,7 @@ Ist Hanna im Trupp und lebt, antwortet sie an der Zelle: „Komm, Paul. Reden sp
 | `retreat` | Unruhe am Nordwall | Anwohner meldeten Gestalten hinter dem Amtsgericht. Die Wache fand nichts. |
 | `loot` | | Auch die Bußgeldkasse der Wachstube fehlt. |
 
-Neuer Platzhalter `{prisoners}` für die volle Fassung: leer, wenn beide leben. Sonst „ Einer der Gefangenen kam dabei ums Leben.“ Den Einbau in `Headlines.cs` übernimmt die Story, sobald es Gefangene gibt.
+Neuer Platzhalter `{prisoners}` für die volle Fassung: leer, wenn beide leben. Sonst „ Einer der Gefangenen kam dabei ums Leben.“ Den Einbau in `Headlines.cs` übernimmt die Level-Session (Absprache vom 2026-11-11).
 
 „Verschoben“ steht dort, damit ein neuer Versuch nach einer Niederlage stimmt: Die beiden sitzen dann immer noch im Arrest.
 
@@ -285,7 +287,7 @@ Nach der Zeitung, nur beim Sieg:
 | Grafik | Stadtwall, Amtsgericht, Wachstube mit Arresthof und niedrigem Wachlokal, Kaserne, Remise mit Gefangenenwagen, Beamtenhäuser. Zwei Figuren: Weiß mit Schürze und grauem Haar, Paul schmal, in Hemd und Socken. Das Grafikthema des Viertels folgt in `grafikthemen.md` |
 | Ton | Zellentür, Schlüsselbund, Husten, Glocke vom Amtsgericht zur vollen Stunde |
 | Sequenzen | Szenenplan aus den Kästen oben. Block `chatter` je Mission, falls ihr die Missionsdaten lest |
-| Story | `{prisoners}` in `Headlines.cs`, sobald die Regel steht. Sätze mit Spielhinweis nach dem Bau gegen die Karte prüfen |
+| Story | Sätze mit Spielhinweis nach dem Bau gegen die Karte prüfen (erledigt am 2026-11-11 gegen `data/mission_02.json`, im Spiel nicht angesehen) |
 
 ## 7. Prüfung
 
