@@ -10,7 +10,7 @@ key Escape
 wait 10
 # Nach dem Prolog: Stadtplan und Waffenkammer, dann Kamerafahrt und Auftrag
 expect sequence
-click Zur Waffenkammer
+click Einsatz annehmen
 click Zum Einsatz
 wait 10
 expect sequence einstieg_nach_prolog
@@ -33,7 +33,7 @@ key Escape
 wait 10
 # Nach dem Prolog: Stadtplan und Waffenkammer, dann Kamerafahrt und Auftrag
 expect sequence
-click Zur Waffenkammer
+click Einsatz annehmen
 click Zum Einsatz
 wait 10
 expect sequence einstieg_nach_prolog

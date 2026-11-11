@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using Godot;
 using Messingstadt.Core;
 
@@ -12,11 +13,14 @@ namespace Messingstadt
     {
         public string Id = "";
         public string Name = "";
-        /// <summary>Auftragsart, etwa "Diebstahl". Leer ohne Auftrag.</summary>
+        /// <summary>Auftragsart, etwa "Holen".</summary>
         public string Kind = "";
         public string Title = "";
+        public string Time = "";
         public string Text = "";
+        public string Stakes = "";
         public string Reward = "";
+        public DistrictState State;
         /// <summary>Erobert: Das Viertel trägt die Farben des Roten Hammers.</summary>
         public bool Ours;
         public bool Selectable;
@@ -27,14 +31,15 @@ namespace Messingstadt
     }
 
     /// <summary>
-    /// Zwischenschicht zwischen Stadtplan und Kampagne, die einzige Stelle, die weiß, woher die Viertel kommen.
-    /// Bis data/stadtplan.json und die Abfragen in Campaign da sind, gibt es fünf Viertel, von denen nur das erste einen Einsatz hat:
-    /// den aus den Missionsdaten. Erobert ist es, wenn dieser Einsatz gewonnen wurde. Namen der übrigen Viertel sind Platzhalter.
+    /// Zwischenschicht zwischen Stadtplan und Kampagne, die einzige Stelle, die weiß, woher die Viertel kommen:
+    /// aus Main.City (data/stadtplan.json) und den Abfragen State, Owner, CanSelect und TrySelect der Kampagne.
+    /// Den Stadtplan lädt Main, hier wird er nur gelesen.
     /// </summary>
     public sealed class CityPlanSource
     {
-        private static readonly string[] PlaceholderNames = { "Mietskasernen", "Hafen", "Werksgelände", "Kontorviertel", "Rathausviertel" };
-        private const string FirstKind = "Diebstahl";
+        // Texte der Story, docs/story/stadtplan-vorlage.json unter texte.
+        public const string NoMissionText = "Für dieses Viertel liegt noch kein Auftrag vor. K. meldet sich.";
+        public const string TakenText = "Hammer hält. Bis neue Aufträge kommen, lässt sich dieser Einsatz noch einmal spielen.";
 
         private readonly Main _game;
         // Eroberte Viertel, die der Plan schon in Rot gezeigt hat. Gilt für die laufende Sitzung.
@@ -54,65 +59,101 @@ namespace Messingstadt
 
         public void MarkShown(string id) => _shown.Add(id);
 
+        /// <summary>Kennung des Viertels, das die Kampagne gewählt hat, leer ohne spielbares Viertel.</summary>
+        public string SelectedId => _game.Campaign.Selected(_game.City)?.Id ?? "";
+
+        /// <summary>Wählt das Viertel für den nächsten Einsatz und speichert. Falsch, wenn es gesperrt ist.</summary>
+        public bool Choose(string id)
+        {
+            if (!_game.Campaign.TrySelect(_game.City, id))
+            {
+                return false;
+            }
+            _game.CampaignChanged();
+            return true;
+        }
+
         public List<District> Read()
         {
             var campaign = _game.Campaign;
-            var mission = _game.Mission;
-            bool won = campaign.Records.TryGetValue(_game.MissionKey, out var record) && record.Won;
+            var city = _game.City;
             var list = new List<District>();
-            for (int i = 0; i < PlaceholderNames.Length; i++)
+            foreach (var data in city.Districts)
             {
-                var d = new District { Id = $"viertel_{i + 1}", Name = PlaceholderNames[i] };
-                if (i == 0)
+                var state = campaign.State(city, data.Id);
+                bool ours = campaign.Owner(data.Id) == DistrictOwner.RoterHammer;
+                var d = new District
                 {
-                    d.Kind = FirstKind;
-                    d.Title = mission.Title;
-                    d.Text = mission.Briefing;
-                    d.Reward = $"{Campaign.Reward(MissionRating.Loud)} bis {Campaign.Reward(MissionRating.Unseen)}, je leiser, desto mehr";
-                    d.Ours = won;
-                    d.Selectable = true;
-                    d.Fresh = won && !_shown.Contains(d.Id);
-                    d.Note = won ? "Erobert. Bis neue Aufträge kommen, lässt sich dieser Einsatz noch einmal spielen." : mission.Place;
-                }
-                else
+                    Id = data.Id, Name = data.Name, Kind = data.Kind, Title = data.Title, State = state, Ours = ours,
+                    Selectable = campaign.CanSelect(city, data.Id), Fresh = ours && !_shown.Contains(data.Id),
+                };
+                if (d.Selectable)
                 {
-                    d.Note = "Gesperrt: Für dieses Viertel hat Abteilung K noch keinen Auftrag.";
+                    d.Time = data.Time;
+                    d.Text = data.Briefing;
+                    d.Stakes = data.Stakes;
+                    d.Reward = $"{Campaign.Reward(MissionRating.Loud, data.Reward)} bis {Campaign.Reward(MissionRating.Unseen, data.Reward)}, je leiser, desto mehr";
                 }
+                d.Note = state switch
+                {
+                    DistrictState.Taken => TakenText,
+                    DistrictState.NoMission => NoMissionText,
+                    DistrictState.Locked => data.Locked.Length > 0 ? data.Locked : LockedFallback(city, data),
+                    _ => data.Character,
+                };
                 list.Add(d);
             }
             return list;
         }
+
+        /// <summary>Falls der fertige Satz in den Daten fehlt: ohne Artikel, damit die Grammatik stimmt.</summary>
+        private static string LockedFallback(CityMapData city, DistrictData data) =>
+            $"Kein Weg hinein. Erst halten: {string.Join(", ", data.Requires.Select(id => city.Get(id)?.Name ?? id))}.";
     }
 
     /// <summary>
     /// Stadtplan zur Einsatzwahl vor jedem Einsatz: links der vergilbte Plan mit den fünf Vierteln, rechts die Akte zum gewählten Viertel.
-    /// Viertel der Brandt-Werke und des Roten Hammers tragen ihre Farbe, das gewählte pulsiert ruhig. Ein frisch erobertes Viertel
-    /// färbt sich beim ersten Anzeigen um und bekommt seinen Stempel. Die Grundkarte und je Viertel eine Maske kommen aus
-    /// game/assets/stadtplan (plan.png, viertel_1.png …), solange sie fehlen, zeichnet der Plan Platzhalterflächen.
+    /// Viertel der Brandt-Werke sind grün schraffiert, eroberte tragen das Rot des Hammers als volle Fläche mit Stempel: So erkennt man
+    /// den Besitzer auch ohne Farbe. Das gewählte Viertel pulsiert ruhig, ein frisch erobertes färbt sich beim ersten Anzeigen um.
+    /// Grundkarte, Masken und Maße kommen aus game/assets/stadtplan (plan.png, viertel_1.png …, plan.json).
+    /// Solange sie fehlen, zeichnet der Plan Platzhalterflächen.
     /// </summary>
-    public partial class CityMap : PanelContainer
+    public partial class CityPlanScreen : PanelContainer
     {
-        /// <summary>Farbe der Viertel in der Hand der Brandt-Werke. Die endgültigen Farben liefert Story, nur hier ändern.</summary>
-        public static readonly Color BrandtColor = new(0.14f, 0.27f, 0.47f);
+        // Farben der Story, docs/story/stadtplan-vorlage.json unter farben. Nur hier ändern.
+        /// <summary>Fläche der Viertel in der Hand der Brandt-Werke: Werksgrün.</summary>
+        public static readonly Color BrandtColor = new("4C7064");
+        public static readonly Color BrandtEdge = new("36544E");
+        public static readonly Color BrandtInk = new("DED0B0");
 
-        /// <summary>Farbe der Viertel, die der Rote Hammer erobert hat.</summary>
-        public static readonly Color HammerColor = new(0.62f, 0.13f, 0.1f);
+        /// <summary>Fläche und Stempel der Viertel, die der Rote Hammer hält.</summary>
+        public static readonly Color HammerColor = new("8C1A14");
+        public static readonly Color HammerEdge = new("5E120E");
+        public static readonly Color HammerInk = new("A03832");
 
-        private const string GoText = "Zur Waffenkammer";
+        private const string Heading = "ROTER HAMMER   STADTPLAN";
+        private const string Subline = "Stand der Viertel, November 1927";
+        public const string GoText = "Einsatz annehmen";
         private const string BackText = "Zurück zum Bericht";
+        private const string StampText = "HAMMER HÄLT";
 
         public Main Game = null!;
 
         private List<District> _districts = new();
         private readonly List<Button> _buttons = new();
         private PlanView _plan = null!;
-        private Label _name = null!, _kind = null!, _text = null!, _reward = null!, _note = null!;
+        private VBoxContainer _list = null!;
+        private Label _name = null!, _kind = null!, _time = null!, _text = null!, _stakes = null!, _reward = null!, _note = null!;
         private Button _go = null!, _back = null!;
         private int _selected;
         private bool _fromResult;
 
         /// <summary>Für den Prüflauf: gewähltes Viertel und wem jedes gehört.</summary>
-        public string State => !Visible ? "" : $"{_districts[_selected].Id}: " + string.Join(" ", _districts.Select(d => d.Ours ? "hammer" : "brandt"));
+        public string State => !Visible || _districts.Count == 0 ? ""
+            : $"{_districts[_selected].Id}: " + string.Join(" ", _districts.Select(d => d.Ours ? "hammer" : "brandt"));
+
+        /// <summary>Für den Prüflauf: woher die Karte kommt.</summary>
+        public string MapSource => _plan.FromFiles ? "dateien" : "platzhalter";
 
         public override void _Ready()
         {
@@ -128,17 +169,17 @@ namespace Messingstadt
             AddChild(body);
 
             var head = new HBoxContainer();
-            var title = PaperUi.Text("ROTER HAMMER   STADTPLAN", 14, PaperUi.StampRed, PaperUi.Serif);
+            var title = PaperUi.Text(Heading, 14, PaperUi.StampRed, PaperUi.Serif);
             title.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             head.AddChild(title);
-            head.AddChild(PaperUi.Text("Messingstadt, November 1927", 18, PaperUi.Ink, PaperUi.Serif));
+            head.AddChild(PaperUi.Text(Subline, 18, PaperUi.Ink, PaperUi.Serif));
             body.AddChild(head);
             body.AddChild(Rule(2, PaperUi.Ink));
 
             var columns = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
             columns.AddThemeConstantOverride("separation", 22);
             body.AddChild(columns);
-            _plan = new PlanView { Map = this, SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
+            _plan = new PlanView { Screen = this, SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
             columns.AddChild(_plan);
             columns.AddChild(new ColorRect { CustomMinimumSize = new Vector2(1, 0), Color = PaperUi.PaperDark, MouseFilter = MouseFilterEnum.Ignore });
 
@@ -146,32 +187,23 @@ namespace Messingstadt
             file.AddThemeConstantOverride("separation", 5);
             columns.AddChild(file);
             file.AddChild(PaperUi.Text("Viertel", 20, PaperUi.Ink, PaperUi.Serif));
-            for (int i = 0; i < 5; i++)
-            {
-                int index = i;
-                var button = new Button { Alignment = HorizontalAlignment.Left };
-                PaperUi.InkButton(button);
-                button.AddThemeFontSizeOverride("font_size", 15);
-                // Die Wahl wandert mit den Pfeiltasten durch die Viertel, Enter nimmt das Viertel.
-                button.FocusEntered += () => Select(index, false);
-                button.Pressed += () =>
-                {
-                    Select(index, false);
-                    Confirm();
-                };
-                file.AddChild(button);
-                _buttons.Add(button);
-            }
+            _list = new VBoxContainer();
+            _list.AddThemeConstantOverride("separation", 5);
+            file.AddChild(_list);
             file.AddChild(Rule(1, PaperUi.PaperDark));
             _name = PaperUi.Text("", 24, PaperUi.Ink, PaperUi.Serif);
             file.AddChild(_name);
             _kind = PaperUi.Text("", 15, PaperUi.StampRed, PaperUi.Typewriter);
             file.AddChild(_kind);
+            _time = PaperUi.Text("", 13, new Color(PaperUi.Ink, 0.75f), PaperUi.Typewriter);
+            file.AddChild(_time);
             _text = Wrapped(15);
             file.AddChild(_text);
+            _stakes = Wrapped(14);
+            file.AddChild(_stakes);
             _reward = Wrapped(15);
             file.AddChild(_reward);
-            _note = Wrapped(14);
+            _note = Wrapped(13);
             _note.AddThemeColorOverride("font_color", new Color(PaperUi.Ink, 0.75f));
             file.AddChild(_note);
 
@@ -183,9 +215,9 @@ namespace Messingstadt
             var legend = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
             legend.AddThemeConstantOverride("separation", 8);
             legend.AddChild(new ColorRect { CustomMinimumSize = new Vector2(18, 0), Color = BrandtColor });
-            legend.AddChild(PaperUi.Text("Brandt-Werke   ", 14, PaperUi.Ink, PaperUi.Typewriter));
+            legend.AddChild(PaperUi.Text("Brandt-Werke, schraffiert   ", 14, PaperUi.Ink, PaperUi.Typewriter));
             legend.AddChild(new ColorRect { CustomMinimumSize = new Vector2(18, 0), Color = HammerColor });
-            legend.AddChild(PaperUi.Text("Roter Hammer", 14, PaperUi.Ink, PaperUi.Typewriter));
+            legend.AddChild(PaperUi.Text("Roter Hammer, volle Fläche", 14, PaperUi.Ink, PaperUi.Typewriter));
             foot.AddChild(legend);
             _go = FootButton(GoText, Confirm);
             foot.AddChild(_go);
@@ -198,22 +230,64 @@ namespace Messingstadt
             _fromResult = fromResult;
             _districts = Game.Plan.Read();
             _back.Visible = fromResult;
-            for (int i = 0; i < _buttons.Count; i++)
-            {
-                var d = _districts[i];
-                _buttons[i].Text = $"{i + 1}  {d.Name}{(d.Ours ? "   erobert" : d.Selectable ? "" : "   gesperrt")}";
-                _buttons[i].AddThemeColorOverride("font_color", d.Selectable ? PaperUi.PaperColor : PaperUi.PaperDark);
-            }
+            BuildList();
             Visible = true;
             _plan.Show(_districts);
-            int first = Math.Max(0, _districts.FindIndex(d => d.Selectable));
-            Select(first, true);
+            if (_districts.Count == 0)
+            {
+                _go.Disabled = true;
+                return;
+            }
+            // Vorgewählt ist das Viertel der Kampagne, sonst das erste.
+            string chosen = Game.Plan.SelectedId;
+            Select(Math.Max(0, _districts.FindIndex(d => d.Id == chosen)), true);
+        }
+
+        private void BuildList()
+        {
+            foreach (var child in _list.GetChildren())
+            {
+                _list.RemoveChild(child);
+                child.QueueFree();
+            }
+            _buttons.Clear();
+            for (int i = 0; i < _districts.Count; i++)
+            {
+                int index = i;
+                var d = _districts[i];
+                string mark = d.State switch
+                {
+                    DistrictState.Taken => "   Hammer hält",
+                    DistrictState.Open => "",
+                    DistrictState.NoMission => "   kein Auftrag",
+                    _ => "   gesperrt",
+                };
+                var button = new Button { Text = $"{i + 1}  {d.Name}{mark}", Alignment = HorizontalAlignment.Left };
+                PaperUi.InkButton(button);
+                button.AddThemeFontSizeOverride("font_size", 15);
+                button.AddThemeColorOverride("font_color", d.Selectable ? PaperUi.PaperColor : PaperUi.PaperDark);
+                // Die Wahl wandert mit den Pfeiltasten durch die Viertel, Enter nimmt das Viertel.
+                button.FocusEntered += () => Select(index, false);
+                button.Pressed += () =>
+                {
+                    Select(index, false);
+                    Confirm();
+                };
+                _list.AddChild(button);
+                _buttons.Add(button);
+            }
         }
 
         public void Close() => Visible = false;
 
         /// <summary>Nach der Pausenmappe bekommt der Plan die Tasten zurück.</summary>
-        public void Refocus() => _buttons[_selected].GrabFocus();
+        public void Refocus()
+        {
+            if (_selected < _buttons.Count)
+            {
+                _buttons[_selected].GrabFocus();
+            }
+        }
 
         /// <summary>Esc: zurück zum Bericht, wenn es einen gibt. Sonst bleibt der Plan offen und Esc öffnet die Pausenmappe.</summary>
         public bool Back()
@@ -230,14 +304,18 @@ namespace Messingstadt
         /// <summary>Klick auf den Plan oder Wahl in der Liste.</summary>
         public void Select(int index, bool focus)
         {
+            if (index < 0 || index >= _districts.Count)
+            {
+                return;
+            }
             _selected = index;
             var d = _districts[index];
             _name.Text = d.Name;
-            _kind.Text = d.Kind.Length > 0 ? $"{d.Kind}: {d.Title}" : "Kein Auftrag";
-            _text.Text = d.Text;
-            _text.Visible = d.Text.Length > 0;
-            _reward.Text = d.Reward.Length > 0 ? $"Belohnung: {d.Reward}" : "";
-            _reward.Visible = d.Reward.Length > 0;
+            _kind.Text = d.Selectable ? $"{d.Kind}: {d.Title}" : d.State == DistrictState.NoMission ? "Kein Auftrag" : "Gesperrt";
+            Show(_time, d.Time);
+            Show(_text, d.Text);
+            Show(_stakes, d.Stakes);
+            Show(_reward, d.Reward.Length > 0 ? $"Belohnung: {d.Reward}" : "");
             _note.Text = d.Note;
             _go.Disabled = !d.Selectable;
             _plan.Selected = index;
@@ -247,10 +325,15 @@ namespace Messingstadt
             }
         }
 
+        private static void Show(Label label, string text)
+        {
+            label.Text = text;
+            label.Visible = text.Length > 0;
+        }
+
         private void Confirm()
         {
-            var d = _districts[_selected];
-            if (!d.Selectable)
+            if (_districts.Count == 0 || !_districts[_selected].Selectable || !Game.Plan.Choose(_districts[_selected].Id))
             {
                 return;
             }
@@ -259,7 +342,7 @@ namespace Messingstadt
             Game.CityMapChosen();
         }
 
-        private Button FootButton(string text, Action act)
+        private static Button FootButton(string text, Action act)
         {
             var button = new Button { Text = text, CustomMinimumSize = new Vector2(220, 0) };
             PaperUi.InkButton(button);
@@ -279,24 +362,50 @@ namespace Messingstadt
             return label;
         }
 
-        /// <summary>Der Plan selbst: Grundkarte, darüber je Viertel eine eingefärbte Maske.</summary>
+        /// <summary>Der Plan selbst: Grundkarte, darüber je Viertel eine eingefärbte Maske, obenauf Namen, Umriss und Stempel.</summary>
         private sealed partial class PlanView : Control
         {
             private const string Folder = "res://assets/stadtplan/";
             private const float PulseSeconds = 1.8f;
-            private const float TintAlpha = 0.55f;
-            private const float PulseDepth = 0.2f;
+            private const float TintAlpha = 0.6f;
+            private const float PulseDepth = 0.18f;
             private const float WipeSeconds = 1.2f;
             private const float StampSeconds = 0.35f;
-            private const string StampText = "EROBERT";
 
-            public CityMap Map = null!;
+            // Brandt-Viertel schraffiert, Hammer-Viertel als volle Fläche. Beim Übergang läuft die volle Fläche von links über das Viertel.
+            private const string MaskShader = @"
+shader_type canvas_item;
+uniform vec4 brandt : source_color;
+uniform vec4 hammer : source_color;
+uniform float wipe = 0.0;
+uniform float strength = 0.6;
+uniform float stripe_px = 9.0;
+void fragment() {
+    float mask = texture(TEXTURE, UV).a;
+    float stripe = step(0.5, fract((FRAGCOORD.x + FRAGCOORD.y) / stripe_px));
+    vec4 ours = vec4(hammer.rgb, strength);
+    vec4 theirs = vec4(brandt.rgb, strength * mix(0.3, 1.0, stripe));
+    vec4 c = UV.x < wipe ? ours : theirs;
+    COLOR = vec4(c.rgb, c.a * mask);
+}";
+
+            /// <summary>Was der Plan je Viertel aus plan.json braucht, in Bildpunkten der Grundkarte.</summary>
+            private sealed class Shape
+            {
+                public Vector2 Label, Stamp;
+                public Vector2[] Polygon = Array.Empty<Vector2>();
+            }
+
+            public CityPlanScreen Screen = null!;
             public int Selected;
+            public bool FromFiles { get; private set; }
 
             private Texture2D _base = null!;
-            private readonly List<Texture2D> _masks = new();
-            private readonly List<Image> _maskImages = new();
-            private readonly List<Vector2> _centers = new();
+            private Vector2 _size;
+            private readonly List<Shape> _shapes = new();
+            private readonly List<TextureRect> _masks = new();
+            private readonly List<ShaderMaterial> _looks = new();
+            private Control _top = null!;
             private List<District> _districts = new();
             private float _time;
             // Sekunden seit Beginn des Übergangs je Viertel, -1 ohne Übergang.
@@ -306,14 +415,29 @@ namespace Messingstadt
             {
                 MouseFilter = MouseFilterEnum.Stop;
                 TextureFilter = TextureFilterEnum.Linear;
-                if (!LoadFiles())
+                var masks = LoadFiles();
+                FromFiles = masks != null;
+                masks ??= BuildPlaceholder();
+                var shader = new Shader { Code = MaskShader };
+                foreach (var mask in masks)
                 {
-                    BuildPlaceholder();
+                    var look = new ShaderMaterial { Shader = shader };
+                    look.SetShaderParameter("brandt", BrandtColor);
+                    look.SetShaderParameter("hammer", HammerColor);
+                    var rect = new TextureRect
+                    {
+                        Texture = mask, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.Scale,
+                        Material = look, MouseFilter = MouseFilterEnum.Ignore,
+                    };
+                    AddChild(rect);
+                    _masks.Add(rect);
+                    _looks.Add(look);
                 }
-                foreach (var image in _maskImages)
-                {
-                    _centers.Add(CenterOf(image));
-                }
+                // Namen, Umriss und Stempel liegen über den Masken.
+                _top = new Control { MouseFilter = MouseFilterEnum.Ignore };
+                _top.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+                _top.Draw += DrawTop;
+                AddChild(_top);
             }
 
             public void Show(List<District> districts)
@@ -325,39 +449,63 @@ namespace Messingstadt
                     _wipe.Add(d.Fresh ? 0f : -1f);
                     if (d.Fresh)
                     {
-                        Map.Game.Plan.MarkShown(d.Id);
+                        Screen.Game.Plan.MarkShown(d.Id);
                     }
                 }
             }
 
-            private bool LoadFiles()
+            /// <summary>
+            /// Lädt Grundkarte, Masken und plan.json der Grafik. Die Kennungen dort sind Zahlen 1 bis 5, die Viertel der Kampagne heißen
+            /// viertel_1 bis viertel_5 und stehen in dieser Reihenfolge in der Liste: Nummer n ist das Viertel an Stelle n - 1.
+            /// </summary>
+            private List<Texture2D>? LoadFiles()
             {
                 string plan = ProjectSettings.GlobalizePath(Folder + "plan.png");
-                if (!File.Exists(plan))
+                string json = ProjectSettings.GlobalizePath(Folder + "plan.json");
+                if (!File.Exists(plan) || !File.Exists(json))
                 {
-                    return false;
+                    return null;
                 }
-                var images = new List<Image>();
-                for (int i = 1; i <= 5; i++)
+                try
                 {
-                    string mask = ProjectSettings.GlobalizePath($"{Folder}viertel_{i}.png");
-                    if (!File.Exists(mask))
+                    using var doc = JsonDocument.Parse(File.ReadAllText(json));
+                    var entries = doc.RootElement.GetProperty("districts").EnumerateArray().OrderBy(e => e.GetProperty("id").GetInt32()).ToList();
+                    var shapes = new List<Shape>();
+                    var masks = new List<Texture2D>();
+                    foreach (var entry in entries)
                     {
-                        return false;
+                        string file = ProjectSettings.GlobalizePath(Folder + entry.GetProperty("mask").GetString());
+                        if (!File.Exists(file))
+                        {
+                            return null;
+                        }
+                        var image = Image.LoadFromFile(file);
+                        // Weiß mit Alpha: als Graustufe mit Alpha kostet die Maske halb so viel Speicher.
+                        image.Convert(Image.Format.La8);
+                        masks.Add(ImageTexture.CreateFromImage(image));
+                        shapes.Add(new Shape
+                        {
+                            Label = Point(entry.GetProperty("label")), Stamp = Point(entry.GetProperty("stamp")),
+                            Polygon = entry.GetProperty("polygon").EnumerateArray().Select(Point).ToArray(),
+                        });
                     }
-                    images.Add(Image.LoadFromFile(mask));
+                    _base = ImageTexture.CreateFromImage(Image.LoadFromFile(plan));
+                    _size = _base.GetSize();
+                    _shapes.AddRange(shapes);
+                    return masks;
                 }
-                _base = ImageTexture.CreateFromImage(Image.LoadFromFile(plan));
-                foreach (var image in images)
+                catch (Exception e) when (e is JsonException or KeyNotFoundException or InvalidOperationException or IOException)
                 {
-                    _maskImages.Add(image);
-                    _masks.Add(ImageTexture.CreateFromImage(image));
+                    GD.PushError($"Stadtplan: plan.json unlesbar, Platzhalter stattdessen. {e.Message}");
+                    _shapes.Clear();
+                    return null;
                 }
-                return true;
             }
 
+            private static Vector2 Point(JsonElement pair) => new(pair[0].GetSingle(), pair[1].GetSingle());
+
             /// <summary>Fünf einfache Flächen, bis die Karte der Grafik da ist.</summary>
-            private void BuildPlaceholder()
+            private List<Texture2D> BuildPlaceholder()
             {
                 const int w = 480, h = 340;
                 var shapes = new[]
@@ -377,56 +525,41 @@ namespace Messingstadt
                     }
                 }
                 var plan = Image.CreateEmpty(w, h, false, Image.Format.Rgba8);
-                var masks = shapes.Select(_ => Image.CreateEmpty(w, h, false, Image.Format.Rgba8)).ToList();
+                var images = shapes.Select(_ => Image.CreateEmpty(w, h, false, Image.Format.La8)).ToList();
                 var paper = PaperUi.PaperColor.Lightened(0.12f);
                 for (int y = 0; y < h; y++)
                 {
                     for (int x = 0; x < w; x++)
                     {
                         int o = owner[x, y];
-                        bool edge = o >= 0 && (x + 2 >= w || y + 2 >= h || owner[x + 2, y] != o || owner[x, y + 2] != o || x < 2 || y < 2 || owner[x - 2, y] != o || owner[x, y - 2] != o);
                         // Straßenraster, damit die Fläche nach Plan aussieht.
                         bool street = o >= 0 && ((x + y / 3) % 34 == 0 || (y + x / 5) % 29 == 0);
-                        plan.SetPixel(x, y, o < 0 ? PaperUi.PaperDark : edge ? PaperUi.Ink : street ? paper.Darkened(0.18f) : paper);
-                        if (o >= 0 && !edge)
+                        plan.SetPixel(x, y, o < 0 ? PaperUi.PaperDark : street ? paper.Darkened(0.18f) : paper);
+                        if (o >= 0)
                         {
-                            masks[o].SetPixel(x, y, Colors.White);
+                            images[o].SetPixel(x, y, Colors.White);
                         }
                     }
                 }
                 _base = ImageTexture.CreateFromImage(plan);
-                foreach (var image in masks)
+                _size = new Vector2(w, h);
+                foreach (var shape in shapes)
                 {
-                    _maskImages.Add(image);
-                    _masks.Add(ImageTexture.CreateFromImage(image));
+                    var middle = shape.Aggregate(Vector2.Zero, (sum, p) => sum + p) / shape.Length;
+                    _shapes.Add(new Shape { Polygon = shape, Label = middle + new Vector2(0, -16), Stamp = middle + new Vector2(0, 18) });
                 }
+                return images.Select(i => (Texture2D)ImageTexture.CreateFromImage(i)).ToList();
             }
 
-            /// <summary>Schwerpunkt der Maske als Anteil der Karte, für den Stempel.</summary>
-            private static Vector2 CenterOf(Image mask)
-            {
-                var sum = Vector2.Zero;
-                int count = 0;
-                for (int y = 0; y < mask.GetHeight(); y += 4)
-                {
-                    for (int x = 0; x < mask.GetWidth(); x += 4)
-                    {
-                        if (mask.GetPixel(x, y).A > 0.5f)
-                        {
-                            sum += new Vector2(x, y);
-                            count++;
-                        }
-                    }
-                }
-                return count == 0 ? new Vector2(0.5f, 0.5f) : sum / count / new Vector2(mask.GetWidth(), mask.GetHeight());
-            }
-
-            /// <summary>Wo die Karte in der Fläche liegt: so groß wie möglich, Seitenverhältnis bleibt.</summary>
+            /// <summary>Wo die Karte in der Fläche liegt: so groß wie möglich, Seitenverhältnis bleibt, die echte Karte nie größer als 1:1.</summary>
             private Rect2 MapRect()
             {
-                var size = _base.GetSize();
-                float scale = Mathf.Min(Size.X / size.X, Size.Y / size.Y);
-                return new Rect2((Size - size * scale) / 2f, size * scale);
+                float scale = Mathf.Min(Size.X / _size.X, Size.Y / _size.Y);
+                if (FromFiles)
+                {
+                    scale = Mathf.Min(scale, 1f);
+                }
+                return new Rect2((Size - _size * scale) / 2f, _size * scale);
             }
 
             public override void _Process(double delta)
@@ -436,14 +569,29 @@ namespace Messingstadt
                     return;
                 }
                 _time += (float)delta;
-                for (int i = 0; i < _wipe.Count; i++)
+                var rect = MapRect();
+                // Ruhiges Pulsieren, kein Blinken: eine langsame Sinuswelle auf der Deckkraft.
+                float pulse = 0.5f + 0.5f * Mathf.Sin(_time * Mathf.Tau / PulseSeconds);
+                for (int i = 0; i < _masks.Count; i++)
                 {
+                    _masks[i].Position = rect.Position;
+                    _masks[i].Size = rect.Size;
+                    _masks[i].Visible = i < _districts.Count;
+                    if (i >= _districts.Count)
+                    {
+                        continue;
+                    }
                     if (_wipe[i] >= 0f)
                     {
                         _wipe[i] += (float)delta;
                     }
+                    bool ours = _districts[i].Ours;
+                    float wipe = !ours ? 0f : _wipe[i] < 0f ? 1f : Mathf.Clamp(_wipe[i] / WipeSeconds, 0f, 1f);
+                    _looks[i].SetShaderParameter("wipe", wipe);
+                    _looks[i].SetShaderParameter("strength", TintAlpha + (i == Selected ? PulseDepth * pulse : 0f));
                 }
                 QueueRedraw();
+                _top.QueueRedraw();
             }
 
             public override void _GuiInput(InputEvent e)
@@ -453,17 +601,12 @@ namespace Messingstadt
                     return;
                 }
                 var rect = MapRect();
-                var at = (click.Position - rect.Position) / rect.Size;
-                if (at.X < 0f || at.Y < 0f || at.X >= 1f || at.Y >= 1f)
+                var at = (click.Position - rect.Position) / rect.Size * _size;
+                for (int i = 0; i < _shapes.Count && i < _districts.Count; i++)
                 {
-                    return;
-                }
-                for (int i = 0; i < _maskImages.Count; i++)
-                {
-                    var image = _maskImages[i];
-                    if (image.GetPixel((int)(at.X * image.GetWidth()), (int)(at.Y * image.GetHeight())).A > 0.5f)
+                    if (Geometry2D.IsPointInPolygon(at, _shapes[i].Polygon))
                     {
-                        Map.Select(i, true);
+                        Screen.Select(i, true);
                         AcceptEvent();
                         return;
                     }
@@ -475,52 +618,54 @@ namespace Messingstadt
                 var rect = MapRect();
                 DrawRect(new Rect2(rect.Position + new Vector2(5, 6), rect.Size), new Color(0f, 0f, 0f, 0.35f));
                 DrawTextureRect(_base, rect, false);
-                // Ruhiges Pulsieren, kein Blinken: eine langsame Sinuswelle auf der Deckkraft.
+            }
+
+            private void DrawTop()
+            {
+                var rect = MapRect();
+                float scale = rect.Size.X / _size.X;
                 float pulse = 0.5f + 0.5f * Mathf.Sin(_time * Mathf.Tau / PulseSeconds);
-                for (int i = 0; i < _masks.Count && i < _districts.Count; i++)
+                for (int i = 0; i < _shapes.Count && i < _districts.Count; i++)
                 {
                     var d = _districts[i];
-                    float alpha = TintAlpha + (i == Selected ? PulseDepth * pulse : 0f);
-                    float wipe = _wipe[i] < 0f ? 1f : Mathf.Clamp(_wipe[i] / WipeSeconds, 0f, 1f);
-                    if (!d.Ours || wipe >= 1f)
+                    var shape = _shapes[i];
+                    var outline = shape.Polygon.Select(p => rect.Position + p * scale).Append(rect.Position + shape.Polygon[0] * scale).ToArray();
+                    bool wiped = d.Ours && (_wipe[i] < 0f || _wipe[i] >= WipeSeconds);
+                    _top.DrawPolyline(outline, wiped ? HammerEdge : BrandtEdge, 2f, true);
+                    if (i == Selected)
                     {
-                        DrawTextureRect(_masks[i], rect, false, new Color(d.Ours ? HammerColor : BrandtColor, alpha));
+                        // Der Umriss des gewählten Viertels pulsiert mit, in heller Tinte.
+                        _top.DrawPolyline(outline, new Color(BrandtInk, 0.55f + 0.4f * pulse), 3f, true);
                     }
-                    else
+                    var ink = wiped ? BrandtInk : d.Selectable ? PaperUi.Ink : new Color(PaperUi.Ink, 0.6f);
+                    const int size = 17;
+                    float width = PaperUi.Serif.GetStringSize(d.Name, HorizontalAlignment.Left, -1, size).X;
+                    var label = rect.Position + shape.Label * scale;
+                    // Papierstreifen unter dem Namen, damit er auf Schraffur und Karte lesbar bleibt.
+                    if (!wiped)
                     {
-                        // Die neue Farbe läuft von links über das Viertel.
-                        var size = _masks[i].GetSize();
-                        DrawTextureRectRegion(_masks[i], new Rect2(rect.Position, new Vector2(rect.Size.X * wipe, rect.Size.Y)),
-                            new Rect2(0, 0, size.X * wipe, size.Y), new Color(HammerColor, alpha));
-                        DrawTextureRectRegion(_masks[i], new Rect2(rect.Position + new Vector2(rect.Size.X * wipe, 0), new Vector2(rect.Size.X * (1f - wipe), rect.Size.Y)),
-                            new Rect2(size.X * wipe, 0, size.X * (1f - wipe), size.Y), new Color(BrandtColor, alpha));
+                        _top.DrawRect(new Rect2(label + new Vector2(-width / 2f - 5, -size / 2f - 3), new Vector2(width + 10, size + 7)), new Color(PaperUi.PaperColor, 0.85f));
                     }
-                    var center = rect.Position + _centers[i] * rect.Size;
-                    if (d.Ours && (_wipe[i] < 0f || _wipe[i] >= WipeSeconds))
+                    _top.DrawString(PaperUi.Serif, label + new Vector2(-width / 2f, size / 2f), d.Name, HorizontalAlignment.Left, -1, size, ink);
+                    if (wiped)
                     {
                         // Der Stempel fällt nach dem Umfärben aufs Papier: erst groß, dann auf Maß.
                         float t = _wipe[i] < 0f ? 1f : Mathf.Clamp((_wipe[i] - WipeSeconds) / StampSeconds, 0f, 1f);
-                        DrawStamp(center, Mathf.Lerp(1.7f, 1f, t), t);
-                    }
-                    else if (!d.Ours)
-                    {
-                        string number = (i + 1).ToString();
-                        DrawString(PaperUi.Serif, center + new Vector2(-6, 8), number, HorizontalAlignment.Left, -1, 24, new Color(PaperUi.Ink, d.Selectable ? 0.9f : 0.45f));
+                        DrawStamp(rect.Position + shape.Stamp * scale, Mathf.Lerp(1.7f, 1f, t), t);
                     }
                 }
-                DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
-                DrawRect(rect, PaperUi.Ink, false, 2f);
+                _top.DrawRect(rect, PaperUi.Ink, false, 2f);
             }
 
             private void DrawStamp(Vector2 center, float scale, float alpha)
             {
-                const int size = 20;
+                const int size = 18;
                 float width = PaperUi.Serif.GetStringSize(StampText, HorizontalAlignment.Left, -1, size).X;
-                DrawSetTransform(center, Mathf.DegToRad(-11f), new Vector2(scale, scale));
-                var ink = new Color(PaperUi.PaperColor.Lightened(0.3f), alpha);
-                DrawRect(new Rect2(-width / 2f - 6, -size / 2f - 5, width + 12, size + 8), ink, false, 2f);
-                DrawString(PaperUi.Serif, new Vector2(-width / 2f, size / 2f - 3), StampText, HorizontalAlignment.Left, -1, size, ink);
-                DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
+                _top.DrawSetTransform(center, Mathf.DegToRad(-9f), new Vector2(scale, scale));
+                var ink = new Color(BrandtInk, alpha);
+                _top.DrawRect(new Rect2(-width / 2f - 6, -size / 2f - 5, width + 12, size + 8), ink, false, 2f);
+                _top.DrawString(PaperUi.Serif, new Vector2(-width / 2f, size / 2f - 3), StampText, HorizontalAlignment.Left, -1, size, ink);
+                _top.DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
             }
         }
     }

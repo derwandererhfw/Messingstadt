@@ -44,7 +44,7 @@ key Enter
 wait 10
 expect screen
 expect citymap viertel_1: brandt brandt brandt brandt brandt
-expect focus 1  Mietskasernen
+expect focus 1  Kesselviertel
 key Enter
 expect armory Greta:None:
 click Zum Einsatz
@@ -63,7 +63,7 @@ expect focus Neues Spiel
 click Neues Spiel
 wait 10
 expect screen
-click Zur Waffenkammer
+click Einsatz annehmen
 click Zum Einsatz
 wait 10
 expect hud True

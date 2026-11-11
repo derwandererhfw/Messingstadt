@@ -8,7 +8,7 @@ click Neues Spiel
 wait 10
 # Vor dem Einsatz: Stadtplan, dann Waffenkammer
 expect citymap viertel_1: brandt brandt brandt brandt brandt
-click Zur Waffenkammer
+click Einsatz annehmen
 expect armory Greta:None:
 click Zum Einsatz
 wait 20
@@ -42,7 +42,7 @@ click Nochmal
 wait 5
 # Vor dem Einsatz Stadtplan und Waffenkammer, Emil ist dort wieder einsatzbereit
 expect citymap viertel_1: brandt brandt brandt brandt brandt
-click Zur Waffenkammer
+click Einsatz annehmen
 expect armory Greta:None:
 click Zum Einsatz
 wait 30

@@ -18,7 +18,7 @@ wait 5
 # Vor dem neuen Anlauf geht es über den Stadtplan durch die Waffenkammer
 expect sequence
 expect citymap viertel_1: brandt brandt brandt brandt brandt
-click Zur Waffenkammer
+click Einsatz annehmen
 expect armory Greta:None:
 click Zum Einsatz
 wait 5
@@ -59,7 +59,7 @@ expect focus Nochmal
 click Nochmal
 wait 5
 expect citymap viertel_1: brandt brandt brandt brandt brandt
-click Zur Waffenkammer
+click Einsatz annehmen
 expect armory Greta:None:
 click Zum Einsatz
 wait 5

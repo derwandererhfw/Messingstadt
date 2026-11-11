@@ -208,7 +208,7 @@ void fragment() {
         private int _slot = 1;
         private Button? _panelFocus;
         private Armory _armory = null!;
-        private CityMap _cityMap = null!;
+        private CityPlanScreen _cityMap = null!;
         // Vorbereitung vor dem Einsatz: Stadtplan, dann Waffenkammer. Danach geht es mit _afterBriefing weiter.
         private Action? _afterBriefing;
         private bool _briefingFromResult;
@@ -626,6 +626,7 @@ void fragment() {
             ["smokes"] = World.Smokes.Count.ToString(),
             ["armory"] = _armory.State,
             ["citymap"] = _cityMap.State,
+            ["mapsource"] = _cityMap.MapSource,
             ["state"] = World.State.ToString(),
             ["item"] = World.ItemTaken.ToString(),
             ["fields"] = _paper.FieldTexts,
@@ -1383,7 +1384,7 @@ void fragment() {
             _armory = new Armory { Game = this };
             layer.AddChild(_armory);
             Plan = new CityPlanSource(this);
-            _cityMap = new CityMap { Game = this };
+            _cityMap = new CityPlanScreen { Game = this };
             layer.AddChild(_cityMap);
         }
 

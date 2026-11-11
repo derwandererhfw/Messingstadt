@@ -19,7 +19,7 @@ wait 10
 expect screen
 expect saved True
 # Vor dem ersten Einsatz: Stadtplan, dann Waffenkammer
-click Zur Waffenkammer
+click Einsatz annehmen
 click Zum Einsatz
 wait 10
 expect hud True
