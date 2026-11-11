@@ -68,6 +68,9 @@ namespace Messingstadt.Core
         public int Bribed { get; set; }
         public int DeadAgents { get; set; }
         public bool Loot { get; set; }
+
+        /// <summary>Befreien: je Gefangenem mit vollem Namen, ob er lebend herauskam. Leer bei anderen Auftragsarten und vor dem ersten Sieg.</summary>
+        public Dictionary<string, bool> Prisoners { get; set; } = new();
     }
 
     public enum SaveStatus
@@ -425,6 +428,7 @@ namespace Messingstadt.Core
                 entry.Bribed = bribed;
                 entry.DeadAgents = squad.Count(u => !u.Alive);
                 entry.Loot = world.LootTaken;
+                entry.Prisoners = world.Prisoners.ToDictionary(p => p.Name, p => p.Alive);
             }
             FillRanks(Slots());
         }
@@ -523,6 +527,19 @@ namespace Messingstadt.Core
 
         private static bool CanCarryMore(AgentRecord record) => !record.Dead && record.Items.Count < ItemSlots;
 
+        /// <summary>Lebt ein Befreiter aus einem gewonnenen Einsatz? Null, solange er noch nicht befreit wurde.</summary>
+        public bool? PrisonerAlive(string name)
+        {
+            foreach (var record in Records.Values)
+            {
+                if (record.Prisoners != null && record.Prisoners.TryGetValue(name, out bool alive))
+                {
+                    return alive;
+                }
+            }
+            return null;
+        }
+
         public bool TryUpgrade(string name, bool legs)
         {
             var record = Agent(name);
@@ -594,6 +611,10 @@ namespace Messingstadt.Core
             Support = Math.Clamp(Support, 0, MaxSupport);
             Current ??= "";
             Records ??= new();
+            foreach (var record in Records.Values)
+            {
+                record.Prisoners ??= new();
+            }
             LastFirstFalls ??= new();
             LastDeaths ??= new();
             LastNewcomers ??= new();

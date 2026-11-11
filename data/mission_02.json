@@ -1,0 +1,107 @@
+{
+  "title": "Die Wachstube",
+  "briefing": "In der Wachstube Nord sitzen zwei von uns: Paul Roth und der Drucker Anton Weiß. Um sechs holt sie der Werkschutz ab, und was der mit Gefangenen macht, steht in keiner Akte. Holt beide vorher raus und bringt sie zum Wagen in der Wallgasse. Die Wache dort ist arm und müde. Redet, bevor ihr schießt. K.",
+  "place": "Nordwall, hinter dem Amtsgericht",
+  "time": "Donnerstag, 24. November 1927, 4:10 Uhr",
+  "seed": 1927,
+  "mapId": "map_02",
+  "lightId": "light_02",
+  "scene": "nordwall",
+  "itemName": "Gefangene",
+  "item": [10.5, 7.5],
+  "exit": { "x0": 0, "y0": 17, "x1": 2, "y1": 20 },
+  "reinforcements": { "x": 19.5, "y": 11.5, "sprite": "Werkschutz", "type": "werkschutz", "firstDelay": 8, "interval": 5, "count": 3 },
+  "doors": [
+    { "name": "Pforte zur Gerichtsgasse", "tiles": [[7, 7]], "mark": [6.5, 7.5] },
+    { "name": "Hoftor", "tiles": [[13, 7]], "mark": [14.5, 7.5] },
+    { "name": "Zelle 1", "tiles": [[9, 5], [9, 4]], "mark": [9.5, 6.5] },
+    { "name": "Zelle 2", "tiles": [[11, 5], [11, 4]], "mark": [11.5, 6.5] },
+    { "name": "Schreibstube", "tiles": [[13, 9]], "mark": [13.5, 10.5] }
+  ],
+  "loot": { "name": "Bußgeldkasse", "x": 13.5, "y": 9.5, "value": 300 },
+  "prisoners": [
+    { "name": "Anton Weiß", "short": "WEISS", "sprite": "Weiss", "x": 9.5, "y": 4.5, "door": "Zelle 1", "hp": 60,
+      "lines": {
+        "freed": "Na endlich. Ich dachte, ihr druckt ohne mich.",
+        "follow": "Ich bin Drucker, kein Läufer.",
+        "noticed": "Still jetzt.",
+        "shots": "Runter, Junge!",
+        "wagon": "Steht die Maschine noch? Dann drucken wir morgen."
+      } },
+    { "name": "Paul Roth", "short": "ROTH", "sprite": "Roth", "x": 11.5, "y": 4.5, "door": "Zelle 2", "hp": 60,
+      "lines": {
+        "freed": "Ist Hanna dabei?",
+        "freedAnswerHanna": "Komm, Paul. Reden später.",
+        "follow": "Langsam. Die haben mir die Schuhe genommen.",
+        "noticed": "Nicht zurück. Bitte nicht zurück.",
+        "shots": "Lasst mich nicht hier!",
+        "wagon": "Beim Verhör saß einer vom Werk mit am Tisch."
+      } }
+  ],
+  "rescueTexts": {
+    "start": "GEFANGENE IM ARRESTHOF STOP PFORTE AN DER GERICHTSGASSE STOP DANN ZUM WAGEN IN DER WALLGASSE STOP",
+    "opening": "ZELLE WIRD GEÖFFNET STOP STEHEN BLEIBEN STOP",
+    "oneFree": "{NAME} FREI STOP DER ZWEITE FEHLT NOCH STOP",
+    "allFree": "BEIDE FREI STOP ZUM WAGEN IN DER WALLGASSE STOP SIE SIND LANGSAM STOP",
+    "oneDead": "{NAME} TOT STOP DEN ANDEREN RAUSBRINGEN STOP",
+    "boarding": "EINSTEIGEN STOP STEHEN BLEIBEN STOP"
+  },
+  "headlines": {
+    "unseen": { "head": "Arrest am Nordwall über Nacht leer", "line": "Zwei Gefangene sind aus der Wachstube Nord verschwunden, die Schlösser sind unversehrt. Die Wache hat keine Erklärung, der Werkschutz wartete am Morgen vergeblich.{prisoners}{loot}{paid}" },
+    "quiet": { "head": "Ausbruch am Nordwall: Wache sah Gestalten", "line": "Ein Wachmann will Schatten im Arresthof gesehen haben. Als er nachsah, standen beide Zellen offen.{prisoners}{loot}{paid}" },
+    "loud": { "head": "Schüsse an der Wachstube Nord", "line": "Bewaffnete haben in der Nacht Gefangene aus dem Arrest geholt.{dead} Hauptmann Pieper spricht von einem Angriff auf die Ordnung der Stadt.{prisoners}{fallen}{loot}{paid}" },
+    "lost": { "head": "Überfall auf die Wachstube gescheitert", "line": "Die Stadtwache meldet einen abgewehrten Angriff am Nordwall und mehrere Festnahmen. Die Verlegung der Gefangenen ist verschoben.{dead}" },
+    "abandoned": { "head": "Schießerei am Nordwall, Täter flüchtig", "line": "Bewaffnete griffen die Wachstube Nord an und zogen sich zurück. Die Verlegung der Gefangenen ist verschoben.{dead}" },
+    "retreat": { "head": "Unruhe am Nordwall", "line": "Anwohner meldeten Gestalten hinter dem Amtsgericht. Die Wache fand nichts." },
+    "loot": "Auch die Bußgeldkasse der Wachstube fehlt."
+  },
+  "telegrams": {
+    "lost": "AN ABTEILUNG K STOP WACHSTUBE HAT GEHALTEN STOP VERLEGUNG VERSCHOBEN STOP WIR HABEN NOCH EINE NACHT STOP K",
+    "abandoned": "AN ABTEILUNG K STOP ABGEBROCHEN STOP DIE ZWEI SITZEN NOCH STOP KOPF RUNTER STOP K",
+    "retreat": "AN ABTEILUNG K STOP ZU VIELE AUGEN AM WALL STOP NEUER VERSUCH VOR SECHS STOP K"
+  },
+  "chatter": {
+    "guards": [
+      "Seit wann liefern wir Leute ans Werk?",
+      "Pieper unterschreibt alles, was Brandt ihm hinlegt.",
+      "Der Drucker hat die ganze Nacht kein Wort gesagt.",
+      "Der Junge in Zelle zwei hustet seit Stunden.",
+      "Mein Bruder steht am Feuerfass, und ich bewache seinesgleichen.",
+      "Vom Wall zieht es wie aus einem Keller.",
+      "Die Lenz hätte das nicht mitgemacht. Darum ist sie auch weg.",
+      "Noch zwei Stunden, dann sind die zwei nicht mehr unser Ärger.",
+      "Um sechs kommt der Werkschutz und holt die zwei.",
+      "Der Schließer nimmt Geld. Hat er immer.",
+      "Am Hoftor steht schon einer vom Werk. Mit dem redet keiner.",
+      "Die Pforte zur Gerichtsgasse ist zu. Aber da schaut nie einer nach.",
+      "Der mit dem Hund geht die Gasse rauf und runter.",
+      "Am Wall steht einer mit Gewehr und friert.",
+      "Der Junge trägt Zettel zwischen Wache und Gericht."
+    ],
+    "others": [],
+    "bribed": {
+      "Schließer": "Zelle eins und zwei. Ich war die ganze Nacht am Ofen.",
+      "Hundeführer": "Ich geh mit dem Hund ums Gericht. Lange.",
+      "Bote": "Ich hab keinen gesehen. Krieg ich noch einen Groschen?"
+    }
+  },
+  "lamps": [[4.5, 10.5], [10.5, 10.5], [16.5, 10.5], [11.5, 10.1], [10.5, 6.2]],
+  "agents": [
+    { "name": "Greta", "role": "Truppführerin", "sprite": "Agent", "x": 6.5, "y": 18.5, "legs": 2, "heart": 2 },
+    { "name": "Otto", "role": "Schlosser", "sprite": "Agent", "x": 7.5, "y": 18.5, "legs": 1, "heart": 3, "skill": "schlosser" },
+    { "name": "Emil", "role": "Buchhalter", "sprite": "Agent", "x": 8.5, "y": 18.5, "legs": 1, "heart": 1, "skill": "buchhalter" },
+    { "name": "Hanna", "role": "Kurierin", "sprite": "Agent", "x": 7.5, "y": 19.5, "legs": 3, "heart": 1 }
+  ],
+  "guards": [
+    { "name": "Wallstreife 1", "sprite": "Wachmann", "x": 3.5, "y": 11.5, "patrol": [[17, 11], [3, 11]] },
+    { "name": "Wallstreife 2", "sprite": "Wachmann", "x": 17.5, "y": 12.5, "patrol": [[3, 12], [17, 12]] },
+    { "name": "Türposten", "sprite": "Wachmann", "x": 11.5, "y": 10.5, "facing": [0, 1], "keys": ["Pforte zur Gerichtsgasse"] },
+    { "name": "Wachhabender", "sprite": "Offizier", "type": "offizier", "x": 14.5, "y": 9.5, "facing": [0, 1] },
+    { "name": "Schließer", "sprite": "Wachmann", "x": 8.5, "y": 7.5, "patrol": [[12, 7], [8, 7]], "keys": ["Zelle 1", "Zelle 2"] },
+    { "name": "Hundeführer", "sprite": "Hundefuehrer", "type": "hundefuehrer", "x": 5.5, "y": 9.5, "patrol": [[5, 2], [6, 2], [6, 9], [5, 9]] },
+    { "name": "Hund", "sprite": "Hund", "type": "hund", "handler": "Hundeführer", "x": 5.5, "y": 8.5 },
+    { "name": "Wallposten", "sprite": "Schuetze", "type": "schuetze", "x": 14.5, "y": 2.5, "patrol": [[19, 2], [14, 2]] },
+    { "name": "Bote", "sprite": "Laufbursche", "type": "laufbursche", "x": 16.5, "y": 12.5, "patrol": [[6, 12], [16, 12]] },
+    { "name": "Mann vom Werk", "sprite": "Werkschutz", "type": "werkschutz", "x": 14.5, "y": 7.5, "facing": [0, 1] }
+  ]
+}

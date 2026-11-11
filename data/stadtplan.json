@@ -24,7 +24,7 @@
       "briefing": "Zwei von uns sitzen in der Wachstube Nord: Paul Roth und der Drucker Anton Weiß. Am Morgen übergibt die Wache sie dem Werkschutz. Vorher raus mit beiden. K.",
       "stakes": "Ohne Weiß druckt der Hammer kein Blatt mehr. Und was der Werkschutz mit Gefangenen macht, steht in keiner Zeitung.",
       "locked": "Kein Weg hinein. Erst das Kesselviertel halten.",
-      "mission": "",
+      "mission": "mission_02",
       "reward": 350,
       "requires": [
         "viertel_1"

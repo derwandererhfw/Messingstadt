@@ -44,6 +44,9 @@ namespace Messingstadt.Core
         /// <summary>Art des Gegners, siehe GuardType. Ohne Angabe ein Wachmann.</summary>
         public string Type { get; set; } = "";
 
+        /// <summary>Namen der Türen, zu denen diese Wache den Schlüssel trägt. Wer sie besticht, bekommt ihn, wer sie niederschlägt, hebt ihn auf.</summary>
+        public List<string> Keys { get; set; } = new();
+
         /// <summary>Für einen Hund an der Leine: der Name seines Hundeführers.</summary>
         public string Handler { get; set; } = "";
         public double X { get; set; }
@@ -84,6 +87,9 @@ namespace Messingstadt.Core
         public double X { get; set; }
         public double Y { get; set; }
         public string Sprite { get; set; } = "";
+
+        /// <summary>Art der Verstärkung, siehe GuardType. Ohne Angabe Wachmänner.</summary>
+        public string Type { get; set; } = "";
         public int FirstDelay { get; set; }
         public int Interval { get; set; }
         public int Count { get; set; }
@@ -97,6 +103,36 @@ namespace Messingstadt.Core
 
         /// <summary>Wo die Tür im Bild zu sehen ist, in Feldern. Ohne Angabe das erste Feld.</summary>
         public double[]? Mark { get; set; }
+    }
+
+    /// <summary>Ein Gefangener in einem Einsatz der Art Befreien.</summary>
+    public sealed class PrisonerData
+    {
+        public string Name { get; set; } = "";
+
+        /// <summary>Kurzer Name für das Telegramm, etwa WEISS.</summary>
+        public string Short { get; set; } = "";
+        public string Sprite { get; set; } = "";
+        public double X { get; set; }
+        public double Y { get; set; }
+
+        /// <summary>Name der Zellentür aus Doors. Leer, wenn er nicht eingeschlossen ist.</summary>
+        public string Door { get; set; } = "";
+        public int Hp { get; set; } = 60;
+
+        /// <summary>Zurufe für die Darstellung: freed, follow, noticed, shots, wagon.</summary>
+        public Dictionary<string, string> Lines { get; set; } = new();
+    }
+
+    /// <summary>Zeilen für den Telegrammstreifen beim Befreien. {NAME} ist der kurze Name eines Gefangenen.</summary>
+    public sealed class RescueTextData
+    {
+        public string Start { get; set; } = "GEFANGENE BEFREIEN STOP DANN ZUM WAGEN STOP";
+        public string Opening { get; set; } = "ZELLE WIRD GEÖFFNET STOP STEHEN BLEIBEN STOP";
+        public string OneFree { get; set; } = "{NAME} FREI STOP DER ZWEITE FEHLT NOCH STOP";
+        public string AllFree { get; set; } = "ALLE FREI STOP ZUM WAGEN STOP SIE SIND LANGSAM STOP";
+        public string OneDead { get; set; } = "{NAME} TOT STOP DEN ANDEREN RAUSBRINGEN STOP";
+        public string Boarding { get; set; } = "EINSTEIGEN STOP STEHEN BLEIBEN STOP";
     }
 
     /// <summary>Beute, die Geld bringt, wenn ein Agent sie erreicht und der Trupp entkommt.</summary>
@@ -156,8 +192,30 @@ namespace Messingstadt.Core
         public string? Retreat { get; set; }
     }
 
+    /// <summary>Sätze, die nur zu diesem Einsatz passen. Allgemeine Sätze ohne Spielhinweis stehen in game/Chatter.cs.</summary>
+    public sealed class ChatterData
+    {
+        public List<string> Guards { get; set; } = new();
+        public List<string> Others { get; set; } = new();
+
+        /// <summary>Was eine bestochene Wache sagt, nach ihrem Namen.</summary>
+        public Dictionary<string, string> Bribed { get; set; } = new();
+    }
+
     public sealed class MissionData
     {
+        /// <summary>Kennung der Regelkarte in data, etwa map_02. Ohne Angabe die Nummer der Mission.</summary>
+        public string MapId { get; set; } = "";
+
+        /// <summary>Kennung der Lichtkarte in data. Fehlt die Datei, gilt überall dieselbe Reichweite beim Bemerken.</summary>
+        public string LightId { get; set; } = "";
+
+        /// <summary>Ordner der Grafik unter game/assets. Leer für die Stadt des ersten Einsatzes.</summary>
+        public string Scene { get; set; } = "";
+
+        /// <summary>Gespräche nur für diesen Einsatz. Ohne Angabe gelten die Listen des ersten Einsatzes.</summary>
+        public ChatterData? Chatter { get; set; }
+
         public string Title { get; set; } = "";
         public string Briefing { get; set; } = "";
         public int Seed { get; set; }
@@ -169,6 +227,10 @@ namespace Messingstadt.Core
         public ReinforcementData? Reinforcements { get; set; }
         public List<DoorData> Doors { get; set; } = new();
         public LootData? Loot { get; set; }
+
+        /// <summary>Gefangene. Gibt es welche, ist der Einsatz von der Art Befreien und Item zählt nicht.</summary>
+        public List<PrisonerData> Prisoners { get; set; } = new();
+        public RescueTextData? RescueTexts { get; set; }
 
         /// <summary>Zeitungstexte nach dem Einsatz. Ohne Angabe allgemeine Texte.</summary>
         public HeadlineData? Headlines { get; set; }
@@ -204,5 +266,28 @@ namespace Messingstadt.Core
         public static LightData ParseLight(string json) => JsonSerializer.Deserialize<LightData>(json, Options)!;
 
         public static ItemCatalog ParseCatalog(string json) => JsonSerializer.Deserialize<ItemCatalog>(json, Options)!;
+
+        /// <summary>
+        /// Lädt einen Einsatz nach seiner Kennung aus dem Datenordner: Mission, dazu Karte und Licht, die sie nennt.
+        /// mission_02 nimmt ohne Angabe map_02 und light_02.
+        /// </summary>
+        public static (MapData Map, MissionData Mission) LoadMission(string dataDir, string missionId, ItemCatalog? catalog = null)
+        {
+            var mission = ParseMission(System.IO.File.ReadAllText(System.IO.Path.Combine(dataDir, missionId + ".json")));
+            string number = missionId.Contains('_') ? missionId[(missionId.LastIndexOf('_') + 1)..] : missionId;
+            if (mission.MapId.Length == 0)
+            {
+                mission.MapId = "map_" + number;
+            }
+            if (mission.LightId.Length == 0)
+            {
+                mission.LightId = "light_" + number;
+            }
+            string light = System.IO.Path.Combine(dataDir, mission.LightId + ".json");
+            mission.Light = System.IO.File.Exists(light) ? ParseLight(System.IO.File.ReadAllText(light)) : null;
+            mission.Catalog = catalog;
+            var map = ParseMap(System.IO.File.ReadAllText(System.IO.Path.Combine(dataDir, mission.MapId + ".json")));
+            return (map, mission);
+        }
     }
 }

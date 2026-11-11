@@ -205,14 +205,16 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
-        public void ShippedCityMapHasFiveDistrictsAndOnlyTheFirstHasAMission()
+        public void ShippedCityMapHasFiveDistrictsAndTheFirstTwoHaveAMission()
         {
             var city = CityMap.Parse(File.ReadAllText(Path.Combine(RepoRoot(), "data", "stadtplan.json")));
             Assert.Equal(new[] { "viertel_1", "viertel_2", "viertel_3", "viertel_4", "viertel_5" }, city.Districts.Select(d => d.Id));
             Assert.Equal(Campaign.FirstDistrict, city.Districts[0].Id);
             Assert.Equal("mission_01", city.Districts[0].Mission);
             Assert.True(File.Exists(Path.Combine(RepoRoot(), "data", city.Districts[0].Mission + ".json")));
-            Assert.All(city.Districts.Skip(1), d => Assert.Equal("", d.Mission));
+            Assert.Equal("mission_02", city.Districts[1].Mission);
+            Assert.True(File.Exists(Path.Combine(RepoRoot(), "data", city.Districts[1].Mission + ".json")));
+            Assert.All(city.Districts.Skip(2), d => Assert.Equal("", d.Mission));
             Assert.All(city.Districts, d => Assert.False(string.IsNullOrWhiteSpace(d.Name) || string.IsNullOrWhiteSpace(d.Kind) || string.IsNullOrWhiteSpace(d.Briefing)));
             Assert.All(city.Districts, d => Assert.True(d.Reward > 0));
             Assert.Equal(new[] { "Kesselviertel", "Nordwall", "Gleisviertel", "Kontorviertel", "Altstadt" }, city.Districts.Select(d => d.Name));
