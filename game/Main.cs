@@ -2022,6 +2022,7 @@ void fragment() {
                 SetFigureVariant(s, row, _animator.IsRecruit(u) ? "rekrut" : u.Faction == Faction.Guard && s_scene == "nordwall" ? "stadtwache" : "");
                 s.FlipH = across < 0;
                 s.Modulate = FigureGlow(u);
+                s.Visible = !World.HiddenInCell(u);
                 s.Position = foot - FigureFoot + _animator.BiteOffset(World, u, this);
                 int depth = ThingZ(InsertIndex(u.X / (float)World.TileUnits, u.Y / (float)World.TileUnits) - 1);
                 s.ZIndex = u.Alive ? depth + rank + 2 : depth + 1;
@@ -2551,7 +2552,7 @@ void fragment() {
             float bestD = 18f;
             foreach (var u in World.Units)
             {
-                if (u.Faction != faction || !u.Alive) continue;
+                if (u.Faction != faction || !u.Alive || World.HiddenInCell(u)) continue;
                 var center = ToScreen(u.X, u.Y) + new Vector2(0, -20);
                 float d = Math.Max(Math.Abs(center.X - p.X), Math.Abs(center.Y - p.Y) * 0.6f);
                 if (d < bestD)

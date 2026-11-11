@@ -101,7 +101,7 @@
     { "name": "Türposten", "sprite": "Wachmann", "x": 11.5, "y": 10.5, "facing": [0, 1], "keys": ["Pforte zur Gerichtsgasse"] },
     { "name": "Wachhabender", "sprite": "Offizier", "type": "offizier", "x": 14.5, "y": 9.5, "facing": [0, 1] },
     { "name": "Schließer", "sprite": "Wachmann", "x": 8.5, "y": 7.5, "patrol": [[12, 7], [8, 7]], "keys": ["Zelle 1", "Zelle 2"] },
-    { "name": "Hundeführer", "sprite": "Hundefuehrer", "type": "hundefuehrer", "x": 5.5, "y": 9.5, "patrol": [[5, 2], [6, 2], [6, 9], [5, 9]] },
+    { "name": "Hundeführer", "sprite": "Hundefuehrer", "type": "hundefuehrer", "x": 5.5, "y": 9.5, "patrol": [[5, 2], [1, 2], [6, 2], [6, 9], [5, 9]] },
     { "name": "Hund", "sprite": "Hund", "type": "hund", "handler": "Hundeführer", "x": 5.5, "y": 8.5 },
     { "name": "Wallposten", "sprite": "Schuetze", "type": "schuetze", "x": 14.5, "y": 2.5, "patrol": [[19, 2], [14, 2]] },
     { "name": "Bote", "sprite": "Laufbursche", "type": "laufbursche", "x": 16.5, "y": 12.5, "patrol": [[6, 12], [16, 12]] },

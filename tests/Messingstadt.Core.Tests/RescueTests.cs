@@ -225,6 +225,24 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void HeStaysOutOfSightUntilHeStepsOntoTheThreshold()
+        {
+            var w = new World(Map(), Mission(new() { Agent(13.5, 5.5, World.SkillLocksmith) }, new()));
+            Assert.True(w.HiddenInCell(Weiss(w)));
+            Assert.Equal("WEISS", w.PrisonerShort(Weiss(w)));
+            Assert.False(w.HiddenInCell(w.Units[0]));
+            Assert.True(w.OrderOpenDoor(0, 0));
+            Run(w, 20 + World.DoorTicks + 2);
+            // Tür offen, er sitzt noch hinten in der Zelle.
+            Assert.True(w.Doors[0].Open);
+            Assert.True(w.HiddenInCell(Weiss(w)));
+            Run(w, World.FreeTicks + 60);
+            Assert.False(Weiss(w).Captive);
+            Assert.False(w.HiddenInCell(Weiss(w)));
+            Assert.True(w.HiddenInCell(Roth(w)));
+        }
+
+        [Fact]
         public void APrisonerStillInHisCellBlocksTheWin()
         {
             var w = FreedWeiss();

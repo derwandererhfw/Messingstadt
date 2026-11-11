@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections.Generic;
 using Godot;
 using Messingstadt.Core;
@@ -55,7 +56,7 @@ namespace Messingstadt
             var labels = new List<Vector2>();
             foreach (var u in world.Units)
             {
-                if (!u.Alive)
+                if (!u.Alive || world.HiddenInCell(u))
                 {
                     continue;
                 }
@@ -213,6 +214,13 @@ namespace Messingstadt
                 DrawRect(new Rect2(p + new Vector2(-4, -3), new Vector2(8, 7)), brass);
                 DrawArc(p + new Vector2(0, -3), 2.5f, Mathf.Pi, Mathf.Tau, 6, brass, 1f);
                 DrawRect(new Rect2(p + new Vector2(-1, -1), new Vector2(2, 3)), new Color(0.15f, 0.1f, 0.05f));
+                // Wer hinter dieser Tür sitzt, steht neben dem Schloss: Der Gefangene selbst ist nicht zu sehen, solange sie zu ist.
+                int index = w.Doors.IndexOf(door);
+                var inmate = w.Prisoners.FirstOrDefault(u => u.Alive && u.Captive && u.CellDoor == index);
+                if (inmate != null)
+                {
+                    DrawString(ThemeDB.FallbackFont, p + new Vector2(8, 4), w.PrisonerShort(inmate), HorizontalAlignment.Left, -1, 8, brass);
+                }
                 if (door.Progress > 0)
                 {
                     float f = (float)door.Progress / World.DoorTicks;

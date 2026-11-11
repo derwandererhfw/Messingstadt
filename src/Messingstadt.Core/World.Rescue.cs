@@ -52,6 +52,23 @@ namespace Messingstadt.Core
 
         public List<DroppedKeys> KeysOnGround { get; } = new();
 
+        /// <summary>
+        /// Sitzt er noch im Gebäude? Die Zelle liegt hinter der Fassade: Solange die Tür zu ist und solange er hinter der Schwelle
+        /// steht, zeigt das Spiel ihn nicht, sonst klebte er außen an der Wand. Das erste Feld der Tür ist die Schwelle.
+        /// </summary>
+        public bool HiddenInCell(Unit u)
+        {
+            if (!u.IsPrisoner || u.CellDoor < 0 || !u.Alive)
+            {
+                return false;
+            }
+            var door = Doors[u.CellDoor];
+            return !door.Open || (door.Tiles.Count > 1 && door.Tiles.IndexOf((u.TileX, u.TileY)) > 0);
+        }
+
+        /// <summary>Kurzer Name eines Gefangenen, wie er im Telegramm und an der Zellentür steht.</summary>
+        public string PrisonerShort(Unit u) => _prisonerShort.GetValueOrDefault(u.Id, u.Name);
+
         private readonly Dictionary<int, string> _prisonerShort = new();
         private RescueTextData _rescueTexts = new();
 
