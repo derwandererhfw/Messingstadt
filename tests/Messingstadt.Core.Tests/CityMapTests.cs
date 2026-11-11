@@ -205,6 +205,31 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void ShippedChainOpensTheNordwallAndStopsAtTheGleisviertel()
+        {
+            var city = CityMap.Parse(File.ReadAllText(Path.Combine(RepoRoot(), "data", "stadtplan.json")));
+            var c = new Campaign();
+            Assert.Equal(DistrictState.Locked, c.State(city, "viertel_2"));
+            c.Finish(Play(c, win: true), c.Selected(city));
+            Assert.Equal(DistrictState.Open, c.State(city, "viertel_2"));
+            Assert.True(c.TrySelect(city, "viertel_2"));
+            Assert.Equal("mission_02", c.Selected(city)!.Mission);
+            int before = c.Money;
+            c.Finish(Play(c, win: true), c.Selected(city));
+            Assert.Equal(before + Campaign.Reward(MissionRating.Unseen, city.Get("viertel_2")!.Reward) + c.Dues, c.Money);
+            Assert.Equal(new[] { "viertel_1", "viertel_2" }, c.Conquered);
+            // Das Gleisviertel hat noch keinen Einsatz: sichtbar, aber nicht wählbar. Die eroberten bleiben spielbar.
+            Assert.Equal(DistrictState.NoMission, c.State(city, "viertel_3"));
+            Assert.False(c.TrySelect(city, "viertel_3"));
+            Assert.Equal(DistrictState.NoMission, c.State(city, "viertel_4"));
+            Assert.True(c.CanSelect(city, "viertel_1"));
+            Assert.True(c.CanSelect(city, "viertel_2"));
+            Assert.Equal("viertel_2", c.Selected(city)!.Id);
+            Assert.True(c.TrySelect(city, "viertel_1"));
+            Assert.Equal("viertel_1", Campaign.FromJson(c.ToJson()).Selected(city)!.Id);
+        }
+
+        [Fact]
         public void ShippedCityMapHasFiveDistrictsAndTheFirstTwoHaveAMission()
         {
             var city = CityMap.Parse(File.ReadAllText(Path.Combine(RepoRoot(), "data", "stadtplan.json")));
