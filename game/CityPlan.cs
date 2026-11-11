@@ -152,6 +152,9 @@ namespace Messingstadt
         public string State => !Visible || _districts.Count == 0 ? ""
             : $"{_districts[_selected].Id}: " + string.Join(" ", _districts.Select(d => d.Ours ? "hammer" : "brandt"));
 
+        /// <summary>Für den Prüflauf: ein Punkt im Viertel mit dieser Nummer, in Bildpunkten der Oberfläche.</summary>
+        public Vector2 PointOf(int number) => _plan.PointOf(number - 1);
+
         /// <summary>Für den Prüflauf: woher die Karte kommt.</summary>
         public string MapSource => _plan.FromFiles ? "dateien" : "platzhalter";
 
@@ -611,6 +614,13 @@ void fragment() {
                         return;
                     }
                 }
+            }
+
+            /// <summary>Wo der Name des Viertels auf dem Bildschirm steht. Der Punkt liegt im Viertel.</summary>
+            public Vector2 PointOf(int index)
+            {
+                var rect = MapRect();
+                return GlobalPosition + rect.Position + _shapes[index].Label * (rect.Size.X / _size.X);
             }
 
             public override void _Draw()

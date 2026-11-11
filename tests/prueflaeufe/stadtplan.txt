@@ -28,9 +28,9 @@ key Escape
 expect screen
 expect citymap viertel_2: brandt brandt brandt brandt brandt
 # Ein Klick auf den Plan wählt das Viertel: erst das fünfte, dann das erste
-clickat 500 520
+clickdistrict 5
 expect citymap viertel_5: brandt brandt brandt brandt brandt
-clickat 200 520
+clickdistrict 1
 expect citymap viertel_1: brandt brandt brandt brandt brandt
 # Enter nimmt das Viertel, es folgt die Waffenkammer. Von dort führt Esc zurück auf den Plan
 key Enter

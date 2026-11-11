@@ -156,6 +156,10 @@ namespace Messingstadt
                         (member.X, member.Y) = (px, py);
                     }
                     break;
+                case "clickdistrict":
+                    // Klick auf ein Viertel des Stadtplans, unabhängig von Karte und Fenstergröße.
+                    ClickAt(Game.CityMapPoint(int.Parse(arg)));
+                    break;
                 case "hurt":
                     var hurt = arg.Split(' ');
                     var victim = Game.World.Units.FirstOrDefault(u => u.Faction == Faction.Agent && u.Alive && u.Name == hurt[0]);

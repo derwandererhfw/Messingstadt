@@ -570,6 +570,9 @@ void fragment() {
 
         public void CityMapChosen() => _armory.Open();
 
+        /// <summary>Für den Prüflauf: ein Punkt im Viertel mit dieser Nummer auf dem Stadtplan.</summary>
+        public Vector2 CityMapPoint(int number) => _cityMap.PointOf(number);
+
         public void ArmoryBack() => _cityMap.Open(_briefingFromResult);
 
         public void LeaveArmory()
