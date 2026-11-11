@@ -25,10 +25,13 @@ Was der Trupp und die Stadt vor und nach jedem Einsatz wissen. Texte dürfen nur
 |---|---|---|
 | 2 | Paul Roth und Anton Weiß sind frei, falls der Einsatz gelingt | KANON |
 | 2 | Beim Verhör saß einer vom Werkschutz mit am Tisch. Die Wache liefert Gefangene an Brandt aus | VORSCHLAG, `einsatz_02_nordwall.md` |
-| 3 | Die Wachen wussten vom Anschlag auf den Zug. Den Hinweis gab Rehm | KANON, dass der Trupp den Zusammenhang schon sieht, ist OFFEN |
+| 3 | Die Wachen am Bahnhof waren gewarnt. Der Trupp weiß nicht, von wem. Kolb sagt nur, die Nachricht vom Zug kam „aus dem Vorstand“ | KANON (Hinweis von Rehm), Texte VORSCHLAG in `einsatz_03_gleisviertel.md` |
 | 4 | „Sperling“ ist Rehm, aus Valks Zweitbuch | KANON |
+| 4 | Valk hat den Notstand schon als Geschäft verbucht. Der Trupp weiß damit, wozu Brandt den Streik braucht | VORSCHLAG, `einsatz_04_kontorviertel.md`, hängt an der offenen Entscheidung |
 | 5 | Rehm hat das Versteck verraten. Der Notstand ist ausgerufen | KANON |
+| 5 | Der Beweis für den Verrat: ein Zettel mit der Hausnummer in Rehms Handschrift, aus Rademachers Mappe | VORSCHLAG, `einsatz_05_altstadt.md` |
 | 6 | Ob Kolb von Rehm wusste: ja, das sagt das letzte Telegramm | KANON |
+| 6 | Sie wusste es seit dem Frühjahr. Ohne Rehms Geld wäre die Streikkasse im Oktober leer gewesen | VORSCHLAG, `einsatz_06_anzeiger.md` |
 
 ## Offen
 

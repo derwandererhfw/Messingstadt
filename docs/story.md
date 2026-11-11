@@ -62,7 +62,7 @@ Im Druckhaus liegen beide Bücher. Der Spieler wählt:
 - **Alles drucken.** Brandt, Valk und Pieper stürzen. Der Hammer auch: Niemand traut mehr einer Gewerkschaft, deren Vorsitzender Brandts Geld nahm. Der Streik zerfällt, aber die Stadt weiß Bescheid.
 - **Nur Brandt drucken.** Der Notstand kippt, der Streik hält und wird gewonnen. Rehm bleibt im Amt, und der Trupp lebt mit der Lüge. Martha Kolb hat das so gewollt.
 
-Ob Kolb von Rehm wusste, bleibt bis zum letzten Telegramm offen. Sie wusste es. Beide Enden sind leise. Wie blutig der Spieler war, steht in der Zeitung: Tote Wachen kosten Rückhalt in den Vierteln, das letzte Telegramm und die letzte Schlagzeile greifen es auf.
+Die Texte für beide Enden stehen in `story/einsatz_06_anzeiger.md`. Ob Kolb von Rehm wusste, bleibt bis zum letzten Telegramm offen. Sie wusste es. Beide Enden sind leise. Wie blutig der Spieler war, steht in der Zeitung: Tote Wachen kosten Rückhalt in den Vierteln, das letzte Telegramm und die letzte Schlagzeile greifen es auf.
 
 ## Ton
 
