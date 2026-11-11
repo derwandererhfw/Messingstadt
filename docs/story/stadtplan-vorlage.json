@@ -1,0 +1,82 @@
+{
+  "hinweis": "Vorlage der Story-Session für data/stadtplan.json. Feldnamen sind ein Vorschlag, die Kampagne darf sie ändern. Texte bitte wörtlich übernehmen. Erläuterung in docs/story/stadtplan.md.",
+  "texte": {
+    "ueberschrift": "ROTER HAMMER   STADTPLAN",
+    "stempel": "VERTRAULICH",
+    "unterzeile": "Stand der Viertel, November 1927",
+    "brandt": "BRANDT-WERKE",
+    "erobert": "HAMMER HÄLT",
+    "offen": "Einsatz bereit",
+    "keinEinsatz": "Kein Auftrag. K. meldet sich.",
+    "annehmen": "Einsatz annehmen",
+    "alleGehalten": "Die Stadt hält. Eine Nacht noch. K."
+  },
+  "farben": {
+    "papier": "#AD9E7A",
+    "tinte": "#211C1A",
+    "brandt": { "rand": "#36544E", "flaeche": "#4C7064", "schrift": "#DED0B0" },
+    "hammer": { "rand": "#5E120E", "flaeche": "#8C1A14", "schrift": "#A03832" }
+  },
+  "viertel": [
+    {
+      "id": "viertel_1",
+      "name": "Kesselviertel",
+      "art": "holen",
+      "mission": "mission_01",
+      "einsatz": "Das Kontobuch",
+      "zeit": "Dienstag, 22. November 1927, 2:40 Uhr",
+      "charakter": "Arbeiterfamilien in Mietshäusern vor dem Werkstor, dazu die Zweigstelle der Bank, das Hotel Adler, das Lager und die Haltestelle der Linie 7. Hier liegen Brandts Kessel und seine Lohnkasse.",
+      "auftrag": "Kontobuch der Brandt-Werke liegt bis zum Morgen am Mietshaus. Holen und zum Wagen in der Querstraße bringen. K.",
+      "einsatzHoehe": "Ohne das Buch ist das Schwarzgeld ein Gerücht. Mit ihm ist es ein Beweis.",
+      "locked": ""
+    },
+    {
+      "id": "viertel_2",
+      "name": "Nordwall",
+      "art": "befreien",
+      "mission": "",
+      "einsatz": "Die Wachstube",
+      "zeit": "Donnerstag, 24. November 1927, 4:10 Uhr",
+      "charakter": "Beamte, Wachleute und ihre Familien am alten Stadtwall, mit Wachstube Nord, Arrestzellen und Amtsgericht. Die Wache sperrt hier für Brandt weg, wen er nennt.",
+      "auftrag": "Zwei von uns sitzen in der Wachstube Nord: Paul Roth und der Drucker Anton Weiß. Am Morgen übergibt die Wache sie dem Werkschutz. Vorher raus mit beiden. K.",
+      "einsatzHoehe": "Ohne Weiß druckt der Hammer kein Blatt mehr. Und was der Werkschutz mit Gefangenen macht, steht in keiner Zeitung.",
+      "locked": "Kein Weg hinein. Erst das Kesselviertel halten."
+    },
+    {
+      "id": "viertel_3",
+      "name": "Gleisviertel",
+      "art": "sabotieren",
+      "mission": "",
+      "einsatz": "Der Güterbahnhof",
+      "zeit": "Sonntag, 27. November 1927, 23:15 Uhr",
+      "charakter": "Rangierer, Lokführer und Schlafgänger in Baracken zwischen den Gleisen, am Güterbahnhof Ost mit Stellwerk und Kohlenlager. Über diese Gleise kommen Brandts Kohle und seine Streikbrecher.",
+      "auftrag": "Um Mitternacht rollt ein Zug mit dreihundert Streikbrechern in den Güterbahnhof Ost. Stellwerk und Einfahrweiche lahmlegen. Der Zug bleibt draußen. K.",
+      "einsatzHoehe": "Kommen sie an, laufen am Montag die Maschinen. Dann war alles umsonst.",
+      "locked": "Kein Weg hinein. Erst den Nordwall halten."
+    },
+    {
+      "id": "viertel_4",
+      "name": "Kontorviertel",
+      "art": "ueberzeugen",
+      "mission": "",
+      "einsatz": "Das Schließfach",
+      "zeit": "Mittwoch, 30. November 1927, 1:30 Uhr",
+      "charakter": "Prokuristen, Anwälte und Herrschaften mit Dienstboten, rund um den Hauptsitz der Kontorbank, den Börsensaal und die Villen am Kanal. Hier liegen Brandts Kredit und seine Geheimnisse.",
+      "auftrag": "Prokurist Dorn hat den Schlüssel zu Valks Schließfach und drei Monate Mietschulden. Bringt ihn dazu, aufzuschließen. Mit Geld oder mit Worten. K.",
+      "einsatzHoehe": "Im Fach liegt das zweite Buch, das mit den richtigen Namen. Ohne Dorn kommt keiner hinein, ohne dass die halbe Stadt es hört.",
+      "locked": "Kein Weg hinein. Erst das Gleisviertel halten."
+    },
+    {
+      "id": "viertel_5",
+      "name": "Altstadt",
+      "art": "ausschalten",
+      "mission": "",
+      "einsatz": "Die Falle",
+      "zeit": "Freitag, 2. Dezember 1927, 3:00 Uhr",
+      "charakter": "Handwerker, Wäscherinnen und Drucker in engen Gassen um den Fischmarkt, mit dem Druckhaus des Anzeigers und der Krankenstube im Keller einer Wäscherei. Hier sitzt der Hammer, und Brandt will das Viertel abriegeln.",
+      "auftrag": "Der Werkschutz riegelt die Altstadt ab. Sein Führer Rademacher steht am Fischmarkt und gibt die Befehle. Fällt er aus, fällt die Sperre. Wie, ist eure Sache. K.",
+      "einsatzHoehe": "Hinter der Sperre liegen die Krankenstube, die Bücher und alle, die uns bisher die Tür aufgemacht haben.",
+      "locked": "Kein Weg hinein. Erst das Kontorviertel halten."
+    }
+  ]
+}

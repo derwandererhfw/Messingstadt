@@ -3,7 +3,7 @@
 wait 20
 click Neues Spiel
 wait 20
-expect money 300
+expect money 600
 attack
 wait 300
 key R
@@ -24,12 +24,12 @@ expect focus Pistole
 click Totschläger   120
 expect focus Kaufen für Greta
 key Enter
-expect money 180
+expect money 480
 expect gear Greta:pistole+totschlaeger, Otto:pistole, Emil:pistole, Hanna:pistole
 # Rauchtopf in die Kiste, dann aus der Kiste zu Greta
 click Rauchtopf   60
 click In die Kiste kaufen
-expect money 120
+expect money 420
 expect stash rauchtopf
 click Rauchtopf
 click Ausrüsten: Greta
@@ -38,7 +38,7 @@ expect gear Greta:pistole+totschlaeger+rauchtopf, Otto:pistole, Emil:pistole, Ha
 # Gretas Pistole verkaufen bringt die Hälfte
 click Pistole
 click Verkaufen (+50)
-expect money 170
+expect money 470
 expect gear Greta:totschlaeger+rauchtopf, Otto:pistole, Emil:pistole, Hanna:pistole
 # Esc führt zurück zum Bericht, Nochmal wieder hinein
 key Escape
@@ -59,4 +59,4 @@ expect armory
 expect hud True
 expect weapons Greta:Knüppel, Otto:Pistole 10
 expect items Greta:totschlaeger+rauchtopf, Otto:pistole
-expect money 170
+expect money 470

@@ -8,7 +8,7 @@ key Down
 expect focus Spiel laden
 key Enter
 expect screen Spiel laden
-expect focus Akte 1: Kasse 300, 0 Einsätze  *
+expect focus Akte 1: Kasse 600, 0 Einsätze  *
 clickany Akte 2: leer
 expect screen Spiel laden
 clickany Akte 3: leer

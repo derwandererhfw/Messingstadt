@@ -13,7 +13,7 @@
     {
       "id": "maschinenpistole", "name": "Maschinenpistole", "short": "MP", "kind": "schusswaffe", "price": 600,
       "damage": 12, "range": 6, "cooldown": 0.2, "noise": 10, "accuracy": -5, "falloff": 6, "magazine": 20, "reload": 2.0,
-      "text": "Mit Trommelmagazin, über einen Hafenarbeiter beschafft. Streut, frisst Patronen und weckt das ganze Viertel."
+      "text": "Zwanzig Schuss im Stangenmagazin, über einen Hafenarbeiter beschafft. Streut, frisst Patronen und weckt das ganze Viertel."
     },
     {
       "id": "totschlaeger", "name": "Totschläger", "short": "Knüppel", "kind": "nahkampf", "price": 120,
