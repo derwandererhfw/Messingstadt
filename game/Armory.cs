@@ -264,9 +264,9 @@ namespace Messingstadt
             {
                 case Source.Catalog:
                     Action("buy", agent != null ? $"Kaufen für {agent.Name}" : "Kaufen", canCarry && Campaign.Money >= def.Price, actions,
-                        () => Do(Campaign.TryBuy(Game.Catalog, def.Id, _agent), $"{def.Name} gekauft, {_agent} trägt sie.", "buy"));
+                        () => Do(Campaign.TryBuy(Game.Catalog, def.Id, _agent), $"{def.Name} gekauft, {_agent} trägt sie.", "buy", BuySound));
                     Action("buystash", "In die Kiste kaufen", Campaign.Money >= def.Price, actions,
-                        () => Do(Campaign.TryBuy(Game.Catalog, def.Id), $"{def.Name} gekauft, liegt in der Kiste.", "buystash"));
+                        () => Do(Campaign.TryBuy(Game.Catalog, def.Id), $"{def.Name} gekauft, liegt in der Kiste.", "buystash", BuySound));
                     if (Campaign.Money < def.Price)
                     {
                         _hint = $"Für {def.Name} fehlen {def.Price - Campaign.Money}.";
@@ -278,15 +278,15 @@ namespace Messingstadt
                     break;
                 case Source.Stash:
                     Action("equip", agent != null ? $"Ausrüsten: {agent.Name}" : "Ausrüsten", canCarry, actions,
-                        () => Do(Campaign.Equip(_agent!, def.Id), $"{_agent} trägt jetzt {def.Name}.", "stash:" + def.Id));
+                        () => Do(Campaign.Equip(_agent!, def.Id), $"{_agent} trägt jetzt {def.Name}.", "stash:" + def.Id, EquipSound));
                     Action("sellstash", $"Verkaufen (+{sell})", true, actions,
-                        () => Do(Campaign.TrySell(Game.Catalog, def.Id), $"{def.Name} verkauft für {sell}.", "stash:" + def.Id));
+                        () => Do(Campaign.TrySell(Game.Catalog, def.Id), $"{def.Name} verkauft für {sell}.", "stash:" + def.Id, SellSound));
                     break;
                 case Source.Slot:
                     Action("unequip", "In die Kiste legen", true, actions,
-                        () => Do(Campaign.Unequip(_agent!, _slot), $"{def.Name} liegt jetzt in der Kiste.", $"slot:{_agent}:{_slot}"));
+                        () => Do(Campaign.Unequip(_agent!, _slot), $"{def.Name} liegt jetzt in der Kiste.", $"slot:{_agent}:{_slot}", EquipSound));
                     Action("sellslot", $"Verkaufen (+{sell})", true, actions,
-                        () => Do(SellSlot(), $"{def.Name} verkauft für {sell}.", $"slot:{_agent}:{_slot}"));
+                        () => Do(SellSlot(), $"{def.Name} verkauft für {sell}.", $"slot:{_agent}:{_slot}", SellSound));
                     break;
             }
         }
@@ -356,7 +356,11 @@ namespace Messingstadt
             }
         }
 
-        private void Do(bool done, string success, string focusAfter)
+        // Klänge der Ton-Session. Ein Handgriff, der scheitert, bleibt stumm.
+        private const string BuySound = "shop_buy", EquipSound = "shop_equip", SellSound = "shop_sell";
+        private const float ShopDb = -10f;
+
+        private void Do(bool done, string success, string focusAfter, string sound)
         {
             if (!done)
             {
@@ -364,7 +368,7 @@ namespace Messingstadt
                 Rebuild();
                 return;
             }
-            Game.Sound.PlayEverywhere("menu_select", -14f);
+            Game.Sound.PlayEverywhere(sound, ShopDb);
             Game.CampaignChanged();
             _message = success;
             // Was weg ist, kann nicht mehr gewählt sein.
