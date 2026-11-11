@@ -20,7 +20,7 @@ AUDIO = ROOT / "game" / "assets" / "audio"
 SOUNDSCAPE = (ROOT / "game" / "SoundScape.cs").read_text(encoding="utf-8")
 
 MUSIC_LAYERS = ("music_calm", "music_dark", "music_suspect", "music_tension")
-LOOPS = ("rain", "wind", "wind_gust", "lamp", "neon", "steam", "fire", "diesel", "machine", "television", "airship", "weld", "radio", "heartbeat", "lockpick", "gutter", "piano", "tram_hum", "music_title") + MUSIC_LAYERS
+LOOPS = ("rain", "wind", "wind_gust", "lamp", "neon", "steam", "fire", "diesel", "machine", "television", "airship", "weld", "radio", "heartbeat", "lockpick", "gutter", "piano", "tram_hum", "music_title", "crowd_steps") + MUSIC_LAYERS
 STEPS = tuple(f"step_{kind}_{i}" for kind in ("soft", "boot", "run") for i in range(4))
 CITY = ("distant_shots", "tram", "foghorn", "church_bell", "shutter")
 
@@ -33,6 +33,12 @@ MAX_GUN_ABOVE_4K = 8.0
 MAX_GUN_BELOW_120 = 60.0
 DULL = ("hit_0", "hit_1", "hit_2", "fall_0", "fall_1", "club_hit_0", "club_hit_1", "club_swing", "smoke_throw", "reload_pistole", "reload_schrotflinte", "reload_maschinenpistole", "bandage")
 MAX_DULL_ABOVE_4K = 2.0
+# Signale lagen bis zu 27 dB über der Musik. Jetzt haben sie eine Obergrenze in der Datei und nichts mehr über 4 kHz.
+SIGNALS = {"whistle": -24.0, "boy_whistle": -24.0, "alarm_bell": -28.0, "coins": -28.0, "chain": -32.0, "click": -32.0, "lockpick": -30.0}
+MAX_SIGNAL_ABOVE_4K = 1.0
+MAX_RAIN_ABOVE_4K = 15.0
+FOR_OTHERS = ("gasp_0", "gasp_1", "shop_buy", "shop_sell", "shop_equip", "map_select", "map_accept", "stamp", "crowd_steps", "tram_spark", "cell_door", "keys")
+MAX_OTHERS_ABOVE_4K = 4.0
 MAX_RAIN_GAME_DBA = -45.0
 MAX_MUSIC_GAME_DBA = -43.0
 MAX_MUSIC_ABOVE_2K = 0.1
@@ -126,8 +132,17 @@ def main():
         x, rate = load(name)
         check(share(x, rate, 4000, 1e9) <= MAX_DULL_ABOVE_4K, f"{name}: über 4 kHz {share(x, rate, 4000, 1e9):.2f} %")
 
+    for name, limit in SIGNALS.items():
+        x, rate = load(name)
+        check(dba(x, rate) <= limit, f"{name}: {dba(x, rate):.1f} dB(A) in der Datei, Grenze {limit}")
+        check(share(x, rate, 4000, 1e9) <= MAX_SIGNAL_ABOVE_4K, f"{name}: über 4 kHz {share(x, rate, 4000, 1e9):.2f} %")
+    for name in FOR_OTHERS:
+        x, rate = load(name)
+        check(share(x, rate, 4000, 1e9) <= MAX_OTHERS_ABOVE_4K, f"{name}: über 4 kHz {share(x, rate, 4000, 1e9):.2f} %")
+
     rain_db = code_db("RainDb")
     x, rate = load("rain")
+    check(share(x, rate, 4000, 1e9) <= MAX_RAIN_ABOVE_4K, f"Regen über 4 kHz: {share(x, rate, 4000, 1e9):.1f} %")
     check(dba(x, rate) + rain_db <= MAX_RAIN_GAME_DBA, f"Regen im Schauer: {dba(x, rate) + rain_db:.1f} dB(A), Grenze {MAX_RAIN_GAME_DBA}")
 
     music_db = code_db("MusicDb")

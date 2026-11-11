@@ -950,9 +950,291 @@ def field_kit():
     save("bandage", fade(tear + 0.6 * wrap, 0.02, 0.2), 0.3)
 
 
+# ---------- Runde 2: Signale entschärft, Regen mit Aufschlag, Tiefes unterscheidbar, Brummen und Hörner mit Obertönen ----------
+# Diese Funktionen laufen nach den alten und überschreiben deren Dateien. Die alten bleiben wegen des gemeinsamen Zufalls stehen.
+
+def a_level(x, rate=RATE):
+    """Mittlerer Pegel in dB(A), als Näherung ans Gehör."""
+    power = np.abs(np.fft.rfft(x)) ** 2
+    f2 = np.fft.rfftfreq(len(x), 1 / rate) ** 2
+    weight = (12194 ** 2 * f2 ** 2) / ((f2 + 20.6 ** 2) * np.sqrt((f2 + 107.7 ** 2) * (f2 + 737.9 ** 2)) * (f2 + 12194 ** 2) + 1e-30) * 10 ** 0.1
+    return 20 * np.log10(np.sqrt((power * weight ** 2).sum() * 2) / len(x) + 1e-12)
+
+
+def leveled(x, dba):
+    """Stellt den Klang auf einen gehörten Pegel statt auf eine Spitze. So bleibt die Mischung beim Umbau, wo sie war."""
+    x = x * 10 ** ((dba - a_level(x)) / 20)
+    top = np.abs(x).max()
+    return x / top * 0.95 if top > 0.95 else x
+
+
+def save_level(name, x, dba):
+    data = (leveled(np.asarray(x, np.float64), dba) * 32767).astype("<i2")
+    with wave.open(str(OUT / f"{name}.wav"), "wb") as f:
+        f.setnchannels(1)
+        f.setsampwidth(2)
+        f.setframerate(RATE)
+        f.writeframes(data.tobytes())
+
+
+def rich(freq, t, top, rolloff, rng, wobble=0.0):
+    """Ton mit Obertönen bis top, je Teilton leiser. freq darf eine Kurve sein. Klingt nach Horn oder Trafo statt nach Prüfton."""
+    phase = 2 * np.pi * np.cumsum(np.broadcast_to(freq, t.shape)) / RATE
+    drift = wobble * np.sin(2 * np.pi * 5.3 * t + rng.uniform(0, 6.28))
+    out = np.zeros_like(t)
+    k = 1
+    while k * np.max(freq) < top:
+        out += np.sin(k * (phase + drift) + rng.uniform(0, 6.28)) / k ** rolloff
+        k += 1
+    return out
+
+
+def ring(t, modes, at=0.0):
+    """Angeschlagenes Metall oder Glas: gedämpfte Eigentöne, die nicht harmonisch liegen."""
+    tt = np.maximum(t - at, 0)
+    return sum(g * np.sin(2 * np.pi * f * tt) * decay(tt, d) for f, g, d in modes) * (t >= at)
+
+
+def clinks(rng, seconds, count, span, base, low=600, high=4000):
+    """Kleine Metallteile schlagen aneinander: Münzen, Kette, Schlüssel."""
+    t = time(seconds)
+    x = np.zeros_like(t)
+    for _ in range(count):
+        at = rng.uniform(0, span)
+        k = rng.uniform(0.85, 1.2)
+        x += rng.uniform(0.4, 1.0) * (ring(t, ((base * k, 1, 0.03), (base * 1.47 * k, 0.6, 0.022), (base * 1.93 * k, 0.3, 0.015)), at) + 0.8 * puff(rng, seconds, low, high * 0.8, 0.004, 0.0008, at))
+    return band(x, low, high)
+
+
+def soft_signals():
+    """Pfeifen, Glocke, Münzen, Kette, Klicken, Dietrich: tiefer, mit Luft und Raum, nichts über 4 kHz."""
+    rng = own_rng("soft_signals")
+    parts = []
+    for length in (0.28, 0.5):
+        t = time(length)
+        trill = np.sin(2 * np.pi * 32 * t)
+        tone_ = np.sin(2 * np.pi * np.cumsum(2150 + 120 * trill) / RATE) + 0.5 * np.sin(2 * np.pi * np.cumsum(2380 + 120 * trill) / RATE)
+        blast = (tone_ * (0.6 + 0.4 * trill) + 0.5 * band(noise(length, rng), 1400, 3600)) * np.minimum(t / 0.02, 1)
+        parts += [fade(blast, 0.01, 0.04), np.zeros(int(0.08 * RATE))]
+    blasts = np.concatenate(parts + [np.zeros(int(0.7 * RATE))])
+    save_level("whistle", fade(street(band(blasts, 900, 3400), 0.8, rng, 0.3), 0.005, 0.2), -25.0)
+
+    t = time(0.36)
+    glide = 1500 + 800 * np.sin(np.pi * t / 0.36)
+    call = (np.sin(2 * np.pi * np.cumsum(glide) / RATE) + 0.45 * band(noise(0.36, rng), 1200, 3200)) * np.sin(np.pi * t / 0.36) ** 0.5
+    calls = np.concatenate((fade(call, 0.02, 0.05), np.zeros(int(0.07 * RATE)), fade(call, 0.02, 0.05), np.zeros(int(0.6 * RATE))))
+    save_level("boy_whistle", fade(street(band(calls, 800, 3200), 0.7, rng, 0.3), 0.005, 0.2), -25.0)
+
+    # Rasselglocke: ein Hammer schlägt dreizehnmal je Sekunde auf eine Schale.
+    t = time(3.0)
+    hits_ = np.zeros_like(t)
+    for at in np.arange(0.0, 2.0, 1 / 13):
+        hits_[int(at * RATE)] = rng.uniform(0.7, 1.0)
+    h = time(0.7)
+    strike = ring(h, ((640, 1, 0.25), (1280, 0.6, 0.18), (1766, 0.35, 0.1), (2176, 0.15, 0.06))) + 0.3 * puff(rng, 0.7, 500, 2500, 0.004, 0.0008)
+    bell_ = np.fft.irfft(np.fft.rfft(hits_, 2 * len(t)) * np.fft.rfft(strike, 2 * len(t)), 2 * len(t))[:len(t)]
+    save_level("alarm_bell", fade(street(band(bell_, 300, 3200), 1.2, rng, 0.35), 0.002, 0.4), -30.0)
+
+    save_level("coins", fade(clinks(rng, 0.7, 5, 0.4, 2100, 500, 4200), 0.001, 0.1), -30.0)
+    save_level("chain", fade(clinks(rng, 0.3, 4, 0.16, 1500, 600, 3800), 0.001, 0.05), -34.0)
+    save_level("click", fade(puff(rng, 0.08, 500, 2600, 0.006, 0.0008) + 0.5 * puff(rng, 0.08, 150, 500, 0.012, 0.001), 0.0005, 0.02), -34.0)
+
+    # Dietrich: leises Schaben, ab und zu fällt ein Stift. Sechs Sekunden, damit man die Schleife nicht erkennt.
+    t = time(6.5)
+    scrape = band(noise(6.5, rng), 700, 2600) * (0.3 + 0.7 * np.clip(np.sin(2 * np.pi * 0.9 * t) * np.sin(2 * np.pi * 0.37 * t + 1) + 0.3, 0, 1))
+    pins = np.zeros_like(t)
+    for _ in range(16):
+        d = time(0.06)
+        tick = (band(rng.standard_normal(len(d)), 600, 2400) * decay(d, rng.uniform(0.004, 0.01)) + 0.4 * band(rng.standard_normal(len(d)), 200, 600) * decay(d, 0.015)) * rng.uniform(0.4, 1.0)
+        at = rng.integers(int(0.3 * RATE), int(6.0 * RATE))
+        pins[at:at + len(d)] += fade(tick, 0.0008, 0.01)
+    save_level("lockpick", loopable(0.25 * scrape / np.abs(scrape).max() + pins / np.abs(pins).max()), -32.0)
+
+
+RAIN_DROPS = 420
+RAIN_DBA = -18.5
+
+
+def rain_surface(rng):
+    """Regen mit Aufschlag: dunkleres Rauschen als Grund, darauf einzelne Tropfen auf Pflaster, in Pfützen und auf Blech."""
+    t = 12.5
+    n = int(t * RATE)
+    spec = np.fft.rfft(band(rng.standard_normal(n), 450, 5200))
+    f = np.fft.rfftfreq(n, 1 / RATE)
+    bed = np.fft.irfft(spec / np.sqrt(np.maximum(f, 200) / 1000), n) * (1 + 0.15 * np.sin(2 * np.pi * time(t) * 0.17))
+    d = time(0.07)
+    kinds = (
+        lambda: band(rng.standard_normal(len(d)), 900, 3200) * decay(d, 0.006),
+        lambda: band(rng.standard_normal(len(d)), 400, 1400) * decay(d, 0.014),
+        lambda: band(rng.standard_normal(len(d)), 1200, 3600) * decay(d, 0.009),
+    )
+    drops = np.zeros(n)
+    for _ in range(RAIN_DROPS):
+        drop = fade(kinds[rng.choice(3, p=(0.55, 0.25, 0.2))](), 0.0008, 0.01)
+        at = rng.integers(0, n - len(d))
+        drops[at:at + len(d)] += drop / np.abs(drop).max() * rng.uniform(0.2, 1.0) ** 2
+    x = bed / np.sqrt(np.mean(bed ** 2)) + 0.6 * drops / np.sqrt(np.mean(drops ** 2))
+    return loopable(x)
+
+
+def new_rain():
+    rng = own_rng("new_rain")
+    widen("rain", leveled(rain_surface(rng), RAIN_DBA), rain_surface(rng))
+
+
+def rails():
+    """Güterzug und Straßenbahn: Der Zug stampft und schlägt über Schienenstöße, die Bahn singt mit ihrem Motor und klingelt."""
+    rng = own_rng("rails")
+    t = time(12.0)
+    x = band(noise(12.0, rng), 40, 260) * (0.75 + 0.25 * np.sin(2 * np.pi * 2.6 * t))
+    x /= np.abs(x).max()
+    clack = np.zeros_like(t)
+    for at in np.arange(0.5, 11.3, 0.62):
+        for offset, g in ((0.0, 1.0), (0.11, 0.7)):
+            d = time(0.12)
+            i = int((at + offset) * RATE)
+            clack[i:i + len(d)] += band(rng.standard_normal(len(d)), 120, 600) * decay(d, 0.02) * g
+    chuff = band(noise(12.0, rng), 250, 1100) * (0.5 + 0.5 * np.sin(2 * np.pi * 2.8 * t)) ** 3
+    x += 0.5 * clack / np.abs(clack).max() + 0.3 * chuff / np.abs(chuff).max()
+    save_level("train", fade(x * np.sin(np.pi * t / 12.0) ** 2, 0.1, 0.5), -32.5)
+
+    t = time(11.0)
+    x = 0.8 * band(noise(11.0, rng), 50, 300)
+    x /= np.abs(x).max()
+    whine = rich(140 + 70 * np.sin(np.pi * t / 11.0) ** 2, t, 1100, 1.5, rng, 0.3)
+    joints = np.zeros_like(t)
+    for at in np.arange(0.4, 10.4, 1.1):
+        for offset, g in ((0.0, 1.0), (0.16, 0.8)):
+            d = time(0.12)
+            i = int((at + offset) * RATE)
+            joints[i:i + len(d)] += band(rng.standard_normal(len(d)), 90, 500) * decay(d, 0.025) * g
+    ding = ring(t, ((700, 1, 0.35), (1450, 0.5, 0.2), (1900, 0.2, 0.1)), 3.4) + ring(t, ((700, 1, 0.35), (1450, 0.5, 0.2), (1900, 0.2, 0.1)), 3.75)
+    x += 0.2 * whine / np.abs(whine).max() + 0.45 * joints / np.abs(joints).max() + 0.08 * ding / np.abs(ding).max()
+    save_level("tram", fade(x * np.sin(np.pi * t / 11.0) ** 2, 0.1, 0.5), -27.9)
+
+
+def new_hums():
+    """Lampen, Motoren, Maschinen: Obertöne, etwas Rauschen und ein eigener Rhythmus statt eines nackten Sinus."""
+    rng = own_rng("new_hums")
+    t = time(4.5)
+    buzz = band(noise(4.5, rng), 200, 1200) * (0.6 + 0.4 * np.abs(np.sin(2 * np.pi * 50 * t)))
+    save_level("lamp", loopable(rich(100, t, 1500, 1.3, rng, 0.2) + 0.15 * buzz / np.abs(buzz).max()), -29.4)
+    save_level("tram_hum", loopable(rich(100, t, 900, 1.6, rng, 0.2) + 0.35 * rich(50, t, 400, 1.2, rng, 0.4) + 0.1 * buzz / np.abs(buzz).max()), -28.9)
+    flicker = np.clip(1.2 + np.sin(2 * np.pi * 0.8 * t) * np.sin(2 * np.pi * 3.1 * t + 2), 0.2, 1)
+    save_level("neon", loopable((rich(100, t, 2500, 1.0, rng, 0.3) + 0.3 * buzz / np.abs(buzz).max()) * flicker), -26.3)
+
+    t = time(6.5)
+    thumps = np.zeros_like(t)
+    for at in np.arange(0.0, 6.4, 0.5):
+        d = time(0.25)
+        i = int(at * RATE)
+        thumps[i:i + len(d)] += fade(band(rng.standard_normal(len(d)), 45, 160) * decay(d, 0.06), 0.004, 0.05)[:len(t) - i]
+    clatter = band(noise(6.5, rng), 120, 700) * (0.6 + 0.4 * np.sin(2 * np.pi * 4 * t))
+    save_level("machine", loopable(thumps / np.abs(thumps).max() + 0.4 * rich(48, t, 600, 1.4, rng, 0.2) / 2 + 0.4 * clatter / np.abs(clatter).max()), -39.2)
+
+    t = time(8.5)
+    props = band(noise(8.5, rng), 60, 400) * (0.5 + 0.5 * np.sin(2 * np.pi * 11 * t)) ** 2
+    save_level("airship", loopable(rich(41, t, 500, 1.2, rng, 0.3) + 0.7 * rich(43.5, t, 500, 1.2, rng, 0.3) + 1.2 * props / np.abs(props).max()), -41.3)
+
+    # Diesel im Leerlauf: Zündungen, die nicht ganz gleichmäßig kommen.
+    t = time(4.5)
+    fire_ = np.zeros_like(t)
+    at = 0.0
+    while at < 4.4:
+        fire_[int(at * RATE)] = rng.uniform(0.6, 1.0)
+        at += (1 / 11) * rng.uniform(0.9, 1.1)
+    d = time(0.15)
+    pulse = fade(band(rng.standard_normal(len(d)), 50, 260) * decay(d, 0.03), 0.003, 0.03)
+    idle = np.fft.irfft(np.fft.rfft(fire_, 2 * len(t)) * np.fft.rfft(pulse, 2 * len(t)), 2 * len(t))[:len(t)]
+    rattle = band(noise(4.5, rng), 100, 500)
+    save_level("diesel", loopable(idle / np.abs(idle).max() + 0.25 * rattle / np.abs(rattle).max()), -36.6)
+
+
+def new_signals():
+    """Hörner, Glocke, Schlussakkorde: Obertöne wie bei Blech und Bronze, dazu der Raum der Stadt."""
+    rng = own_rng("new_signals")
+    t = time(5.5)
+    env = np.minimum(t / 0.35, 1) * np.clip((4.2 - t) / 0.6, 0, 1)
+    horn = (rich(110, t, 2200, 1.1, rng, 0.25) + 0.8 * rich(138.6, t, 2200, 1.1, rng, 0.25)) * env
+    breath = band(noise(5.5, rng), 300, 1800) * env
+    save_level("factory_horn", fade(street(band(horn + 0.25 * breath / np.abs(breath).max(), 60, 2200), 1.6, rng, 0.35), 0.05, 0.3), -26.0)
+
+    t = time(6.2)
+    env = np.minimum(t / 0.5, 1) * np.clip((3.2 - t) / 0.8, 0, 1)
+    save_level("foghorn", fade(street(band(rich(92, t, 1200, 1.0, rng, 0.2) * env, 50, 1300), 2.5, rng, 0.45, 80, 1200), 0.05, 0.6), -26.6)
+
+    # Kirchenglocke: Unterton, Prime, Terz, Quinte und Oktave klingen verschieden lang aus.
+    t = time(11.0)
+    x = np.zeros_like(t)
+    partials = ((98, 0.5, 4.0), (196, 1, 2.5), (235, 0.6, 1.5), (294, 0.35, 1.2), (392, 0.5, 0.9), (523, 0.2, 0.5), (588, 0.15, 0.4))
+    for at in (0.0, 2.8, 5.6):
+        x += ring(t, partials, at) + 0.4 * puff(rng, 11.0, 150, 900, 0.01, 0.002, at) * np.abs(ring(t, partials, at)).max()
+    save_level("church_bell", fade(band(x, 60, 1300), 0.02, 0.6), -27.6)
+
+    t = time(3.4)
+    swell = np.minimum(t / 0.25, 1) * decay(t, 1.0)
+    drum = puff(rng, 3.4, 50, 160, 0.3, 0.004)
+    for name, chord, top, dba in (("win", (110, 165, 220, 277), 1600, -29.0), ("lose", (73.4, 87.3, 110, 155.6), 1100, -31.0)):
+        brass = sum(rich(f, t, top, 1.2, rng, 0.2) for f in chord) * swell
+        save_level(name, fade(street(brass / np.abs(brass).max() + 0.6 * drum / np.abs(drum).max(), 0.9, rng, 0.25), 0.01, 0.4), dba)
+
+
+def for_others():
+    """Klänge, die andere Teile des Spiels abrufen: Passanten, Waffenkammer, Stadtplan, Startbildschirm, Einsatz 2."""
+    rng = own_rng("for_others")
+    # Erschrecken: scharfes Einatmen. Ohne Stimme, deshalb nur ein Luftholen.
+    for i in range(2):
+        t = time(0.45)
+        air = band(noise(0.45, rng), 600, 1200) + 0.6 * band(noise(0.45, rng), 1900 + 200 * i, 2900 + 200 * i)
+        save_level(f"gasp_{i}", fade(air * np.minimum(t / (0.1 + 0.03 * i), 1) ** 2 * decay(np.maximum(t - 0.14, 0), 0.05), 0.01, 0.1), -30.0)
+
+    drawer = 0.9 * puff(rng, 0.9, 80, 400, 0.05, 0.003, 0.5) + 0.5 * puff(rng, 0.9, 300, 1200, 0.02, 0.002, 0.5)
+    buy = clinks(rng, 0.9, 5, 0.35, 2000, 500, 4000)
+    save_level("shop_buy", fade(buy / np.abs(buy).max() + drawer / np.abs(drawer).max(), 0.001, 0.15), -30.0)
+    save_level("shop_sell", fade(clinks(rng, 0.8, 8, 0.55, 2200, 500, 4000), 0.001, 0.1), -31.0)
+    t = time(0.6)
+    leather = band(noise(0.6, rng), 500, 2200) * np.exp(-((t - 0.13) / 0.08) ** 2)
+    latch = puff(rng, 0.6, 400, 2200, 0.008, 0.001, 0.3) + 0.8 * puff(rng, 0.6, 250, 1500, 0.014, 0.001, 0.38)
+    save_level("shop_equip", fade(leather / np.abs(leather).max() + 0.9 * latch / np.abs(latch).max(), 0.01, 0.1), -30.0)
+
+    t = time(0.18)
+    save_level("map_select", fade(puff(rng, 0.18, 300, 1800, 0.012, 0.001) + 0.3 * band(noise(0.18, rng), 900, 2800) * np.exp(-((t - 0.06) / 0.03) ** 2), 0.001, 0.05), -33.0)
+    t = time(0.6)
+    slide = band(noise(0.6, rng), 800, 3000) * np.exp(-((t - 0.14) / 0.09) ** 2)
+    save_level("map_accept", fade(slide / np.abs(slide).max() + 0.9 * puff(rng, 0.6, 90, 500, 0.04, 0.002, 0.3) / 0.3, 0.01, 0.15), -30.0)
+    stamp = (1.0 * puff(rng, 0.7, 50, 200, 0.07, 0.002) + 0.8 * puff(rng, 0.7, 250, 1100, 0.02, 0.001) + 0.3 * puff(rng, 0.7, 600, 2400, 0.04, 0.004, 0.03)
+             + 0.25 * puff(rng, 0.7, 300, 1500, 0.012, 0.001, 0.38))
+    save_level("stamp", fade(stamp, 0.001, 0.15), -27.0)
+
+    # Schichtwechsel: viele Stiefel durcheinander, als Schleife.
+    n = int(8.5 * RATE)
+    crowd = np.zeros(n)
+    d = time(0.3)
+    for _ in range(75):
+        step = fade(band(rng.standard_normal(len(d)), 55, 180) * decay(d, 0.035) + 0.6 * band(rng.standard_normal(len(d)), 200, 900) * decay(d, 0.025), 0.004, 0.05)
+        at = rng.integers(0, n - len(d))
+        crowd[at:at + len(d)] += step * rng.uniform(0.3, 1.0)
+    save_level("crowd_steps", loopable(crowd), -36.0)
+
+    t = time(0.6)
+    spark = np.zeros_like(t)
+    for _ in range(7):
+        spark += rng.uniform(0.4, 1.0) * puff(rng, 0.6, 1200, 4200, rng.uniform(0.003, 0.01), 0.0005, rng.uniform(0, 0.3))
+    arc = rich(100, t, 1800, 0.9, rng) * np.minimum(t / 0.01, 1) * decay(t, 0.12)
+    save_level("tram_spark", fade(band(spark / np.abs(spark).max() + 0.3 * arc / np.abs(arc).max(), 300, 4500), 0.001, 0.15), -30.0)
+
+    # Zellentür: Angel ächzt, dann schlägt Eisen auf Eisen. Der Zellengang hallt.
+    t = time(2.4)
+    groan = band(noise(2.4, rng), 90, 420) * (0.5 + 0.5 * np.sin(2 * np.pi * 17 * t)) * np.exp(-((t - 0.45) / 0.3) ** 2)
+    clang = ring(t, ((180, 1, 0.5), (410, 0.7, 0.35), (730, 0.4, 0.2), (1180, 0.2, 0.12)), 1.0) + 1.5 * puff(rng, 2.4, 60, 300, 0.08, 0.002, 1.0)
+    door = groan / np.abs(groan).max() * 0.5 + clang / np.abs(clang).max()
+    save_level("cell_door", fade(street(band(door, 50, 2200), 1.1, rng, 0.3, 120, 1800), 0.01, 0.4), -28.0)
+    save_level("keys", fade(clinks(rng, 0.9, 9, 0.7, 1700, 600, 4000), 0.001, 0.1), -32.0)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld, dog, siren, factory_horn, train, radio, heartbeat, typewriter, fresh_random, dog_fight, boy_whistle, wind_gust, distant_shots, tram, foghorn, church_bell, shutter, gutter, piano, tram_hum, match, title_theme, menu_sounds, peil_ping, new_shots, new_steps, new_hits, reloads, field_kit):
+    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld, dog, siren, factory_horn, train, radio, heartbeat, typewriter, fresh_random, dog_fight, boy_whistle, wind_gust, distant_shots, tram, foghorn, church_bell, shutter, gutter, piano, tram_hum, match, title_theme, menu_sounds, peil_ping, new_shots, new_steps, new_hits, reloads, field_kit, soft_signals, new_rain, rails, new_hums, new_signals, for_others):
         make()
     files = list(OUT.glob("*.wav"))
     print(f"{len(files)} Geräusche, {sum(f.stat().st_size for f in files) // 1024} KiB")
