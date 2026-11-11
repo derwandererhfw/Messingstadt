@@ -148,7 +148,7 @@ namespace Messingstadt
                     {
                         _smokeLeft = Rand(MinSmokeSeconds, MaxSmokeSeconds);
                         _flareLeft = FlareSeconds;
-                        Game.Sound.Play("match", Game.UnitPos(Unit), -14f, 260f, 0.08f);
+                        Game.PlayScenery("match", Game.UnitPos(Unit), -14f, 260f, 0.08f);
                         _nextSmoke = Rand(MinSmokePause, MaxSmokePause);
                     }
                 }

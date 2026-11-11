@@ -413,7 +413,14 @@ namespace Messingstadt
                 pane.Crackling = welding;
                 if (welding)
                 {
-                    Sound.Play("weld", pane.Center, -17f, 500f, 0.05f);
+                    if (Game != null)
+                    {
+                        Game.PlayScenery("weld", pane.Center, -17f, 500f, 0.05f);
+                    }
+                    else
+                    {
+                        Sound.Play("weld", pane.Center, -17f, 500f, 0.05f);
+                    }
                 }
             }
             return arc ? new Color(0.72f, 0.86f, 1f, 1f) : Unchanged;

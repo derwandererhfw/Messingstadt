@@ -240,7 +240,7 @@ namespace Messingstadt
                 rat.Fleeing = true;
                 if (_rng.NextDouble() < 0.4)
                 {
-                    Sound.Play("rat", rat.Sprite.Position, -12f, 400f, 0.2f);
+                    Game.PlayScenery("rat", rat.Sprite.Position, -12f, 400f, 0.2f);
                 }
                 rat.Wait = 0f;
             }
@@ -309,7 +309,7 @@ namespace Messingstadt
                     p.Away = new Vector2(Rand(-240f, 240f), Rand(-300f, -200f));
                     p.Sprite.FlipH = p.Away.X < 0f;
                     p.Sprite.ZIndex = FlyingZ;
-                    Sound.Play("pigeons", p.Seat, -7f, 900f, 0.15f);
+                    Game.PlayScenery("pigeons", p.Seat, -7f, 900f, 0.15f);
                 }
                 p.Peck -= dt;
                 if (p.Peck < -0.35f)

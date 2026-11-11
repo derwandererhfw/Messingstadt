@@ -166,7 +166,7 @@ namespace Messingstadt
             AddChild(burst);
             burst.Emitting = true;
             burst.Finished += burst.QueueFree;
-            Game.Sound.Play("steam_burst", at, -11f, 900f, 0.08f);
+            Game.PlayScenery("steam_burst", at, -11f, 900f, 0.08f);
         }
 
         /// <summary>Jeder Schuss erhellt für einen Augenblick die Umgebung des Schützen.</summary>
