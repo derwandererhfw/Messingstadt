@@ -236,9 +236,11 @@ namespace Messingstadt.Core.Tests
             // Tür offen, er sitzt noch hinten in der Zelle.
             Assert.True(w.Doors[0].Open);
             Assert.True(w.HiddenInCell(Weiss(w)));
-            Run(w, World.FreeTicks + 60);
+            // Der Schlosser bleibt direkt vor der Tür stehen. Weiß kommt trotzdem heraus, statt auf der Schwelle zu warten.
+            Run(w, World.FreeTicks + 80);
             Assert.False(Weiss(w).Captive);
             Assert.False(w.HiddenInCell(Weiss(w)));
+            Assert.DoesNotContain((Weiss(w).TileX, Weiss(w).TileY), w.Doors[0].Tiles);
             Assert.True(w.HiddenInCell(Roth(w)));
         }
 

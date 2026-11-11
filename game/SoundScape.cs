@@ -120,6 +120,11 @@ namespace Messingstadt
         /// <summary>Wie oft insgesamt etwas abgespielt wurde. Für den Prüflauf.</summary>
         public int PlayCount { get; private set; }
 
+        /// <summary>Nur die Klänge der Bedienung: Menü, Stadtplan, Waffenkammer. Ohne Wetter, Bahn und alles, was in der Welt dahinter klingt.</summary>
+        public int UiPlayCount { get; private set; }
+
+        private static readonly string[] WorldEverywhere = { "thunder", "tram", "factory_horn", "peil_ping" };
+
         /// <summary>Wie oft welche Art Geräusch lief. Für den Prüflauf, um Dauergeräusche zu finden.</summary>
         public Dictionary<string, int> PlayedByGroup { get; } = new();
 
@@ -407,6 +412,7 @@ namespace Messingstadt
         public void PlayEverywhere(string name, float volume)
         {
             float pitch = 1f;
+            UiPlayCount += System.Array.Exists(WorldEverywhere, w => name.StartsWith(w)) ? 0 : 1;
             if (name == PeilPing)
             {
                 // Im Gefecht tickt das Peilgerät etwas schärfer.

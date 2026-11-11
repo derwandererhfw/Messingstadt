@@ -210,6 +210,8 @@ Stellschrauben für den leisen Weg, gemessen mit `--schrauben` vor der Änderung
 
 A und C machen den Weg teurer, aber nicht riskanter: Das Wagnis liegt in den zwei Querungen der Wallstraße, nicht im Hof. B macht ihn mit den gemessenen Spielweisen unmöglich. Eine Uhr („Um sechs kommt der Werkschutz“) bräuchte eine neue Regel und ist nicht gemessen.
 
+Die Zellen liegen im Gebäude. Wer auf einem Feld seiner Zelle steht, wird nicht gezeichnet (`World.HiddenInCell`), sonst klebte er außen an der Fassade. Solange die Tür zu ist, steht sein kurzer Name neben dem Schloss. Ein Befreiter bleibt nie in der Zelle stehen, auch wenn sein Führer direkt vor der Tür wartet, sondern tritt auf das nächste freie Feld davor.
+
 ### Mehrere Einsätze
 
 Jeder Einsatz hat eine Missionsdatei, eine Regelkarte, eine Lichtkarte und einen Grafikordner: `data/mission_02.json` nennt `mapId`, `lightId` und `scene`, die Stadt liegt in `game/assets/maps/<scene>/` mit demselben Aufbau wie die erste. Welcher Einsatz gespielt wird, bestimmt das gewählte Viertel im Stadtplan. Hat es eine andere Stadt, lädt das Spiel die Szene neu und setzt mit derselben Akte fort. Der Grundriss `data/scene_02.json` ist die gemeinsame Quelle: `tools/level/scene_to_map.py` schreibt daraus die Regelkarte und zeigt, was die Kamera verdeckt, `tools/level/placeholder_city.py` baut eine schlichte Platzhalterstadt samt Licht. Zielorte, Türen mit Spielbedeutung und Hauptwege dürfen nie hinter hohen Gebäuden liegen.
