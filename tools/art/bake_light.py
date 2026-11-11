@@ -7,6 +7,7 @@ sowie grid.png, das Lichtgitter für bewegte Figuren. Werte sind Wurzeln von Lic
 import json
 import random
 import shutil
+import sys
 import subprocess
 from pathlib import Path
 
@@ -185,6 +186,18 @@ def encode(light):
 
 
 def main():
+    """Ohne Argumente das Kesselviertel. Mit --map=<id> --nr=<nr> eine weitere Karte aus game/assets/maps/<id>/."""
+    global ASSETS, OUT, WORK, RULES_WINDOWS
+    args = dict(a[2:].split("=", 1) for a in sys.argv[1:] if a.startswith("--") and "=" in a)
+    light_file = ROOT / "data" / "light_01.json"
+    albedo_file = Path(__file__).with_name("rules_albedo.json")
+    if "map" in args:
+        ASSETS = ROOT / "game" / "assets" / "maps" / args["map"]
+        OUT = ASSETS / "light"
+        WORK = ROOT / "work" / f"light_{args['map']}"
+        light_file = ROOT / "data" / f"light_{args['nr']}.json"
+        albedo_file = Path(__file__).with_name(f"rules_albedo_{args['nr']}.json")
+        RULES_WINDOWS = Path(__file__).with_name(f"rules_windows_{args['nr']}.json")
     manifest = json.loads((ASSETS / "manifest.json").read_text(encoding="utf-8"))
     WORK.mkdir(parents=True, exist_ok=True)
     if OUT.exists():
@@ -197,7 +210,9 @@ def main():
     fine_images = {Path(f).stem: np.array(Image.open(ASSETS / "hd" / "things" / f).convert("RGBA"))
                    for f in manifest.get("hd", {}).get("things", [])}
     # Fürs Schleichlicht strahlen Boden und Objekte so zurück wie vor dem Umbau der Grafik: Neue Farben ändern nur das Bild.
-    frozen = json.loads(Path(__file__).with_name("rules_albedo.json").read_text())
+    # Eine neue Karte hat noch keinen festgehaltenen Stand: Der erste Lauf legt ihn an, danach gilt er.
+    frozen = json.loads(albedo_file.read_text()) if albedo_file.exists() else {"ground": None, "boxes": {}}
+    fresh = {"ground": None, "boxes": {}}
     boxes, sprites, images = [], [], []
     groundless = ground[(np.abs(ground[..., :3].astype(int) - ground[0, 0, :3].astype(int)).sum(axis=2) > 8)]
     sprites.append({"name": "ground", "box": -1, "left": 0, "top": 0})
@@ -212,6 +227,7 @@ def main():
             z1 = 50
         albedo = mean_albedo(rgba)
         key = ",".join(f"{t[k]:.2f}" for k in ("x0", "y0", "x1", "y1", "z0"))
+        fresh["boxes"][key] = [round(v, 5) for v in albedo]
         boxes.append({"x0": x0, "y0": y0, "x1": x1, "y1": y1, "z0": t["z0"], "z1": z1, "albedo": albedo,
                       "rulesAlbedo": frozen["boxes"].get(key, albedo), "roof": t.get("roof", []),
                       # Kleinkram wirft im Bild Schatten, fürs Schleichlicht aber keinen. Durchbrochenes wie Fahrräder nie.
@@ -318,7 +334,7 @@ def main():
         "boxes": boxes, "lights": lights, "puddles": manifest["puddles"],
         "sprites": [{k: s[k] for k in ("box", "left", "top", "w", "h")} for s in sprites],
         "gridRes": GRID_RES, "gridZ": GRID_Z, "rulesFireScale": RULES_FIRE_POWER / FIRE_POWER,
-        "rulesGroundAlbedo": frozen["ground"],
+        "rulesGroundAlbedo": frozen["ground"] or (groundless.mean(axis=0)[:3] / 255).tolist(),
         **({"rulesWindows": json.loads(RULES_WINDOWS.read_text())} if RULES_WINDOWS.exists() else {}),
     }
     (WORK / "scene.json").write_text(json.dumps(scene), encoding="utf-8")
@@ -370,7 +386,12 @@ def main():
     # Für die Spielregeln: Helligkeit in Prozent, im Stand von Figuren gemessen. Eigenes Licht, siehe RULES_FIRE_POWER.
     rules = fill_empty(tone(grid[..., 4:7]), ~inside)
     levels = (rules.mean(axis=-1) * 100).round().astype(int).ravel().tolist()
-    (ROOT / "data" / "light_01.json").write_text(json.dumps({"cells": GRID_RES, "size": size, "levels": levels}), encoding="utf-8")
+    light_file.write_text(json.dumps({"cells": GRID_RES, "size": size, "levels": levels}), encoding="utf-8")
+    if not albedo_file.exists():
+        fresh["ground"] = [round(v, 5) for v in (groundless.mean(axis=0)[:3] / 255).tolist()]
+        albedo_file.write_text(json.dumps(fresh, indent=0))
+    if not RULES_WINDOWS.exists():
+        shutil.copy(WORK / "windows.json", RULES_WINDOWS)
     # Die Kulisse hat kein eigenes Licht, sondern trägt überall das des Nachthimmels.
     Image.fromarray(encode(np.array([[VOID_LIGHT]]))).save(OUT / "backdrop_a.png")
     Image.fromarray(encode(np.array([[(0, 0, 0, BACKDROP_FLASH)]])), "RGBA").save(OUT / "backdrop_b.png")
