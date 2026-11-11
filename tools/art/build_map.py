@@ -43,6 +43,10 @@ THEMES = {
         },
         "seed": 1880,
         "backdrop_keep": lambda x, y, w, d: y + d > 0.5,  # nördlich des Walls liegt keine Stadt mehr
+        # Sitzplätze der Tauben: Feld x, y und Höhe in Bildpunkten, jeweils auf einer Dachkante, die zur Kamera zeigt.
+        # Die Höhe ist die Traufe des Hauses darunter, daran findet das Spiel die richtige Zeichentiefe.
+        "perches": [(3.0, 1.95, 60), (3.6, 1.95, 60), (12.4, 1.95, 60), (17.2, 1.95, 60), (9.0, 9.95, 40), (9.6, 9.95, 40),
+                    (18.95, 5.0, 120), (18.95, 5.6, 120), (16.0, 16.95, 56), (4.95, 4.4, 150), (4.95, 5.0, 150)],
     },
 }
 
@@ -291,6 +295,12 @@ def nordwall_building(b, s, things):
                 dr.fine_line((u, 16, u + 22, 16), fill=g.C["iron"])
                 dr.fine_line((u, h - 6, u + 22, h - 6), fill=g.C["iron"])
         roof = roof_flat(2)
+        hidden = [door for door in b.get("doors", ()) if door["side"] == "west"]
+        if hidden:
+            # Die Pforte liegt auf der abgewandten Seite. Zu sehen ist nur ihr Sturz aus Granit über der Mauerkrone.
+            at = b["y0"] + hidden[0]["at"]
+            plain = roof
+            roof = lambda x0, y0, x1, y1, hh: plain(x0, y0, x1, y1, hh) + [R.block(x0, at - 0.42, x0 + 0.3, at + 0.42, hh, hh + 9, mat_walk, "lintel")]  # noqa: E731
     else:  # Mietshaus der Beamten und alles Unbekannte: Klinker mit Granitbändern, schlicht
         left, d = office_front(wl, h, lit, floors=2, door_at=wl // 2)
         g.door(d, wl // 2 - 8, h - 1, 16, 30, "wood", True)
@@ -485,6 +495,7 @@ def export(scene, theme, s, things, assets):
         if t.solid:
             solids.append({"x0": t.x0, "y0": t.y0, "x1": t.x1, "y1": t.y1, "opaque": t.opaque})
     (assets / "manifest.json").write_text(json.dumps({"map": scene["id"], "ox": s.ox, "oy": s.oy, "things": manifest, "backdrop": backdrop,
+                                                      "perches": [list(p) for p in theme.get("perches", ())],
                                                       "hd": {"res": g.HD, "ground": "hd/ground.png", "things": [n for t, n, _ in exported if t.hd]},
                                                       **g.AMBIENT}), encoding="utf-8")
     g.export_backdrop(assets, theme.get("backdrop_keep"))
@@ -520,9 +531,11 @@ def main():
         return
     assets = ROOT / "game" / "assets" / "maps" / scene["id"]
     solids = export(scene, theme, s, things, assets)
+    # Die Regelkarte schreibt allein das Werkzeug der Level-Sitzung. Hier wird sie nur gelesen und mit den Bildern verglichen.
     map_file = ROOT / "data" / f"map_{nr}.json"
-    if map_file.exists():
-        print("Regelkarte passt zu den Bildern" if same_solids(solids, map_file) else "Regelkarte bitte prüfen")
+    if not map_file.exists():
+        subprocess.run([sys.executable, str(ROOT / "tools" / "level" / "scene_to_map.py"), nr], check=True)
+    print("Regelkarte passt zu den Bildern" if same_solids(solids, map_file) else "Regelkarte bitte prüfen")
     print(f"{len(things)} Objekte nach {assets}")
     if "--no-bake" not in sys.argv:
         subprocess.run([sys.executable, str(Path(__file__).with_name("bake_light.py")), f"--map={scene['id']}", f"--nr={nr}"], check=True)
