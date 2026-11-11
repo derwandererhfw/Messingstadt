@@ -34,6 +34,9 @@ namespace Messingstadt
         private static readonly Color PeekPane = new(0.26f, 0.17f, 0.09f, 1f);
         private static readonly Color DarkPane = new(0.09f, 0.12f, 0.16f, 1f);
         private static readonly Color PasserPane = new(0.13f, 0.09f, 0.06f, 1f);
+        // Zugezogener Vorhang: Das Licht dahinter brennt weiter, nach außen dringt nur ein matter, warmer Schein.
+        private static readonly Color CurtainPane = new(0.3f, 0.17f, 0.1f, 1f);
+        private const float ShadowLeadSeconds = 0.7f;
         private static readonly Color CandleColor = new(0.62f, 0.36f, 0.15f);
         private static readonly Color NeonColor = new(1f, 0.28f, 0.2f, 1f);
         private static readonly Color DeadLetter = new(0.28f, 0.2f, 0.16f, 1f);
@@ -69,6 +72,7 @@ namespace Messingstadt
             public float BackAt;
             public float PeekAt = -1f;
             public float PeekUntil;
+            public float CurtainAt = -1f;
         }
 
         private readonly Random _rng = new();
@@ -271,6 +275,7 @@ namespace Messingstadt
                 {
                     pane.DarkAt = -1f;
                     pane.PeekAt = -1f;
+                    pane.CurtainAt = -1f;
                 }
             }
             if (world.Shots.Count > 0 && world.Shots[^1].Tick > _lastShotTick)
@@ -299,11 +304,25 @@ namespace Messingstadt
         {
             foreach (var pane in _panes)
             {
-                if (!Hushable(pane) || pane.StaysLit)
+                if (!Hushable(pane))
                 {
                     continue;
                 }
                 float distance = pane.Center.DistanceTo(at);
+                if (pane.StaysLit)
+                {
+                    // Wer das Licht anlässt, zieht wenigstens den Vorhang zu.
+                    if (pane.CurtainAt >= 0f)
+                    {
+                        pane.BackAt = Mathf.Max(pane.BackAt, _time + Rand(MinQuietSeconds, MaxQuietSeconds));
+                    }
+                    else if (distance < HushRadius && pane.Kind is PaneKind.Window or PaneKind.Toggle)
+                    {
+                        pane.CurtainAt = _time + distance / HushSpreadSpeed + Rand(0.6f, 2.5f);
+                        pane.BackAt = _time + Rand(MinQuietSeconds, MaxQuietSeconds);
+                    }
+                    continue;
+                }
                 if (pane.DarkAt >= 0f)
                 {
                     // Wer schon im Dunkeln sitzt, wartet länger, solange es weiter knallt.
@@ -322,9 +341,24 @@ namespace Messingstadt
         private Color Hushed(Pane pane, Color look)
         {
             _hushable++;
-            if (pane.DarkAt < 0f || _time < pane.DarkAt)
+            if (pane.CurtainAt >= 0f)
+            {
+                if (_time >= pane.BackAt)
+                {
+                    pane.CurtainAt = -1f;
+                    return look;
+                }
+                // Ein dunkles Fenster bleibt dunkel. Sonst tritt erst jemand ans Fenster, dann fällt der Vorhang.
+                return look == DarkPane || _time < pane.CurtainAt - ShadowLeadSeconds ? look : _time < pane.CurtainAt ? PasserPane : CurtainPane;
+            }
+            if (pane.DarkAt < 0f)
             {
                 return look;
+            }
+            if (_time < pane.DarkAt)
+            {
+                // Kurz bevor das Licht ausgeht, steht ein Schatten am Fenster.
+                return _time >= pane.DarkAt - ShadowLeadSeconds && look != DarkPane ? PasserPane : look;
             }
             if (_time >= pane.BackAt)
             {

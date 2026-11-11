@@ -885,6 +885,7 @@ void fragment() {
             _critterGlow = glow;
             AddChild(new Haze { Game = this });
             AddChild(new Drains { Game = this });
+            AddChild(new Passersby { Game = this, FiguresPath = ProjectSettings.GlobalizePath("res://assets/figures.json") });
             AddChild(new SmokePot { Game = this, TestAt = _testPot });
             AddChild(new RainLayer { Game = this, ZIndex = 3900 });
         }
