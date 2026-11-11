@@ -72,7 +72,7 @@ Bisher halten alle Figuren die Pistole. Was je Gegenstand sinnvoll wäre, nach W
 | Gegenstand | Haltung und Bewegung |
 |---|---|
 | Schrotflinte | Mit beiden Händen an der Hüfte oder Schulter, Gehen mit gesenktem Lauf. Rückstoß reißt Oberkörper und Lauf deutlich hoch. Nachladen: Flinte abknicken, zwei Patronen einlegen, zuklappen |
-| Maschinenpistole | Beidhändig vor dem Bauch, Trommelmagazin sichtbar. Dauerfeuer als kurzes Zittern statt eines Rückstoßes je Schuss. Nachladen: Trommel herausziehen, neue einsetzen |
+| Maschinenpistole | Beidhändig vor dem Bauch, das gerade Stangenmagazin (zwanzig Schuss) ragt nach unten. Dauerfeuer als kurzes Zittern statt eines Rückstoßes je Schuss. Nachladen: Magazin nach unten herausziehen, neues aus der Tasche einsetzen |
 | Totschläger | Locker am Arm hängend beim Gehen. Schlag von oben, kurz ausholen. Schleichhaltung: geduckt, Knüppel hinter dem Rücken |
 | Pistole | Wie bisher. Dazu Nachladen: Magazin aus dem Griff, neues hinein |
 | Rauchtopf | Wurf mit kurzem Ausholen, danach Rauch aus einer Dose am Boden |

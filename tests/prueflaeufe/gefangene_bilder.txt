@@ -1,0 +1,29 @@
+# Bilder der Gefangenen in Einsatz 2: sitzen in der Zelle, aufstehen, folgen, warten in der Hocke. Dazu die Stadtwache in Blau.
+# Aufruf mit --fresh --mission=mission_02. In der Mission müssen die Gefangenen die Zeilen Gefangener_Weiss und Gefangener_Roth tragen.
+# Die Bilder landen unter user://gefangene_*.png.
+wait 40
+calm
+place item
+key Key2
+key F
+wait 30
+shot user://gefangene_0_sitzen.png
+rclickdoor Zelle 1
+waitcontains telegram ZELLE WIRD GEÖFFNET
+waitcontains doors Zelle 1
+wait 12
+shot user://gefangene_1_aufstehen.png
+waitcontains prisoners Anton Weiß:folgt Otto
+rclickdoor Zelle 2
+waitcontains prisoners Paul Roth:folgt Otto
+wait 30
+shot user://gefangene_2_frei.png
+rclickunit Anton Weiß
+expect prisoners Anton Weiß:wartet, Paul Roth:folgt Otto
+clicktile Otto 2 3
+key F
+wait 14
+shot user://gefangene_3_folgen.png
+wait 40
+shot user://gefangene_4_warten.png
+close

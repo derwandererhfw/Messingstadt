@@ -1041,12 +1041,30 @@ CIVILIANS = {
                           hair=(120, 116, 108), hem=30, belt=21, bottle=True, drunk=True, band=(40, 70, 50),
                           variants={"grau": dict(coat=((52, 54, 58), (78, 82, 88), (102, 106, 112)))}),
 }
+# Gefangene: ohne Mantel und Hut, in hellen Hemden. So hell ist sonst niemand auf der Straße.
+PRISONERS = {
+    # Anton Weiß, Drucker, Mitte fünfzig: graues Haar, schmutzig weißes Hemd, dunkle Schürze, Ärmelschoner, gebeugt
+    "Gefangener_Weiss": dict(coat=((112, 108, 98), (160, 154, 140), (192, 186, 170)), legs=(56, 52, 52), hat="none", hat_c="soot",
+                             shirt=(160, 154, 140), hair=(170, 168, 162), hem=21, belt=20, bulk=1.06, apron=True, cuffs=True,
+                             band=(44, 50, 66), stoop=0.08),
+    # Paul Roth, siebzehn: schmal, blaues Arbeiterhemd über der Hose, Hosenträger, in Socken, hustet
+    "Gefangener_Roth": dict(coat=((84, 98, 112), (124, 140, 156), (156, 172, 186)), legs=(96, 72, 52), hat="none", hat_c="soot",
+                            shirt=(124, 140, 156), hair=(132, 96, 58), hem=24, belt=20, bulk=0.88, scale=0.93, braces=True,
+                            band=(50, 38, 32), shoe=(168, 160, 142), cough=True),
+}
+# Die Stadtwache am Nordwall trägt Dunkelblau statt Feldgrau. Nur weitere Palettenzeilen, keine neuen Bilder.
+_NAVY = ((28, 36, 62), (44, 56, 94), (68, 84, 126))
+SPECS["Wachmann"]["variants"] = {"stadtwache": dict(coat=_NAVY, legs=(40, 50, 84), shirt=(28, 36, 62), hat_c=(26, 28, 42))}
+SPECS["Hundefuehrer"]["variants"] = {"stadtwache": dict(coat=_NAVY, legs=(40, 50, 84), shirt=(28, 36, 62), hat_c=(26, 28, 42))}
+SPECS["Schuetze"]["variants"] = {"stadtwache": dict(coat=_NAVY, legs=(34, 40, 62), hat_c=(26, 28, 42))}
+SPECS["Offizier"]["variants"] = {"stadtwache": dict(coat=((22, 28, 50), (36, 46, 80), (60, 74, 114)), legs=(28, 34, 56))}
 # Mit anderer Waffe in der Hand gibt es eigene Zeilen im Figurenblatt. Das Spiel wählt nach Name und Waffe.
 WEAPON_ROWS = {"": "pistol", "_Schrot": "sawn", "_MP": "smg", "_Knueppel": "club"}
 # Was figures3d.py rendert: die Agenten zuerst, dann alle übrigen Figuren. "Agent" bleibt nur für das Konzeptblatt.
 SHEET_SPECS = {name + suffix: dict(spec, gun=gun, agent=True) for name, spec in AGENTS.items() for suffix, gun in WEAPON_ROWS.items()}
 SHEET_SPECS.update({name: spec for name, spec in SPECS.items() if name != "Agent"})
 SHEET_SPECS.update({name: dict(spec, gun="none", civil=True) for name, spec in CIVILIANS.items()})
+SHEET_SPECS.update({name: dict(spec, gun="none", prisoner=True) for name, spec in PRISONERS.items()})
 
 
 def figure(s, ox, oy, spec, direction, step=0, aim=False):

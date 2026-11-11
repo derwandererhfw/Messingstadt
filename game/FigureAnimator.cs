@@ -30,6 +30,8 @@ namespace Messingstadt
         private const float ThrowFramesPerSecond = 11f;
         private const float BandageFramesPerSecond = 4f;
         private const float PickFramesPerSecond = 6f;
+        private const float SitFramesPerSecond = 1.2f;
+        private const float WaitFramesPerSecond = 1.1f;
 
         private readonly Dictionary<string, (int Start, int Count)> _columns = new();
         private readonly Dictionary<string, Dictionary<string, float>> _strides = new();
@@ -42,6 +44,8 @@ namespace Messingstadt
         private readonly Dictionary<string, Dictionary<string, int>> _variants = new();
         private readonly Dictionary<string, (int Start, int Count)> _civilColumns = new();
         private readonly List<string> _civilians = new();
+        private readonly Dictionary<string, (int Start, int Count)> _prisonerColumns = new();
+        private readonly HashSet<string> _prisoners = new();
 
         /// <summary>Zeilen der Passanten im Figurenblatt, etwa Zivil_Arbeiter.</summary>
         public IReadOnlyList<string> Civilians => _civilians;
@@ -128,6 +132,17 @@ namespace Messingstadt
             foreach (var c in civil.GetProperty("columns").EnumerateObject())
             {
                 _civilColumns[c.Name] = (c.Value[0].GetInt32(), c.Value[1].GetInt32());
+            }
+            if (root.TryGetProperty("prisoner", out var prisoner))
+            {
+                foreach (var n in prisoner.GetProperty("names").EnumerateArray())
+                {
+                    _prisoners.Add(n.GetString()!);
+                }
+                foreach (var c in prisoner.GetProperty("columns").EnumerateObject())
+                {
+                    _prisonerColumns[c.Name] = (c.Value[0].GetInt32(), c.Value[1].GetInt32());
+                }
             }
             (IdleFirst, IdleCount) = _columns["idle"];
             (WalkFirst, WalkCount) = _columns["walk"];
@@ -256,6 +271,34 @@ namespace Messingstadt
             return start + Mathf.PosMod((int)(progress * count), count);
         }
 
+        /// <summary>
+        /// Gefangene haben eigene Bewegungen: In der Zelle sitzen sie am Boden. Steht ein Agent an der offenen Tür, stehen sie
+        /// im Takt der Befreiung auf. Danach gehen sie geduckt hinterher, und wer warten soll, hockt sich hin.
+        /// </summary>
+        private int PrisonerColumn(Unit u, State s, float now)
+        {
+            int Loop(string motion, float frame)
+            {
+                var (start, count) = _prisonerColumns[motion];
+                return start + Mathf.PosMod((int)frame, count);
+            }
+            if (u.Captive)
+            {
+                if (u.FreeProgress <= 0)
+                {
+                    return Loop("sit", now * SitFramesPerSecond + u.Id * 1.7f);
+                }
+                var (start, count) = _prisonerColumns["rise"];
+                return start + Mathf.Clamp(u.FreeProgress * count / World.FreeTicks, 0, count - 1);
+            }
+            if (u.Moving)
+            {
+                string motion = u.Sprinting ? "run" : "walk";
+                return Loop(motion, s.Distance / Stride(u, motion) * _prisonerColumns[motion].Count);
+            }
+            return u.Waiting ? Loop("wait", now * WaitFramesPerSecond + u.Id * 1.7f) : Loop("idle", now * IdleFramesPerSecond + u.Id * 2.7f);
+        }
+
         /// <summary>Weg seit dem letzten Bild aufsummieren, in Spieleinheiten. foot ist die geglättete Lage im Bild.</summary>
         public void Track(Unit u, Vector2 foot)
         {
@@ -313,6 +356,10 @@ namespace Messingstadt
                 // Nicht alle sterben gleich: Die Id bestimmt, ob die Figur nach vorn oder zur Seite sackt.
                 string fall = u.Id % 2 == 0 ? "fallA" : "fallB";
                 return Column(fall, (int)((now - s.FallStarted) / FallSeconds * _columns[fall].Count));
+            }
+            if (_prisoners.Contains(u.Sprite))
+            {
+                return PrisonerColumn(u, s, now);
             }
             WatchThrow(world, u, s, now);
             if (u.BandageTicks > 0 && Has(u, "bandage"))
