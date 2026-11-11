@@ -20,6 +20,9 @@ namespace Messingstadt
         private const float ViewMargin = 40f;
         private const int FontSize = 9;
         private const int MaxShown = 4;
+        private const float EdgeMargin = 8f;
+        private const float TopMargin = 36f;
+        private const float BottomMargin = 70f;
 
         // Sätze mit Spielhinweis sind gegen Karte und Regeln geprüft. Beim Ändern der Mission mitprüfen.
         private static readonly string[] GuardTalk =
@@ -202,6 +205,10 @@ namespace Messingstadt
         public override void _Draw()
         {
             var font = PaperUi.Typewriter;
+            // Sichtbarer Ausschnitt der Welt: Sätze rücken vom Rand ein und weichen einander nach oben aus.
+            var view = GetCanvasTransform().AffineInverse() * GetViewportRect();
+            float line = font.GetHeight(FontSize);
+            var placed = new List<Rect2>();
             foreach (var s in _speeches)
             {
                 if (s.Where() is not { } p)
@@ -211,7 +218,19 @@ namespace Messingstadt
                 float alpha = Mathf.Clamp((s.Until - _time) / FadeSeconds, 0f, 1f);
                 float width = font.GetStringSize(s.Text, HorizontalAlignment.Left, -1, FontSize).X;
                 var at = p + new Vector2(-width / 2f, -HeadHeight);
-                DrawStringOutline(font, at, s.Text, HorizontalAlignment.Left, -1, FontSize, 3, new Color(0f, 0f, 0f, 0.8f * alpha));
+                float left = view.Position.X + EdgeMargin;
+                at.X = Mathf.Clamp(at.X, left, Mathf.Max(left, view.End.X - EdgeMargin - width));
+                at.Y = Mathf.Clamp(at.Y, view.Position.Y + TopMargin, Mathf.Max(view.Position.Y + TopMargin, view.End.Y - BottomMargin));
+                var box = new Rect2(at.X - 3f, at.Y - line, width + 6f, line + 3f);
+                for (int tries = 0; tries < 6 && placed.Exists(r => r.Intersects(box)); tries++)
+                {
+                    // Nahe am oberen Rand geht es nach unten weiter, sonst nach oben.
+                    float step = at.Y - line - 3f < view.Position.Y + TopMargin ? line + 3f : -(line + 3f);
+                    at.Y += step;
+                    box.Position += new Vector2(0f, step);
+                }
+                placed.Add(box);
+                DrawStringOutline(font, at, s.Text, HorizontalAlignment.Left, -1, FontSize, 4, new Color(0f, 0f, 0f, 0.95f * alpha));
                 DrawString(font, at, s.Text, HorizontalAlignment.Left, -1, FontSize, new Color(s.Color, alpha));
             }
         }

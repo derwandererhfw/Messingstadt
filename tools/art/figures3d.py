@@ -21,7 +21,7 @@ import numpy as np
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from generate_concept import C, SPECS, bleed  # noqa: E402
+from generate_concept import C, SHEET_SPECS as SPECS  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 RES = 2
@@ -48,7 +48,7 @@ WAIST = 25.0 - HIP
 WORLD_PER_UNIT = 1000 / (32 * math.sqrt(2))
 
 # Teile der Figur, je ein Stoff
-COAT, COAT_D, COAT_L, TROUSERS, SHOE, SKIN, HAIR, HAT, GUN, SHIRT, TRIM, WOOD, LINEN = range(13)
+COAT, COAT_D, COAT_L, TROUSERS, SHOE, SKIN, HAIR, HAT, GUN, SHIRT, TRIM, WOOD, LINEN, SCARF, BAND = range(15)
 CAPSULE, DISC = 0, 1
 # sawn: doppelläufige Flinte mit gekürzten Läufen, smg: Maschinenpistole mit Trommel, club: Totschläger
 GUN_LENGTH = {"pistol": 4.2, "shotgun": 11.0, "rifle": 16.0, "sawn": 9.5, "smg": 11.0}
@@ -57,8 +57,29 @@ LONG_GUNS = ("shotgun", "rifle", "sawn", "smg")
 # Bewegungen in Spaltenreihenfolge und ihre Zahl an Bildern
 MOTIONS = (
     ("walk", 12), ("run", 8), ("idle", 8), ("look", 6), ("raise", 3), ("aim", 2), ("recoil", 3), ("aimwalk", 10),
-    ("fallA", 8), ("fallB", 8), ("strike", 5), ("throw", 5), ("bandage", 6),
+    ("fallA", 8), ("fallB", 8), ("strike", 5), ("throw", 5), ("bandage", 6), ("reload", 6), ("sneak", 12), ("pick", 4),
 )
+# Diese Bewegungen gibt es nur für Agenten, manche nur mit bestimmter Waffe. Andere Zellen bleiben leer.
+AGENT_ONLY = ("strike", "throw", "bandage", "reload", "sneak", "pick")
+
+
+def applies(spec, motion):
+    if motion not in AGENT_ONLY:
+        return True
+    if not spec.get("agent"):
+        return False
+    if motion in ("strike", "sneak"):
+        return spec.get("gun") == "club"
+    if motion == "reload":
+        return spec.get("gun") != "club"
+    return True
+
+
+# Farben mit eigenem Platz in jeder Palette: zwei Schattentöne und zwei für die Blutlache
+MARKS = {(0, 0, 0, 105): 251, (0, 0, 0, 140): 252, (72, 10, 10, 225): 253, (96, 14, 12, 225): 254}
+FIGURE_COLORS = 250
+MIRROR = 4  # Für Spiegelungen in Pfützen gibt es das Blatt zusätzlich farbig und um diesen Faktor kleiner.
+RIM = np.array((-0.55, 0.25, 0.8)) / np.linalg.norm((-0.55, 0.25, 0.8))
 FRAMES = [(motion, i, n) for motion, n in MOTIONS for i in range(n)]
 
 # Gangarten. stride: Weg pro Zyklus aus zwei Schritten. duty: Anteil des Zyklus, den ein Fuß am Boden steht.
@@ -70,6 +91,8 @@ GAITS = {
                 sway=0.3, lean=0.22, arm=0.95, elbow=1.45, kick=5.0, trail=1.8, ankle=ANKLE),
 }
 GAITS["aimwalk"] = GAITS["walk"]
+# Schleichen: tief in den Knien, vorgebeugt, kurze Schritte
+GAITS["sneak"] = dict(GAITS["walk"], stride=30.0, duty=0.62, lift=2.6, height=19.5, lean=0.34, twist=0.3, sway=0.3)
 DOG_GAITS = {
     # Trab im Schritt: jedes Bein einzeln, diagonal versetzt.
     "walk": dict(stride=18.0, duty=0.55, lift=2.2, height=13.0, bounce=0.0, ankle=0.95, flex=0.3, roll=0.0,
@@ -84,11 +107,17 @@ DOG_SHIFT = -3.5  # Der Hund steht etwas zurückgesetzt, damit Rute und Schnauze
 
 
 def palette(spec):
+    def col(c):
+        return C[c] if isinstance(c, str) else c
+
     co_d, co, co_l = spec["coat"]
+    # Gesichter etwas heller als in der Stadtpalette: Sie sind im Spiel nur wenige Bildpunkte groß.
+    skin = tuple(min(255, round(v * 1.18)) for v in C["skin"])
     return {
-        COAT: C[co], COAT_D: C[co_d], COAT_L: C[co_l], TROUSERS: C[spec["legs"]], SHOE: C["black"],
-        SKIN: C["skin"], HAIR: C[spec["hair"]], HAT: C[spec["hat_c"]], GUN: C["soot"], SHIRT: C[spec["shirt"]],
-        TRIM: C[spec.get("trim", co_l)], WOOD: C["wood_d"], LINEN: C["paper"],
+        COAT: col(co), COAT_D: col(co_d), COAT_L: col(co_l), TROUSERS: col(spec["legs"]), SHOE: C["black"],
+        SKIN: skin, HAIR: col(spec["hair"]), HAT: col(spec["hat_c"]), GUN: C["soot"], SHIRT: col(spec["shirt"]),
+        TRIM: col(spec.get("trim", co_l)), WOOD: C["wood_d"], LINEN: C["paper"],
+        SCARF: col(spec.get("scarf", "ash")), BAND: col(spec.get("band", "black")),
     }
 
 
@@ -330,7 +359,7 @@ def carry_pose(rig, spec):
     return butt, unit(end - butt), float(np.linalg.norm(end - butt)), 0.25, 0.8
 
 
-def draw_gun(p, gun, start, direction, length):
+def draw_gun(p, gun, start, direction, length, drum=True):
     """Waffe vom Schaft aus entlang direction."""
     side = np.cross(direction, (0.0, 0.0, 1.0))
     side = unit(side) if np.linalg.norm(side) > 1e-3 else np.array((0.0, 1.0, 0.0))
@@ -345,7 +374,8 @@ def draw_gun(p, gun, start, direction, length):
         # Holzschaft, Gehäuse, vorn ein Griff und unten die runde Trommel
         p.capsule(start, start + direction * 3.2, 1.0, 0.8, WOOD)
         p.capsule(start + direction * 2.8, start + direction * length, 0.9, 0.6, GUN)
-        p.disc(start + direction * 5.4 - down * 1.6, side, 2.2, 0.8, GUN)
+        if drum:
+            p.disc(start + direction * 5.4 - down * 1.6, side, 2.2, 0.8, GUN)
         p.capsule(start + direction * 8.0, start + direction * 8.0 - down * 2.0, 0.6, 0.6, WOOD)
         return
     if gun == "carry":
@@ -438,7 +468,19 @@ def body(spec, rig, dying=False):
         rig["arms"][1] = ("ik", butt + direction * length * left, (0.0, 0.7, -1.0))
     if rig["gun"] is not None:
         start, direction, length = rig["gun"]
-        draw_gun(p, gun, start, direction, length)
+        draw_gun(p, gun, start, direction, length, rig.get("drum", True))
+    if rig.get("busy") and not dying:
+        if gun in LONG_GUNS:
+            # Wer wirft, verbindet oder am Schloss kniet, trägt die lange Waffe am Riemen quer über dem Rücken.
+            start = up((-3.4 * bulk, -3.6, WAIST + 0.5))
+            end = up((-3.4 * bulk, 3.4, shoulder_z + 1.5))
+            draw_gun(p, gun, start, unit(end - start), GUN_LENGTH[gun])
+        elif gun == "club":
+            p.capsule(up((0.5, 4.9 * bulk, WAIST + 0.5)), up((-1.0, 5.2 * bulk, WAIST - 6.0)), 0.75, 1.05, SHOE)
+    if spec.get("scarf"):
+        # Schal: dick um den Hals, ein Ende hängt vor der Brust
+        p.capsule(up((0.3, 1.8, shoulder_z + 1.4)), up((0.3, -1.8, shoulder_z + 1.4)), 2.1, 2.1, SCARF)
+        p.capsule(up((2.2 * bulk, 1.2, shoulder_z + 0.6)), up((2.9 * bulk, 1.6, shoulder_z - 5.0)), 1.1, 0.9, SCARF)
 
     # Kopf und Kopfbedeckung. Der Kopf dreht sich mit den Schultern und dazu um sich selbst.
     neck = up((0.2, 0, shoulder_z + 1.5))
@@ -455,6 +497,10 @@ def body(spec, rig, dying=False):
     p.capsule(neck, head, 1.4, 1.4, SKIN)
     p.ball(head, 2.9, SKIN)
     p.ball(hv((-1.0, 0, 0.4)), 2.7, HAIR)
+    if spec.get("bun"):
+        # Langes Haar: Knoten am Hinterkopf, darunter fällt es in den Nacken
+        p.ball(hv((-3.1, 0, -0.4)), 1.9, HAIR)
+        p.capsule(hv((-2.3, 0, -0.6)), hv((-2.7, 0, -3.4)), 1.7, 1.1, HAIR)
     if spec["hat"] == "helmet":
         # Stahlhelm: runde Kappe mit umlaufendem Rand
         p.ball(hv((-0.1, 0, 1.3)), 3.5, HAT)
@@ -463,7 +509,15 @@ def body(spec, rig, dying=False):
         # Breite, glatte Krempe, darauf der schmalere Hutkopf
         brim = hv((0, 0, 1.5))
         p.disc(brim, up_axis, 5.2, 0.5, HAT)
-        p.capsule(hv((0, 0, 1.9)), hv((0, 0, 4.3)), 2.7, 2.2, COAT_D)
+        p.capsule(hv((0, 0, 1.9)), hv((0, 0, 4.3)), 2.7, 2.2, HAT)
+        p.disc(hv((0, 0, 2.3)), up_axis, 2.75, 0.5, BAND)
+    elif spec["hat"] == "bowler":
+        # Melone: runde Kappe, schmale Krempe
+        p.disc(hv((0, 0, 1.6)), up_axis, 4.0, 0.45, HAT)
+        p.ball(hv((0, 0, 2.5)), 3.05, HAT)
+    elif spec["hat"] == "beret":
+        # Baskenmütze: flach und schräg auf dem Kopf
+        p.disc(hv((-0.3, 0.7, 2.9)), hv((0.0, 0.3, 1.0)) - head, 3.5, 1.05, HAT)
     else:
         top = hv((-0.2, 0, 2.4))
         p.disc(hv((-0.2, 0, 2.6)), up_axis, 3.3, 0.9, HAT)
@@ -548,6 +602,18 @@ def human_rig(spec, motion, i, n):
     gun = spec.get("gun", "pistol")
     phase = i / n
     stance = "long" if gun in LONG_GUNS else "pistol"
+    if motion == "reload":
+        return reload_rig(spec, i)
+    if motion == "pick":
+        return pick_rig(phase)
+    if motion == "sneak":
+        # Geduckt, den Knüppel hinter dem Rücken, die freie Hand tastet voraus
+        rig = gait_rig(GAITS["sneak"], phase)
+        rig["head_pitch"] = -0.3
+        rig["arms"][-1] = ("ik", upper(rig, (-3.8, -2.2, WAIST + 2.5)), (-1.0, -0.6, 0.2))
+        rig["arms"][1] = ("fk", 0.55 + 0.08 * math.sin(phase * math.tau), 0.9)
+        rig["club"] = unit(turn_z((-0.35, 0.55, 1.0), rig["twist"]))
+        return rig
     if motion == "strike":
         return strike_rig(i)
     if motion == "throw":
@@ -624,8 +690,45 @@ def throw_rig(i):
     return rig
 
 
-def bandage_rig(phase):
-    """Kniend: das rechte Knie am Boden, die rechte Hand wickelt die Binde um den linken Unterarm."""
+# Nachladen in sechs Bildern: öffnen, Hand zur Tasche, greifen, zurück, einsetzen, schließen.
+# Wie weit die linke Hand auf dem Weg zur Manteltasche ist.
+RELOAD_HAND = (0.0, 0.6, 1.0, 0.5, 0.0, 0.0)
+
+
+def reload_rig(spec, i):
+    gun = spec.get("gun", "pistol")
+    rig = stand_rig(0.0, "long" if gun in LONG_GUNS else "pistol")
+    rig["carry"] = False
+    rig["head_pitch"] = 0.3
+    rig["lean"] = 0.06
+    pocket = upper(rig, (1.5, 4.9, WAIST - 1.0))
+    if gun == "sawn":
+        # Flinte abgeknickt: Die Läufe hängen steil nach unten, zwei Patronen kommen ins Lager.
+        butt = upper(rig, (2.6, -2.6, WAIST + 3.6))
+        direction = unit(np.array((0.7, 0.1, -0.7 if 0 < i < 5 else -0.36)))
+        breech = butt + direction * 3.4 + (0, 0, 0.8)
+        grip = butt + direction * GUN_LENGTH[gun] * 0.2
+    elif gun == "smg":
+        # Trommel nach unten heraus, neue hinein
+        butt = upper(rig, (2.4, -2.4, WAIST + 3.6))
+        direction = unit(np.array((0.95, 0.15, -0.2)))
+        breech = butt + direction * 5.4 + (0, 0, -2.2)
+        grip = butt + direction * GUN_LENGTH[gun] * 0.2
+        rig["drum"] = i in (0, 4, 5)
+    else:
+        # Pistole vor der Brust, Mündung nach oben: Magazin aus dem Griff, neues hinein
+        grip = upper(rig, (6.0, -2.2, WAIST + 8.0))
+        direction = unit(np.array((0.45, 0.1, 0.9)))
+        butt = grip + direction * 0.6
+        breech = grip + (0.0, 0.6, -1.6)
+    rig["gun"] = (butt, direction, GUN_LENGTH.get(gun, 4.2))
+    rig["arms"][-1] = ("ik", grip, (0.0, -0.8, -1.0))
+    rig["arms"][1] = ("ik", lerp(breech, pocket, RELOAD_HAND[i]), (0.0, 0.9, -0.8))
+    return rig
+
+
+def kneel_rig():
+    """Kniend: das rechte Knie am Boden, der Oberkörper vorgebeugt."""
     rig = new_rig()
     rig["pelvis"] = np.array((-0.5, 0.0, 13.6))
     feet = {1: (np.array((6.5, 3.4, ANKLE)), 0.0), -1: (np.array((-10.0, -3.3, 2.2)), -0.8)}
@@ -635,6 +738,22 @@ def bandage_rig(phase):
     rig["head_pitch"] = 0.35
     rig["carry"] = False
     rig["busy"] = True
+    return rig
+
+
+def pick_rig(phase):
+    """Am Schloss: kniend, die linke Hand hält den Spanner, die rechte stochert mit dem Haken."""
+    rig = kneel_rig()
+    rig["head_pitch"] = 0.15
+    t = phase * math.tau
+    rig["arms"][1] = ("ik", upper(rig, (10.5, 1.2, 7.5)), (0.0, 1.0, -1.0))
+    rig["arms"][-1] = ("ik", upper(rig, (10.0, -0.8, 8.4)) + np.array((0.5 * math.cos(t), 0.0, 0.9 * math.sin(t))), (0.0, -1.0, -1.0))
+    return rig
+
+
+def bandage_rig(phase):
+    """Kniend, die rechte Hand wickelt die Binde um den linken Unterarm."""
+    rig = kneel_rig()
     rig["bandage"] = True
     t = phase * math.tau
     rig["arms"][1] = ("ik", upper(rig, (8.0, 2.0, 8.0)), (0.0, 1.0, -1.0))
@@ -903,6 +1022,8 @@ def render(args):
     name, view, column = args
     spec = SPECS[name]
     motion, i, n = FRAMES[column]
+    if not applies(spec, motion):
+        return name, view, column, np.zeros((CELL_H, CELL_W, 4), np.uint8)
     parts = world_parts(spec, motion, i, n, view)
 
     w, h = CELL_W * SUPER, CELL_H * SUPER
@@ -911,7 +1032,14 @@ def render(args):
     gx, gy = np.meshgrid(xs, ys)
     origin = gx.ravel()[:, None] * RIGHT - gy.ravel()[:, None] * UP + TO_CAMERA * 70
     position = origin.copy()
-    alive = np.ones(len(position), bool)
+    # Nur Strahlen verfolgen, die die Figur treffen können. Das spart den größten Teil der Rechenzeit.
+    low, high = np.full(2, 1e9), np.full(2, -1e9)
+    for a, b, r1, r2, _m, kind in parts:
+        reach = (r1 + r2 if kind == DISC else max(r1, r2)) + 1.0
+        for q in ((a,) if kind == DISC else (a, b)):
+            on_screen = np.array((q @ RIGHT, -(q @ UP)))
+            low, high = np.minimum(low, on_screen - reach), np.maximum(high, on_screen + reach)
+    alive = ((gx >= low[0]) & (gx <= high[0]) & (gy >= low[1]) & (gy <= high[1])).ravel()
     hit = np.zeros(len(position), bool)
     for _ in range(40):
         index = np.flatnonzero(alive)
@@ -935,7 +1063,9 @@ def render(args):
         light = np.clip(normal @ LIGHT, 0, 1)
         facing = np.clip(normal @ TO_CAMERA, 0, 1)
         # Licht von oben, dunkler zum Rand hin: Das macht die Figur rund. In Stufen, damit es Pixelgrafik bleibt.
-        shade = (0.58 + 0.62 * light) * (0.68 + 0.32 * facing)
+        # Dazu ein schmaler Lichtsaum an den Kanten oben links, der die Figur vom dunklen Grund abhebt.
+        rim = (1 - facing) ** 2 * np.clip(normal @ RIM, 0, 1)
+        shade = (0.58 + 0.62 * light) * (0.68 + 0.32 * facing) + 0.65 * rim
         shade = np.round(shade * SHADE_STEPS) / SHADE_STEPS
         colors = palette(spec)
         materials = np.array([colors[part[4]] for part in parts], np.float32)[nearest]
@@ -999,6 +1129,8 @@ def strides():
         gaits = DOG_GAITS if spec.get("dog") else GAITS
         scale = spec.get("scale", 1.0)
         table[name] = {motion: round(gaits[motion]["stride"] * scale * WORLD_PER_UNIT) for motion in ("walk", "run", "aimwalk")}
+        if applies(spec, "sneak"):
+            table[name]["sneak"] = round(GAITS["sneak"]["stride"] * scale * WORLD_PER_UNIT)
     return table
 
 
@@ -1012,20 +1144,68 @@ def bite_reach():
     return table
 
 
+def to_indices(block):
+    """Bringt die Farben einer Figur auf eine Palette: je Bildpunkt eine Nummer, 0 ist durchsichtig."""
+    index = np.zeros(block.shape[:2], np.uint8)
+    colors = np.zeros((256, 4), np.uint8)
+    solid = block[..., 3] == 255
+    if solid.any():
+        tones, inverse = np.unique(block[solid][:, :3], axis=0, return_inverse=True)
+        slots = np.arange(len(tones))
+        if len(tones) > FIGURE_COLORS:
+            reduced = Image.fromarray(tones.reshape(1, -1, 3), "RGB").quantize(FIGURE_COLORS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
+            slots = np.asarray(reduced).ravel()
+            tones = np.array(reduced.getpalette()[:FIGURE_COLORS * 3], np.uint8).reshape(-1, 3)
+        index[solid] = slots[inverse.ravel()] + 1
+        colors[1:1 + len(tones), :3] = tones
+        colors[1:1 + len(tones), 3] = 255
+    for color, slot in MARKS.items():
+        index[(block == color).all(axis=2)] = slot
+        colors[slot] = color
+    return index, colors
+
+
+def shrink(block):
+    """Farbige, kleine Fassung für Spiegelungen: Mittel über MIRROR × MIRROR Bildpunkte, nach Deckkraft gewichtet."""
+    h, w = block.shape[0] // MIRROR, block.shape[1] // MIRROR
+    cells = block.astype(np.float32).reshape(h, MIRROR, w, MIRROR, 4)
+    alpha = cells[..., 3:].sum(axis=(1, 3))
+    rgb = (cells[..., :3] * cells[..., 3:]).sum(axis=(1, 3)) / np.maximum(alpha, 1e-3)
+    return np.dstack([rgb, alpha / (MIRROR * MIRROR)]).astype(np.uint8)
+
+
 def main():
     names = list(SPECS)
     tasks = [(name, view, column) for name in names for view in VIEWS for column in range(len(FRAMES))]
-    sheet = np.zeros((CELL_H * len(names) * len(VIEWS), CELL_W * len(FRAMES), 4), np.uint8)
+    block_h, width = CELL_H * len(VIEWS), CELL_W * len(FRAMES)
+    # Das Blatt speichert je Bildpunkt nur eine Nummer, die Farben stehen je Figur in einer Zeile von figures_palette.png.
+    # So braucht es im Spiel ein Viertel des Speichers.
+    sheet = np.zeros((block_h * len(names), width), np.uint8)
+    palettes = np.zeros((len(names), 256, 4), np.uint8)
+    mirror = np.zeros((block_h * len(names) // MIRROR, width // MIRROR, 4), np.uint8)
+    blocks, missing = {}, {}
     with multiprocessing.Pool() as pool:
         for name, view, column, cell in pool.imap_unordered(render, tasks, chunksize=8):
-            row = names.index(name) * len(VIEWS) + VIEWS.index(view)
-            sheet[row * CELL_H:(row + 1) * CELL_H, column * CELL_W:(column + 1) * CELL_W] = cell
+            if name not in blocks:
+                blocks[name] = np.zeros((block_h, width, 4), np.uint8)
+                missing[name] = len(VIEWS) * len(FRAMES)
+            row = VIEWS.index(view)
+            blocks[name][row * CELL_H:(row + 1) * CELL_H, column * CELL_W:(column + 1) * CELL_W] = cell
+            missing[name] -= 1
+            if missing[name] == 0:
+                at = names.index(name)
+                block = blocks.pop(name)
+                sheet[at * block_h:(at + 1) * block_h], palettes[at] = to_indices(block)
+                mirror[at * block_h // MIRROR:(at + 1) * block_h // MIRROR] = shrink(block)
+                print(f"{name} fertig", flush=True)
     assets = ROOT / "game" / "assets"
-    # Das Spiel zeichnet scharf-bilinear wie die Stadt: Ränder bekommen die Farbe ihrer Nachbarn, sonst säumt sie Schwarz.
-    bleed(Image.fromarray(sheet), rounds=2).save(assets / "figures.png", optimize=True)
+    Image.fromarray(sheet, "L").save(assets / "figures.png", optimize=True)
+    Image.fromarray(palettes, "RGBA").save(assets / "figures_palette.png")
+    Image.fromarray(mirror, "RGBA").save(assets / "figures_mirror.png", optimize=True)
     (assets / "figures.json").write_text(json.dumps({
         "names": names, "w": CELL_W, "h": CELL_H, "footX": FOOT_X, "footY": FOOT_Y, "views": len(VIEWS), "res": RES,
-        "columns": columns(), "stride": strides(), "biteReach": bite_reach(),
+        "columns": columns(), "stride": strides(), "biteReach": bite_reach(), "mirror": MIRROR,
+        "has": {name: [m for m in AGENT_ONLY if applies(spec, m)] for name, spec in SPECS.items() if spec.get("agent")},
     }), encoding="utf-8")
     print(f"{len(tasks)} Figurenbilder gerendert")
 

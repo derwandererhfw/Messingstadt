@@ -46,22 +46,25 @@ def slip(name, motion, meta):
 
 
 def cell(sheet, meta, name, view, column):
+    """Eine Zelle in Farbe. Das Blatt enthält Nummern, die Farben stehen je Figur in einer Zeile der Palette."""
+    numbers, palette = sheet
     w, h = meta["w"], meta["h"]
-    row = meta["names"].index(name) * meta["views"] + view
-    return sheet.crop((column * w, row * h, (column + 1) * w, (row + 1) * h))
+    figure = meta["names"].index(name)
+    row = figure * meta["views"] + view
+    return Image.fromarray(palette[figure][numbers[row * h:(row + 1) * h, column * w:(column + 1) * w]], "RGBA")
 
 
 def main():
     out = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("figurenpruefung")
     out.mkdir(parents=True, exist_ok=True)
     meta = json.loads((ASSETS / "figures.json").read_text(encoding="utf-8"))
-    sheet = Image.open(ASSETS / "figures.png").convert("RGBA")
-    data = np.array(sheet)
+    data = np.array(Image.open(ASSETS / "figures.png"))
+    sheet = (data, np.array(Image.open(ASSETS / "figures_palette.png").convert("RGBA")))
 
     print("Gleiten (Weltpixel, höchstens):")
     failed = 0
     for name in meta["names"]:
-        values = {motion: slip(name, motion, meta) for motion in ("walk", "run", "aimwalk")}
+        values = {motion: slip(name, motion, meta) for motion in meta["stride"][name]}
         print(f"  {name:13s} " + "  ".join(f"{m} {v:.2f}" for m, v in values.items()))
         failed += sum(v > 0.5 for v in values.values())
 
@@ -70,7 +73,8 @@ def main():
     clipped = []
     for r in range(data.shape[0] // h):
         for c in range(data.shape[1] // w):
-            block = data[r * h:(r + 1) * h, c * w:(c + 1) * w, 3] == 255
+            numbers = data[r * h:(r + 1) * h, c * w:(c + 1) * w]
+            block = (numbers > 0) & (numbers <= f.FIGURE_COLORS)
             if block[:, 0].any() or block[:, -1].any() or block[0, :].any():
                 name = meta["names"][r // meta["views"]]
                 motion = next(m for m, (s, k) in meta["columns"].items() if s <= c < s + k)
@@ -91,6 +95,8 @@ def main():
             draw.text((s * w + 3, 3), motion, fill=(255, 255, 160))
         board.save(out / f"blatt_{name}.png")
         for motion, (s, k) in meta["columns"].items():
+            if not f.applies(f.SPECS[name], motion):
+                continue
             frames = []
             for c in range(s, s + k):
                 strip = Image.new("RGBA", (w * 3, h), (70, 72, 74, 255))

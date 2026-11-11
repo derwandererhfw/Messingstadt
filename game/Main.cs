@@ -20,18 +20,30 @@ namespace Messingstadt
         // Figuren nehmen ihr Licht über Modulate. Gezeichnet wird scharf-bilinear wie die Stadt, siehe sharp_uv unten.
         private const string FigureShaderCode = @"
 shader_type canvas_item;
+// Das Figurenblatt speichert je Bildpunkt nur eine Nummer. Die Farbe steht in der Palette, eine Zeile je Figur.
+// Überblendet wird wie bei sharp_uv, nur von Hand über die vier Nachbarn, denn Nummern lassen sich nicht mitteln.
+uniform sampler2D palette : filter_nearest;
+uniform float block = 540.0;
 varying vec4 tint;
 void vertex() {
     tint = COLOR;
 }
-vec2 sharp_uv(vec2 uv, vec2 texel) {
-    vec2 p = uv / texel;
-    vec2 edge = floor(p + 0.5);
-    vec2 reach = max(fwidth(p), vec2(1e-4));
-    return (edge + clamp((p - edge) / reach, -0.5, 0.5)) * texel;
+vec4 tone(sampler2D sheet, ivec2 at, ivec2 size) {
+    at = clamp(at, ivec2(0), size - ivec2(1));
+    int slot = int(texelFetch(sheet, at, 0).r * 255.0 + 0.5);
+    vec4 c = texelFetch(palette, ivec2(slot, int(float(at.y) / block)), 0);
+    return vec4(c.rgb * c.a, c.a);
 }
 void fragment() {
-    COLOR = texture(TEXTURE, sharp_uv(UV, TEXTURE_PIXEL_SIZE)) * tint;
+    ivec2 size = textureSize(TEXTURE, 0);
+    vec2 p = UV * vec2(size);
+    vec2 edge = floor(p + 0.5);
+    vec2 reach = max(fwidth(p), vec2(1e-4));
+    vec2 f = clamp((p - edge) / reach, -0.5, 0.5) + 0.5;
+    ivec2 b = ivec2(edge);
+    vec4 c = mix(mix(tone(TEXTURE, b + ivec2(-1, -1), size), tone(TEXTURE, b + ivec2(0, -1), size), f.x),
+                 mix(tone(TEXTURE, b + ivec2(-1, 0), size), tone(TEXTURE, b, size), f.x), f.y);
+    COLOR = vec4(c.rgb / max(c.a, 1e-4), c.a) * tint;
 }
 ";
 
@@ -1153,6 +1165,10 @@ void fragment() {
             }
             _animator.Load(figures.RootElement);
             _figures = LoadTexture("res://assets/figures.png");
+            _figureMaterial.SetShaderParameter("palette", LoadTexture("res://assets/figures_palette.png"));
+            _figureMaterial.SetShaderParameter("block", (float)(_cellH * _figureViews));
+            FigureMirror = LoadTexture("res://assets/figures_mirror.png");
+            FigureMirrorScale = figures.RootElement.GetProperty("mirror").GetSingle();
             _book = new Sprite2D { Texture = LoadTexture("res://assets/book.png") };
             AddChild(_book);
         }
@@ -1723,7 +1739,7 @@ void fragment() {
                     _focusLeft = FocusSeconds;
                 }
                 // Wer die Waffe hebt, hält oder senkt, blickt aufs Ziel, auch wenn er dabei weitergeht.
-                var (lookX, lookY) = _animator.Look(u, now);
+                var (lookX, lookY) = _animator.Look(World, u, now);
                 // Am Boden gedacht: x - y läuft im Bild quer, x + y zur Kamera. Der Westen entsteht durch Spiegeln.
                 float across = lookX - lookY, toward = lookX + lookY;
                 float angle = Mathf.RadToDeg(Mathf.Atan2(toward, Mathf.Abs(across)));
@@ -1799,8 +1815,14 @@ void fragment() {
         public Sprite2D NewFigureSprite() => new()
         {
             Texture = _figures, RegionEnabled = true, Centered = false, Scale = FigureScale,
-            TextureFilter = TextureFilterEnum.Linear, Material = _figureMaterial,
+            TextureFilter = TextureFilterEnum.Nearest, Material = _figureMaterial,
         };
+
+        /// <summary>Das Figurenblatt in Farbe und verkleinert, für Spiegelungen. Das große Blatt enthält nur Palettennummern.</summary>
+        public Texture2D FigureMirror { get; private set; } = null!;
+
+        /// <summary>Um diesen Faktor ist FigureMirror kleiner als das Figurenblatt.</summary>
+        public float FigureMirrorScale { get; private set; } = 1f;
 
         /// <summary>Lage der Füße im Figurenbild, in Weltpixeln.</summary>
         public Vector2 FigureFoot => new Vector2(_footX, _footY) / _figureRes;
@@ -1922,6 +1944,20 @@ void fragment() {
                     material.SetShaderParameter("cut_count", 0);
                 }
             }
+        }
+
+        /// <summary>Ob die Füße einer Figur hinter einem Objekt stehen, etwa hinter der Straßenbahn. Für den Auswahlring.</summary>
+        public bool IsFootHiddenByThing(Unit u)
+        {
+            var foot = ToScreen(u.X, u.Y);
+            for (int i = 0; i < _things.Count; i++)
+            {
+                if (IsInFront(_things[i], u) && IsOpaqueAt(i, foot))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /// <summary>True, wenn ein undurchsichtiges Objekt Kopf und Körper der Figur im Bild verdeckt.</summary>
