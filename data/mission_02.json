@@ -85,7 +85,7 @@
       "Bote": "Ich hab keinen gesehen. Krieg ich noch einen Groschen?"
     }
   },
-  "lamps": [[4.5, 10.5], [10.5, 10.5], [16.5, 10.5], [11.5, 10.1], [10.5, 6.2]],
+  "lamps": [[2.5, 10.5], [10.5, 10.5], [16.5, 10.5], [11.5, 10.1], [10.5, 6.2]],
   "agents": [
     { "name": "Greta", "role": "Truppführerin", "sprite": "Agent", "x": 6.5, "y": 18.5, "legs": 2, "heart": 2 },
     { "name": "Otto", "role": "Schlosser", "sprite": "Agent", "x": 7.5, "y": 18.5, "legs": 1, "heart": 3, "skill": "schlosser" },
@@ -93,8 +93,8 @@
     { "name": "Hanna", "role": "Kurierin", "sprite": "Agent", "x": 7.5, "y": 19.5, "legs": 3, "heart": 1 }
   ],
   "guards": [
-    { "name": "Wallstreife 1", "sprite": "Wachmann", "x": 3.5, "y": 11.5, "patrol": [[17, 11], [3, 11]] },
-    { "name": "Wallstreife 2", "sprite": "Wachmann", "x": 17.5, "y": 12.5, "patrol": [[3, 12], [17, 12]] },
+    { "name": "Wallstreife 1", "sprite": "Wachmann", "x": 0.5, "y": 11.5, "patrol": [[13, 11], [0, 11]] },
+    { "name": "Wallstreife 2", "sprite": "Wachmann", "x": 13.5, "y": 12.5, "patrol": [[0, 12], [13, 12]] },
     { "name": "Türposten", "sprite": "Wachmann", "x": 11.5, "y": 10.5, "facing": [0, 1], "keys": ["Pforte zur Gerichtsgasse"] },
     { "name": "Wachhabender", "sprite": "Offizier", "type": "offizier", "x": 14.5, "y": 9.5, "facing": [0, 1] },
     { "name": "Schließer", "sprite": "Wachmann", "x": 8.5, "y": 7.5, "patrol": [[12, 7], [8, 7]], "keys": ["Zelle 1", "Zelle 2"] },
