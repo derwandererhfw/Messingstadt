@@ -128,7 +128,7 @@ Gemessen mit `--waffen` im Balance-Werkzeug, je 300 Läufe, alle Agenten gleich 
 
 Gemischte Trupps mit `--preis`: Die Pistole bleibt als zweite Waffe, gewechselt wird wie ein Spieler mit E. Die teure Waffe kommt in die Hand, wenn sie so weit reicht wie die der meisten im Trupp, sonst erst, wenn ein Gegner nah ist. Wer allein kürzer reicht, steht beim Bündeln vorn und fällt zuerst. Feuer bündeln, ohne Zukauf 68 %: eine Schrotflinte 73 %, zwei 78 %, vier 88 %. Eine MP 69 %, vier 91 %. Je Mark ist die Schrotflinte die bessere Wahl, die volle MP-Ausrüstung verzeiht dafür mehr, auch beim bloßen Losrennen.
 
-Kampagne mit Einkauf (`--einkauf`, Feuer bündeln, je 100 Kampagnen mit 6 Einsätzen): Wer das Startgeld sofort ausgibt, kann nach der ersten Niederlage weder Arzt noch Anwerben bezahlen und verliert öfter (Verbände 26 %, Schrotflinte 26 % statt 36 %). Mit 250 Rückhalt für das Anwerben kauft man mit 300 Startgeld kaum etwas, die Siege bleiben bei 36 bis 37 %. Erst mit 600 Startgeld lohnt der Einkauf: sofort eine Schrotflinte, 250 zurück, dann 49 %. Das Startgeld ist ein Vorschlag, im Kern steht weiter 300.
+Kampagne mit Einkauf (`--einkauf`, Feuer bündeln, je 100 Kampagnen mit 6 Einsätzen): Wer das Startgeld sofort ausgibt, kann nach der ersten Niederlage weder Arzt noch Anwerben bezahlen und verliert öfter (Verbände 26 %, Schrotflinte 26 % statt 36 %). Mit 250 Rückhalt für das Anwerben kauft man mit 300 Startgeld kaum etwas, die Siege bleiben bei 36 bis 37 %. Erst mit 600 Startgeld lohnt der Einkauf: sofort eine Schrotflinte, 250 zurück, dann 49 %. Seit dem Stadtplan beginnt ein neues Spiel deshalb mit 600.
 
 Totschläger: Mit `--knueppel-plan` sucht das Werkzeug wie beim Schleichplan für Greta die Zeitfenster, in denen ein Angriffsbefehl eine Wache lautlos niederschlägt, ohne dass eine andere kämpft. Bei 1,2 Feldern Schlagweite ging das nur beim Offizier, alle anderen Wachen bemerken Greta auf 2 Felder auch von hinten und werden von einer zweiten Wache gedeckt. Bei 1,6 Feldern gehen Offizier und Schütze, danach bündelt der Trupp das Feuer: 79 % Sieg mit Klicks bis 0,25 s daneben, 74 % bis 0,5 s, statt 68 % ohne Knüppel. Bei 1,8 Feldern gingen fünf Wachen, aber nur mit Klicks auf den Takt genau. Die Spielweise ohne Plan (`--knueppel`, Greta lauert im Versteck und schlägt zu, wenn die Wache sie vor dem Umdrehen nicht mehr sieht) schlägt niemanden lautlos nieder, ihre Ergebnisse taugen nicht als Maß für die Waffe.
 
@@ -141,8 +141,8 @@ Die Logik steht in `src/Messingstadt.Core/Campaign.cs`. Sie liest am Ende eines 
 
 | Regel | Wert |
 |---|---|
-| Startgeld | 300 |
-| Lohn pro Sieg | 300, bei Leise 450, bei Unentdeckt 600 |
+| Startgeld | 600 |
+| Lohn pro Sieg | Grundlohn des Viertels, im ersten 300. Dazu 150 bei Leise, 300 bei Unentdeckt |
 | Ausbau | 150 von Stufe 1 auf 2, 300 von Stufe 2 auf 3 |
 | Niederlage | Kein Lohn, Beute verloren, ausgegebenes Geld bleibt ausgegeben |
 | Erster Sturz | Krankenstube: Beine und Herz fallen auf Stufe 1, der Agent setzt einen Einsatz aus. Gilt auch bei einer Niederlage |
@@ -156,21 +156,24 @@ Die Logik steht in `src/Messingstadt.Core/Campaign.cs`. Sie liest am Ende eines 
 | Fahndung 0 bis 4 | Unentdeckt −1, Leise mit Bestechung −1, Laut +1, ab 3 toten Wachen nochmal +1. Je angefangene zwei Stufen eine Wache mehr in der Verstärkung |
 | Rückhalt 0 bis 5 | Sieg +1, Niederlage −1. Nach jedem zählenden Einsatz 50 Beitrag je Stufe, auch nach einer Niederlage |
 | Merker | Je Einsatz Versuche und für den Sieg Wertung, tote und bestochene Wachen, tote Agenten und Beute. Für die Story |
+| Stadtviertel | Fünf Viertel aus `data/stadtplan.json`, am Anfang gehören alle den Brandt-Werken. Ein Sieg im gewählten Viertel gibt es dem Roten Hammer. Wählbar ist ein Viertel, wenn es einen Einsatz hat und seine Voraussetzungen erobert sind. Bisher hat nur das erste einen Einsatz, die anderen sind sichtbar, aber gesperrt. Eroberte Viertel bleiben spielbar |
 
 Ein Abbruch vor dem ersten Schuss zählt nicht: Nur das Geld für Bestechungen bleibt ausgegeben.
 
-Der Stand wird im Benutzerordner des Spiels gespeichert (`kampagne.json`, Version 2). Stände ohne Versionsnummer werden übernommen: Kasse, Einsätze und Stufen bleiben, alle Agenten sind gesund. Unlesbare oder neuere Stände werden verworfen und als `kampagne.alt.json` beiseitegelegt. Es gibt bisher nur eine Mission, „Nächster Einsatz“ spielt sie erneut.
+Der Stand wird im Benutzerordner des Spiels gespeichert, je Akte eine Datei (`kampagne.json`, `kampagne_2.json`, `kampagne_3.json`, Version 4). Ältere Stände werden übernommen: Kasse, Einsätze und Stufen bleiben. Stände ohne Versionsnummer bekommen gesunde Agenten, Stände vor der Waffenkammer eine Pistole je Agent, und wer vor dem Stadtplan schon einen Einsatz gewonnen hat, hält das erste Viertel. Unlesbare oder neuere Stände werden verworfen und je Akte als `kampagne*.alt.json` beiseitegelegt. Es gibt bisher nur eine Mission, „Nächster Einsatz“ spielt sie erneut.
 
-Gemessen mit `tools/Messingstadt.Balance -- --kampagne`, je 100 Kampagnen mit 6 Einsätzen derselben Mission. Zwischen den Einsätzen erst Arzt, dann Anwerben, der Rest geht in den Ausbau:
+Der Stadtplan ist das Modell für die Einsatzwahl (`CityMap.cs`, Abfragen in `Campaign`: `Owner`, `State`, `CanSelect`, `TrySelect`, `Selected`). Der Bildschirm dazu fehlt noch, bis dahin wählt das Spiel das erste offene Viertel selbst. Namen und Texte in `data/stadtplan.json` stammen wörtlich aus `docs/story/stadtplan-vorlage.json`: Kesselviertel, Nordwall, Gleisviertel, Kontorviertel, Altstadt. Jedes Viertel sperrt das nächste und bringt im Feld `locked` seinen Satz für „gesperrt“ mit. Ein sechster Einsatz nach allen fünf Vierteln ist vorgesehen, aber nicht gebaut: Er passt als weiterer Eintrag mit mehreren Voraussetzungen ins Modell. Ein höherer Beitrag je erobertem Viertel ist nur ein Vorschlag und nicht gebaut.
+
+Gemessen mit `tools/Messingstadt.Balance -- --kampagne`, je 100 Kampagnen mit 6 Einsätzen derselben Mission, 600 Startgeld, ohne Einkauf. Zwischen den Einsätzen erst Arzt, dann Anwerben, der Rest geht in den Ausbau:
 
 | Spielweise | Siege | Tote je Kampagne | Einsätze ohne vollen Trupp | Kasse am Ende |
 |---|---|---|---|---|
-| Alle angreifen | 69 % | 4,3 | 9 % | 205 |
-| Feuer bündeln | 59 % | 5,0 | 14 % | 162 |
-| Zum Buch gehen | 31 % | 6,8 | 33 % | 65 |
-| Stehen und schießen | 2 % | 8,0 | 64 % | 0 |
+| Feuer bündeln | 36 % | 6,7 | 29 % | 162 |
+| Zum Buch gehen | 33 % | 7,5 | 31 % | 191 |
+| Alle angreifen | 32 % | 6,7 | 33 % | 135 |
+| Stehen und schießen | 0 % | 8,0 | 66 % | 0 |
 
-Mit einer Wache mehr je Stufe Fahndung und früherer Verstärkung gewann „Alle angreifen“ nur 38 %. Das war eine Abwärtsspirale, deshalb ist die Folge schwächer. Laute Spielweisen enden immer bei Fahndung 4.
+Die Zahlen sind niedriger als vor den Gegnertypen und Waffen (damals 69 % für „Alle angreifen“), weil der Einsatz seither härter geworden ist. Laute Spielweisen enden immer bei Fahndung 4. Mit einer Wache mehr je Stufe Fahndung und früherer Verstärkung war es eine Abwärtsspirale, deshalb ist die Folge schwächer.
 
 ### Umgebung
 
