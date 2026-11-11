@@ -95,8 +95,9 @@ def main():
             draw.line([(s * w, 0), (s * w, board.height)], fill=(140, 140, 90))
             draw.text((s * w + 3, 3), motion, fill=(255, 255, 160))
         board.save(out / f"blatt_{name}.png")
-        civil = name in meta["civil"]["names"]
-        for motion, (s, k) in (meta["civil"]["columns"] if civil else meta["columns"]).items():
+        civil = name in meta["civil"]["names"] or name in meta["prisoner"]["names"]
+        own = meta["civil"] if name in meta["civil"]["names"] else meta["prisoner"]
+        for motion, (s, k) in (own["columns"] if civil else meta["columns"]).items():
             if not civil and not f.applies(f.SPECS[name], motion):
                 continue
             frames = []

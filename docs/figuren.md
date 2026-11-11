@@ -2,14 +2,14 @@
 
 Das Figurenblatt entsteht mit `python tools/art/figures3d.py` (rund 25 Minuten) und wird mit
 `python tools/art/check_figures.py <ordner>` geprüft. Die Gestalten stehen in `tools/art/generate_concept.py`:
-`AGENTS` (Greta, Otto, Emil, Hanna), `SPECS` (Wachen, Hund, Arbeiter) und `CIVILIANS` (Passanten).
+`AGENTS` (Greta, Otto, Emil, Hanna), `SPECS` (Wachen, Hund, Arbeiter), `CIVILIANS` (Passanten) und `PRISONERS` (Gefangene).
 
 ## Dateien
 
 - `figures.png`: je Bildpunkt eine Palettennummer. Nie roh zeichnen, sondern über `Main.NewFigureSprite()`.
 - `figures_palette.png`: je Zeile 256 Farben. Erst eine Zeile je Figur, dahinter die Farbvarianten.
 - `figures_mirror.png`: farbig und viermal kleiner, für Spiegelungen (`Main.FigureMirror`). Ohne Varianten.
-- `figures.json`: `names` (Zeilen), `columns` (Bewegungen der Einheiten), `stride`, `has`, `variants`, `civil`.
+- `figures.json`: `names` (Zeilen), `columns` (Bewegungen der Einheiten), `stride`, `has`, `variants`, `civil`, `prisoner`.
 
 ## Zeichnen
 
@@ -51,3 +51,26 @@ Zeilen: `Zivil_Arbeiter` (Henkelmann), `Zivil_Frau` (Kopftuch, Einkaufsnetz), `Z
 
 Passanten sind grauer und dunkler als Agenten und Wachen und haben keinen Lichtsaum. Sterben gibt es für sie nicht.
 Beim Lesen und Kauern verschwindet, was sie in der Hand tragen.
+
+## Gefangene
+
+Zeilen: `Gefangener_Weiss` (Anton Weiß: graues Haar, helles Hemd, dunkle Schürze, Ärmelschoner, gebeugt) und
+`Gefangener_Roth` (Paul Roth: schmal, blaues Hemd, Hosenträger, in Socken, hustet). Beide ohne Mantel und Hut.
+Der Name gehört in der Mission unter `prisoners.sprite`. Das Spiel wählt die Bilder dann selbst (`FigureAnimator.PrisonerColumn`).
+
+| Bewegung | Bilder | Wann |
+|---|---|---|
+| `sit` | 6 | `Captive`, niemand an der Tür: sitzt am Boden, die Knie angezogen |
+| `rise` | 5 | `Captive` und `FreeProgress` läuft: steht im Takt der Befreiung auf |
+| `walk`, `run` | 12, 8 | folgt, geduckt und mit kurzen Schritten. `run` nur, wenn der Kern `Sprinting` setzt |
+| `idle` | 8 | steht und wartet auf den Trupp. Roth hustet in zwei Bildern |
+| `wait` | 4 | `Waiting`: hockt und sieht sich um |
+| `fallA`, `fallB` | 8, 8 | wie bei allen |
+
+Die Spalten stehen in `figures.json` unter `prisoner`. Gehen, Rennen, Warten und Fallen liegen in denselben Spalten wie bei allen Figuren.
+
+## Stadtwache
+
+`Wachmann`, `Hundefuehrer`, `Schuetze` und `Offizier` haben die Farbvariante `stadtwache` (dunkelblau statt feldgrau).
+Das Spiel setzt sie für alle Wachen, wenn die Mission `"scene": "nordwall"` hat (`Main.UpdateUnits`). `Werkschutz`, `Hund` und
+`Laufbursche` haben keine solche Variante und bleiben, wie sie sind.

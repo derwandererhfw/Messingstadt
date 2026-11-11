@@ -50,7 +50,7 @@ WORLD_PER_UNIT = 1000 / (32 * math.sqrt(2))
 # Teile der Figur, je ein Stoff
 COAT, COAT_D, COAT_L, TROUSERS, SHOE, SKIN, HAIR, HAT, GUN, SHIRT, TRIM, WOOD, LINEN, SCARF, BAND = range(15)
 CAPSULE, DISC = 0, 1
-# sawn: doppelläufige Flinte mit gekürzten Läufen, smg: Maschinenpistole mit Trommel, club: Totschläger
+# sawn: doppelläufige Flinte mit gekürzten Läufen, smg: Maschinenpistole mit Stangenmagazin, club: Totschläger
 GUN_LENGTH = {"pistol": 4.2, "shotgun": 11.0, "rifle": 16.0, "sawn": 9.5, "smg": 11.0}
 LONG_GUNS = ("shotgun", "rifle", "sawn", "smg")
 
@@ -87,8 +87,17 @@ CIVIL_FRAMES = [(motion, i, n) for motion, n in CIVIL_MOTIONS for i in range(n)]
 CIVIL_FRAMES += [("none", 0, 1)] * (len(FRAMES) - len(CIVIL_FRAMES))
 
 
+# Gefangene nutzen dieselben Spalten. Gehen, Rennen, Warten und Fallen stehen, wo sie bei allen stehen. Dazwischen:
+# sit (am Boden der Zelle), rise (aufstehen, vom Sitzen bis fast in den Stand) und wait (in der Hocke warten).
+PRISONER_MOTIONS = (("walk", 12), ("run", 8), ("idle", 8), ("sit", 6), ("rise", 5), ("wait", 4))
+PRISONER_FRAMES = [(motion, i, n) for motion, n in PRISONER_MOTIONS for i in range(n)]
+PRISONER_FRAMES += [("none", 0, 1)] * (FRAMES.index(("fallA", 0, 8)) - len(PRISONER_FRAMES))
+PRISONER_FRAMES += [frame for frame in FRAMES if frame[0].startswith("fall")]
+PRISONER_FRAMES += [("none", 0, 1)] * (len(FRAMES) - len(PRISONER_FRAMES))
+
+
 def frames_of(spec):
-    return CIVIL_FRAMES if spec.get("civil") else FRAMES
+    return CIVIL_FRAMES if spec.get("civil") else PRISONER_FRAMES if spec.get("prisoner") else FRAMES
 
 # Gangarten. stride: Weg pro Zyklus aus zwei Schritten. duty: Anteil des Zyklus, den ein Fuß am Boden steht.
 # Unter 0,5 hat das Rennen eine Flugphase. Die Figuren sind im Spiel flott unterwegs, daher lange Schritte.
@@ -101,6 +110,15 @@ GAITS = {
 GAITS["aimwalk"] = GAITS["walk"]
 # Schleichen: tief in den Knien, vorgebeugt, kurze Schritte
 GAITS["sneak"] = dict(GAITS["walk"], stride=30.0, duty=0.62, lift=2.6, height=19.5, lean=0.34, twist=0.3, sway=0.3)
+# Gefangene: geduckt und mit kurzen Schritten, auch im Rennen ohne Schwung
+GAITS["prisoner_walk"] = dict(GAITS["walk"], stride=34.0, duty=0.6, lift=2.6, height=21.4, lean=0.2, arm=0.3, twist=0.5)
+GAITS["prisoner_run"] = dict(GAITS["run"], stride=58.0, duty=0.4, lift=6.0, height=20.6, lean=0.36, arm=0.7, kick=3.0, bounce=0.8)
+
+
+def gait_of(spec, motion):
+    return GAITS["prisoner_" + motion if spec.get("prisoner") and motion in ("walk", "run") else motion]
+
+
 DOG_GAITS = {
     # Trab im Schritt: jedes Bein einzeln, diagonal versetzt.
     "walk": dict(stride=18.0, duty=0.55, lift=2.2, height=13.0, bounce=0.0, ankle=0.95, flex=0.3, roll=0.0,
@@ -122,7 +140,7 @@ def palette(spec):
     # Gesichter etwas heller als in der Stadtpalette: Sie sind im Spiel nur wenige Bildpunkte groß.
     skin = tuple(min(255, round(v * 1.18)) for v in C["skin"])
     colors = {
-        COAT: col(co), COAT_D: col(co_d), COAT_L: col(co_l), TROUSERS: col(spec["legs"]), SHOE: C["black"],
+        COAT: col(co), COAT_D: col(co_d), COAT_L: col(co_l), TROUSERS: col(spec["legs"]), SHOE: col(spec.get("shoe", "black")),
         SKIN: skin, HAIR: col(spec["hair"]), HAT: col(spec["hat_c"]), GUN: C["soot"], SHIRT: col(spec["shirt"]),
         TRIM: col(spec.get("trim", co_l)), WOOD: C["wood_d"], LINEN: C["paper"],
         SCARF: col(spec.get("scarf", "ash")), BAND: col(spec.get("band", "black")),
@@ -365,7 +383,7 @@ def carry_pose(rig, spec):
         butt = upper(rig, (2.6 * bulk, -2.4, WAIST + 3.4))
         return butt, unit(turn_z((0.88, 0.1, -0.36), rig["twist"])), GUN_LENGTH[gun], 0.2, 0.62
     if gun == "smg":
-        # Vor dem Bauch, die Trommel unten, die Mündung leicht gesenkt.
+        # Vor dem Bauch, das Magazin unten, die Mündung leicht gesenkt.
         butt = upper(rig, (2.4 * bulk, -2.4, WAIST + 3.6))
         return butt, unit(turn_z((0.95, 0.15, -0.2), rig["twist"])), GUN_LENGTH[gun], 0.2, 0.62
     butt = upper(rig, (3.3 * bulk, -4.5, WAIST + 1.5))
@@ -385,11 +403,11 @@ def draw_gun(p, gun, start, direction, length, drum=True):
             p.capsule(start + direction * 3.2 + side * s, start + direction * length + side * s, 0.62, 0.62, GUN)
         return
     if gun == "smg":
-        # Holzschaft, Gehäuse, vorn ein Griff und unten die runde Trommel
+        # Holzschaft, Gehäuse, vorn ein Griff und unten das gerade Stangenmagazin mit zwanzig Schuss
         p.capsule(start, start + direction * 3.2, 1.0, 0.8, WOOD)
         p.capsule(start + direction * 2.8, start + direction * length, 0.9, 0.6, GUN)
         if drum:
-            p.disc(start + direction * 5.4 - down * 1.6, side, 2.2, 0.8, GUN)
+            p.capsule(start + direction * 5.4 - down * 0.6, start + direction * 5.1 - down * 4.6, 0.7, 0.7, GUN)
         p.capsule(start + direction * 8.0, start + direction * 8.0 - down * 2.0, 0.6, 0.6, WOOD)
         return
     if gun == "carry":
@@ -493,6 +511,21 @@ def body(spec, rig, dying=False):
             draw_gun(p, gun, start, unit(end - start), GUN_LENGTH[gun])
         elif gun == "club":
             p.capsule(up((0.5, 4.9 * bulk, WAIST + 0.5)), up((-1.0, 5.2 * bulk, WAIST - 6.0)), 0.75, 1.05, SHOE)
+    if spec.get("apron"):
+        # Schürze des Druckers: Latz vor der Brust, darunter zwei Bahnen, die den Oberschenkeln folgen
+        for side in (1, -1):
+            p.capsule(up((2.0 * bulk, side * 1.7, shoulder_z - 5.5)), up((2.0 * bulk, side * 1.7, WAIST + 0.5)), 2.5 * bulk, 2.5 * bulk, BAND)
+            p.capsule(up((3.7 * bulk, side * 1.5, shoulder_z - 4.0)), up((1.0, side * 1.4, shoulder_z + 1.4)), 0.55, 0.55, BAND)
+        ahead = turn_z((1.0, 0.0, 0.0), rig["hip_yaw"])
+        for side in (1, -1):
+            h, k, _a, _angle = rig["legs"][side]
+            p.capsule(up((2.2 * bulk, side * 1.6, WAIST)), lerp(h, k, 0.95) + ahead * 2.0 - (0, side * 0.6, 0), 2.4, 2.1, BAND)
+    if spec.get("braces"):
+        # Hosenträger über dem Hemd, vorn und hinten
+        for side in (1, -1):
+            for low, high in ((3.55, 3.85), (-3.55, -3.45)):
+                p.capsule(up((low * bulk, side * 2.0 * bulk, WAIST + 0.8)), up((high * bulk, side * 2.9 * bulk, shoulder_z - 1.4)), 0.6, 0.6, BAND)
+            p.capsule(up((3.85 * bulk, side * 2.9 * bulk, shoulder_z - 1.4)), up((-3.45 * bulk, side * 2.9 * bulk, shoulder_z - 1.4)), 0.6, 0.6, BAND)
     if spec.get("scarf"):
         # Schal: dick um den Hals, ein Ende hängt vor der Brust
         p.capsule(up((0.3, 1.8, shoulder_z + 1.4)), up((0.3, -1.8, shoulder_z + 1.4)), 2.1, 2.1, SCARF)
@@ -540,7 +573,8 @@ def body(spec, rig, dying=False):
         p.ball(hv((1.6, 0, -2.6)), 1.0, HAT)
         p.capsule(hv((-2.6, 0, -0.8)), hv((-3.4, 0, -3.6)), 1.5, 0.7, HAT)
     elif spec["hat"] == "none":
-        pass
+        # Ohne Hut sieht man das Haar auch von vorn.
+        p.ball(hv((-0.7, 0, 1.0)), 2.65, HAIR)
     else:
         top = hv((-0.2, 0, 2.4))
         p.disc(hv((-0.2, 0, 2.6)), up_axis, 3.3, 0.9, HAT)
@@ -569,6 +603,9 @@ def body(spec, rig, dying=False):
             hand = elbow_p + turn_z((math.sin(fore) * FOREARM, side * 0.2, -math.cos(fore) * FOREARM), rig["twist"])
         p.capsule(shoulder, elbow_p, 1.8, 1.5, sleeve)
         p.capsule(elbow_p, hand, 1.5, 1.2, sleeve)
+        if spec.get("cuffs"):
+            # Ärmelschoner: dunkle Stulpen über den Unterarmen
+            p.capsule(lerp(elbow_p, hand, 0.2), lerp(elbow_p, hand, 0.88), 1.7, 1.45, BAND)
         p.ball(hand, 1.25, SKIN)
         joints[side] = (elbow_p, hand)
         if side < 0 and gun == "club" and not dying and not rig.get("busy"):
@@ -658,6 +695,8 @@ def human_rig(spec, motion, i, n):
     stance = "long" if gun in LONG_GUNS else "pistol"
     if motion in CIVIL_POSES:
         return CIVIL_POSES[motion](i)
+    if spec.get("prisoner"):
+        return prisoner_rig(spec, motion, i, n)
     if motion == "reload":
         return reload_rig(spec, i)
     if motion == "pick":
@@ -779,6 +818,92 @@ def cower_rig(i):
 CIVIL_POSES = {"smoke": smoke_rig, "read": read_rig, "startle": startle_rig, "cower": cower_rig}
 
 
+def floor_rig(a, curl):
+    """a = 0 sitzt am Boden, die Knie angezogen. a = 1 steht. Dazwischen stemmt sich die Figur über ihre Füße hoch.
+    curl: wie weit der Oberkörper im Sitzen über die Knie gebeugt ist."""
+    rig = new_rig()
+    e = ramp(a, 0.0, 1.0)
+    rig["pelvis"] = np.array((lerp(-8.5, 0.1, ramp(a, 0.0, 0.75)), 0.0, lerp(4.2, 23.4, ramp(a, 0.1, 1.0))))
+    bend = unit(lerp(np.array((0.35, 0.0, 1.0)), np.array((1.0, 0.0, 0.0)), e))
+    for side, x in ((1, 1.2), (-1, -0.2)):
+        hip = hip_point(rig["pelvis"], side, 0.0)
+        knee, ankle = two_bone(hip, np.array((x, side * 3.3, ANKLE)), THIGH, SHIN, bend)
+        rig["legs"][side] = (hip, knee, ankle, 0.0)
+    rig["lean"] = lerp(curl, 0.1, e) + 0.45 * math.sin(math.pi * a)
+    rig["head_pitch"] = lerp(0.2 + 0.6 * curl, 0.12, e)
+    rig["carry"] = False
+    for side in (1, -1):
+        # Im Sitzen liegen die Hände auf den Knien, im Stehen hängen sie.
+        knee = rig["legs"][side][1]
+        hang = arm_root(rig, side) + np.array((1.0, side * 0.6, -15.2))
+        rig["arms"][side] = ("ik", lerp(knee + (1.2, -side * 0.6, 1.6), hang, e), (0.2, side * 1.0, -0.8))
+    return rig
+
+
+def cough(rig, strength):
+    """Husten: Der Oberkörper knickt ein, die rechte Faust geht vor den Mund."""
+    rig["lean"] += 0.16 * strength
+    rig["head_pitch"] += 0.25 * strength
+    rig["arms"][-1] = ("ik", upper(rig, (3.3, -0.5, SHOULDER_Z + 3.3)), (0.0, -1.0, -0.6))
+
+
+def prisoner_rig(spec, motion, i, n):
+    """Gefangene: ohne Waffe, geduckt. Wer hustet (cough), hält sich im Stehen und Gehen den Leib."""
+    phase = i / n
+    t = phase * math.tau
+    sick = spec.get("cough")
+    stoop = spec.get("stoop", 0.0)
+    if motion in ("walk", "run"):
+        rig = gait_rig(gait_of(spec, motion), phase)
+        rig["lean"] += stoop
+        rig["head_pitch"] = 0.22 if motion == "walk" else 0.05
+        if sick:
+            rig["arms"][1] = ("ik", upper(rig, (3.2, -1.2, WAIST + 4.5)), (0.0, 1.0, -0.6))
+        return rig
+    if motion == "sit":
+        rig = floor_rig(0.0, 0.5 if sick else 0.12)
+        rig["breath"] = 0.3 * math.sin(t)
+        if sick:
+            if i == 4:
+                cough(rig, 0.8)
+        else:
+            # Der Alte horcht: Der Kopf geht langsam zur Tür und zurück.
+            rig["head_yaw"] = (0.0, 0.2, 0.4, 0.2, 0.0, -0.15)[i]
+            rig["head_pitch"] -= 0.15
+        return rig
+    if motion == "rise":
+        return floor_rig((i + 1) / (n + 1), 0.5 if sick else 0.12)
+    if motion == "wait":
+        # In der Hocke, die Hände auf den Knien, der Kopf sucht die Straße ab.
+        look = (-0.5, -0.15, 0.45, 0.15)[i]
+        rig = new_rig()
+        rig["pelvis"] = np.array((-1.5, 0.0, 12.0))
+        legs_from_feet(rig, {1: (np.array((2.5, 3.6, ANKLE)), 0.0), -1: (np.array((-1.5, -3.6, ANKLE)), 0.0)})
+        rig["lean"] = 0.45 + stoop
+        rig["head_pitch"] = -0.2
+        rig["head_yaw"] = look
+        rig["twist"] = 0.25 * look
+        rig["carry"] = False
+        for side in (1, -1):
+            rig["arms"][side] = ("ik", rig["legs"][side][1] + np.array((0.8, 0.0, 1.8)), (0.2, side * 1.0, -0.8))
+        return rig
+    # Stehen und warten: gebeugt, das Gewicht wandert. Der Junge friert und hustet.
+    rig = stand_rig(0.7 * math.sin(t))
+    rig["breath"] = 0.4 * math.sin(2 * t)
+    rig["lean"] = 0.07 + stoop
+    rig["head_pitch"] = 0.14
+    rig["head_yaw"] = 0.1 * math.sin(t + 0.6)
+    for side in (1, -1):
+        if sick:
+            # Arme vor der Brust verschränkt
+            rig["arms"][side] = ("ik", upper(rig, (3.5, -side * 2.2, WAIST + 7.0 + side * 0.7)), (0.0, side * 1.0, -0.7))
+        else:
+            rig["arms"][side] = ("fk", 0.1 + 0.03 * math.sin(t + side), 0.3)
+    if sick and i in (5, 6):
+        cough(rig, 1.0 if i == 5 else 0.6)
+    return rig
+
+
 def strike_rig(i):
     hand, club, twist, lean = STRIKE[i]
     rig = stand_rig(0.0, "long")
@@ -823,10 +948,10 @@ def reload_rig(spec, i):
         breech = butt + direction * 3.4 + (0, 0, 0.8)
         grip = butt + direction * GUN_LENGTH[gun] * 0.2
     elif gun == "smg":
-        # Trommel nach unten heraus, neue hinein
+        # Stangenmagazin nach unten herausziehen, ein neues aus der Tasche einsetzen
         butt = upper(rig, (2.4, -2.4, WAIST + 3.6))
         direction = unit(np.array((0.95, 0.15, -0.2)))
-        breech = butt + direction * 5.4 + (0, 0, -2.2)
+        breech = butt + direction * 5.2 + (0, 0, -3.6)
         grip = butt + direction * GUN_LENGTH[gun] * 0.2
         rig["drum"] = i in (0, 4, 5)
     else:
@@ -1248,14 +1373,18 @@ def civil_columns():
     return table
 
 
+def prisoner_columns():
+    return {motion: [PRISONER_FRAMES.index((motion, 0, n)), n] for motion, _i, n in PRISONER_FRAMES if motion != "none"}
+
+
 def strides():
     """Weg pro Zyklus in Spieleinheiten. Das Spiel schaltet die Bilder nach zurückgelegtem Weg weiter."""
     table = {}
     for name, spec in SPECS.items():
-        gaits = DOG_GAITS if spec.get("dog") else GAITS
         scale = spec.get("scale", 1.0)
-        motions = ("walk", "run") if spec.get("civil") else ("walk", "run", "aimwalk")
-        table[name] = {motion: round(gaits[motion]["stride"] * scale * WORLD_PER_UNIT) for motion in motions}
+        motions = ("walk", "run") if spec.get("civil") or spec.get("prisoner") else ("walk", "run", "aimwalk")
+        table[name] = {motion: round((DOG_GAITS[motion] if spec.get("dog") else gait_of(spec, motion))["stride"] * scale * WORLD_PER_UNIT)
+                       for motion in motions}
         if applies(spec, "sneak"):
             table[name]["sneak"] = round(GAITS["sneak"]["stride"] * scale * WORLD_PER_UNIT)
     return table
@@ -1375,6 +1504,7 @@ def main():
         "has": {name: [m for m in AGENT_ONLY if applies(spec, m)] for name, spec in SPECS.items() if spec.get("agent")},
         "variants": variants,
         "civil": {"names": [name for name, spec in SPECS.items() if spec.get("civil")], "columns": civil_columns()},
+        "prisoner": {"names": [name for name, spec in SPECS.items() if spec.get("prisoner")], "columns": prisoner_columns()},
     }), encoding="utf-8")
     print(f"{len(tasks)} Figurenbilder gerendert")
 
