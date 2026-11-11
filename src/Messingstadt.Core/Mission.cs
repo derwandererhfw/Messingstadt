@@ -44,6 +44,9 @@ namespace Messingstadt.Core
         /// <summary>Art des Gegners, siehe GuardType. Ohne Angabe ein Wachmann.</summary>
         public string Type { get; set; } = "";
 
+        /// <summary>Namen der Türen, zu denen diese Wache den Schlüssel trägt. Wer sie besticht, bekommt ihn, wer sie niederschlägt, hebt ihn auf.</summary>
+        public List<string> Keys { get; set; } = new();
+
         /// <summary>Für einen Hund an der Leine: der Name seines Hundeführers.</summary>
         public string Handler { get; set; } = "";
         public double X { get; set; }
@@ -84,6 +87,9 @@ namespace Messingstadt.Core
         public double X { get; set; }
         public double Y { get; set; }
         public string Sprite { get; set; } = "";
+
+        /// <summary>Art der Verstärkung, siehe GuardType. Ohne Angabe Wachmänner.</summary>
+        public string Type { get; set; } = "";
         public int FirstDelay { get; set; }
         public int Interval { get; set; }
         public int Count { get; set; }
@@ -97,6 +103,36 @@ namespace Messingstadt.Core
 
         /// <summary>Wo die Tür im Bild zu sehen ist, in Feldern. Ohne Angabe das erste Feld.</summary>
         public double[]? Mark { get; set; }
+    }
+
+    /// <summary>Ein Gefangener in einem Einsatz der Art Befreien.</summary>
+    public sealed class PrisonerData
+    {
+        public string Name { get; set; } = "";
+
+        /// <summary>Kurzer Name für das Telegramm, etwa WEISS.</summary>
+        public string Short { get; set; } = "";
+        public string Sprite { get; set; } = "";
+        public double X { get; set; }
+        public double Y { get; set; }
+
+        /// <summary>Name der Zellentür aus Doors. Leer, wenn er nicht eingeschlossen ist.</summary>
+        public string Door { get; set; } = "";
+        public int Hp { get; set; } = 60;
+
+        /// <summary>Zurufe für die Darstellung: freed, follow, noticed, shots, wagon.</summary>
+        public Dictionary<string, string> Lines { get; set; } = new();
+    }
+
+    /// <summary>Zeilen für den Telegrammstreifen beim Befreien. {NAME} ist der kurze Name eines Gefangenen.</summary>
+    public sealed class RescueTextData
+    {
+        public string Start { get; set; } = "GEFANGENE BEFREIEN STOP DANN ZUM WAGEN STOP";
+        public string Opening { get; set; } = "ZELLE WIRD GEÖFFNET STOP STEHEN BLEIBEN STOP";
+        public string OneFree { get; set; } = "{NAME} FREI STOP DER ZWEITE FEHLT NOCH STOP";
+        public string AllFree { get; set; } = "ALLE FREI STOP ZUM WAGEN STOP SIE SIND LANGSAM STOP";
+        public string OneDead { get; set; } = "{NAME} TOT STOP DEN ANDEREN RAUSBRINGEN STOP";
+        public string Boarding { get; set; } = "EINSTEIGEN STOP STEHEN BLEIBEN STOP";
     }
 
     /// <summary>Beute, die Geld bringt, wenn ein Agent sie erreicht und der Trupp entkommt.</summary>
@@ -169,6 +205,10 @@ namespace Messingstadt.Core
         public ReinforcementData? Reinforcements { get; set; }
         public List<DoorData> Doors { get; set; } = new();
         public LootData? Loot { get; set; }
+
+        /// <summary>Gefangene. Gibt es welche, ist der Einsatz von der Art Befreien und Item zählt nicht.</summary>
+        public List<PrisonerData> Prisoners { get; set; } = new();
+        public RescueTextData? RescueTexts { get; set; }
 
         /// <summary>Zeitungstexte nach dem Einsatz. Ohne Angabe allgemeine Texte.</summary>
         public HeadlineData? Headlines { get; set; }
