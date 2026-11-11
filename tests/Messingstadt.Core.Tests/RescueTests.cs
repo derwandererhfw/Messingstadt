@@ -367,6 +367,65 @@ namespace Messingstadt.Core.Tests
             var loaded = Campaign.FromJson(c.ToJson());
             Assert.True(loaded.PrisonerAlive("Anton Weiß"));
             Assert.False(loaded.PrisonerAlive("Paul Roth"));
+            Assert.Equal("Befreit: Anton Weiß. Nicht überlebt: Paul Roth.", CampaignTexts.Rescue(loaded.LastPrisoners));
+        }
+
+        [Fact]
+        public void TheFirstRescueStandsWhenTheDistrictIsPlayedAgain()
+        {
+            var c = new Campaign();
+            for (int round = 0; round < 2; round++)
+            {
+                var m = Mission(new() { Agent(13.5, 5.5, World.SkillLocksmith) }, new());
+                c.Prepare(m, "mission_02");
+                var w = new World(Map(), m);
+                w.OrderOpenDoor(0, 0);
+                Run(w, 20 + World.DoorTicks + World.FreeTicks + 5);
+                // Beim ersten Mal stirbt Roth, beim zweiten Mal Weiß.
+                (round == 0 ? Roth(w) : Weiss(w)).Hp = 0;
+                var living = round == 0 ? Weiss(w) : Roth(w);
+                living.Captive = false;
+                (w.Units[0].X, w.Units[0].Y) = (1500, 1500);
+                (living.X, living.Y) = (500, 1500);
+                living.Path.Clear();
+                Run(w, World.EscapeTicks + 2);
+                Assert.Equal(MissionState.Won, w.State);
+                c.Finish(w);
+            }
+            Assert.Equal(2, c.Records["mission_02"].Attempts);
+            Assert.True(c.PrisonerAlive("Anton Weiß"));
+            Assert.False(c.PrisonerAlive("Paul Roth"));
+        }
+
+        [Fact]
+        public void RescueLineNamesTheFreedAndTheDead()
+        {
+            Assert.Equal("", CampaignTexts.Rescue(new Dictionary<string, bool>()));
+            Assert.Equal("Befreit: Anton Weiß, Paul Roth.", CampaignTexts.Rescue(new Dictionary<string, bool> { ["Anton Weiß"] = true, ["Paul Roth"] = true }));
+            Assert.Equal("Nicht überlebt: Paul Roth.", CampaignTexts.Rescue(new Dictionary<string, bool> { ["Paul Roth"] = false }));
+            Assert.Empty(new Campaign().LastPrisoners);
+        }
+
+        [Theory]
+        [InlineData("{\"Version\":3,\"Money\":650,\"Missions\":1,\"Records\":{\"mission_01\":{\"Attempts\":1,\"Won\":true}}}", SaveStatus.Migrated)]
+        [InlineData("{\"Version\":4,\"Current\":\"mission_02\",\"Records\":{\"mission_02\":{\"Attempts\":1,\"Won\":true,\"Prisoners\":null},\"kaputt\":null}}", SaveStatus.Loaded)]
+        [InlineData("{\"Money\":900,\"Missions\":2}", SaveStatus.Migrated)]
+        public void SavesWithoutPrisonersLoadCleanly(string json, SaveStatus expected)
+        {
+            var c = Campaign.Load(json, out var status);
+            Assert.Equal(expected, status);
+            Assert.Null(c.PrisonerAlive("Anton Weiß"));
+            Assert.Empty(c.LastPrisoners);
+            Assert.All(c.Records.Values, r => Assert.NotNull(r.Prisoners));
+            Assert.DoesNotContain("kaputt", c.Records.Keys);
+            // Der Stand lässt sich danach wieder speichern und laden.
+            Assert.Equal(SaveStatus.Loaded, Load(c.ToJson()));
+        }
+
+        private static SaveStatus Load(string json)
+        {
+            Campaign.Load(json, out var status);
+            return status;
         }
 
         [Fact]

@@ -56,6 +56,15 @@ namespace Messingstadt.Core
         public static string FirstFall(string name) => $"{name} liegt in der Krankenstube. Beine und Herz fallen auf Stufe 1. Ein zweites Mal geht das nicht gut.";
 
         public static string Died(string name) => $"{name} ist tot.";
+
+        /// <summary>Zeile für das Ergebnis eines Einsatzes der Art Befreien: wer herauskam und wer nicht. Leer ohne Gefangene.</summary>
+        public static string Rescue(IReadOnlyDictionary<string, bool> prisoners)
+        {
+            var freed = prisoners.Where(p => p.Value).Select(p => p.Key).ToList();
+            var dead = prisoners.Where(p => !p.Value).Select(p => p.Key).ToList();
+            string line = freed.Count > 0 ? $"Befreit: {string.Join(", ", freed)}." : "";
+            return dead.Count == 0 ? line : $"{line} Nicht überlebt: {string.Join(", ", dead)}.".Trim();
+        }
     }
 
     /// <summary>Was die Story später über einen Einsatz wissen will.</summary>
@@ -428,7 +437,11 @@ namespace Messingstadt.Core
                 entry.Bribed = bribed;
                 entry.DeadAgents = squad.Count(u => !u.Alive);
                 entry.Loot = world.LootTaken;
-                entry.Prisoners = world.Prisoners.ToDictionary(p => p.Name, p => p.Alive);
+                // Die erste Befreiung zählt. Wer ein erobertes Viertel noch einmal spielt, macht keinen Toten lebendig und keinen Lebenden tot.
+                if (entry.Prisoners.Count == 0)
+                {
+                    entry.Prisoners = world.Prisoners.ToDictionary(p => p.Name, p => p.Alive);
+                }
             }
             FillRanks(Slots());
         }
@@ -528,6 +541,10 @@ namespace Messingstadt.Core
         private static bool CanCarryMore(AgentRecord record) => !record.Dead && record.Items.Count < ItemSlots;
 
         /// <summary>Lebt ein Befreiter aus einem gewonnenen Einsatz? Null, solange er noch nicht befreit wurde.</summary>
+        /// <summary>Wer im laufenden oder zuletzt gespielten Einsatz befreit wurde, nach der ersten Befreiung. Leer ohne Sieg oder ohne Gefangene.</summary>
+        public IReadOnlyDictionary<string, bool> LastPrisoners =>
+            Records.TryGetValue(Current, out var record) ? record.Prisoners : new Dictionary<string, bool>();
+
         public bool? PrisonerAlive(string name)
         {
             foreach (var record in Records.Values)
@@ -610,7 +627,7 @@ namespace Messingstadt.Core
             Heat = Math.Clamp(Heat, 0, MaxHeat);
             Support = Math.Clamp(Support, 0, MaxSupport);
             Current ??= "";
-            Records ??= new();
+            Records = (Records ?? new()).Where(r => r.Value != null).ToDictionary(r => r.Key, r => r.Value);
             foreach (var record in Records.Values)
             {
                 record.Prisoners ??= new();

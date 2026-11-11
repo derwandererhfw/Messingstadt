@@ -1618,6 +1618,10 @@ void fragment() {
             string pay = won ? $"Lohn {_lastReward}{loot}   " : "";
             result.AddChild(PanelLabel($"{pay}Kasse {_campaign.Money}   Einsätze {_campaign.Missions}"));
             _panelBody.AddChild(result);
+            if (won && _campaign.LastPrisoners.Count > 0)
+            {
+                _panelBody.AddChild(PanelLabel(CampaignTexts.Rescue(_campaign.LastPrisoners), 13));
+            }
             if (World.Units.Any(u => u.Faction == Faction.Agent && (!u.Alive || _abandoned)))
             {
                 _panelBody.AddChild(PanelLabel(CampaignTexts.RuleHint, 13));
