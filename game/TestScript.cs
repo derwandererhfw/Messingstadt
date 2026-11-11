@@ -140,6 +140,12 @@ namespace Messingstadt
                     var screen = GetViewport().GetFinalTransform() * (Game.GetCanvasTransform() * tile);
                     Input.ParseInputEvent(new InputEventMouseMotion { Position = screen, GlobalPosition = screen });
                     break;
+                case "clicktile":
+                    // Linksklick auf ein Feld der Welt, gezählt vom Agenten aus.
+                    var rel = arg.Split(' ');
+                    var from = Game.World.Units.First(u => u.Faction == Faction.Agent && u.Name == rel[0]);
+                    ClickAt(Game.GetCanvasTransform() * Game.TileCenter(from.TileX + int.Parse(rel[1]), from.TileY + int.Parse(rel[2])));
+                    break;
                 case "hurt":
                     var hurt = arg.Split(' ');
                     var victim = Game.World.Units.FirstOrDefault(u => u.Faction == Faction.Agent && u.Alive && u.Name == hurt[0]);
