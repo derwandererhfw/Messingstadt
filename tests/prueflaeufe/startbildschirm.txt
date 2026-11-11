@@ -39,10 +39,16 @@ expect screen Startbildschirm
 key Escape
 expect screen Startbildschirm
 print
-# Enter startet das Spiel
+# Enter startet das Spiel, mit der Tastatur durch Stadtplan und Waffenkammer
 key Enter
 wait 10
 expect screen
+expect citymap viertel_1: brandt brandt brandt brandt brandt
+expect focus 1  Kesselviertel
+key Enter
+expect armory Greta:None:
+click Zum Einsatz
+wait 10
 expect hud True
 remember tick
 wait 30
@@ -57,4 +63,7 @@ expect focus Neues Spiel
 click Neues Spiel
 wait 10
 expect screen
+click Einsatz annehmen
+click Zum Einsatz
+wait 10
 expect hud True

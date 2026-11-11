@@ -146,6 +146,20 @@ namespace Messingstadt
                     var from = Game.World.Units.First(u => u.Faction == Faction.Agent && u.Name == rel[0]);
                     ClickAt(Game.GetCanvasTransform() * Game.TileCenter(from.TileX + int.Parse(rel[1]), from.TileY + int.Parse(rel[2])));
                     break;
+                case "place":
+                    // Stellt den Trupp ans Ziel (item) oder in den Fluchtwagen (exit), damit ein Sieg ohne langen Weg prüfbar ist.
+                    var zone = Game.World.Exit;
+                    var (px, py) = arg == "exit" ? ((zone.X0 + zone.X1) / 2, (zone.Y0 + zone.Y1) / 2) : (Game.World.ItemX, Game.World.ItemY);
+                    foreach (var member in Game.World.Units.Where(u => u.Faction == Faction.Agent && u.Alive))
+                    {
+                        member.Path.Clear();
+                        (member.X, member.Y) = (px, py);
+                    }
+                    break;
+                case "clickdistrict":
+                    // Klick auf ein Viertel des Stadtplans, unabhängig von Karte und Fenstergröße.
+                    ClickAt(Game.CityMapPoint(int.Parse(arg)));
+                    break;
                 case "hurt":
                     var hurt = arg.Split(' ');
                     var victim = Game.World.Units.FirstOrDefault(u => u.Faction == Faction.Agent && u.Alive && u.Name == hurt[0]);

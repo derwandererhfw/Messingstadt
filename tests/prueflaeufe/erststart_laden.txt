@@ -17,8 +17,12 @@ key Up
 key Enter
 wait 10
 expect screen
-expect hud True
 expect saved True
+# Vor dem ersten Einsatz: Stadtplan, dann Waffenkammer
+click Einsatz annehmen
+click Zum Einsatz
+wait 10
+expect hud True
 expect begun False
 # Ein Schuss, dann der Abbruch: Die Kampagne hat etwas erlebt und fragt beim nächsten neuen Spiel
 attack

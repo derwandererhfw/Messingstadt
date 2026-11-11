@@ -1,0 +1,70 @@
+# Stadtplan zur Einsatzwahl: Viertel wählen mit Maus und Tasten, gesperrtes Viertel, Einfärbung nach dem Sieg, Esc zurück.
+# Aufruf mit --menu --fresh. Prüfläufe schreiben nichts.
+wait 20
+click Neues Spiel
+wait 10
+# Vor dem ersten Einsatz liegt der Plan offen, alle fünf Viertel gehören den Brandt-Werken, das erste ist gewählt
+expect hud False
+expect citymap viertel_1: brandt brandt brandt brandt brandt
+expect focus 1  Kesselviertel
+seetext Holen: Das Kontobuch
+seetext Belohnung: 300 bis 600, je leiser, desto mehr
+# Pfeiltasten wandern durch die Viertel. Ein gesperrtes zeigt, warum, und lässt sich nicht nehmen
+key Down
+expect citymap viertel_2: brandt brandt brandt brandt brandt
+expect focus 2  Nordwall   kein Auftrag
+seetext Für dieses Viertel liegt noch kein Auftrag vor. K. meldet sich.
+key Enter
+expect citymap viertel_2: brandt brandt brandt brandt brandt
+clickany Einsatz annehmen
+expect citymap viertel_2: brandt brandt brandt brandt brandt
+expect armory
+# Die Leertaste löst hier nichts aus, Esc öffnet ohne Bericht die Pausenmappe
+key Space
+expect citymap viertel_2: brandt brandt brandt brandt brandt
+key Escape
+expect screen Pausenmappe
+key Escape
+expect screen
+expect citymap viertel_2: brandt brandt brandt brandt brandt
+# Ein Klick auf den Plan wählt das Viertel: erst das fünfte, dann das erste
+clickdistrict 5
+expect citymap viertel_5: brandt brandt brandt brandt brandt
+clickdistrict 1
+expect citymap viertel_1: brandt brandt brandt brandt brandt
+# Enter nimmt das Viertel, es folgt die Waffenkammer. Von dort führt Esc zurück auf den Plan
+key Enter
+expect citymap
+expect armory Greta:None:
+key Escape
+expect armory
+expect citymap viertel_1: brandt brandt brandt brandt brandt
+click Einsatz annehmen
+click Zum Einsatz
+wait 20
+expect hud True
+expect state Running
+# Der Trupp holt das Buch und fährt ab: Sieg
+place item
+waitfor item True
+place exit
+waitfor state Won
+wait 20
+expect panel True
+click Nächster Einsatz
+wait 5
+# Das Viertel trägt jetzt die Farben des Roten Hammers und bleibt spielbar
+expect citymap viertel_1: hammer brandt brandt brandt brandt
+expect focus 1  Kesselviertel   Hammer hält
+seetext Hammer hält. Bis neue Aufträge kommen, lässt sich dieser Einsatz noch einmal spielen.
+# Mit Bericht führt Esc dorthin zurück
+key Escape
+expect citymap
+expect panel True
+click Nächster Einsatz
+wait 5
+click Einsatz annehmen
+click Zum Einsatz
+wait 20
+expect hud True
+expect state Running

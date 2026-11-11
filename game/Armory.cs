@@ -31,7 +31,6 @@ namespace Messingstadt
         // Hinweis zum gewählten Gegenstand, etwa fehlendes Geld. Eine Meldung nach einem Handgriff hat Vorrang.
         private string _hint = "";
         private string _focusKey = "";
-        private bool _fromResult;
         private readonly Dictionary<string, Button> _buttons = new();
 
         /// <summary>Für den Prüflauf: gewählter Agent und Gegenstand.</summary>
@@ -53,10 +52,9 @@ namespace Messingstadt
 
         private Campaign Campaign => Game.Campaign;
 
-        /// <summary>Öffnet die Kammer. Mit Bericht führt Esc und "Zurück" auf den Ergebnis-Bildschirm.</summary>
-        public void Open(bool fromResult)
+        /// <summary>Öffnet die Kammer. Esc und "Zurück" führen auf den Stadtplan.</summary>
+        public void Open()
         {
-            _fromResult = fromResult;
             _message = "";
             _source = Source.None;
             _item = "";
@@ -75,13 +73,9 @@ namespace Messingstadt
         /// <summary>Nach der Pausenmappe bekommt die Kammer die Tasten zurück.</summary>
         public void Refocus() => Rebuild();
 
-        /// <summary>Esc: zurück zum Bericht, wenn es einen gibt. Sonst bleibt die Kammer offen und Esc öffnet die Pausenmappe.</summary>
+        /// <summary>Esc: zurück zum Stadtplan.</summary>
         public bool Back()
         {
-            if (!_fromResult)
-            {
-                return false;
-            }
             Close();
             Game.ArmoryBack();
             return true;
@@ -119,15 +113,12 @@ namespace Messingstadt
             _body.AddChild(Rule(1, PaperUi.PaperDark));
             var foot = new HBoxContainer();
             foot.AddThemeConstantOverride("separation", 12);
-            if (_fromResult)
-            {
-                foot.AddChild(MakeButton("back", "Zurück zum Bericht", () => Back(), 200));
-            }
+            foot.AddChild(MakeButton("back", "Zurück zum Stadtplan", () => Back(), 220));
             var message = PaperUi.Text(_message.Length > 0 ? _message : _hint, Normal, PaperUi.StampRed, PaperUi.Typewriter);
             message.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             message.HorizontalAlignment = HorizontalAlignment.Center;
             foot.AddChild(message);
-            foot.AddChild(MakeButton("go", Game.NextMissionLabel, Game.LeaveArmory, 220));
+            foot.AddChild(MakeButton("go", "Zum Einsatz", Game.LeaveArmory, 220));
             _body.AddChild(foot);
 
             // Die Wahl bleibt nach jedem Kauf oder Tausch auf derselben Stelle, sonst springt sie bei jedem Enter weg.

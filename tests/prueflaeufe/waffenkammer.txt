@@ -1,8 +1,15 @@
-# Waffenkammer vor dem Einsatz: kaufen, ausrüsten, verkaufen, Einsatz starten, Waffe in der Hand prüfen.
+# Waffenkammer vor jedem Einsatz, auch vor dem ersten: kaufen, ausrüsten, verkaufen, Einsatz starten, Waffe in der Hand prüfen.
 # Aufruf mit --menu --fresh. Prüfläufe schreiben nichts.
 wait 20
 click Neues Spiel
+wait 10
+# Schon vor dem ersten Einsatz: Stadtplan, dann die Kammer
+expect citymap viertel_1: brandt brandt brandt brandt brandt
+click Einsatz annehmen
+expect armory Greta:None:
+click Zum Einsatz
 wait 20
+expect hud True
 expect money 600
 attack
 wait 300
@@ -10,10 +17,12 @@ key R
 click Abbrechen
 wait 20
 expect panel True
-# Nochmal führt in die Kammer, nicht gleich in den Einsatz
+# Nochmal führt über den Stadtplan in die Kammer, nicht gleich in den Einsatz
 click Nochmal
 wait 5
 expect panel False
+expect citymap viertel_1: brandt brandt brandt brandt brandt
+click Einsatz annehmen
 expect armory Greta:None:
 expect gear Greta:pistole, Otto:pistole, Emil:pistole, Hanna:pistole
 # Die Wahl steht auf der ersten Akte, Pfeiltasten wandern in ihre Plätze
@@ -40,19 +49,23 @@ click Pistole
 click Verkaufen (+50)
 expect money 470
 expect gear Greta:totschlaeger+rauchtopf, Otto:pistole, Emil:pistole, Hanna:pistole
-# Esc führt zurück zum Bericht, Nochmal wieder hinein
+# Esc führt zurück zum Stadtplan, noch einmal Esc zum Bericht. Nochmal führt wieder hinein
+key Escape
+expect armory
+expect citymap viertel_1: brandt brandt brandt brandt brandt
 key Escape
 expect panel True
-expect armory
+expect citymap
 click Nochmal
 wait 5
+click Einsatz annehmen
 expect armory Greta:None:
 key Space
 wait 5
 expect panel False
 # Die Leertaste vom Weiterschalten löst hier nichts aus
 expect armory Greta:None:
-click Nochmal
+click Zum Einsatz
 wait 30
 # Emil und Hanna liegen in der Krankenstube. Greta hat nur den Knüppel als Waffe und hält ihn, der Rauchtopf ist dabei.
 expect armory
