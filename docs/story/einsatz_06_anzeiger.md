@@ -1,6 +1,6 @@
 # Einsatz 6: Der Anzeiger (Finale)
 
-Stand 2026-11-11. Bauvorlage in derselben Form wie `einsatz_02_nordwall.md`. Rahmen ist KANON: sechster Einsatz nach allen fünf Vierteln, Nacht des Generalstreiks, der Trupp besetzt das Druckhaus für eine Nacht, der Spieler entscheidet, was gedruckt wird, zwei leise Enden, das letzte Telegramm sagt, dass Kolb von Rehm wusste, die Zeitung zeigt, wie blutig der Spieler war. Karte, Gegner, Regeln und Texte sind VORSCHLAG der Story. Karte 20 × 20, Norden ist y = 0.
+Stand 2026-11-11. Bauvorlage in derselben Form wie `einsatz_02_nordwall.md`. Rahmen ist KANON: sechster Einsatz nach allen fünf Vierteln, Nacht des Generalstreiks, der Trupp besetzt das Druckhaus für eine Nacht, der Spieler entscheidet, was gedruckt wird, zwei leise Enden, das letzte Telegramm sagt, dass Kolb von Rehm wusste, die Zeitung zeigt, wie blutig der Spieler war. Karte, Gegner, Regeln und Texte sind VORSCHLAG der Story. Karte 20 × 20, Norden ist y = 0. Für die Schrägansicht gilt die Regel aus `../einsatz_02_grundriss.md`: Ein hohes Haus verdeckt drei Felder nördlich und westlich von sich. Zielorte, Türen und Hauptwege liegen deshalb nie dort, wichtige Türen zeigen nach Süden oder Osten, hohe Gebäude stehen am Nordrand.
 
 ## 1. Geschichte
 
@@ -45,13 +45,13 @@ Das Druckhaus des Anzeigers in der Altstadt, südlich des Fischmarkts. Dieselbe 
 |---|---|---|
 | Druckhaus | x 7–15, y 4–10 | Hoher Ziegelbau mit großen Fenstern. Im Setzersaal brennt Licht |
 | Maschinensaal | Felder [11, 9], [11, 8], [11, 7] | Vom Papierhof ins Haus. Die Rotationsmaschine steht bei (11,5, 6,5) |
-| Papierhof | x 7–15, y 10–14 | Ummauert, Papierrollen als Deckung (sperren Weg und Sicht), Laderampe |
+| Papierhof | x 7–15, y 10–14 | Südlich vor dem Druckhaus, niedrige Mauer, Papierrollen als Deckung (sperren Weg und Sicht), Laderampe |
 | Hoftor | [11, 14] | Tor zur Gasse im Süden |
 | Seitenpforte | [7, 12] | Zur Färbergasse im Westen. Der Setzer hat sie offen gelassen: Jeder Agent öffnet sie in 1 s |
 | Färbergasse | x 5–7, y 0–20 | Dunkel |
 | Druckgasse | x 15–17, y 0–20 | Eine Laterne, Streife des Werkschutzes |
-| Häuserzeile Süd | x 8–14, y 16–20 | Wohnhäuser, Fenster dunkel wegen des Notstands |
-| Häuser West | x 0–5, y 2–9 und y 13–17 | Giebelhäuser |
+| Schuppenzeile Süd | x 8–14, y 16–20 | Niedrige Remisen und Papierschuppen (höchstens 40 hoch), damit sie den Papierhof nicht verdecken |
+| Häuser West | x 0–5, y 2–9 und y 13–17 | Giebelhäuser. Sie stehen westlich und verdecken nichts von Belang |
 | Durchgang West | x 0–2, y 10–13 | Ziel: von hier durch die Höfe aus dem Viertel |
 
 Licht: Fenster des Setzersaals nach Süden in den Papierhof, Lampe über dem Hoftor (11,5, 14,6), Laterne in der Druckgasse (16, 9). Läuft die Maschine, leuchtet der Maschinensaal in den Hof.
@@ -80,7 +80,7 @@ Licht: Fenster des Setzersaals nach Süden in den Papierhof, Lampe über dem Hof
 | Torposten | Werkschutz | (11,5, 15,5), vor dem Hoftor, Blick nach Süden | Posten | nein |
 | Gassenstreife | Werkschutz | Druckgasse | Rundgang (16, 3) – (16, 17) | nein |
 | Zensor | Offizier | (13,5, 10,5), an der Rampe | Posten. Beamter des Stadtrats in Zivil, mit Pistole | 400 |
-| Dachposten | Schütze | (8,5, 3,5), nördlich des Druckhauses | Posten, schaut zum Fischmarkt. Hört die Maschine und kommt | 200 |
+| Gassenposten | Schütze | (16,5, 5,5), in der Druckgasse östlich des Druckhauses | Posten, schaut nach Norden zum Fischmarkt. Hört die Maschine und kommt | 200 |
 | Südstreife | Hundeführer mit Hund | Gasse südlich des Hofs | Rundgang (8, 15) – (14, 15) | 300 |
 | Anführer der Verstärkung | Werkschutzführer | Kommt mit der ersten Welle | Rademacher, wenn er lebt, sonst namenlos | nein |
 
@@ -114,7 +114,7 @@ Bis zur Maschine geht es leise: Pforte, Papierrollen als Deckung, Hofwachen kauf
 | Wer | Beitrag |
 |---|---|
 | Otto, Schlosser | Hoftor verriegeln: Er kann eine offene Tür in 2 s wieder schließen (Vorschlag, neu). Büro des Zensors |
-| Emil, Buchhalter | Hofwachen, Zensor, Dachposten, Hundeführer sind käuflich. Wer vorher kauft, hat beim Halten weniger Gegner im Rücken |
+| Emil, Buchhalter | Hofwachen, Zensor, Gassenposten, Hundeführer sind käuflich. Wer vorher kauft, hat beim Halten weniger Gegner im Rücken |
 | Hanna, Kurierin | Hält den Fluchtweg frei und ist die Erste am Durchgang |
 | Greta, Truppführerin | Spricht mit den Hofwachen. In der leisen Kampagne treten sie ihretwegen beiseite, so steht es in den Zurufen |
 | Rauchtopf, Verband, Schrotflinte | Halten den Hof. Hier lohnt sich alles, was die Kasse hergibt |

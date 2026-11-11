@@ -43,7 +43,7 @@ Mächte, Orte, Alltag. Neue Orte nur mit Bezug auf einen geplanten Einsatz. Orts
 
 Story-Seite eines Einsatzes: Auftrag, Ziel in der Geschichte, wer was erfährt, Schlagzeilen, Ort und Zeit. Karte, Gegner und Regeln baut die Level-Session.
 
-1. Prüfliste durchgehen.
+1. Prüfliste durchgehen, bei Karten auch den Punkt Schrägansicht.
 2. Plan mit Auftragstext, Zielen, Schlagzeilen je Ausgang und Wissenszuwachs vorlegen.
 3. Nach Freigabe in die Missionsdatei eintragen (Felder `briefing`, `place`, `time`, `headlines`).
 

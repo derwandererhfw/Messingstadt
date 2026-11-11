@@ -1,6 +1,6 @@
 # Einsatz 4: Das Schließfach (Kontorviertel, Überzeugen)
 
-Stand 2026-11-11. Bauvorlage in derselben Form wie `einsatz_02_nordwall.md`. Rahmen ist KANON: Kontorviertel, Überzeugen, Prokurist Albert Dorn schließt Valks Schließfach auf, darin das Zweitbuch mit den Klarnamen, Sperling ist Rehm. Karte, Gegner, Regeln und Texte sind VORSCHLAG der Story. Karte 20 × 20, Norden ist y = 0.
+Stand 2026-11-11. Bauvorlage in derselben Form wie `einsatz_02_nordwall.md`. Rahmen ist KANON: Kontorviertel, Überzeugen, Prokurist Albert Dorn schließt Valks Schließfach auf, darin das Zweitbuch mit den Klarnamen, Sperling ist Rehm. Karte, Gegner, Regeln und Texte sind VORSCHLAG der Story. Karte 20 × 20, Norden ist y = 0. Für die Schrägansicht gilt die Regel aus `../einsatz_02_grundriss.md`: Ein hohes Haus verdeckt drei Felder nördlich und westlich von sich. Deshalb stehen hier alle hohen Gebäude in einer Reihe am Nordrand, und östlich und südlich des Geschehens ist alles niedrig.
 
 ## 1. Geschichte
 
@@ -37,31 +37,31 @@ Der Platz vor dem Hauptsitz der Kontorbank. Das hellste Bild der Kampagne.
 
 | Was | Felder | Beschreibung |
 |---|---|---|
-| Kanal | x 0–3, y 0–9 und y 12–20 | Wasser, nicht begehbar, sperrt keine Sicht |
-| Kanalbrücke | x 0–3, y 9–12 | Steinbrücke mit Geländer. Hier wartet der Wagen |
-| Uferweg | x 3–6, y 2–9 | Westlich der Bank, schwach beleuchtet |
-| Kontorbank | x 6–14, y 2–8 | Sandstein, Säulenportal nach Süden bei (10, 8), Kuppel. Kein Fenster im Erdgeschoss ohne Gitter |
-| Kassengasse | x 14–16, y 2–9 | Durchfahrt zwischen Bank und Notariat, dunkel. Hier liegt der Hintereingang |
-| Notariat | x 16–19, y 2–8 | Geschäftshaus, im Souterrain der Dienstboteneingang zur Gasse |
-| Bankstraße | y 9–12, x 3–20 | Breit, glattes Pflaster, vier elektrische Kandelaber |
-| Geschäftshaus | x 4–8, y 13–18 | Juwelier mit Rollgitter, Schaufenster erleuchtet |
-| Hotel Kontor | x 11–17, y 13–18 | Vordach, Drehtür, Page davor |
-| Durchfahrt | x 8–11, y 13–20 | Zwischen Geschäftshaus und Hotel, dunkel. Start |
+| Hotel Kontor | x 0–5, y 2–8 | Hoch. Vordach und Drehtür nach Süden bei (3, 8), Page davor |
+| Kontorbank | x 6–14, y 2–8 | Hoch. Sandstein, Säulenportal nach Süden bei (10, 8), Kuppel. Kein Fenster im Erdgeschoss ohne Gitter |
+| Kassenhof | x 14–20, y 2–9 | Östlich der Bank, offen, nur von einem Eisengitter mit Tor zur Bankstraße eingefasst (niedrig, sperrt den Weg, nicht die Sicht). Dunkel. Hier liegt der Hintereingang in der Ostwand der Bank |
+| Pförtnerhaus | x 17–19, y 2–4 | Ein Geschoss, in der Nordostecke des Kassenhofs. Tür nach Süden |
+| Bankstraße | y 9–12, ganze Breite | Breit, glattes Pflaster, vier elektrische Kandelaber |
+| Uferpromenade | y 12–15, ganze Breite | Geländer, Bänke, Litfaßsäule, Nachtwächterhäuschen. Alles niedrig |
+| Kanal | y 15–20, ganze Breite | Wasser, nicht begehbar, sperrt keine Sicht |
+| Anlegetreppe | x 9–12, y 14–15 | Steintreppe zum Wasser. Start: Der Trupp kommt mit einem Kahn |
+| Kanalbrücke | x 1–3, y 15–20 | Steinbrücke nach Süden. Hier wartet der Wagen |
 
-Kandelaber: (5,5, 10,5), (9,5, 10,5), (13,5, 10,5), (17,5, 10,5). Portal: zwei Lampen bei (8,5, 8,6) und (11,5, 8,6). Dunkel sind nur die Kassengasse, die Durchfahrt im Süden und der Uferweg nördlich von y 5.
+Kandelaber: (5,5, 10,5), (9,5, 10,5), (13,5, 10,5), (17,5, 10,5). Portal: zwei Lampen bei (8,5, 8,6) und (11,5, 8,6). Eine Laterne an der Brücke (3,5, 14,5). Dunkel sind der Kassenhof und die Anlegetreppe.
 
 ### Türen
 
 | Tür | Felder | Marke | Wozu |
 |---|---|---|---|
-| Hintereingang der Bank | [13, 5], [12, 5], [11, 5] | (14,5, 5,5) | Schließfach mit dem Zweitbuch bei (11,5, 5,5). Geht nur mit Dorn auf, nicht mit Schlosser oder Dietrich |
-| Seitentür des Notariats | [16, 4], [17, 4] | (15,5, 4,5) | Handkasse des Notariats bei (17,5, 4,5), 300. Gewöhnliches Schloss |
+| Hintereingang der Bank | [13, 5], [12, 5], [11, 5] | (14,5, 5,5) | In der Ostwand, für die Kamera sichtbar. Schließfach mit dem Zweitbuch bei (11,5, 5,5). Geht nur mit Dorn auf, nicht mit Schlosser oder Dietrich |
+| Tür des Pförtnerhauses | [18, 3], [18, 2] | (18,5, 4,5) | Handkasse des Pförtners bei (18,5, 2,5), 300. Gewöhnliches Schloss |
+| Gittertor des Kassenhofs | [15, 9] | (15,5, 10,5) | Zur Bankstraße. Gewöhnliches Schloss. Über das Gitter kommt niemand |
 
 ### Start und Ziel
 
-- Start: Durchfahrt im Süden, x 8,5 bis 10,5 und y 18,5 bis 19,5.
-- Ziel: Wagen auf der Kanalbrücke, Zone x 0–3, y 9–12.
-- Dorn steht bei (15,5, 7,5) in der Kassengasse vor dem Dienstboteneingang und raucht.
+- Start: Anlegetreppe, x 9,5 bis 11,5 und y 14,5, dazu ein Feld bei (10,5, 13,5).
+- Ziel: Wagen auf der Kanalbrücke, Zone x 1–3, y 15–18.
+- Dorn steht bei (15,5, 6,5) im Kassenhof neben dem Hintereingang und raucht.
 - Verstärkung: Werkschutz vom Ostende der Bankstraße, (19,5, 10,5). Erste Welle 6 s nach dem ersten Schuss oder einer Meldung, alle 4 s, 4 Mann.
 
 ## 3. Gegner
@@ -74,10 +74,10 @@ Alle aus dem Bestand. Die Bank hat sich Werkschutz von Brandt geliehen.
 | Portalwache rechts | Werkschutz | (11,5, 8,5), Blick nach Süden | Posten | nein |
 | Straßenstreife 1 | Wachmann | Bankstraße | Rundgang (4, 10) – (18, 10) | 200 |
 | Straßenstreife 2 | Wachmann | Bankstraße | Rundgang (18, 11) – (4, 11), gegenläufig | 200 |
-| Nachtwächter | Wachmann | Kassengasse | Rundgang (14, 9) – (14, 2) – (15, 2) – (15, 9). Kommt alle halbe Minute an Dorn vorbei | 200 |
-| Revierführer | Offizier | Vor dem Notariat | Rundgang (16, 9) – (19, 9) | 400 |
-| Uferstreife | Hundeführer mit Hund | Uferweg | Rundgang (4, 2) – (4, 8) – (5, 8) – (5, 2) | 300 |
-| Page | Laufbursche | (14, 12,5), vor dem Hotel | Steht, schaut über die Straße | 50 |
+| Nachtwächter | Wachmann | Kassenhof | Rundgang (16, 8) – (16, 3) – (15, 3) – (15, 8). Kommt alle halbe Minute an Dorn vorbei | 200 |
+| Revierführer | Offizier | Vor dem Gitter des Kassenhofs | Rundgang (16, 10) – (19, 10) | 400 |
+| Uferstreife | Hundeführer mit Hund | Uferpromenade | Rundgang (4, 13) – (18, 13) | 300 |
+| Page | Laufbursche | (3,5, 8,5), vor dem Hotel | Steht, schaut über die Straße | 50 |
 
 Acht Gegner und ein Hund. Die Gefahr ist das Licht: Auf der Bankstraße bemerken Wachen den Trupp schneller und weiter (Regel aus `../konzept.md`).
 
@@ -89,35 +89,36 @@ Kein Gegner. Unbewaffnet, 40 Lebenspunkte, alarmiert niemanden. Er bleibt stehen
 
 ### Was der Spieler tun muss
 
-1. Über die Bankstraße in die Kassengasse.
+1. Von der Anlegetreppe über Promenade und Bankstraße zum Gittertor des Kassenhofs.
 2. Dorn überzeugen.
-3. Dorn zum Hintereingang begleiten, zwei Felder weiter. Er schließt auf.
+3. Dorn zum Hintereingang begleiten, ein Feld weiter. Er schließt auf.
 4. Das Zweitbuch aus dem Schließfach nehmen.
 5. Mit dem Buch zur Kanalbrücke.
 
 ### Leise
 
-- Die Bankstraße ist zwölf Felder Licht. Die Streifen laufen gegenläufig, der Page schaut zu. Den Pagen kaufen oder die Straße an ihrem Ostende queren, wo das Vordach des Hotels die Sicht des Pagen nimmt (beim Bau prüfen).
-- In der Kassengasse läuft der Nachtwächter. Kaufen, niederschlagen oder das Gespräch mit Dorn in seine Runde legen.
+- Die Bankstraße liegt ganz im Licht. Die Streifen laufen gegenläufig, der Page schaut vom Hotel im Westen herüber. Den Pagen kaufen oder am Ostende queren, wo er am weitesten weg ist (beim Bau prüfen, ob seine Sicht dorthin reicht).
+- Das Gittertor braucht den Schlosser oder einen Dietrich, im Blickfeld des Revierführers. Ihn kaufen, weglocken oder seine Runde abpassen.
+- Im Kassenhof läuft der Nachtwächter. Kaufen, niederschlagen oder das Gespräch mit Dorn in seine Runde legen.
 - Überzeugen mit Geld ist still. Überzeugen mit Worten ist zu hören.
-- Der Rückweg mit dem Buch führt über die ganze Bankstraße nach Westen, oder durch die Kassengasse nach Norden und über den Uferweg, am Hund vorbei.
+- Der Rückweg mit dem Buch führt aus dem Hof über die Bankstraße und die ganze Promenade nach Westen zur Brücke, am Hund vorbei.
 
 ### Laut
 
 - Fällt ein Schuss, bevor Dorn aufgeschlossen hat, kauert er. Überzeugen dauert dann doppelt so lang.
-- Die Portalwachen kommen um die Ecke in die Kassengasse. Rauchtopf an die Mündung der Gasse.
-- Mit dem Buch ist der Träger langsam. Der kürzeste Weg zur Brücke liegt im Feuer der Portalwachen.
+- Die Portalwachen kommen um die Ecke zum Gittertor. Rauchtopf vor das Tor.
+- Mit dem Buch ist der Träger langsam. Der Weg zur Brücke führt quer vor dem Portal vorbei.
 
 ### Was jeder beiträgt
 
 | Wer | Beitrag |
 |---|---|
 | Emil, Buchhalter | Überzeugt Dorn mit Geld, schnell und still. Kennt ihn von früher, das steht in den Zurufen |
-| Otto, Schlosser | Seitentür des Notariats für die Handkasse. Gegen das Schließfach hilft er nicht |
+| Otto, Schlosser | Gittertor des Kassenhofs und Tür des Pförtnerhauses. Gegen das Schließfach hilft er nicht |
 | Hanna, Kurierin | Zieht eine Streife oder den Revierführer weg. Trägt das Buch nicht schneller, ist aber als Erste an der Brücke, um zu sichern |
 | Greta, Truppführerin | In der Mechanik keine Sonderrolle. Ist sie dabei und gilt der Vorschlag aus Einsatz 2, nimmt der Nachtwächter die Hälfte |
 | Totschläger | Nachtwächter, Streifen, Revierführer. Nicht die Portalwachen |
-| Rauchtopf | Mündung der Kassengasse oder die Mitte der Bankstraße |
+| Rauchtopf | Vor das Gittertor oder auf die Mitte der Bankstraße |
 
 ### Überzeugen als Regel
 
@@ -144,17 +145,17 @@ Ganz ohne neue Regel wäre der Einsatz wieder ein Einbruch. Dann stimmt die Auft
 | Feld | Text |
 |---|---|
 | `title` | Das Schließfach |
-| `place` | Kontorviertel, hinter der Kontorbank |
+| `place` | Kontorviertel, Anlegetreppe am Kanal |
 | `time` | Mittwoch, 30. November 1927, 1:30 Uhr |
 | `itemName` | Zweitbuch |
-| `briefing` | In Valks Schließfach liegt ein zweites Buch, das mit den richtigen Namen. Aufbrechen hört die halbe Stadt. Prokurist Dorn hat den Schlüssel und Schulden bei der eigenen Bank, er raucht nachts in der Kassengasse. Bringt ihn dazu, aufzuschließen, mit Geld oder mit Worten. Ihm passiert nichts. Wagen auf der Kanalbrücke. K. |
-| `loot.name` | Handkasse des Notariats |
+| `briefing` | In Valks Schließfach liegt ein zweites Buch, das mit den richtigen Namen. Aufbrechen hört die halbe Stadt. Prokurist Dorn hat den Schlüssel und Schulden bei der eigenen Bank, er raucht nachts im Kassenhof hinter dem Gitter. Bringt ihn dazu, aufzuschließen, mit Geld oder mit Worten. Ihm passiert nichts. Wagen auf der Kanalbrücke. K. |
+| `loot.name` | Handkasse des Pförtners |
 
 ### Einsatzziel im Telegrammstreifen
 
 | Zustand | Text |
 |---|---|
-| Beginn | `DORN IN DER KASSENGASSE STOP ÜBERZEUGEN STOP ER SCHLIESST AUF STOP` |
+| Beginn | `DORN IM KASSENHOF STOP ÜBERZEUGEN STOP ER SCHLIESST AUF STOP` |
 | Beim Überzeugen | `DORN HÖRT ZU STOP STEHEN BLEIBEN STOP` |
 | Überzeugt | `DORN KOMMT MIT STOP ZUM HINTEREINGANG STOP` |
 | Tür offen | `FACH IST OFFEN STOP ZWEITBUCH HOLEN STOP` |
@@ -191,14 +192,15 @@ Mit Spielhinweis, gegen die Karte oben geprüft:
 
 - „Die zwei am Portal sind vom Werk. Die rühren sich nicht weg.“ (Posten, nicht käuflich)
 - „Unter den Kandelabern siehst du eine Maus über die Straße laufen.“ (Licht)
-- „In der Kassengasse ist es finster wie im Tresor.“ (dunkel)
-- „Der Wächter dreht seine Runde in der Gasse. Alle halbe Minute.“ (Rundgang, Zeit beim Bau nachmessen)
+- „Im Kassenhof ist es finster wie im Tresor.“ (dunkel)
+- „Der Wächter dreht seine Runde im Hof. Alle halbe Minute.“ (Rundgang, Zeit beim Bau nachmessen)
+- „Das Gitter am Kassenhof ist abgeschlossen. Drüber kommt keiner.“ (Gittertor)
 - „Der Page vom Hotel sieht alles und sagt alles.“ (Laufbursche)
 - „Am Ufer läuft einer mit Hund.“ (Hundeführer)
 
 Bestochen:
 
-- Nachtwächter: „Ich seh nach den Fenstern vom Notariat. Gründlich.“
+- Nachtwächter: „Ich seh nach dem Pförtnerhaus. Gründlich.“
 - Page: „Ich hab die Drehtür geputzt. Die ganze Zeit.“
 - Revierführer: „Ich gehe den Bericht schreiben. Der wird lang.“
 
@@ -207,12 +209,12 @@ Bestochen:
 | Fall | Kopf | Zeile |
 |---|---|---|
 | `unseen` | Prokurist der Kontorbank verschwunden | Albert Dorn, seit zwanzig Jahren im Haus, erschien am Morgen nicht zum Dienst. Die Bank teilt mit, es fehle nichts.{loot}{paid} |
-| `quiet` | Nächtlicher Besuch an der Kontorbank | Ein Wächter will Gestalten in der Kassengasse gesehen haben. Die Bank teilt mit, es fehle nichts. Prokurist Dorn ist seit der Nacht verschwunden.{loot}{paid} |
+| `quiet` | Nächtlicher Besuch an der Kontorbank | Ein Wächter will Gestalten im Kassenhof gesehen haben. Die Bank teilt mit, es fehle nichts. Prokurist Dorn ist seit der Nacht verschwunden.{loot}{paid} |
 | `loud` | Schüsse im Kontorviertel | Bewaffnete lieferten sich vor der Kontorbank ein Gefecht mit dem Werkschutz.{dead} Direktor Valk nennt es einen versuchten Raub. Was fehlt, sagt die Bank nicht.{fallen}{loot}{paid} |
 | `lost` | Überfall auf die Kontorbank vereitelt | Der Werkschutz schlug in der Nacht Bewaffnete vor der Kontorbank zurück. Die Schließfächer blieben unberührt.{dead} |
 | `abandoned` | Schießerei vor der Kontorbank | Bewaffnete zogen sich nach einem Gefecht mit dem Werkschutz zurück. Die Schließfächer blieben unberührt.{dead} |
-| `retreat` | Unruhe im Kontorviertel | Ein Hotelgast meldete Gestalten in einer Durchfahrt. Die Wache fand nichts. |
-| `loot` | | Auch die Handkasse des Notariats fehlt. |
+| `retreat` | Unruhe im Kontorviertel | Ein Hotelgast meldete einen Kahn ohne Licht auf dem Kanal. Die Wache fand nichts. |
+| `loot` | | Auch die Handkasse des Pförtners fehlt. |
 
 Die Bank leugnet in jedem Fall, dass etwas fehlt. Das Buch darf es nicht geben.
 
@@ -247,7 +249,7 @@ Der letzte Kasten verschweigt, dass Kolb es wusste, und leugnet es nicht (KANON,
 |---|---|
 | Level | Karte, Gegner, Türen, Start und Ziel nach Abschnitt 2 bis 4. Lohn 450 steht im Stadtplan |
 | Mechanik | Zielperson überzeugen (volle Fassung) oder bestochener Schlüsselträger (kleine). Dorn als Figur ohne Waffe |
-| Grafik | Kontorbank mit Portal und Kuppel, Notariat, Hotel Kontor, Geschäftshaus mit Juwelier, Kanal mit Brücke, Kandelaber. Figur Dorn: Mantel über dem Anzug, Kneifer, Zigarette. Thema in `grafikthemen.md` |
+| Grafik | Kontorbank mit Portal und Kuppel, Hotel Kontor, Kassenhof mit Eisengitter, Pförtnerhaus, Uferpromenade, Kanal mit Brücke und Anlegetreppe, Kahn, Kandelaber. Figur Dorn: Mantel über dem Anzug, Kneifer, Zigarette. Thema in `grafikthemen.md` |
 | Ton | Stille, ein Motor im Leerlauf, Klavier, Rollgitter, Wasser im Kanal, Schlüssel im Tresorschloss |
 | Sequenzen | Szenenplan aus den Kästen. Rehms Name fällt hier zum ersten Mal |
 
