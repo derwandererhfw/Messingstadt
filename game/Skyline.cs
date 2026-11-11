@@ -8,6 +8,7 @@ namespace Messingstadt
     /// <summary>
     /// Durchsichtige Ebene über den Häusern hinter der Karte: ziehender Smog, glimmende Hochöfen, Laternen (tools/art/skyline.py)
     /// und eine Hochbahn, die ab und zu vorbeifährt. Spielt für die Regeln keine Rolle.
+    /// Karten ohne gemalte Kulisse bekommen nur den Dunst, in dem sich die Stadt jenseits des Kartenrands verliert.
     /// </summary>
     public partial class Skyline : Node2D
     {
@@ -37,11 +38,12 @@ uniform vec3 haze;
 uniform vec2 origin;
 uniform vec2 size;
 uniform float lightning = 0.0;
+uniform vec2 tiles = vec2(20.0, 20.0);
 void fragment() {
     vec2 px = UV * size;
     float a = (px.x - origin.x) / 32.0, b = (px.y - origin.y) / 16.0;
     float mx = (a + b) / 2.0, my = (b - a) / 2.0;
-    if (mx > 0.0 && my > 0.0 && mx < 20.0 && my < 20.0) {
+    if (mx > 0.0 && my > 0.0 && mx < tiles.x && my < tiles.y) {
         discard;
     }
     vec4 t = texture(TEXTURE, UV);
@@ -50,7 +52,7 @@ void fragment() {
     float smog = smoothstep(0.34, 0.76, n);
     float cover = smog * (0.06 + 0.6 * fx.g);
     // Je weiter draußen vor der Karte, desto dichter steht der Dunst: Die Stadt verliert sich, statt schwarz abzubrechen.
-    float outside = max(max(-mx, -my), max(mx - 20.0, my - 20.0));
+    float outside = max(max(-mx, -my), max(mx - tiles.x, my - tiles.y));
     float far = smoothstep(0.5, 9.0, outside) * (0.3 + 0.22 * n);
     vec3 c = (haze + lightning * vec3(0.3, 0.35, 0.48)) * cover;
     c += (vec3(0.2, 0.24, 0.38) + lightning * vec3(0.3, 0.35, 0.48)) * far * (1.0 - cover);
@@ -74,10 +76,18 @@ void fragment() {
         private float _sparkLeft;
         private float _nextSpark;
         private float _lastLightning = -1f;
+        private bool _painted;
+        private bool _sized;
+        // Die Welt steht noch nicht, wenn diese Ebene entsteht. Bis dahin gilt die übliche Kartengröße.
+        private const float DefaultTiles = 20f;
+        // Ohne gemalte Kulisse: So weit reicht der Dunst über das Bodenbild hinaus, und so färbt er sich.
+        private static readonly Vector2 HazeMargin = new(700f, 420f);
+        private static readonly Color PlainHaze = new(0.13f, 0.15f, 0.22f);
 
         public Main Game = null!;
-        public Texture2D Backdrop = null!;
-        public Texture2D Effects = null!;
+        /// <summary>Die gemalte Kulisse und ihre Lichtkarte. Null: nur Dunst jenseits der Karte.</summary>
+        public Texture2D? Backdrop;
+        public Texture2D? Effects;
         public Texture2D Noise = null!;
         public string DataPath = "";
 
@@ -85,31 +95,51 @@ void fragment() {
 
         public override void _Ready()
         {
-            // Smog, Laternen und Hochbahn dieser Ebene gehören zur Kulisse des Kesselviertels.
-            if (!MapSite.Current.Skyline)
+            var site = MapSite.Current;
+            _painted = site.Skyline && Backdrop != null && Effects != null && File.Exists(DataPath);
+            if (!_painted && !site.Haze)
             {
                 SetProcess(false);
                 return;
             }
-            using var json = JsonDocument.Parse(File.ReadAllText(DataPath));
-            var root = json.RootElement;
-            var margin = new Vector2(root.GetProperty("marginX").GetInt32(), root.GetProperty("marginTop").GetInt32());
-            _viaductX = root.GetProperty("viaductX").GetSingle();
-            _viaductZ = root.GetProperty("viaductZ").GetSingle();
-            _trainFrom = root.GetProperty("trainFrom").GetSingle();
-            _trainTo = root.GetProperty("trainTo").GetSingle();
-            var haze = root.GetProperty("haze");
+            var margin = HazeMargin;
+            var haze = PlainHaze;
+            Texture2D picture, effects;
+            Vector2 size;
+            if (_painted)
+            {
+                using var json = JsonDocument.Parse(File.ReadAllText(DataPath));
+                var root = json.RootElement;
+                margin = new Vector2(root.GetProperty("marginX").GetInt32(), root.GetProperty("marginTop").GetInt32());
+                _viaductX = root.GetProperty("viaductX").GetSingle();
+                _viaductZ = root.GetProperty("viaductZ").GetSingle();
+                _trainFrom = root.GetProperty("trainFrom").GetSingle();
+                _trainTo = root.GetProperty("trainTo").GetSingle();
+                var color = root.GetProperty("haze");
+                haze = new Color(color[0].GetInt32() / 255f, color[1].GetInt32() / 255f, color[2].GetInt32() / 255f);
+                picture = Backdrop!;
+                effects = Effects!;
+                size = picture.GetSize();
+            }
+            else
+            {
+                // Ein leeres Bild, auf die Fläche um die Karte gezogen: Der Shader malt darauf nur den Dunst.
+                var empty = Image.CreateEmpty(2, 2, false, Image.Format.Rgba8);
+                picture = effects = ImageTexture.CreateFromImage(empty);
+                var top = Game.ToScreen(0, 0);
+                size = new Vector2(2f * top.X, top.Y + (DefaultTiles + DefaultTiles) * 16f) + 2f * margin;
+            }
             _material = new ShaderMaterial { Shader = new Shader { Code = ShaderCode } };
             _material.SetShaderParameter("noise_map", Noise);
             _material.SetShaderParameter("night", Game.NightColor);
-            _material.SetShaderParameter("haze", new Color(haze[0].GetInt32() / 255f, haze[1].GetInt32() / 255f, haze[2].GetInt32() / 255f));
+            _material.SetShaderParameter("haze", haze);
             _material.SetShaderParameter("origin", Game.ToScreen(0, 0) + margin);
-            _material.SetShaderParameter("size", Backdrop.GetSize());
-            _material.SetShaderParameter("fx_map", Effects);
+            _material.SetShaderParameter("size", size);
+            _material.SetShaderParameter("fx_map", effects);
             LightMask = 0;
             AddChild(new Sprite2D
             {
-                Texture = Backdrop, Centered = false, Position = -margin, Material = _material, LightMask = 0,
+                Texture = picture, Centered = false, Position = -margin, Scale = size / picture.GetSize(), Material = _material, LightMask = 0,
                 ShowBehindParent = true, TextureFilter = TextureFilterEnum.Nearest,
             });
         }
@@ -117,10 +147,20 @@ void fragment() {
         public override void _Process(double delta)
         {
             float dt = (float)delta;
+            if (!_sized && Game.World != null)
+            {
+                _sized = true;
+                _material.SetShaderParameter("tiles", new Vector2(Game.World.Map.Width, Game.World.Map.Height));
+            }
             if (Game.Lightning != _lastLightning)
             {
                 _lastLightning = Game.Lightning;
                 _material.SetShaderParameter("lightning", _lastLightning);
+            }
+            if (!_painted)
+            {
+                // Ohne Kulisse fährt keine Hochbahn.
+                return;
             }
             if (!_running)
             {

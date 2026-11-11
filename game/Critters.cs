@@ -112,7 +112,7 @@ namespace Messingstadt
                 rat.TargetY = rat.Y;
                 _rats.Add(rat);
             }
-            foreach (var (x, y, z) in HomeCity ? Perches : Array.Empty<(float X, float Y, float Z)>())
+            foreach (var (x, y, z) in Perches)
             {
                 var seat = Game.ToScreen((int)(x * World.TileUnits), (int)(y * World.TileUnits)) - new Vector2(0, z);
                 var pigeon = new Pigeon

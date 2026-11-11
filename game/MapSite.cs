@@ -11,6 +11,8 @@ namespace Messingstadt
     /// eigene Kulisse gibt. Die Daten kommen aus dem Manifest der Karte. Nur für das Kesselviertel, die erste Karte,
     /// gibt es Vorgaben im Code, weil ihr Manifest diese Felder noch nicht hat. Auf jeder anderen Karte bleibt ein
     /// Effekt ohne seine Daten einfach aus.
+    /// Neben dem Manifest darf eine site.json liegen. Sie gehört der Atmosphäre, hat dieselben Felder und geht vor,
+    /// damit ein neu erzeugtes Manifest sie nicht überschreibt.
     /// Der Lader der Karten ruft Use mit dem Manifest der Karte auf, bevor die Stadt gebaut wird. Ohne Aufruf gilt
     /// das alte Manifest unter res://assets/manifest.json.
     /// </summary>
@@ -23,6 +25,15 @@ namespace Messingstadt
         public sealed record Roads(float X0, float X1, float Y0, float Y1);
 
         public sealed record Fire(Vector2 Barrel, Vector2[] Spots, Vector2 Banner);
+
+        /// <summary>Ein Punkt auf dem Weg eines Passanten: wohin, wie lange er dort steht, was er dabei tut, wohin er schaut.</summary>
+        public sealed record WalkPoint(Vector2 Tile, float WaitMin, float WaitMax, string Pastime, Vector2? Look);
+
+        /// <summary>
+        /// Ein Weg für Passanten. Der erste und der letzte Punkt liegen außerhalb der Karte, dort kommt und geht die Figur.
+        /// Cast nennt die Zeilen des Figurenblatts, die diesen Weg gehen dürfen. Leer: jede.
+        /// </summary>
+        public sealed record Walk(string[] Cast, float Weight, bool BothWays, WalkPoint[] Points);
 
         private static MapSite? _current;
 
@@ -65,6 +76,23 @@ namespace Messingstadt
         /// <summary>Ob die Kulisse aus skyline.png, skyline_fx.png und skyline.json zu dieser Karte gehört.</summary>
         public bool Skyline { get; private set; }
 
+        /// <summary>Ob sich die Stadt jenseits des Kartenrands im Dunst verliert, auch ohne gemalte Kulisse.</summary>
+        public bool Haze { get; private set; } = true;
+
+        /// <summary>Die eine Laterne, die flackert und aussetzt. Null: Auf dieser Karte brennen alle ruhig.</summary>
+        public Vector2? StutterLamp { get; private set; }
+
+        /// <summary>Wege der Passanten aus den Daten. Leer: keine, außer im Kesselviertel mit seinen festen Gehwegen.</summary>
+        public List<Walk> Walks { get; } = new();
+
+        /// <summary>Wie viele Passanten höchstens zugleich unterwegs sind und wie viele schon da sind, wenn der Einsatz beginnt.</summary>
+        public int WalkersMax { get; private set; } = 5;
+
+        public int WalkersAtStart { get; private set; } = 4;
+
+        /// <summary>Pause in Sekunden, bis der nächste Passant kommt.</summary>
+        public Vector2 WalkerPause { get; private set; } = new(5f, 12f);
+
         private static MapSite Load(string manifestPath, bool? kessel)
         {
             var site = new MapSite { ManifestPath = manifestPath };
@@ -75,50 +103,122 @@ namespace Messingstadt
             {
                 site.KesselDefaults();
             }
-            if (!File.Exists(manifestPath))
+            // Eine gemalte Kulisse gilt, sobald ihre Bilder im Ordner der Karte liegen.
+            string here = Path.GetDirectoryName(manifestPath) ?? "";
+            site.Skyline |= !legacy && File.Exists(Path.Combine(here, "skyline.png"));
+            // Was im Manifest steht, ersetzt die Vorgabe. Was in site.json steht, ersetzt beides.
+            foreach (string file in new[] { manifestPath, Path.Combine(here, "site.json") })
             {
-                return site;
+                if (File.Exists(file))
+                {
+                    using var doc = JsonDocument.Parse(File.ReadAllText(file));
+                    site.Read(doc.RootElement);
+                }
             }
-            using var doc = JsonDocument.Parse(File.ReadAllText(manifestPath));
-            var root = doc.RootElement;
-            // Was im Manifest steht, ersetzt die Vorgabe.
+            return site;
+        }
+
+        private static Vector2 Pair(JsonElement e) => new(e[0].GetSingle(), e[1].GetSingle());
+
+        private void Read(JsonElement root)
+        {
             if (root.TryGetProperty("perches", out var perches))
             {
-                site.Perches.Clear();
+                Perches.Clear();
                 foreach (var p in perches.EnumerateArray())
                 {
-                    site.Perches.Add(new Vector3(p[0].GetSingle(), p[1].GetSingle(), p[2].GetSingle()));
+                    Perches.Add(new Vector3(p[0].GetSingle(), p[1].GetSingle(), p[2].GetSingle()));
                 }
             }
             if (root.TryGetProperty("gullies", out var gullies))
             {
-                site.Gullies.Clear();
+                Gullies.Clear();
                 foreach (var g in gullies.EnumerateArray())
                 {
-                    site.Gullies.Add((new Vector2(g[0].GetSingle(), g[1].GetSingle()), g[2].GetString() == "y"));
+                    Gullies.Add((Pair(g), g[2].GetString() == "y"));
                 }
             }
             if (root.TryGetProperty("grates", out var grates))
             {
-                site.Grates.Clear();
+                Grates.Clear();
                 foreach (var g in grates.EnumerateArray())
                 {
-                    site.Grates.Add(new Rect2(g[0].GetSingle(), g[1].GetSingle(), g[2].GetSingle() - g[0].GetSingle(), g[3].GetSingle() - g[1].GetSingle()));
+                    Grates.Add(new Rect2(g[0].GetSingle(), g[1].GetSingle(), g[2].GetSingle() - g[0].GetSingle(), g[3].GetSingle() - g[1].GetSingle()));
                 }
             }
             if (root.TryGetProperty("roads", out var roads))
             {
-                site.Road = new Roads(roads[0].GetSingle(), roads[1].GetSingle(), roads[2].GetSingle(), roads[3].GetSingle());
+                Road = new Roads(roads[0].GetSingle(), roads[1].GetSingle(), roads[2].GetSingle(), roads[3].GetSingle());
             }
             if (root.TryGetProperty("tram", out var tram))
             {
-                site.Tram = tram.ValueKind == JsonValueKind.True;
+                Tram = tram.ValueKind == JsonValueKind.True;
             }
             if (root.TryGetProperty("skyline", out var skyline))
             {
-                site.Skyline = skyline.ValueKind == JsonValueKind.True;
+                Skyline = skyline.ValueKind == JsonValueKind.True;
             }
-            return site;
+            if (root.TryGetProperty("haze", out var haze))
+            {
+                Haze = haze.ValueKind == JsonValueKind.True;
+            }
+            if (root.TryGetProperty("stutterLamp", out var stutter))
+            {
+                // null schaltet das Flackern ab.
+                StutterLamp = stutter.ValueKind == JsonValueKind.Array ? Pair(stutter) : null;
+            }
+            if (root.TryGetProperty("passersby", out var people))
+            {
+                ReadPassersby(people);
+            }
+        }
+
+        /// <summary>
+        /// passersby: { "max": 2, "atStart": 1, "pause": [20, 45], "walks": [ { "cast": ["Zivil_Herr"], "weight": 1,
+        /// "bothWays": false, "points": [ { "at": [x, y], "wait": [8, 16], "pastime": "smoke", "look": [dx, dy] } ] } ] }.
+        /// Nur at ist Pflicht. pastime kennt smoke und read.
+        /// </summary>
+        private void ReadPassersby(JsonElement people)
+        {
+            Walks.Clear();
+            if (people.TryGetProperty("max", out var max))
+            {
+                WalkersMax = max.GetInt32();
+            }
+            WalkersAtStart = people.TryGetProperty("atStart", out var atStart) ? atStart.GetInt32() : System.Math.Min(WalkersAtStart, WalkersMax);
+            if (people.TryGetProperty("pause", out var pause))
+            {
+                WalkerPause = Pair(pause);
+            }
+            if (!people.TryGetProperty("walks", out var walks))
+            {
+                return;
+            }
+            foreach (var w in walks.EnumerateArray())
+            {
+                var points = new List<WalkPoint>();
+                foreach (var p in w.GetProperty("points").EnumerateArray())
+                {
+                    var wait = p.TryGetProperty("wait", out var waitRange) ? Pair(waitRange) : Vector2.Zero;
+                    points.Add(new WalkPoint(Pair(p.GetProperty("at")), wait.X, wait.Y,
+                        p.TryGetProperty("pastime", out var pastime) ? pastime.GetString() ?? "" : "",
+                        p.TryGetProperty("look", out var look) ? Pair(look) : null));
+                }
+                if (points.Count < 2)
+                {
+                    continue;
+                }
+                var cast = new List<string>();
+                if (w.TryGetProperty("cast", out var names))
+                {
+                    foreach (var n in names.EnumerateArray())
+                    {
+                        cast.Add(n.GetString() ?? "");
+                    }
+                }
+                Walks.Add(new Walk(cast.ToArray(), w.TryGetProperty("weight", out var weight) ? weight.GetSingle() : 1f,
+                    w.TryGetProperty("bothWays", out var both) && both.ValueKind == JsonValueKind.True, points.ToArray()));
+            }
         }
 
         /// <summary>Das Kesselviertel, wie es tools/art/generate_concept.py zeichnet (GULLIES, GRATES, Fahrbahnen).</summary>
@@ -152,6 +252,7 @@ namespace Messingstadt
             Road = new Roads(8f, 10f, 9f, 12f);
             Strikers = new Fire(new Vector2(13.25f, 18.7f), new Vector2[] { new(12.65f, 18.55f), new(13.85f, 18.6f), new(13.4f, 19.3f) }, new Vector2(12.35f, 18.02f));
             Passersby = true;
+            StutterLamp = new Vector2(5.6f, 10.5f);
             Tram = true;
             Skyline = true;
         }

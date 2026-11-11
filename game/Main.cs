@@ -163,7 +163,8 @@ void fragment() {
 
         // Der Arbeiter raucht vor der Seitentür des Hotels.
         private static readonly Vector2 WorkerTile = new(6.35f, 15.35f);
-        private static readonly Vector2 StutterLamp = new(5.6f, 10.5f);
+        // Die flackernde Laterne steht je Karte in den Daten. Ohne sie liegt der Punkt weit draußen und trifft keine.
+        private static Vector2 StutterLamp => MapSite.Current.StutterLamp ?? new Vector2(-1000f, -1000f);
         private static readonly Vector2 WorkerDoorTile = new(6.04f, 15.8f);
         private Shader _litShader = null!;
         private ShaderMaterial _figureMaterial = null!;
@@ -1008,11 +1009,11 @@ void fragment() {
             };
             var fogNoise = LoadTexture("res://assets/light/fog.png");
             // Smog, Laternen und Hochbahn stehen in den Straßen der Häuser hinter der Karte, ohne diese hingen sie in der Luft.
-            if (File.Exists(Globalize("res://assets/backdrop.png")) && File.Exists(Globalize("res://assets/skyline.png")))
+            if (File.Exists(Globalize("res://assets/backdrop.png")))
             {
                 AddChild(new Skyline
                 {
-                    Game = this, ZIndex = -1, Backdrop = LoadTexture("res://assets/skyline.png"), Effects = LoadTexture("res://assets/skyline_fx.png"), Noise = fogNoise,
+                    Game = this, ZIndex = -1, Backdrop = MapSite.Current.Skyline ? LoadTexture("res://assets/skyline.png") : null, Effects = MapSite.Current.Skyline ? LoadTexture("res://assets/skyline_fx.png") : null, Noise = fogNoise,
                     DataPath = Globalize("res://assets/skyline.json"),
                 });
             }
@@ -1048,9 +1049,9 @@ void fragment() {
             _critterGlow = glow;
             AddChild(new Haze { Game = this });
             AddChild(new Drains { Game = this });
-            if (FirstCity)
+            if (MapSite.Current.Passersby || MapSite.Current.Walks.Count > 0)
             {
-                // Wege und Unterstände der Passanten sind auf die erste Stadt gemünzt.
+                // Feste Gehwege im Kesselviertel, sonst die Wege aus den Daten der Karte.
                 Passersby = new Passersby { Game = this, FiguresPath = Globalize("res://assets/figures.json") };
                 AddChild(Passersby);
             }
