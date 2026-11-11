@@ -79,6 +79,9 @@ namespace Messingstadt
         private readonly List<Button> _slots = new();
         private readonly List<ColorRect> _legs = new(), _heart = new();
         private Label _telegram = null!;
+
+        /// <summary>Was gerade im Telegrammstreifen steht, für den Prüflauf.</summary>
+        public string TelegramText => _telegram.Text;
         private Label _info = null!;
         private Label _owner = null!;
         private Label _role = null!;
@@ -504,7 +507,18 @@ namespace Messingstadt
                     }
                 }
                 // Ziel und Fluchtwagen bleiben als Marke am Rand, wenn sie zu weit weg sind: so zeigen sie die Richtung.
-                if (!world.ItemTaken)
+                if (world.IsRescue)
+                {
+                    // Beim Befreien sind die Zellen das Ziel, solange dort noch jemand sitzt.
+                    foreach (var p in world.Prisoners)
+                    {
+                        if (p.Alive && p.Captive)
+                        {
+                            Add(Tile(p.X, p.Y) - center, Kind.Goal, true);
+                        }
+                    }
+                }
+                else if (!world.ItemTaken)
                 {
                     Add(Tile(world.ItemX, world.ItemY) - center, Kind.Goal, true);
                 }
