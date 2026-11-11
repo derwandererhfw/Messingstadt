@@ -464,7 +464,7 @@ def body(spec, rig, dying=False):
     p.capsule(up((0.4, 2.1 * bulk, WAIST + 0.3)), up((0.4, -2.1 * bulk, WAIST + 0.3)), 3.05 * bulk, 3.05 * bulk, COAT_D)
     p.capsule(up((0, 2.1, shoulder_z + 0.6)), up((0, -2.1, shoulder_z + 0.6)), 1.5, 1.5, TRIM)
     p.ball(up((1.9 * bulk, 0, shoulder_z - 1.4)), 1.05, SHIRT)
-    if bulk > 1.0:
+    if spec["hat"] == "helmet":
         # Panzerplatte auf der Brust und Schulterstücke beim Werkschutz
         p.capsule(up((2.6, 2.0, WAIST + 3.0)), up((2.6, -2.0, WAIST + 3.0)), 2.2, 2.2, TRIM)
         p.capsule(up((2.6, 2.0, shoulder_z - 3.0)), up((2.6, -2.0, shoulder_z - 3.0)), 2.0, 2.0, TRIM)
