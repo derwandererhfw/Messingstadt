@@ -80,7 +80,14 @@ def loopable(x, overlap=0.5):
     return out
 
 
-def save(name, x, peak=0.9):
+# Diese Klänge sind neu gebaut (siehe "Überarbeitung" weiter unten). Die alten Funktionen laufen weiter,
+# damit der gemeinsame Zufall für alle anderen Dateien gleich bleibt, schreiben diese Namen aber nicht mehr.
+SUPERSEDED = {"hit", "fall", "shot_0", "shot_1", "shot_2"} | {f"step_{kind}_{i}" for kind in ("soft", "boot", "run") for i in range(4)}
+
+
+def save(name, x, peak=0.9, replace=False):
+    if name in SUPERSEDED and not replace:
+        return
     x = np.asarray(x, np.float64)
     top = np.abs(x).max()
     if top > 0:
@@ -821,9 +828,131 @@ def peil_ping():
         save(f"peil_ping_{i}", fade(x, 0.001, 0.08), 0.4)
 
 
+# ---------- Überarbeitung: Körper aus gefiltertem Rauschen statt nackter Sinustöne ----------
+
+def band(x, low, high):
+    """Bandpass im Frequenzraum, steil genug, dass oberhalb von high kaum etwas bleibt."""
+    spec = np.fft.rfft(x)
+    f = np.fft.rfftfreq(len(x), 1 / RATE)
+    gain = 1 / (1 + (f / high) ** 6)
+    if low:
+        gain *= 1 - 1 / (1 + (f / low) ** 6)
+    return np.fft.irfft(spec * gain, len(x))
+
+
+def puff(rng, seconds, low, high, decay_s, attack=0.003, at=0.0):
+    """Ein Stoß gefilterten Rauschens: weicher Einsatz, dann Abklingen. Ab der Stelle at."""
+    t = time(seconds)
+    tt = np.maximum(t - at, 0)
+    return band(noise(seconds, rng), low, high) * np.minimum(tt / attack, 1) * decay(tt, decay_s) * (t >= at)
+
+
+def street(dry, seconds, rng, mix, low=150, high=2400):
+    """Häuserschlucht: wenige frühe Rückwürfe und ein rauschender Nachhall, gefaltet statt als feste Echos."""
+    n = len(dry)
+    t = np.arange(n) / RATE
+    impulse = band(rng.standard_normal(n), low, high) * decay(t, seconds / 6.9) * (t > 0.03)
+    for _ in range(5):
+        impulse[int(rng.uniform(0.035, 0.22) * RATE)] += rng.uniform(0.15, 0.5) * np.abs(impulse).max() * 12
+    wet = np.fft.irfft(np.fft.rfft(dry, 2 * n) * np.fft.rfft(impulse, 2 * n), 2 * n)[:n]
+    return dry + mix * wet / np.abs(wet).max() * np.abs(dry).max()
+
+
+def gunshot(rng, seconds, crack, body, thump, tail, drive):
+    """Knall (hell, sehr kurz), Körper (Mitten), Druck (tief) und Nachhall der Straße. tanh macht den Schuss dicht."""
+    t = time(seconds)
+    low, high, length, gain = crack
+    dry = band(noise(seconds, rng), low, high) * decay(t, length) * gain
+    low, high, length, gain = body
+    dry += band(noise(seconds, rng), low, high) * np.minimum(t / 0.002, 1) * decay(t, length) * gain
+    start, end, length, gain = thump
+    dry += np.sin(2 * np.pi * np.cumsum(end + (start - end) * decay(t, 0.02)) / RATE) * decay(t, length) * gain
+    dry = np.tanh(dry / np.abs(dry).max() * drive)
+    room, mix = tail
+    return fade(street(dry, room, rng, mix), 0.0005, 0.15)
+
+
+def new_shots():
+    """Je Waffe ein eigener Bau: Pistole trocken und kurz, Schrot breit und lang, Maschinenpistole knapp, Gewehr mit langem Rollen."""
+    rng = own_rng("new_shots")
+    for i in range(3):
+        k = 1 + 0.08 * (i - 1)
+        save(f"shot_{i}", gunshot(rng, 1.3, (700, 5200 * k, 0.006, 1.0), (160, 1100 * k, 0.045, 1.0), (190, 70, 0.04, 0.35), (0.9, 0.3), 2.2), 0.9, replace=True)
+        save(f"shotgun_{i}", gunshot(rng, 2.0, (400, 4200 * k, 0.012, 1.1), (100, 900 * k, 0.1, 1.3), (130, 50, 0.08, 0.4), (1.5, 0.42), 2.6), 0.6)
+        save(f"rifle_{i}", gunshot(rng, 2.2, (900, 6000 * k, 0.005, 1.1), (140, 900 * k, 0.055, 0.9), (160, 60, 0.05, 0.3), (2.0, 0.5), 2.4), 0.95)
+    for i in range(4):
+        k = 1 + 0.06 * (i - 1.5)
+        save(f"smg_{i}", gunshot(rng, 0.7, (800, 4600 * k, 0.005, 1.0), (170, 1000 * k, 0.028, 0.8), (210, 90, 0.03, 0.5), (0.5, 0.18), 2.0), 0.8)
+
+
+STEP_PEAKS = {"soft": 0.2, "boot": 0.16, "run": 0.25}
+
+
+def new_steps():
+    """Tritt auf nassem Pflaster: dumpfer Absatz, Sohle in den Mitten, etwas Wasser. Alles Rauschen, nichts Tonales, nichts Helles."""
+    rng = own_rng("new_steps")
+    for i in range(4):
+        v = rng.uniform(0.85, 1.15, 6)
+        soft = 0.8 * puff(rng, 0.26, 60, 200 * v[0], 0.028) + 0.55 * puff(rng, 0.26, 300, 1300 * v[1], 0.03 * v[2], 0.005) + 0.12 * puff(rng, 0.26, 900, 2000, 0.06, 0.008, 0.012)
+        save(f"step_soft_{i}", fade(soft, 0.004, 0.05), STEP_PEAKS["soft"], replace=True)
+        boot = (1.0 * puff(rng, 0.3, 55, 180 * v[3], 0.035) + 0.7 * puff(rng, 0.3, 180, 700 * v[4], 0.02)
+                + 0.4 * puff(rng, 0.3, 350, 1200, 0.03, 0.004, 0.035 * v[5]) + 0.08 * puff(rng, 0.3, 900, 2000, 0.06, 0.008, 0.045))
+        save(f"step_boot_{i}", fade(boot, 0.004, 0.05), STEP_PEAKS["boot"], replace=True)
+        run = 0.7 * puff(rng, 0.3, 70, 220 * v[0], 0.022) + 0.75 * puff(rng, 0.3, 350, 1500 * v[1], 0.025 * v[2], 0.004) + 0.3 * puff(rng, 0.3, 900, 2100, 0.08, 0.01, 0.015)
+        save(f"step_run_{i}", fade(run, 0.004, 0.05), STEP_PEAKS["run"], replace=True)
+
+
+def new_hits():
+    """Kugel trifft, Körper fällt, Knüppel trifft: stumpfe Stöße aus Rauschen, je in mehreren Fassungen."""
+    rng = own_rng("new_hits")
+    for i in range(3):
+        v = rng.uniform(0.85, 1.15, 3)
+        hit = 0.9 * puff(rng, 0.3, 60, 190 * v[0], 0.05, 0.002) + 0.8 * puff(rng, 0.3, 220, 1500 * v[1], 0.022, 0.002) + 0.25 * puff(rng, 0.3, 500, 1800, 0.07 * v[2], 0.01, 0.02)
+        save(f"hit_{i}", fade(hit, 0.001, 0.08), 0.45)
+    for i in range(2):
+        v = rng.uniform(0.85, 1.15, 3)
+        fall = (1.0 * puff(rng, 0.9, 45, 170 * v[0], 0.09, 0.004) + 0.5 * puff(rng, 0.9, 200, 900 * v[1], 0.06, 0.006)
+                + 0.55 * puff(rng, 0.9, 50, 220, 0.07, 0.004, 0.17 * v[2]) + 0.3 * puff(rng, 0.9, 250, 1100, 0.09, 0.01, 0.19 * v[2]))
+        save(f"fall_{i}", fade(fall, 0.002, 0.2), 0.4)
+        club = 0.9 * puff(rng, 0.35, 70, 240 * v[0], 0.045, 0.002) + 0.9 * puff(rng, 0.35, 350, 1700 * v[1], 0.014, 0.001) + 0.3 * puff(rng, 0.35, 200, 800, 0.08, 0.01, 0.02)
+        save(f"club_hit_{i}", fade(club, 0.001, 0.1), 0.45)
+    t = time(0.3)
+    swing = band(noise(0.3, rng), 350, 1900) * np.sin(np.pi * np.minimum(t / 0.22, 1)) ** 3
+    save("club_swing", fade(swing, 0.01, 0.05), 0.3)
+
+
+def mechanism(rng, seconds, events):
+    """Mechanik einer Waffe: Folge kurzer, gedämpfter Stöße. events: (Zeit, tief, hoch, Abklingen, Stärke)."""
+    x = np.zeros(int(seconds * RATE))
+    for at, low, high, length, gain in events:
+        x += gain * puff(rng, seconds, low, high, length, 0.0015, at)
+    return fade(x, 0.002, 0.1)
+
+
+def reloads():
+    """Nachladen je Waffe. Auf 2,6 kHz begrenzt, damit die Mechanik nicht klackert."""
+    rng = own_rng("reloads")
+    save("reload_pistole", mechanism(rng, 1.1, ((0.0, 500, 2200, 0.012, 0.6), (0.34, 250, 1500, 0.02, 1.0), (0.72, 600, 2600, 0.01, 0.7), (0.79, 300, 1800, 0.018, 0.9))), 0.4)
+    save("reload_schrotflinte", mechanism(rng, 1.5, ((0.0, 300, 1600, 0.02, 0.7), (0.32, 300, 1600, 0.02, 0.7), (0.8, 350, 2000, 0.03, 0.9), (0.98, 200, 1400, 0.03, 1.0))), 0.45)
+    save("reload_maschinenpistole", mechanism(rng, 1.3, ((0.0, 400, 2000, 0.015, 0.7), (0.42, 200, 1300, 0.025, 1.0), (0.85, 500, 2400, 0.012, 0.6), (0.93, 250, 1500, 0.02, 0.9))), 0.42)
+
+
+def field_kit():
+    """Rauchtopf (Aufschlag, dann langes Zischen) und Verband (Stoff reißt, wird gewickelt)."""
+    rng = own_rng("field_kit")
+    save("smoke_throw", fade(0.9 * puff(rng, 0.5, 90, 400, 0.04, 0.002) + 0.6 * puff(rng, 0.5, 400, 1600, 0.02, 0.002) + 0.4 * puff(rng, 0.5, 300, 1200, 0.03, 0.002, 0.16), 0.001, 0.15), 0.5)
+    t = time(4.0)
+    hiss = band(noise(4.0, rng), 700, 4200) * np.minimum(t / 0.25, 1) * decay(t, 1.3) * (0.85 + 0.15 * np.sin(2 * np.pi * 5 * t + np.sin(2 * np.pi * 0.7 * t)))
+    save("smoke_hiss", fade(hiss + 0.25 * band(noise(4.0, rng), 150, 600) * decay(t, 0.8), 0.05, 0.8), 0.35)
+    t = time(1.6)
+    tear = band(noise(1.6, rng), 900, 3400) * np.exp(-((t - 0.22) / 0.12) ** 2) * (0.6 + 0.4 * np.abs(np.sin(2 * np.pi * 23 * t)))
+    wrap = sum(band(noise(1.6, rng), 400, 1800) * np.exp(-((t - at) / 0.09) ** 2) for at in (0.7, 1.0, 1.3))
+    save("bandage", fade(tear + 0.6 * wrap, 0.02, 0.2), 0.3)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld, dog, siren, factory_horn, train, radio, heartbeat, typewriter, fresh_random, dog_fight, boy_whistle, wind_gust, distant_shots, tram, foghorn, church_bell, shutter, gutter, piano, tram_hum, match, title_theme, menu_sounds, peil_ping):
+    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld, dog, siren, factory_horn, train, radio, heartbeat, typewriter, fresh_random, dog_fight, boy_whistle, wind_gust, distant_shots, tram, foghorn, church_bell, shutter, gutter, piano, tram_hum, match, title_theme, menu_sounds, peil_ping, new_shots, new_steps, new_hits, reloads, field_kit):
         make()
     files = list(OUT.glob("*.wav"))
     print(f"{len(files)} Geräusche, {sum(f.stat().st_size for f in files) // 1024} KiB")
