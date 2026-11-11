@@ -24,7 +24,15 @@ LOOPS = ("rain", "wind", "wind_gust", "lamp", "neon", "steam", "fire", "diesel",
 STEPS = tuple(f"step_{kind}_{i}" for kind in ("soft", "boot", "run") for i in range(4))
 CITY = ("distant_shots", "tram", "foghorn", "church_bell", "shutter")
 
-MAX_STEP_ABOVE_2K = 0.2
+MAX_STEP_ABOVE_2K = 6.0
+MAX_STEP_ABOVE_4K = 0.1
+MAX_STEP_TONE = 40.0
+MIN_STEP_ABOVE_250 = 30.0
+GUNS = tuple(f"{kind}_{i}" for kind, count in (("shot", 3), ("shotgun", 3), ("rifle", 3), ("smg", 4)) for i in range(count))
+MAX_GUN_ABOVE_4K = 8.0
+MAX_GUN_BELOW_120 = 60.0
+DULL = ("hit_0", "hit_1", "hit_2", "fall_0", "fall_1", "club_hit_0", "club_hit_1", "club_swing", "smoke_throw", "reload_pistole", "reload_schrotflinte", "reload_maschinenpistole", "bandage")
+MAX_DULL_ABOVE_4K = 2.0
 MAX_RAIN_GAME_DBA = -45.0
 MAX_MUSIC_GAME_DBA = -43.0
 MAX_MUSIC_ABOVE_2K = 0.1
@@ -76,6 +84,19 @@ def share(x, rate, low, high):
     return power[(f >= low) & (f < high)].sum() / power.sum() * 100
 
 
+def tone_share(x):
+    """Anteil der Energie in den fünf stärksten schmalen Linien. Hoch heißt: nackte Töne."""
+    power = np.abs(np.fft.rfft(x.mean(axis=1))) ** 2
+    total = power.sum()
+    found = 0.0
+    for _ in range(5):
+        k = int(np.argmax(power))
+        low, high = int(k * 0.985), int(k * 1.015) + 2
+        found += power[low:high].sum()
+        power[low:high] = 0
+    return found / total * 100
+
+
 def code_db(name):
     """Liest eine Lautstärke aus SoundScape.cs, damit Prüfung und Spiel nicht auseinanderlaufen."""
     return float(re.search(rf"const float {name} = (-?[\d.]+)f", SOUNDSCAPE).group(1))
@@ -92,6 +113,18 @@ def main():
     for name in STEPS:
         x, rate = load(name)
         check(share(x, rate, 2000, 1e9) <= MAX_STEP_ABOVE_2K, f"{name}: über 2 kHz {share(x, rate, 2000, 1e9):.2f} %")
+        # Klackern war hell und tonal. Schritte bleiben deshalb Rauschen ohne Höhen, aber mit Mitten, damit man sie überhaupt hört.
+        check(share(x, rate, 4000, 1e9) <= MAX_STEP_ABOVE_4K, f"{name}: über 4 kHz {share(x, rate, 4000, 1e9):.3f} %")
+        check(tone_share(x) <= MAX_STEP_TONE, f"{name}: Tonanteil {tone_share(x):.0f} %")
+        check(share(x, rate, 250, 1e9) >= MIN_STEP_ABOVE_250, f"{name}: über 250 Hz {share(x, rate, 250, 1e9):.0f} %")
+
+    for name in GUNS:
+        x, rate = load(name)
+        check(share(x, rate, 4000, 1e9) <= MAX_GUN_ABOVE_4K, f"{name}: über 4 kHz {share(x, rate, 4000, 1e9):.1f} %")
+        check(share(x, rate, 0, 120) <= MAX_GUN_BELOW_120, f"{name}: unter 120 Hz {share(x, rate, 0, 120):.0f} %")
+    for name in DULL:
+        x, rate = load(name)
+        check(share(x, rate, 4000, 1e9) <= MAX_DULL_ABOVE_4K, f"{name}: über 4 kHz {share(x, rate, 4000, 1e9):.2f} %")
 
     rain_db = code_db("RainDb")
     x, rate = load("rain")
