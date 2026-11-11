@@ -2,7 +2,7 @@
 
 Stand 2026-11-11. Auftrag des Nutzers über die Hauptsession: Messingstadt hat fünf Viertel. Anfangs gehören alle den Brandt-Werken, nach einem erfolgreichen Einsatz hält der Rote Hammer das Viertel. Die Daten dazu stehen in `stadtplan-vorlage.json`, die Kampagne übernimmt sie nach `data/stadtplan.json`.
 
-Kennzeichen wie im Skill `messingstadt-story`. Viertel 1 ist IM SPIEL, alles zu Viertel 2 bis 5 ist VORSCHLAG und Ausblick für die Level-Session.
+Kennzeichen wie im Skill `messingstadt-story`. Viertel 1 ist IM SPIEL. Namen und Auftragsarten der Viertel 2 bis 5 sind KANON (freigegeben 2026-11-11), die Auftragstexte und Hinweise für Level sind Ausblick und VORSCHLAG.
 
 ## Was der Plan zeigt
 
@@ -73,7 +73,7 @@ Der lange Auftrag im Einstieg bleibt, wie er in `data/mission_01.json` steht.
 
 Beides hat der Nutzer am 2026-11-11 freigegeben („Ja, beide ändern“), `../story.md` ist nachgezogen.
 
-Neue Namen (VORSCHLAG): Kesselviertel, Nordwall, Gleisviertel, Kontorviertel, Fischmarkt, Prokurist Albert Dorn, Werkschutzführer Gustav Rademacher.
+Neue Namen (KANON, freigegeben 2026-11-11): Kesselviertel, Nordwall, Gleisviertel, Kontorviertel, Fischmarkt, Prokurist Albert Dorn, Werkschutzführer Gustav Rademacher.
 
 ## Farben
 
@@ -114,6 +114,5 @@ Der Satz für gesperrte Viertel steht ausgeschrieben in der Vorlage, weil der Ar
 
 ## Offen
 
-- Freigabe der neuen Namen (Viertel, Dorn, Rademacher, Fischmarkt). Die Änderungen an Einsatz 4 und 5 sind freigegeben.
 - Ob ein Viertel wieder an Brandt fallen kann, etwa nach einer Niederlage. Vorschlag Story: nein, einmal gehalten bleibt gehalten.
 - Wie der Notstand nach Einsatz 5 auf dem Plan aussieht. Vorschlag: Der Plan bleibt rot, aber über allem liegt der Stempel `NOTSTAND`. Die Leute halten zum Hammer, die Straße gehört trotzdem dem Werkschutz.
