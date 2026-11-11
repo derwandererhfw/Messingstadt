@@ -23,26 +23,13 @@ namespace Messingstadt
             ("Zivil_Arbeiter", new[] { "", "blau", "braun" }), ("Zivil_Frau", new[] { "", "gruen", "grau" }), ("Zivil_Herr", new[] { "", "grau" }),
             ("Zivil_Junge", new[] { "", "braun" }), ("Zivil_Trinker", new[] { "", "grau" }),
         };
-        // Bilder je Bewegung im Blatt der Passanten. Beim Kauern sind die ersten beiden der Übergang, der Rest die Schleife.
-        private static readonly Dictionary<string, int> MotionFrames = new()
-        {
-            ["walk"] = 12, ["run"] = 8, ["idle"] = 8, ["smoke"] = 6, ["startle"] = 3, ["cower"] = 5, ["read"] = 4,
-        };
+        // Beim Kauern sind die ersten beiden Bilder der Übergang in die Hocke, der Rest die Schleife (docs/figuren.md).
         private const int CowerLoopFrom = 2;
         private const float CowerFramesPerSecond = 3f;
-        private const float SmokeFramesPerSecond = 1.4f;
-        private const float ReadFramesPerSecond = 0.8f;
-
-        // Platzhalter, bis das Blatt der Passanten in main ist: vorhandene Zeile und Spalte je Bewegung.
-        private static readonly Dictionary<string, string> PlaceholderRow = new()
-        {
-            ["Zivil_Arbeiter"] = "Arbeiter", ["Zivil_Frau"] = "Laufbursche", ["Zivil_Herr"] = "Arbeiter", ["Zivil_Junge"] = "Laufbursche",
-            ["Zivil_Trinker"] = "Arbeiter",
-        };
-        private static readonly Dictionary<string, string> PlaceholderColumn = new()
-        {
-            ["walk"] = "walk", ["run"] = "run", ["idle"] = "idle", ["smoke"] = "idle", ["startle"] = "look", ["cower"] = "idle", ["read"] = "idle",
-        };
+        private const float SmokeFramesPerSecond = 3f;
+        private const float SmokeEverySeconds = 7f;
+        private const float ReadFramesPerSecond = 1f;
+        private const float StartleFramesPerSecond = 10f;
 
         private const int MaxPeople = 5;
         private const int PeopleAtStart = 4;
@@ -51,11 +38,8 @@ namespace Messingstadt
         private const float WalkTilesPerSecond = 1.25f;
         private const float HurryTilesPerSecond = 1.9f;
         private const float RunTilesPerSecond = 3.3f;
-        private const float DefaultWalkStride = 928f;
-        private const float DefaultRunStride = 1635f;
         private const float IdleFramesPerSecond = 1.6f;
         private const float MinLight = 0.3f;
-        private const float Dim = 0.86f;
         private const float LaneJitter = 0.28f;
         private const float CalmSeconds = 28f;
         private const float ShotHeardTiles = 16f;
@@ -65,7 +49,6 @@ namespace Messingstadt
         private const float MinReactSeconds = 0.12f;
         private const float MaxReactSeconds = 0.7f;
         private const float CowerShare = 0.3f;
-        private const float CowerSquash = 0.7f;
         private const float GetUpSeconds = 4f;
         // DepthZ liegt 20 über dem Objekt dahinter, Einheiten beginnen 2 darüber. So bleiben Passanten unter ihnen.
         private const int UnitsAbove = 19;
@@ -125,8 +108,6 @@ namespace Messingstadt
         private readonly List<Person> _people = new();
         private readonly List<Vector2> _positions = new();
         private const float MapTiles = 20f;
-        private readonly Dictionary<string, (int Start, int Count)> _columns = new();
-        private readonly Dictionary<string, (float Walk, float Run)> _strides = new();
         private int _views = 5;
         private World? _seenWorld;
         private int _lastShotTick;
@@ -135,6 +116,9 @@ namespace Messingstadt
         private float _calmAt;
         private float _nextSpawn;
         private float _nextBodyCheck;
+        private int _testScareFrame = -1;
+        private int _frames;
+        private static readonly Vector2 TestScareTile = new(9f, 9f);
 
         public Main Game = null!;
         public string FiguresPath = "";
@@ -166,8 +150,7 @@ namespace Messingstadt
         private float Rand(float min, float max) => min + (float)_rng.NextDouble() * (max - min);
 
         // ---------------------------------------------------------------------------------------------------------
-        // Die einzige Stelle, an der Passanten das Figurenblatt anfassen. Sobald die Animation ihr Blatt in main hat,
-        // werden nur diese vier Methoden umgestellt, die Aufrufe von Main stehen jeweils dabei.
+        // Die einzige Stelle, an der Passanten das Figurenblatt anfassen. Schnittstelle: docs/figuren.md.
         // ---------------------------------------------------------------------------------------------------------
 
         /// <summary>Wer kommt: Zeile und Farbvariante eines neuen Passanten.</summary>
@@ -177,45 +160,27 @@ namespace Messingstadt
             return (name, variants[_rng.Next(variants.Length)]);
         }
 
-        /// <summary>Färbt die Figur ein. Später: Game.SetFigureVariant(sprite, name, variant).</summary>
-        private void Dress(Sprite2D sprite, string name, string variant)
-        {
-        }
+        private void Dress(Sprite2D sprite, string name, string variant) => Game.SetFigureVariant(sprite, name, variant);
 
-        /// <summary>
-        /// Ausschnitt im Blatt und wie stark die Figur behelfsweise gestaucht wird. Später:
-        /// Game.CivilFrame(name, view, motion, frame), Stauchung immer 1.
-        /// </summary>
-        private (Rect2 Region, float Squash) Frame(string name, int view, string motion, int frame)
-        {
-            var (start, count) = _columns.TryGetValue(PlaceholderColumn[motion], out var c) ? c : (0, 1);
-            int column = motion == "cower" ? start : start + frame % count;
-            return (Game.FigureFrame(PlaceholderRow[name], view, column).Region, motion == "cower" ? CowerSquash : 1f);
-        }
+        private Rect2 Frame(string name, int view, string motion, int frame) => Game.CivilFrame(name, view, motion, frame % Frames(motion));
 
-        /// <summary>Schrittlänge in Spieleinheiten je Zyklus für walk und run. Später: Game.CivilStride(name, motion).</summary>
-        private float Stride(string name, string motion)
-        {
-            var (walk, run) = _strides.TryGetValue(PlaceholderRow[name], out var s) ? s : (DefaultWalkStride, DefaultRunStride);
-            return motion == "run" ? run : walk;
-        }
+        private int Frames(string motion) => Mathf.Max(1, Game.CivilFrames(motion));
+
+        /// <summary>Schrittlänge in Spieleinheiten je Zyklus für walk und run.</summary>
+        private float Stride(string name, string motion) => Mathf.Max(1f, Game.CivilStride(name, motion));
 
         public override void _Ready()
         {
             using var doc = JsonDocument.Parse(File.ReadAllText(FiguresPath));
             var root = doc.RootElement;
             _views = root.GetProperty("views").GetInt32();
-            foreach (var c in root.GetProperty("columns").EnumerateObject())
+            foreach (string a in OS.GetCmdlineUserArgs())
             {
-                _columns[c.Name] = (c.Value[0].GetInt32(), c.Value[1].GetInt32());
-            }
-            if (root.TryGetProperty("stride", out var strides))
-            {
-                foreach (var row in strides.EnumerateObject())
+                // Prüflauf: --schreck=<bild> erschreckt die Passanten einmal in diesem Bild, als fiele an der Kreuzung ein Schuss.
+                // Gezählt wird in Bildern wie bei --frames, damit Bildfolgen den Moment sicher treffen.
+                if (a.StartsWith("--schreck="))
                 {
-                    float walk = row.Value.TryGetProperty("walk", out var w) ? w.GetSingle() : DefaultWalkStride;
-                    float run = row.Value.TryGetProperty("run", out var r) ? r.GetSingle() : DefaultRunStride;
-                    _strides[row.Name] = (walk, run);
+                    _testScareFrame = int.Parse(a["--schreck=".Length..]);
                 }
             }
         }
@@ -230,10 +195,22 @@ namespace Messingstadt
                 Reset(world);
             }
             WatchForTrouble(world);
+            _frames++;
+            if (_testScareFrame >= 0 && _frames >= _testScareFrame)
+            {
+                _testScareFrame = -1;
+                Scare(TestScareTile, ShotHeardTiles);
+            }
             if (_time >= _calmAt && _time >= _nextSpawn && _people.Count < MaxPeople)
             {
                 _nextSpawn = _time + Rand(MinSpawnPause, MaxSpawnPause);
                 Arrive();
+            }
+            // Das Peilgerät im HUD liest diese Liste, in Bildpunkten der Welt.
+            Game.PeilCivilians.Clear();
+            foreach (var at in Positions)
+            {
+                Game.PeilCivilians.Add(Game.ToScreen((int)(at.X * World.TileUnits), (int)(at.Y * World.TileUnits)));
             }
             for (int i = _people.Count - 1; i >= 0; i--)
             {
@@ -558,26 +535,28 @@ namespace Messingstadt
             {
                 case Mode.Flee:
                     motion = "run";
-                    frame = (int)(p.Walked / Stride(p.Name, motion) * MotionFrames[motion]);
+                    frame = (int)(p.Walked / Stride(p.Name, motion) * Frames(motion));
                     break;
                 case Mode.Walk:
                     motion = "walk";
-                    frame = (int)(p.Walked / Stride(p.Name, motion) * MotionFrames[motion]);
+                    frame = (int)(p.Walked / Stride(p.Name, motion) * Frames(motion));
                     break;
                 case Mode.Startled:
                     // Der Schreck läuft einmal durch und hält auf dem letzten Bild.
                     motion = "startle";
-                    frame = Mathf.Min(MotionFrames[motion] - 1, (int)(p.ModeTime / MinReactSeconds));
+                    frame = Mathf.Min(Frames(motion) - 1, (int)(p.ModeTime * StartleFramesPerSecond));
                     break;
                 case Mode.Cower:
                     // Erst hinunter, dann in der Schleife zittern.
                     motion = "cower";
                     int down = (int)(p.ModeTime * CowerFramesPerSecond * 2f);
-                    frame = down < CowerLoopFrom ? down : CowerLoopFrom + (int)(beat * CowerFramesPerSecond) % (MotionFrames[motion] - CowerLoopFrom);
+                    frame = down < CowerLoopFrom ? down : CowerLoopFrom + (int)(beat * CowerFramesPerSecond) % (Frames(motion) - CowerLoopFrom);
                     break;
                 case Mode.Wait when p.Plan.Count > 0 && p.Plan[0].Pastime == "smoke":
-                    motion = "smoke";
-                    frame = (int)(beat * SmokeFramesPerSecond);
+                    // Ein Zug an der Zigarette, dann steht die Figur wieder eine Weile.
+                    float puff = beat % SmokeEverySeconds * SmokeFramesPerSecond;
+                    motion = puff < Game.CivilFrames("smoke") ? "smoke" : "idle";
+                    frame = motion == "smoke" ? (int)puff : (int)(beat * IdleFramesPerSecond);
                     break;
                 case Mode.Wait when p.Plan.Count > 0 && p.Plan[0].Pastime == "read":
                     motion = "read";
@@ -595,15 +574,14 @@ namespace Messingstadt
             int view = Mathf.Clamp(Mathf.RoundToInt((90f - angle) / 45f), 0, _views - 1);
             int ux = (int)(p.Tile.X * World.TileUnits), uy = (int)(p.Tile.Y * World.TileUnits);
             var sprite = p.Sprite;
-            var (region, squash) = Frame(p.Name, view, motion, frame % MotionFrames[motion]);
-            sprite.RegionRect = region;
+            sprite.RegionRect = Frame(p.Name, view, motion, frame);
             sprite.FlipH = across < 0f;
-            sprite.Scale = Game.FigureScale * new Vector2(1f, squash);
-            sprite.Position = Game.ToScreen(ux, uy) - Game.FigureFoot * new Vector2(1f, squash);
+            sprite.Position = Game.ToScreen(ux, uy) - Game.FigureFoot;
             // Unter den Einheiten derselben Tiefe: Agenten und Wachen bleiben im Zweifel obenauf.
             sprite.ZIndex = Game.DepthZ(Mathf.Clamp(p.Tile.X, 0.05f, 19.95f), Mathf.Clamp(p.Tile.Y, 0.05f, 19.95f)) - UnitsAbove;
             var light = Game.FigureLight(Mathf.Clamp(ux, 0, 20 * World.TileUnits - 1), Mathf.Clamp(uy, 0, 20 * World.TileUnits - 1), MinLight);
-            sprite.Modulate = new Color(light.R * Dim, light.G * Dim, light.B * Dim, EdgeFade(p.Tile.Y));
+            // Das Blatt malt Passanten schon grauer und dunkler als Agenten und Wachen.
+            sprite.Modulate = new Color(light.R, light.G, light.B, EdgeFade(p.Tile.Y));
         }
 
         /// <summary>Am Kartenrand blendet die Figur aus, statt hart zu verschwinden.</summary>
