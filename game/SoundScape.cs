@@ -56,7 +56,6 @@ namespace Messingstadt
         private const float OpenRainCutoff = 14000f, AlleyRainCutoff = 5000f;
         private const float LimiterCeilingDb = -0.5f;
         private const string PeilPing = "peil_ping";
-        private const int PeilPingVariants = 3;
         private const float PeilAlarmPitch = 1.18f;
         private const float HeartDb = -10f;
         private const float HeartRisePerSecond = 4f;
@@ -68,6 +67,10 @@ namespace Messingstadt
         private static readonly (int X, int Y)[] RoomRays = { (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1) };
 
         private readonly Dictionary<string, AudioStreamWav> _sounds = new();
+        private readonly Dictionary<string, int> _variants = new();
+        private readonly HashSet<int> _reloading = new();
+        private readonly HashSet<int> _bandaging = new();
+        private readonly HashSet<SmokeCloud> _smokes = new();
         private readonly Dictionary<string, float> _lastPlayed = new();
         private readonly List<AudioStreamPlayer2D> _pool = new();
         private readonly Random _rng = new();
@@ -141,6 +144,15 @@ namespace Messingstadt
             foreach (string path in Directory.GetFiles(dir, "*.wav"))
             {
                 _sounds[Path.GetFileNameWithoutExtension(path)] = AudioStreamWav.LoadFromFile(path);
+            }
+            // Liegt ein Klang nur in nummerierten Fassungen vor (hit_0, hit_1), wählt sein Grundname zufällig eine davon.
+            foreach (string name in _sounds.Keys)
+            {
+                int cut = name.LastIndexOf('_');
+                if (cut > 0 && int.TryParse(name[(cut + 1)..], out _) && !_sounds.ContainsKey(name[..cut]))
+                {
+                    _variants[name[..cut]] = _variants.GetValueOrDefault(name[..cut]) + 1;
+                }
             }
             for (int i = 0; i < PoolSize; i++)
             {
@@ -391,10 +403,10 @@ namespace Messingstadt
             float pitch = 1f;
             if (name == PeilPing)
             {
-                // Das Peilgerät wechselt zwischen seinen Fassungen. Im Gefecht tickt es etwas schärfer.
-                name = $"{PeilPing}_{_rng.Next(PeilPingVariants)}";
+                // Im Gefecht tickt das Peilgerät etwas schärfer.
                 pitch = Mathf.Lerp(1f, PeilAlarmPitch, _fightLevel) * (1f + (float)(_rng.NextDouble() * 2 - 1) * 0.03f);
             }
+            name = Variant(name);
             var player = new AudioStreamPlayer { Stream = _sounds[name], VolumeDb = volume, PitchScale = pitch, Autoplay = true, Bus = EffectsBus };
             player.Finished += player.QueueFree;
             AddChild(player);
@@ -409,6 +421,7 @@ namespace Messingstadt
                 return;
             }
             _lastPlayed[name] = _time;
+            name = Variant(name);
             var player = _pool.Find(p => !p.Playing) ?? _pool[0];
             player.Stream = _sounds[name];
             player.Position = position;
@@ -422,8 +435,13 @@ namespace Messingstadt
             PlayedByGroup[group] = PlayedByGroup.GetValueOrDefault(group) + 1;
         }
 
+        private string Variant(string name) => _variants.TryGetValue(name, out int count) ? $"{name}_{_rng.Next(count)}" : name;
+
         private void Reset(World world)
         {
+            _reloading.Clear();
+            _bandaging.Clear();
+            _smokes.Clear();
             _world = world;
             _lastShot = 0;
             _lastStrike = 0;
@@ -451,6 +469,7 @@ namespace Messingstadt
                 ListenToUnit(world, u);
             }
             ListenToShots(world);
+            ListenToSmoke(world);
             ListenToMission(world);
             UpdateMusic(world, (float)delta);
             UpdateRoom(world, (float)delta);
@@ -492,6 +511,7 @@ namespace Messingstadt
                 }
                 _stepCount[u.Id] = count;
             }
+            ListenToKit(u, at);
             if (u.Bribed && _bribed.Add(u.Id))
             {
                 Play("coins", at, -4f, StepReach);
@@ -522,6 +542,42 @@ namespace Messingstadt
             {
                 _kicks[u.Id] = u.LastKickTick;
                 Play("kick", at, -5f, StepReach);
+            }
+        }
+
+        /// <summary>Nachladen und Verband: je einmal beim Beginn.</summary>
+        private void ListenToKit(Unit u, Vector2 at)
+        {
+            if (u.ReloadTicks <= 0)
+            {
+                _reloading.Remove(u.Id);
+            }
+            else if (_reloading.Add(u.Id) && u.ActiveItem is { } item && _sounds.ContainsKey($"reload_{item.Def.Id}"))
+            {
+                Play($"reload_{item.Def.Id}", at, -12f, AgentStepReach, 0.04f);
+            }
+            if (u.BandageTicks <= 0)
+            {
+                _bandaging.Remove(u.Id);
+            }
+            else if (_bandaging.Add(u.Id))
+            {
+                Play("bandage", at, -12f, AgentStepReach, 0.04f);
+            }
+        }
+
+        /// <summary>Ein neuer Rauchtopf schlägt auf und zischt.</summary>
+        private void ListenToSmoke(World world)
+        {
+            _smokes.RemoveWhere(s => !world.Smokes.Contains(s));
+            foreach (var smoke in world.Smokes)
+            {
+                if (_smokes.Add(smoke))
+                {
+                    var at = Game.ToScreen(smoke.X, smoke.Y);
+                    Play("smoke_throw", at, -6f, StepReach);
+                    Play("smoke_hiss", at, -10f, StepReach, 0.04f);
+                }
             }
         }
 
@@ -557,12 +613,18 @@ namespace Messingstadt
                     continue;
                 }
                 var from = Game.ToScreen(shot.FromX, shot.FromY);
-                // Gewehr und Schrotflinte klingen tiefer als die Pistole, das Gewehr rollt länger.
                 var type = shot.ShooterId >= 0 && shot.ShooterId < world.Units.Count ? world.Units[shot.ShooterId].Type : GuardType.Wachmann;
-                float pitch = type == GuardType.Schuetze ? 0.72f : type == GuardType.Werkschutz ? 0.62f : 1f;
-                // Agenten tragen eigene Waffen: Schrot klingt tief, die Maschinenpistole heller und kürzer.
-                pitch = shot.Weapon switch { "schrotflinte" => 0.62f, "maschinenpistole" => 1.18f, _ => pitch };
-                Play($"shot_{(shot.FromX + shot.Tick) % 3}", from, type == GuardType.Wachmann ? 0f : 2f, EventReach, 0.05f, pitch);
+                // Jede Waffe hat ihren eigenen Klang. Wachen schießen nach ihrer Art: Schütze mit Gewehr, Werkschutz mit Schrot.
+                string gun = shot.Weapon switch
+                {
+                    "schrotflinte" => "shotgun",
+                    "maschinenpistole" => "smg",
+                    "pistole" => "shot",
+                    _ => type == GuardType.Schuetze ? "rifle" : type == GuardType.Werkschutz ? "shotgun" : "shot",
+                };
+                // Schüsse teilen sich keine Sperre, sonst verschluckt eine Salve ihre eigenen Schüsse.
+                _lastPlayed.Remove(gun);
+                Play(gun, from, 0f, EventReach, 0.04f);
                 if (from.DistanceTo(Game.CameraCenter) < ShakeReach)
                 {
                     Game.ShakeCamera(ShotShake);
@@ -584,9 +646,13 @@ namespace Messingstadt
             // Schläge mit dem Totschläger: nur ein dumpfer Treffer, aus der Nähe zu hören.
             foreach (var strike in world.Strikes)
             {
-                if (strike.Tick > _lastStrike && strike.Hit)
+                if (strike.Tick > _lastStrike)
                 {
-                    Play("hit", Game.ToScreen(strike.ToX, strike.ToY), -6f, StepReach);
+                    Play("club_swing", Game.ToScreen(strike.FromX, strike.FromY), -12f, StepReach);
+                    if (strike.Hit)
+                    {
+                        Play("club_hit", Game.ToScreen(strike.ToX, strike.ToY), -5f, StepReach);
+                    }
                 }
             }
             if (world.Strikes.Count > 0)
