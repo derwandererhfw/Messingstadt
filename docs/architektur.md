@@ -26,6 +26,7 @@ Eingabe (Godot) -> Befehle -> World.Tick() -> Zustand -> Darstellung (Godot)
   `figures_palette.png`. Der Figurenshader in `Main.cs` schlägt sie nach, das spart drei Viertel des Texturspeichers.
   Für Spiegelungen gibt es `figures_mirror.png`, farbig und viermal kleiner. Die vier Agenten stehen als `AGENTS` in
   `generate_concept.py`, je Waffe mit eigener Zeile. Figuren-Sprites legt man über `Main.NewFigureSprite()` an.
+  Passanten, Farbvarianten und die Schnittstelle zum Zeichnen beschreibt `docs/figuren.md`.
   Die Lichtwerte in `data/light_01.json` kommen aus `bake_light.py`: Der Mond dort trifft nur Oberseiten von Objekten
   und zählt nicht fürs Schleichen.
 - **Doppelte Auflösung:** `game/assets/hd/` enthält Boden und alle Objekte zusätzlich doppelt so fein,

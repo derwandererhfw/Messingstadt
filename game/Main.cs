@@ -24,14 +24,16 @@ shader_type canvas_item;
 // Überblendet wird wie bei sharp_uv, nur von Hand über die vier Nachbarn, denn Nummern lassen sich nicht mitteln.
 uniform sampler2D palette : filter_nearest;
 uniform float block = 540.0;
+// Farbvariante: eine andere Zeile der Palette als die der Figur. Unter null gilt die Zeile der Figur.
+instance uniform float palette_row = -1.0;
 varying vec4 tint;
 void vertex() {
     tint = COLOR;
 }
-vec4 tone(sampler2D sheet, ivec2 at, ivec2 size) {
+vec4 tone(sampler2D sheet, ivec2 at, ivec2 size, float row) {
     at = clamp(at, ivec2(0), size - ivec2(1));
     int slot = int(texelFetch(sheet, at, 0).r * 255.0 + 0.5);
-    vec4 c = texelFetch(palette, ivec2(slot, int(float(at.y) / block)), 0);
+    vec4 c = texelFetch(palette, ivec2(slot, row < 0.0 ? int(float(at.y) / block) : int(row + 0.5)), 0);
     return vec4(c.rgb * c.a, c.a);
 }
 void fragment() {
@@ -41,8 +43,8 @@ void fragment() {
     vec2 reach = max(fwidth(p), vec2(1e-4));
     vec2 f = clamp((p - edge) / reach, -0.5, 0.5) + 0.5;
     ivec2 b = ivec2(edge);
-    vec4 c = mix(mix(tone(TEXTURE, b + ivec2(-1, -1), size), tone(TEXTURE, b + ivec2(0, -1), size), f.x),
-                 mix(tone(TEXTURE, b + ivec2(-1, 0), size), tone(TEXTURE, b, size), f.x), f.y);
+    vec4 c = mix(mix(tone(TEXTURE, b + ivec2(-1, -1), size, palette_row), tone(TEXTURE, b + ivec2(0, -1), size, palette_row), f.x),
+                 mix(tone(TEXTURE, b + ivec2(-1, 0), size, palette_row), tone(TEXTURE, b, size, palette_row), f.x), f.y);
     COLOR = vec4(c.rgb / max(c.a, 1e-4), c.a) * tint;
 }
 ";
@@ -250,6 +252,7 @@ void fragment() {
         private string? _shotPath;
         private int _shotFrame = -1;
         private int _shotCount = 1, _shotEvery = 1;
+        private bool _testCivilians;
         private bool _auto;
         private int _frame;
 
@@ -934,6 +937,10 @@ void fragment() {
                     var ship = a["--ship=".Length..].Split(',');
                     _testShip = new Vector2(float.Parse(ship[0], System.Globalization.CultureInfo.InvariantCulture), float.Parse(ship[1], System.Globalization.CultureInfo.InvariantCulture));
                 }
+                else if (a == "--passanten")
+                {
+                    _testCivilians = true;
+                }
                 else if (a == "--intro")
                 {
                     _forceIntro = true;
@@ -1516,6 +1523,10 @@ void fragment() {
             {
                 MoveSelected((int)_mission.Item[0], (int)_mission.Item[1]);
             }
+            if (_testCivilians)
+            {
+                AddChild(new CivilPreview { Game = this });
+            }
         }
 
         public Vector2 ToScreen(int x, int y) => new(
@@ -1744,7 +1755,9 @@ void fragment() {
                 float across = lookX - lookY, toward = lookX + lookY;
                 float angle = Mathf.RadToDeg(Mathf.Atan2(toward, Mathf.Abs(across)));
                 int view = Mathf.Clamp(Mathf.RoundToInt((90f - angle) / 45f), 0, _figureViews - 1);
-                s.RegionRect = FigureRegion(_animator.SpriteName(u), view, column);
+                string row = _animator.SpriteName(u);
+                s.RegionRect = FigureRegion(row, view, column);
+                SetFigureVariant(s, row, _animator.IsRecruit(u) ? "rekrut" : "");
                 s.FlipH = across < 0;
                 s.Modulate = FigureGlow(u);
                 s.Position = foot - FigureFoot + _animator.BiteOffset(World, u, this);
@@ -1817,6 +1830,25 @@ void fragment() {
             Texture = _figures, RegionEnabled = true, Centered = false, Scale = FigureScale,
             TextureFilter = TextureFilterEnum.Nearest, Material = _figureMaterial,
         };
+
+        /// <summary>Zeilen der Passanten im Figurenblatt. Sie sind Kulisse und haben eigene Bewegungen, siehe docs/figuren.md.</summary>
+        public IReadOnlyList<string> Civilians => _animator.Civilians;
+
+        /// <summary>Ausschnitt für einen Passanten: Bewegung walk, run, idle, smoke, startle, cower oder read, frame läuft im Kreis.</summary>
+        public Rect2 CivilFrame(string name, int view, string motion, int frame) =>
+            FigureRegion(name, view, _animator.CivilColumn(motion, frame));
+
+        public int CivilFrames(string motion) => _animator.CivilFrames(motion);
+
+        /// <summary>Weg je Zyklus in Spieleinheiten für walk oder run eines Passanten.</summary>
+        public float CivilStride(string name, string motion) => _animator.StrideOf(name, motion);
+
+        /// <summary>Farbvarianten einer Figur, ohne die Grundfarbe.</summary>
+        public IEnumerable<string> FigureVariants(string name) => _animator.Variants(name);
+
+        /// <summary>Färbt einen Figuren-Sprite über eine andere Palettenzeile um. Ein leerer Name stellt die Grundfarbe wieder her.</summary>
+        public void SetFigureVariant(Sprite2D sprite, string name, string variant) =>
+            sprite.SetInstanceShaderParameter("palette_row", (float)_animator.PaletteRow(name, variant));
 
         /// <summary>Das Figurenblatt in Farbe und verkleinert, für Spiegelungen. Das große Blatt enthält nur Palettennummern.</summary>
         public Texture2D FigureMirror { get; private set; } = null!;

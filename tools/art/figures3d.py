@@ -81,6 +81,14 @@ FIGURE_COLORS = 250
 MIRROR = 4  # Für Spiegelungen in Pfützen gibt es das Blatt zusätzlich farbig und um diesen Faktor kleiner.
 RIM = np.array((-0.55, 0.25, 0.8)) / np.linalg.norm((-0.55, 0.25, 0.8))
 FRAMES = [(motion, i, n) for motion, n in MOTIONS for i in range(n)]
+# Passanten nutzen dieselben Spalten mit eigenen Bewegungen. cower: Bilder 0 und 1 gehen in die Hocke, 2 bis 4 sind die Schleife.
+CIVIL_MOTIONS = (("walk", 12), ("run", 8), ("idle", 8), ("smoke", 6), ("startle", 3), ("cower", 5), ("read", 4))
+CIVIL_FRAMES = [(motion, i, n) for motion, n in CIVIL_MOTIONS for i in range(n)]
+CIVIL_FRAMES += [("none", 0, 1)] * (len(FRAMES) - len(CIVIL_FRAMES))
+
+
+def frames_of(spec):
+    return CIVIL_FRAMES if spec.get("civil") else FRAMES
 
 # Gangarten. stride: Weg pro Zyklus aus zwei Schritten. duty: Anteil des Zyklus, den ein Fuß am Boden steht.
 # Unter 0,5 hat das Rennen eine Flugphase. Die Figuren sind im Spiel flott unterwegs, daher lange Schritte.
@@ -113,12 +121,18 @@ def palette(spec):
     co_d, co, co_l = spec["coat"]
     # Gesichter etwas heller als in der Stadtpalette: Sie sind im Spiel nur wenige Bildpunkte groß.
     skin = tuple(min(255, round(v * 1.18)) for v in C["skin"])
-    return {
+    colors = {
         COAT: col(co), COAT_D: col(co_d), COAT_L: col(co_l), TROUSERS: col(spec["legs"]), SHOE: C["black"],
         SKIN: skin, HAIR: col(spec["hair"]), HAT: col(spec["hat_c"]), GUN: C["soot"], SHIRT: col(spec["shirt"]),
         TRIM: col(spec.get("trim", co_l)), WOOD: C["wood_d"], LINEN: C["paper"],
         SCARF: col(spec.get("scarf", "ash")), BAND: col(spec.get("band", "black")),
     }
+    if spec.get("civil"):
+        # Passanten sind Kulisse: grauer und dunkler, damit sie hinter Agenten und Wachen zurücktreten.
+        for material, color in colors.items():
+            grey = sum(color) / 3
+            colors[material] = tuple(round((v * 0.72 + grey * 0.28) * 0.84) for v in color)
+    return colors
 
 
 class Pose:
@@ -437,12 +451,14 @@ def body(spec, rig, dying=False):
         swing = rig["coat"][side]
         for depth in (1.0, -1.2):
             end = pelvis + turn_z((depth + math.sin(swing) * hem * 0.8 - trail, side * (2.5 + flare * 0.3), WAIST - hem + flare), rig["hip_yaw"])
+            end[2] = max(end[2], hem_r + 0.3)  # Wer kniet oder kauert: Der Saum liegt auf dem Boden auf, er sinkt nicht hinein.
             p.capsule(up((depth, side * 1.7 * bulk, WAIST)), end, 2.4 * bulk, hem_r, COAT_D if side < 0 else COAT)
     middle = 0.5 * (rig["coat"][1] + rig["coat"][-1])
     for depth, spread in ((1.5, rig["coat"][1] - rig["coat"][-1]), (-1.7, rig["coat"][-1] - rig["coat"][1])):
         # Schwingt das linke Bein vor, rückt die vordere Bahn mit, die hintere bleibt mittig.
         reach = math.sin(middle) * hem * 0.8 + 0.06 * abs(spread) * hem * (1 if depth > 0 else -1)
         end = pelvis + turn_z((depth + reach - trail * 1.2, 0.0, WAIST - hem + flare * 1.4), rig["hip_yaw"])
+        end[2] = max(end[2], hem_r + 0.3)
         p.capsule(up((depth, 0.0, WAIST)), end, 2.3 * bulk, hem_r * 0.95, COAT)
     # Gürtel und Kragen
     p.capsule(up((0.4, 2.1 * bulk, WAIST + 0.3)), up((0.4, -2.1 * bulk, WAIST + 0.3)), 3.05 * bulk, 3.05 * bulk, COAT_D)
@@ -518,12 +534,24 @@ def body(spec, rig, dying=False):
     elif spec["hat"] == "beret":
         # Baskenmütze: flach und schräg auf dem Kopf
         p.disc(hv((-0.3, 0.7, 2.9)), hv((0.0, 0.3, 1.0)) - head, 3.5, 1.05, HAT)
+    elif spec["hat"] == "kerchief":
+        # Kopftuch: eng um den Kopf, unter dem Kinn geknotet, hinten ein Zipfel
+        p.ball(hv((-0.5, 0, 0.5)), 3.2, HAT)
+        p.ball(hv((1.6, 0, -2.6)), 1.0, HAT)
+        p.capsule(hv((-2.6, 0, -0.8)), hv((-3.4, 0, -3.6)), 1.5, 0.7, HAT)
+    elif spec["hat"] == "none":
+        pass
     else:
         top = hv((-0.2, 0, 2.4))
         p.disc(hv((-0.2, 0, 2.6)), up_axis, 3.3, 0.9, HAT)
         p.ball(top + up_axis * 0.9, 2.6, HAT)
         p.capsule(hv((2.7, 1.5, 1.4)), hv((2.7, -1.5, 1.4)), 0.8, 0.8, SHOE)
 
+    props = not dying and not rig.get("busy")
+    if spec.get("papers") and not dying:
+        p.capsule(up((-1.5, 5.3, WAIST + 3.0)), up((3.2, 5.3, WAIST + 3.0)), 1.5, 1.5, LINEN)
+    if rig.get("paper") is not None:
+        p.disc(rig["paper"], upper(rig, (1.0, 0.0, 0.45)) - rig["pelvis"], 3.6, 0.3, LINEN)
     # Arme: entweder Winkel an Schulter und Ellbogen oder die Hand an einem Zielpunkt.
     joints = {}
     for side in (1, -1):
@@ -552,6 +580,24 @@ def body(spec, rig, dying=False):
             p.capsule(hand + (0, 0, -0.4), hand + (0, 0, 1.2), 1.15, 1.15, GUN)
         if side < 0 and rig.get("bandage"):
             p.ball(hand, 1.0, LINEN)
+        if side > 0 and props:
+            if spec.get("umbrella"):
+                # Geschlossener Schirm als Stock: Griff in der Hand, die Spitze schräg voraus am Boden
+                tip = np.array((hand[0] + 3.0, hand[1] + 0.8, 0.5))
+                p.capsule(hand + (0, 0, 0.8), lerp(hand, tip, 0.25), 0.5, 0.95, BAND)
+                p.capsule(lerp(hand, tip, 0.25), tip, 0.95, 0.35, BAND)
+            if spec.get("pail"):
+                # Henkelmann: Blechgefäß am Bügel
+                p.capsule(hand + (0, 0, -1.6), hand + (0, 0, -4.2), 1.5, 1.5, TRIM)
+            if spec.get("net"):
+                p.capsule(hand, hand + (0, 0.3, -2.4), 0.35, 0.35, TRIM)
+                p.ball(hand + (0, 0.3, -4.0), 2.3, TRIM)
+        if side < 0 and props and spec.get("bottle"):
+            down = unit(hand - elbow_p)
+            p.capsule(hand, hand + down * 2.4, 0.95, 0.95, BAND)
+            p.capsule(hand + down * 2.4, hand + down * 4.2, 0.5, 0.4, BAND)
+        if side < 0 and rig.get("cig"):
+            p.capsule(hand + (0.8, 0, 0.3), hand + (2.0, 0, 0.5), 0.4, 0.4, LINEN)
         if spec.get("leash") and side > 0 and not dying and mode[0] == "fk":
             # Aufgerolltes Ende der Leine in der freien Hand
             p.capsule(hand + (0.4, 0.4, -0.5), hand + (1.2, 1.2, -4.5), 0.75, 0.55, TRIM)
@@ -568,7 +614,15 @@ def build(spec, motion, i, n):
     if motion.startswith("fall"):
         p = build_fall(spec, motion, i / (n - 1))
     else:
-        p = body(spec, human_rig(spec, motion, i, n))
+        rig = human_rig(spec, motion, i, n)
+        if spec.get("drunk"):
+            # Schwankt bei jedem Schritt und im Stand, der Kopf hängt
+            t = i / n * math.tau
+            rig["roll"] += 0.13 * math.sin(t)
+            rig["lean"] += 0.1
+            rig["head_pitch"] += 0.25
+            rig["twist"] += 0.15 * math.sin(t + 1.0)
+        p = body(spec, rig)
     scale = spec.get("scale", 1.0)
     if scale != 1.0:
         p.parts = [(a * scale, b * scale, r1 * scale, r2 * scale, m, k) for a, b, r1, r2, m, k in p.parts]
@@ -602,6 +656,8 @@ def human_rig(spec, motion, i, n):
     gun = spec.get("gun", "pistol")
     phase = i / n
     stance = "long" if gun in LONG_GUNS else "pistol"
+    if motion in CIVIL_POSES:
+        return CIVIL_POSES[motion](i)
     if motion == "reload":
         return reload_rig(spec, i)
     if motion == "pick":
@@ -663,6 +719,64 @@ def human_rig(spec, motion, i, n):
         # Die freie Hand hängt locker etwas vor dem Körper.
         rig["arms"][1] = ("fk", 0.15, 0.35)
     return rig
+
+
+def smoke_rig(i):
+    """Rauchen: Die Hand geht zum Mund und wieder herunter."""
+    rig = stand_rig(0.3)
+    lift = (0.0, 0.5, 1.0, 1.0, 0.5, 0.0)[i]
+    shoulder = arm_root(rig, -1)
+    hang = shoulder + np.array((1.0, -0.6, -15.4))
+    mouth = upper(rig, (3.6, -0.6, SHOULDER_Z + 4.0))
+    rig["arms"][-1] = ("ik", lerp(hang, mouth, lift), (0.0, -1.0, -0.6))
+    rig["arms"][1] = ("fk", 0.05, 0.2)
+    rig["head_pitch"] = -0.05 * lift
+    rig["cig"] = True
+    return rig
+
+
+def read_rig(i):
+    """Zeitung lesen: beide Hände halten das Blatt, der Kopf wandert über die Zeilen."""
+    rig = stand_rig(0.2)
+    rig["busy"] = True
+    rig["head_pitch"] = 0.3
+    rig["head_yaw"] = (0.1, -0.05, -0.12, 0.03)[i]
+    for side in (1, -1):
+        rig["arms"][side] = ("ik", upper(rig, (6.3, side * 3.2, WAIST + 9.0)), (0.0, side * 1.0, -1.0))
+    rig["paper"] = upper(rig, (6.9, 0.0, WAIST + 10.0))
+    return rig
+
+
+def startle_rig(i):
+    """Erschrecken: zurückzucken, die Hände fahren hoch."""
+    a = (0.5, 1.0, 0.8)[i]
+    rig = stand_rig(0.0, "long")
+    rig["lean"] = -0.16 * a
+    rig["head_pitch"] = -0.15 * a
+    for side in (1, -1):
+        rig["arms"][side] = ("fk", 0.5 * a, 0.3 + 1.5 * a)
+    return rig
+
+
+def cower_rig(i):
+    """Kauern: in die Hocke, die Hände über dem Kopf. Ab Bild 2 zittert die Figur nur noch."""
+    a = (0.45, 0.85, 1.0, 1.0, 1.0)[i]
+    rig = new_rig()
+    feet = {1: (np.array((2.5, 3.6, ANKLE)), 0.0), -1: (np.array((-1.5, -3.6, ANKLE)), 0.0)}
+    rig["pelvis"] = np.array((-1.5 * a, 0.0, lerp(23.3, 11.5, a)))
+    legs_from_feet(rig, feet)
+    rig["lean"] = 0.6 * a
+    rig["head_pitch"] = 0.4 * a
+    rig["breath"] = 0.3 * math.sin(i * 2.1) if i >= 2 else 0.0
+    rig["busy"] = True
+    rig["carry"] = False
+    for side in (1, -1):
+        hang = arm_root(rig, side) + np.array((1.0, side * 0.6, -15.0))
+        rig["arms"][side] = ("ik", lerp(hang, upper(rig, (1.2, side * 2.2, SHOULDER_Z + 6.4)), a), (1.0, side * 0.5, -0.3))
+    return rig
+
+
+CIVIL_POSES = {"smoke": smoke_rig, "read": read_rig, "startle": startle_rig, "cower": cower_rig}
 
 
 def strike_rig(i):
@@ -1021,9 +1135,9 @@ def world_parts(spec, motion, i, n, view):
 def render(args):
     name, view, column = args
     spec = SPECS[name]
-    motion, i, n = FRAMES[column]
-    if not applies(spec, motion):
-        return name, view, column, np.zeros((CELL_H, CELL_W, 4), np.uint8)
+    motion, i, n = frames_of(spec)[column]
+    if motion == "none" or not applies(spec, motion):
+        return name, view, column, np.zeros((CELL_H, CELL_W, 4), np.uint8), np.full((CELL_H, CELL_W), 255, np.uint8)
     parts = world_parts(spec, motion, i, n, view)
 
     w, h = CELL_W * SUPER, CELL_H * SUPER
@@ -1053,6 +1167,7 @@ def render(args):
         alive[index[done | too_far]] = False
 
     image = np.zeros((h, w, 4), np.float32)
+    stuff = np.full((h, w), 255, np.uint8)
     index = np.flatnonzero(hit)
     if len(index):
         pts = position[index]
@@ -1065,7 +1180,7 @@ def render(args):
         # Licht von oben, dunkler zum Rand hin: Das macht die Figur rund. In Stufen, damit es Pixelgrafik bleibt.
         # Dazu ein schmaler Lichtsaum an den Kanten oben links, der die Figur vom dunklen Grund abhebt.
         rim = (1 - facing) ** 2 * np.clip(normal @ RIM, 0, 1)
-        shade = (0.58 + 0.62 * light) * (0.68 + 0.32 * facing) + 0.65 * rim
+        shade = (0.58 + 0.62 * light) * (0.68 + 0.32 * facing) + (0.0 if spec.get("civil") else 0.65) * rim
         shade = np.round(shade * SHADE_STEPS) / SHADE_STEPS
         colors = palette(spec)
         materials = np.array([colors[part[4]] for part in parts], np.float32)[nearest]
@@ -1073,6 +1188,7 @@ def render(args):
         rows, cols = np.unravel_index(index, (h, w))
         image[rows, cols, :3] = np.clip(rgb, 0, 255)
         image[rows, cols, 3] = 1.0
+        stuff[rows, cols] = np.array([part[4] for part in parts], np.uint8)[nearest]
     alpha = image[..., 3].reshape(CELL_H, SUPER, CELL_W, SUPER).mean(axis=(1, 3))
     summed = (image[..., :3] * image[..., 3:]).reshape(CELL_H, SUPER, CELL_W, SUPER, 3).sum(axis=(1, 3))
     rgb = summed / np.maximum(alpha[..., None] * SUPER * SUPER, 1e-5)
@@ -1080,7 +1196,9 @@ def render(args):
     solid = alpha >= 0.5
     out[solid, :3] = rgb[solid].astype(np.uint8)
     out[solid, 3] = 255
-    return name, view, column, ground_marks(out, motion, i / max(n - 1, 1), parts)
+    # Welcher Stoff an jedem Bildpunkt liegt. Damit lassen sich Farbvarianten sauber über die Palette umfärben.
+    stuff = stuff.reshape(CELL_H, SUPER, CELL_W, SUPER).min(axis=(1, 3))
+    return name, view, column, ground_marks(out, motion, i / max(n - 1, 1), parts), stuff
 
 
 def ground_marks(figure, motion, phase, parts):
@@ -1122,13 +1240,22 @@ def columns():
     return table
 
 
+def civil_columns():
+    table, start = {}, 0
+    for motion, n in CIVIL_MOTIONS:
+        table[motion] = [start, n]
+        start += n
+    return table
+
+
 def strides():
     """Weg pro Zyklus in Spieleinheiten. Das Spiel schaltet die Bilder nach zurückgelegtem Weg weiter."""
     table = {}
     for name, spec in SPECS.items():
         gaits = DOG_GAITS if spec.get("dog") else GAITS
         scale = spec.get("scale", 1.0)
-        table[name] = {motion: round(gaits[motion]["stride"] * scale * WORLD_PER_UNIT) for motion in ("walk", "run", "aimwalk")}
+        motions = ("walk", "run") if spec.get("civil") else ("walk", "run", "aimwalk")
+        table[name] = {motion: round(gaits[motion]["stride"] * scale * WORLD_PER_UNIT) for motion in motions}
         if applies(spec, "sneak"):
             table[name]["sneak"] = round(GAITS["sneak"]["stride"] * scale * WORLD_PER_UNIT)
     return table
@@ -1144,25 +1271,55 @@ def bite_reach():
     return table
 
 
-def to_indices(block):
-    """Bringt die Farben einer Figur auf eine Palette: je Bildpunkt eine Nummer, 0 ist durchsichtig."""
+def to_indices(block, stuff):
+    """Bringt die Farben einer Figur auf eine Palette: je Bildpunkt eine Nummer, 0 ist durchsichtig.
+    Jeder Stoff bekommt eigene Plätze, auch wenn zwei Stoffe denselben Ton haben. Nur so lässt sich eine
+    Farbvariante sauber umfärben. Zurück kommt auch, zu welchem Stoff jeder Platz gehört."""
     index = np.zeros(block.shape[:2], np.uint8)
     colors = np.zeros((256, 4), np.uint8)
+    slot_stuff = np.full(256, 255, np.uint8)
     solid = block[..., 3] == 255
-    if solid.any():
-        tones, inverse = np.unique(block[solid][:, :3], axis=0, return_inverse=True)
-        slots = np.arange(len(tones))
-        if len(tones) > FIGURE_COLORS:
-            reduced = Image.fromarray(tones.reshape(1, -1, 3), "RGB").quantize(FIGURE_COLORS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
-            slots = np.asarray(reduced).ravel()
-            tones = np.array(reduced.getpalette()[:FIGURE_COLORS * 3], np.uint8).reshape(-1, 3)
-        index[solid] = slots[inverse.ravel()] + 1
-        colors[1:1 + len(tones), :3] = tones
-        colors[1:1 + len(tones), 3] = 255
-    for color, slot in MARKS.items():
-        index[(block == color).all(axis=2)] = slot
-        colors[slot] = color
-    return index, colors
+    groups = {}
+    for material in np.unique(stuff[solid]) if solid.any() else ():
+        where = solid & (stuff == material)
+        tones, inverse = np.unique(block[where][:, :3], axis=0, return_inverse=True)
+        groups[int(material)] = (where, tones, inverse.ravel())
+    # Die Plätze nach der Zahl der Töne verteilen, jeder Stoff bekommt mindestens vier.
+    total = sum(len(tones) for _w, tones, _i in groups.values())
+    share = {m: min(len(g[1]), max(4, FIGURE_COLORS * len(g[1]) // max(total, 1))) for m, g in groups.items()}
+    while sum(share.values()) > FIGURE_COLORS:
+        share[max(share, key=share.get)] -= 1
+    slot = 1
+    for material, (where, tones, inverse) in groups.items():
+        places = np.arange(len(tones))
+        if len(tones) > share[material]:
+            reduced = Image.fromarray(tones.reshape(1, -1, 3), "RGB").quantize(share[material], method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
+            places = np.asarray(reduced).ravel()
+            tones = np.array(reduced.getpalette()[:share[material] * 3], np.uint8).reshape(-1, 3)
+        index[where] = places[inverse] + slot
+        colors[slot:slot + len(tones), :3] = tones
+        colors[slot:slot + len(tones), 3] = 255
+        slot_stuff[slot:slot + len(tones)] = material
+        slot += len(tones)
+    for color, place in MARKS.items():
+        index[(block == color).all(axis=2)] = place
+        colors[place] = color
+    return index, colors, slot_stuff
+
+
+def variant_colors(colors, slot_stuff, spec, changes):
+    """Palette einer Farbvariante: Jeder Ton gehört zu einem Stoff und bekommt bei gleicher Helligkeit dessen
+    neue Farbe. Unveränderte Stoffe bleiben, wie sie sind."""
+    old, new = palette(spec), palette(dict(spec, **changes))
+    out = colors.copy()
+    for slot in range(1, FIGURE_COLORS + 1):
+        material = int(slot_stuff[slot])
+        if material not in old or old[material] == new[material]:
+            continue
+        tone, v = colors[slot, :3].astype(float), np.array(old[material], float)
+        level = float(tone @ v) / max(float(v @ v), 1e-6)
+        out[slot, :3] = np.clip(level * np.array(new[material], float), 0, 255)
+    return out
 
 
 def shrink(block):
@@ -1181,21 +1338,31 @@ def main():
     # Das Blatt speichert je Bildpunkt nur eine Nummer, die Farben stehen je Figur in einer Zeile von figures_palette.png.
     # So braucht es im Spiel ein Viertel des Speichers.
     sheet = np.zeros((block_h * len(names), width), np.uint8)
-    palettes = np.zeros((len(names), 256, 4), np.uint8)
+    # Hinter den Zeilen der Figuren folgen die Zeilen der Farbvarianten.
+    variants, rows = {}, len(names)
+    for name in names:
+        for variant in SPECS[name].get("variants", {}):
+            variants.setdefault(name, {})[variant] = rows
+            rows += 1
+    palettes = np.zeros((rows, 256, 4), np.uint8)
     mirror = np.zeros((block_h * len(names) // MIRROR, width // MIRROR, 4), np.uint8)
-    blocks, missing = {}, {}
+    blocks, stuffs, missing = {}, {}, {}
     with multiprocessing.Pool() as pool:
-        for name, view, column, cell in pool.imap_unordered(render, tasks, chunksize=8):
+        for name, view, column, cell, stuff in pool.imap_unordered(render, tasks, chunksize=8):
             if name not in blocks:
                 blocks[name] = np.zeros((block_h, width, 4), np.uint8)
+                stuffs[name] = np.full((block_h, width), 255, np.uint8)
                 missing[name] = len(VIEWS) * len(FRAMES)
             row = VIEWS.index(view)
             blocks[name][row * CELL_H:(row + 1) * CELL_H, column * CELL_W:(column + 1) * CELL_W] = cell
+            stuffs[name][row * CELL_H:(row + 1) * CELL_H, column * CELL_W:(column + 1) * CELL_W] = stuff
             missing[name] -= 1
             if missing[name] == 0:
                 at = names.index(name)
                 block = blocks.pop(name)
-                sheet[at * block_h:(at + 1) * block_h], palettes[at] = to_indices(block)
+                sheet[at * block_h:(at + 1) * block_h], palettes[at], slot_stuff = to_indices(block, stuffs.pop(name))
+                for variant, row in variants.get(name, {}).items():
+                    palettes[row] = variant_colors(palettes[at], slot_stuff, SPECS[name], SPECS[name]["variants"][variant])
                 mirror[at * block_h // MIRROR:(at + 1) * block_h // MIRROR] = shrink(block)
                 print(f"{name} fertig", flush=True)
     assets = ROOT / "game" / "assets"
@@ -1206,6 +1373,8 @@ def main():
         "names": names, "w": CELL_W, "h": CELL_H, "footX": FOOT_X, "footY": FOOT_Y, "views": len(VIEWS), "res": RES,
         "columns": columns(), "stride": strides(), "biteReach": bite_reach(), "mirror": MIRROR,
         "has": {name: [m for m in AGENT_ONLY if applies(spec, m)] for name, spec in SPECS.items() if spec.get("agent")},
+        "variants": variants,
+        "civil": {"names": [name for name, spec in SPECS.items() if spec.get("civil")], "columns": civil_columns()},
     }), encoding="utf-8")
     print(f"{len(tasks)} Figurenbilder gerendert")
 
