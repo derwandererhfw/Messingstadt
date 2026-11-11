@@ -184,6 +184,23 @@ def menu():
     return x + looped("music_title", len(x) / RATE)[:len(x)] * gain(MUSIC_DB)
 
 
+def peil():
+    """Eine Minute Einsatz: Der Peilton alle 2 bis 4 Sekunden bei -22 dB, in der zweiten Hälfte schärfer wie im Gefecht."""
+    seconds = 60
+    rng = np.random.default_rng(7)
+    out = looped("music_calm", seconds) * gain(MUSIC_DB) + weather(seconds, DRIZZLE)
+    at = 1.0
+    while at < seconds - 1:
+        x = load(f"peil_ping_{rng.integers(3)}")
+        if at > 30:
+            index = np.arange(int(len(x) / 1.18)) * 1.18
+            x = np.stack([np.interp(index, np.arange(len(x)), x[:, c]) for c in (0, 1)], axis=1)
+        i = int(at * RATE)
+        out[i:i + len(x)] += x * gain(-22)
+        at += rng.uniform(2, 4)
+    return out
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     seconds = 30
@@ -202,6 +219,7 @@ def main():
     save("13_strassenbahnlicht_stottert_und_geht_aus", tram_light())
     save("14_titelthema", title())
     save("15_menue_wandern_und_waehlen", menu())
+    save("16_peilgeraet_eine_minute", peil())
 
 
 if __name__ == "__main__":

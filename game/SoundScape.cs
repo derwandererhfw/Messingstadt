@@ -55,6 +55,9 @@ namespace Messingstadt
         private const float OpenRoomSize = 0.35f, AlleyRoomSize = 0.62f;
         private const float OpenRainCutoff = 14000f, AlleyRainCutoff = 5000f;
         private const float LimiterCeilingDb = -0.5f;
+        private const string PeilPing = "peil_ping";
+        private const int PeilPingVariants = 3;
+        private const float PeilAlarmPitch = 1.18f;
         private const float HeartDb = -10f;
         private const float HeartRisePerSecond = 4f;
         private const float HeartFallPerSecond = 0.5f;
@@ -385,7 +388,14 @@ namespace Messingstadt
         /// <summary>Überall gleich laut, etwa Donner.</summary>
         public void PlayEverywhere(string name, float volume)
         {
-            var player = new AudioStreamPlayer { Stream = _sounds[name], VolumeDb = volume, Autoplay = true, Bus = EffectsBus };
+            float pitch = 1f;
+            if (name == PeilPing)
+            {
+                // Das Peilgerät wechselt zwischen seinen Fassungen. Im Gefecht tickt es etwas schärfer.
+                name = $"{PeilPing}_{_rng.Next(PeilPingVariants)}";
+                pitch = Mathf.Lerp(1f, PeilAlarmPitch, _fightLevel) * (1f + (float)(_rng.NextDouble() * 2 - 1) * 0.03f);
+            }
+            var player = new AudioStreamPlayer { Stream = _sounds[name], VolumeDb = volume, PitchScale = pitch, Autoplay = true, Bus = EffectsBus };
             player.Finished += player.QueueFree;
             AddChild(player);
             PlayCount++;
