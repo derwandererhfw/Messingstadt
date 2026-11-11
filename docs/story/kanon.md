@@ -25,6 +25,10 @@ Was in der Welt von Messingstadt gilt, mit Kennzeichen und Quelle. Kennzeichen s
 | Gustav Rademacher | Führer des Werkschutzes, Einsatz 5 | KANON, freigegeben 2026-11-11 | `stadtplan.md` |
 | Linie 7 | Straßenbahn im Kesselviertel | IM SPIEL laut Hauptsession 2026-11-11, von Story nicht nachgeprüft | `stadtplan.md` |
 | Wachstube Nord, Amtsgericht, Gerichtsgasse, Wallstraße, Wallgasse, Arresthof | Orte im Nordwall, Einsatz 2 | VORSCHLAG Story 2026-11-11 (Wachstube Nord ist KANON) | `einsatz_02_nordwall.md` |
+| Güterbahnhof Ost mit Stellwerk, Einfahrweiche, Bahnübergang | Orte im Gleisviertel, Einsatz 3 | VORSCHLAG Story 2026-11-11 (Güterbahnhof Ost ist KANON) | `einsatz_03_gleisviertel.md` |
+| Kassengasse, Bankstraße, Notariat, Hotel Kontor, Kanalbrücke | Orte im Kontorviertel, Einsatz 4 | VORSCHLAG Story 2026-11-11 | `einsatz_04_kontorviertel.md` |
+| Färbergasse, Druckgasse, Kapelle, Westtor, Papierhof | Orte in der Altstadt, Einsatz 5 und 6 | VORSCHLAG Story 2026-11-11 (Fischmarkt und Druckhaus sind KANON) | `einsatz_05_altstadt.md`, `einsatz_06_anzeiger.md` |
+| Lehrling des Druckers, ohne Namen | Ersatz für Weiß im Finale | VORSCHLAG Story 2026-11-11 | `einsatz_06_anzeiger.md` |
 | Messingstädter Anzeiger | Zeitung, druckt die Sicht der Wache | KANON | `src/Messingstadt.Core/Headlines.cs` |
 | Hotel Adler | Hotel an der Querstraße | IM SPIEL | `tools/art/generate_concept.py` (Dachschild) |
 | Kurt | Laufbursche der Wache, in einem Arbeiter-Satz | IM SPIEL | `game/Chatter.cs` |
