@@ -8,7 +8,8 @@ Deckkraft, deckungsgleich) und plan.json (Größe, Kartenfeld, je Viertel Ankerp
 entsteht zusätzlich eine Vorschau mit zwei Beispielfarben über den Masken.
 
 Die Stadt ist frei erfunden. Fluss, Bahn und eine Hauptstraße teilen sie in fünf Viertel:
-1 gemischtes Viertel des ersten Einsatzes, 2 Brandt-Werke, 3 Bankenviertel mit Güterbahnhof, 4 Hafen, 5 Mietskasernen.
+1 Kesselviertel (Brandt-Werke, Viertel des ersten Einsatzes, Linie 7), 2 Nordwall (alter Wall mit Graben), 3 Gleisviertel
+(Güterbahnhof Ost), 4 Kontorviertel (Banken und Geschäftshäuser am Hafen), 5 Altstadt (enge Gassen). Die Namen vergibt die Story.
 """
 import json
 import math
@@ -25,8 +26,8 @@ OUT = Path(__file__).resolve().parents[2] / "game" / "assets" / "stadtplan"
 W, H = 1280, 900
 S = 2  # gezeichnet wird doppelt so groß und dann verkleinert, das glättet alle Linien
 FRAME = (46, 46, 1234, 854)
-INK = (50, 40, 34)
-PAPER = (178, 158, 120)
+INK = (33, 28, 26)  # Tinte und Papier wie in der Menüführung: #211C1A auf #AD9E7A
+PAPER = (173, 158, 122)
 WATER = (120, 132, 128)
 TRAM = (134, 44, 36)
 PENCIL = (40, 40, 46)
@@ -37,14 +38,14 @@ RAIL_WEST = [(46, 566), (190, 556), (330, 520), (470, 440), (566, 356)]
 RAIL_EAST = [(566, 356), (700, 290), (860, 232), (1040, 186), (1234, 150)]
 MAIN = [(800, 474), (792, 600), (772, 730), (762, 854)]
 TRAM_LINE = [(46, 300), (160, 318), (290, 300), (400, 262), (486, 262), (600, 214), (760, 150), (900, 110), (1040, 104)]
-LABELS = {1: ((214, 196), (318, 420)), 2: ((800, 112), (640, 176)), 3: ((1010, 366), (1140, 470)), 4: ((1010, 704), (1130, 790)), 5: ((420, 660), (610, 790))}
+LABELS = {1: ((800, 112), (640, 176)), 2: ((214, 196), (300, 440)), 3: ((1040, 424), (1150, 510)), 4: ((1010, 704), (1130, 790)), 5: ((420, 660), (610, 790))}
 # Je Viertel: Winkel des Straßenrasters, Blockmaß längs und quer, Straßenbreite, jede wievielte Straße breit ist, Art
 STYLE = {
-    1: (0.22, 46, 34, 5.0, 4, "mixed"),
-    2: (-0.36, 96, 62, 6.5, 3, "works"),
-    3: (-0.30, 58, 44, 6.5, 3, "banks"),
-    4: (0.30, 78, 40, 5.5, 4, "harbour"),
-    5: (-0.08, 40, 30, 4.5, 5, "tenements"),
+    1: (-0.36, 92, 60, 6.5, 3, "works"),
+    2: (0.22, 46, 34, 5.0, 4, "mixed"),
+    3: (-0.30, 74, 40, 5.5, 4, "sheds"),
+    4: (0.30, 56, 42, 6.5, 3, "banks"),
+    5: (-0.08, 29, 22, 3.4, 7, "oldtown"),
 }
 
 
@@ -100,8 +101,8 @@ def districts():
     middle = river[river.index((566, 356)):river.index((800, 474)) + 1]
     lower = river[river.index((800, 474)):]
     return {
-        1: [(x0, y0)] + upper + west[::-1],
-        2: upper[::-1] + [(x1, y0)] + east[::-1],
+        1: upper[::-1] + [(x1, y0)] + east[::-1],
+        2: [(x0, y0)] + upper + west[::-1],
         3: east + lower[::-1] + middle[::-1],
         4: lower + [(x1, y1)] + main[::-1],
         5: west + middle + main + [(x0, y1)],
@@ -138,8 +139,13 @@ def street_grid(xs, ys, zone, river_gap):
     for d, (angle, bw, bh, street, wide, kind) in STYLE.items():
         m = zone == d
         ca, sa = math.cos(angle), math.sin(angle)
-        u = (xs + wx) * ca + (ys + wy) * sa
-        v = -(xs + wx) * sa + (ys + wy) * ca
+        ax, ay = wx, wy
+        if kind == "oldtown":
+            # Gewachsene Gassen: Das Raster ist stark verbogen und in sich verdreht
+            ax = wx * 2.2 + (R.noise(xs / 46, ys / 46, 23) - 0.5) * 36
+            ay = wy * 2.2 + (R.noise(xs / 46, ys / 46, 24) - 0.5) * 36
+        u = (xs + ax) * ca + (ys + ay) * sa
+        v = -(xs + ax) * sa + (ys + ay) * ca
         col, row = np.floor(u / bw), np.floor(v / bh)
         fu, fv = u - col * bw, v - row * bh
         su = np.where(col % wide == 0, street * 1.9, street)
@@ -152,7 +158,12 @@ def street_grid(xs, ys, zone, river_gap):
         hatch = (np.floor((xs + ys) * S) % (3 * S) == 0)
         cross = (np.floor((xs - ys) * S) % (3 * S) == 0)
         line = rim < 0.9
-        if kind == "tenements":
+        if kind == "oldtown":
+            # Altstadt: kleine, fast volle Parzellen, kaum Höfe
+            court = (rim > 5.5) & (pick > 0.5)
+            fill = np.where(court, 0.0, np.where(hatch | cross, 0.82, 0.42))
+            empty = pick > 0.965
+        elif kind == "tenements":
             # Mietskasernen: Randbebauung dicht schraffiert, innen enge Höfe mit Quergebäuden
             court = (rim > 7.5) & (np.floor(inner_u / 9) % 2 == 0)
             fill = np.where(court, 0.0, np.where(hatch | cross, 0.78, 0.36))
@@ -170,10 +181,13 @@ def street_grid(xs, ys, zone, river_gap):
             # Werkshallen: große Körper mit Sheddach-Streifen, dazwischen offene Höfe
             hall = (rim > 3.5) & (np.floor(inner_u / 31) % 2 == 0) | ((rim > 3.5) & (pick < 0.45))
             fill = np.where(hall, np.where(np.floor(inner_v * S / 2.4) % (2 * S) == 0, 0.9, 0.62), 0.0)
+            # Zwischen den Hallen stehen Mietshäuser, Bank und Hotel: geschlossene Blöcke mit Hof
+            homes = (pick > 0.56) & (pick <= 0.9)
+            fill = np.where(homes, np.where(rim > 8, 0.0, np.where(hatch, 0.74, 0.34)), fill)
             empty = pick > 0.9
             line = rim < 1.3
         else:
-            # Hafen: lange Speicher quer zum Wasser, dazwischen Lagerplätze
+            # Schuppen und Lagerplätze zwischen den Gleisen
             shed = (np.floor(inner_v / 13) % 2 == 0) & (rim > 2.5)
             fill = np.where(shed, np.where(hatch, 0.85, 0.5), 0.0)
             empty = pick > 0.86
@@ -197,8 +211,7 @@ def write_plan(preview=None):
 
     # Wasser, Bahn und Hauptstraße als Flächen, die das Raster freilassen
     river = spline(RIVER)
-    basins = [[(860, 500), (850, 600), (884, 604), (896, 510)], [(940, 520), (930, 640), (968, 644), (978, 528)],
-              [(1030, 548), (1022, 668), (1060, 672), (1070, 560)], [(1120, 580), (1112, 690), (1150, 694), (1160, 592)]]
+    basins = [[(1030, 548), (1022, 650), (1060, 654), (1070, 560)], [(1120, 580), (1112, 676), (1150, 680), (1160, 592)]]
     canal = spline([(486, 262), (380, 330), (250, 360), (140, 420), (46, 440)])
     water_img = Image.new("L", (W * S, H * S), 0)
     wd = ImageDraw.Draw(water_img)
@@ -219,6 +232,9 @@ def write_plan(preview=None):
         stroke(gd, line, 15, 255)
     stroke(gd, spline(MAIN), 13, 255)
     stroke(gd, spline(TRAM_LINE), 9, 255)
+    stroke(gd, offset(canal, -15)[4:-2], 22, 255)
+    stroke(gd, offset([q for q in river if q[0] >= 830], -42)[2:-3], 34, 255)
+    gd.polygon(scaled([(1052, 196), (1234, 290), (1234, 384), (1090, 250)]), fill=255)
     yard = [(700, 300), (1010, 206), (1040, 268), (740, 372)]  # Güterbahnhof
     gd.polygon(scaled(yard), fill=255)
     title_box = (60, 762, 344, 842)
@@ -288,6 +304,29 @@ def write_plan(preview=None):
             p0 = (bx - ca * 25 - sa * side, by - sa * 25 + ca * side)
             p1 = (bx + ca * 25 - sa * side, by + sa * 25 + ca * side)
             d.line(scaled([p0, p1]), fill=INK + (255,), width=S + 1)
+    # Alter Wall: gezackte Bastionen am Graben entlang, mit Böschungsstrichen, im Nordwall-Viertel
+    wall_line = offset(canal, -15)[4:-2]
+    zig = []
+    for i, (x, y) in enumerate(wall_line):
+        if i % 7 == 3:
+            ax, ay = wall_line[max(0, i - 1)]
+            bx, by = wall_line[min(len(wall_line) - 1, i + 1)]
+            length = math.hypot(bx - ax, by - ay) or 1
+            zig.append((x + (by - ay) / length * 15, y - (bx - ax) / length * 15))
+        else:
+            zig.append((x, y))
+    d.line(scaled(zig), fill=INK + (255,), width=2 * S + 1, joint="curve")
+    for (ax, ay), (bx, by) in zip(zig[::2], zig[1::2]):
+        length = math.hypot(bx - ax, by - ay) or 1
+        d.line(scaled([(ax, ay), (ax + (by - ay) / length * 6, ay - (bx - ax) / length * 6)]), fill=ink_a, width=S)
+    d.rectangle((236 * S, 262 * S, 258 * S, 276 * S), fill=INK + (255,))  # Wachstube am Walltor
+    d.line(scaled([(258, 262), (258, 250), (268, 254), (258, 258)]), fill=INK + (255,), width=S + 1)
+    # Gleisfelder im Osten: Abstellgleise am Fluss entlang und eine zweite Harfe
+    low = [q for q in river if q[0] >= 830]
+    for k in range(6):
+        d.line(scaled(offset(low, -(30 + k * 5))[2:-3]), fill=ink_a, width=S)
+    for k in range(7):
+        d.line(scaled([(1052, 204), (1100 + k * 4, 250 + k * 9), (1226, 300 + k * 12)]), fill=ink_a, width=S)
     # Gasometer, Kirche, Schornsteine der Werke
     for cx, cy, r in ((1000, 92, 13), (1034, 86, 10), (150, 700, 12), (640, 610, 9)):
         d.ellipse(((cx - r) * S, (cy - r) * S, (cx + r) * S, (cy + r) * S), fill=tuple(PAPER) + (150,), outline=ink_a, width=S + 1)
@@ -301,8 +340,8 @@ def write_plan(preview=None):
         d.ellipse(((cx - 1) * S, (cy - 1) * S, (cx + 1) * S, (cy + 1) * S), fill=tuple(PAPER) + (255,))
     # Die Sieben der Linie im Kreis, wie auf Liniennetzen üblich
     small = ImageFont.load_default(size=9 * S)
-    d.ellipse((176 * S, 296 * S, 192 * S, 312 * S), fill=tuple(PAPER) + (255,), outline=TRAM + (255,), width=S + 1)
-    d.text((184 * S, 304 * S), "7", font=small, fill=TRAM + (255,), anchor="mm")
+    d.ellipse((672 * S, 196 * S, 688 * S, 212 * S), fill=tuple(PAPER) + (255,), outline=TRAM + (255,), width=S + 1)
+    d.text((680 * S, 204 * S), "7", font=small, fill=TRAM + (255,), anchor="mm")
     # Was über das Kartenfeld hinausragt, fällt weg. Danach kommen Rahmen, Suchgitter, Titelfeld und Nordpfeil.
     x0, y0, x1, y1 = FRAME
     clip = Image.new("L", over.size, 0)
@@ -363,14 +402,20 @@ def write_plan(preview=None):
     if preview:
         # So etwa sieht es im Spiel aus: zwei Beispielfarben halb durchsichtig über den Masken, Namen an den Ankern
         shown = plan.convert("RGBA")
-        colours = {1: (150, 40, 34), 2: (176, 136, 54), 3: (176, 136, 54), 4: (150, 40, 34), 5: (176, 136, 54)}
+        green, red = (0x4C, 0x70, 0x64), (0x8C, 0x1A, 0x14)
+        yy, xx = np.mgrid[0:H, 0:W]
+        stripes = ((xx + yy) % 9 < 4)
         for dnum, alpha in masks.items():
-            layer = Image.new("RGBA", (W, H), colours[dnum] + (0,))
-            layer.putalpha(alpha.point(lambda v: int(v * 0.38)))
-            shown = Image.alpha_composite(shown, layer)
+            a8 = np.asarray(alpha).astype(np.float64) / 255
+            if dnum in (1, 4, 5):  # Brandt-Werke: schraffiert in Werksgrün
+                layer = np.dstack([np.full((H, W, 3), green, np.uint8), (a8 * np.where(stripes, 0.8, 0.16) * 255).astype(np.uint8)])
+            else:  # Roter Hammer: volle rote Fläche
+                layer = np.dstack([np.full((H, W, 3), red, np.uint8), (a8 * 0.5 * 255).astype(np.uint8)])
+            shown = Image.alpha_composite(shown, Image.fromarray(layer, "RGBA"))
         pd = ImageDraw.Draw(shown)
         for dnum, (label, stamp) in LABELS.items():
-            pd.text(label, f"VIERTEL {dnum}", font=ImageFont.load_default(size=22), fill=(24, 18, 16, 255), anchor="mm")
+            name = {1: "KESSELVIERTEL", 2: "NORDWALL", 3: "GLEISVIERTEL", 4: "KONTORVIERTEL", 5: "ALTSTADT"}[dnum]
+            pd.text(label, name, font=ImageFont.load_default(size=22), fill=(0x21, 0x1C, 0x1A, 255), anchor="mm", stroke_width=2, stroke_fill=(0xAD, 0x9E, 0x7A, 255))
             pd.ellipse((stamp[0] - 20, stamp[1] - 20, stamp[0] + 20, stamp[1] + 20), outline=(24, 18, 16, 255), width=2)
         shown.convert("RGB").save(preview)
         print("Vorschau:", preview)
