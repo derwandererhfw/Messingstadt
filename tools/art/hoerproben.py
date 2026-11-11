@@ -56,7 +56,24 @@ def weather(seconds, strength):
     return looped("rain", seconds) * rain_gain(strength) + looped("wind", seconds) * gain(WIND_DB)
 
 
+def limited(x, ceiling=0.94):
+    """Begrenzer wie der im Spiel: nimmt nur Spitzen zurück, damit die Probe nicht verzerrt, wo das Spiel es nicht täte."""
+    block = RATE // 500
+    count = len(x) // block + 1
+    padded = np.zeros((count * block, x.shape[1]))
+    padded[:len(x)] = np.abs(x)
+    top = padded.reshape(count, block, -1).max(axis=(1, 2))
+    wanted = np.minimum(1.0, ceiling / np.maximum(top, 1e-9))
+    # Früh genug zugreifen, langsam loslassen.
+    wanted = np.minimum(wanted, np.roll(wanted, -1))
+    held = wanted.copy()
+    for i in range(1, count):
+        held[i] = min(wanted[i], held[i - 1] + 0.01)
+    return x * np.interp(np.arange(len(x)), np.arange(count) * block + block / 2, held)[:, None]
+
+
 def save(name, x):
+    x = limited(x)
     data = (np.clip(x, -1, 1) * 32767).astype("<i2")
     with wave.open(str(OUT / f"{name}.wav"), "wb") as f:
         f.setnchannels(2)
