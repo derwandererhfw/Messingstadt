@@ -59,6 +59,11 @@ Eingabe (Godot) -> Befehle -> World.Tick() -> Zustand -> Darstellung (Godot)
   Fensterlicht aus `rules_windows.json`, Kleinkram wirft dort keinen Schatten, der Mond zählt nicht. Neue Farben, Fenster
   oder gedämpftes Glühen ändern so nur das Bild. Wer das Schleichlicht bewusst ändern will, erneuert diese Dateien.
 
+- **Stadtplan zur Einsatzwahl:** `tools/art/stadtplan.py` zeichnet `game/assets/stadtplan/plan.png` (1280 × 900) und
+  je Viertel eine deckungsgleiche Maske `viertel_1.png` bis `viertel_5.png`, weiß mit Deckkraft, zum Einfärben im Code.
+  `plan.json` nennt Kartenfeld, Ankerpunkte für Namen und Stempel und den Umriss jedes Viertels. Fluss, Bahn und eine
+  Hauptstraße sind die Grenzen. Nachbarn teilen sich dieselben Kurvenpunkte, deshalb bleibt zwischen den Masken keine Lücke.
+
 ## Zeichenreihenfolge
 
 Statische Objekte sind beim Export vorsortiert. Eine Figur wird vor dem ersten Objekt eingereiht, das
