@@ -120,6 +120,15 @@ namespace Messingstadt
         /// <summary>Wie oft insgesamt etwas abgespielt wurde. Für den Prüflauf.</summary>
         public int PlayCount { get; private set; }
 
+        /// <summary>Wie viele Klänge der Bildschirme (Menü, Stadtplan, Waffenkammer, Stempel) liefen. Für den Prüflauf, unabhängig von der Welt dahinter.</summary>
+        public int MenuPlayCount { get; private set; }
+
+        /// <summary>Der zuletzt gespielte Klang eines Bildschirms. Für den Prüflauf.</summary>
+        public string LastMenuSound { get; private set; } = "";
+
+        private static bool IsMenuSound(string name) =>
+            name == "stamp" || name.StartsWith("menu_") || name.StartsWith("map_") || name.StartsWith("shop_");
+
         /// <summary>Wie oft welche Art Geräusch lief. Für den Prüflauf, um Dauergeräusche zu finden.</summary>
         public Dictionary<string, int> PlayedByGroup { get; } = new();
 
@@ -411,6 +420,11 @@ namespace Messingstadt
             {
                 // Im Gefecht tickt das Peilgerät etwas schärfer.
                 pitch = Mathf.Lerp(1f, PeilAlarmPitch, _fightLevel) * (1f + (float)(_rng.NextDouble() * 2 - 1) * 0.03f);
+            }
+            if (IsMenuSound(name))
+            {
+                MenuPlayCount++;
+                LastMenuSound = name;
             }
             name = Variant(name);
             var player = new AudioStreamPlayer { Stream = _sounds[name], VolumeDb = volume, PitchScale = pitch, Autoplay = true, Bus = EffectsBus };

@@ -554,6 +554,9 @@ void fragment() {
         /// <summary>Stadtplan und Waffenkammer liegen offen: Der Einsatz dahinter ruht.</summary>
         private bool Briefing => _cityMap != null && (_cityMap.Visible || _armory.Visible);
 
+        /// <summary>Ein bildfüllender Bildschirm (Startbildschirm, Menü, Stadtplan, Waffenkammer) verdeckt die Welt. Dann soll sie auch nicht zu hören sein.</summary>
+        public bool WorldCovered => Briefing || (_menus != null && _menus.IsOpen);
+
         /// <summary>Woher der Stadtplan seine Viertel hat, siehe CityPlanSource.</summary>
         public CityPlanSource Plan { get; private set; } = null!;
 
@@ -663,6 +666,8 @@ void fragment() {
             ["mapsource"] = _cityMap.MapSource,
             ["mapopen"] = _cityMap.Selectable,
             ["sounds"] = _sound.PlayCount.ToString(),
+            ["menusounds"] = _sound.MenuPlayCount.ToString(),
+            ["menusound"] = _sound.LastMenuSound,
             ["state"] = World.State.ToString(),
             ["item"] = World.ItemTaken.ToString(),
             ["fields"] = _paper.FieldTexts,

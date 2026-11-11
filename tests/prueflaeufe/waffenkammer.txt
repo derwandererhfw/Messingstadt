@@ -32,10 +32,11 @@ expect focus Pistole
 # Totschläger für Greta, mit Tastatur: Katalog anklicken, Enter kauft für die gewählte Akte
 click Totschläger   120
 expect focus Kaufen für Greta
-remember sounds
+remember menusounds
 key Enter
 # Ein gelungener Handgriff klingt
-changed sounds
+changed menusounds
+expect menusound shop_buy
 expect money 480
 expect gear Greta:pistole+totschlaeger, Otto:pistole, Emil:pistole, Hanna:pistole
 # Rauchtopf in die Kiste, dann aus der Kiste zu Greta
