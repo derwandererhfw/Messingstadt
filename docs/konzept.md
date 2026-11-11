@@ -135,6 +135,59 @@ Totschläger: Mit `--knueppel-plan` sucht das Werkzeug wie beim Schleichplan fü
 In der ersten Mission führt die Hintertür der Lagerhalle zu einem Durchgang zur Querstraße und zur
 Lohnkasse (300). Beute zählt nur, wenn der Trupp entkommt. Papiere fälschen ist noch nicht gebaut.
 
+### Auftragsart Befreien
+
+Einsatz 2 „Die Wachstube“ im Nordwall (`data/mission_02.json`, Grundriss und Abweichungen von der Story-Vorlage in `docs/einsatz_02_grundriss.md`). Statt eines Gegenstands gibt es Gefangene.
+
+| Regel | Wert |
+|---|---|
+| Gefangener | 60 Lebenspunkte, 2,0 Felder/s, rennt und kämpft nicht. Sitzt hinter einer Zellentür |
+| Befreien | Die Zelle ist offen und ein Agent steht 2 s still auf höchstens 2,2 Felder. Danach folgt der Gefangene ihm |
+| Folgen | Er läuft dem Agenten nach und bleibt gut ein Feld vor ihm stehen. Rechtsklick auf ihn: Er folgt dem ersten gewählten Agenten, ein zweiter Rechtsklick lässt ihn warten |
+| Führer fällt | Der Befreite bleibt stehen, bis ein Agent auf 3 Felder herankommt, und folgt dann diesem |
+| Wachen | Übersehen, wer in der Zelle sitzt. Befreite bemerken sie wie Agenten, das macht den Einsatz „Leise“. Sie schießen zuerst auf Agenten: Ein Befreiter zählt wie 3 Felder weiter weg |
+| Einsteigen | Steht der Führer im Wagenbereich, suchen sich die Befreiten dort selbst ein freies Feld |
+| Sieg | Alle lebenden Gefangenen und ein Agent stehen 1 s im Wagenbereich. Wer noch in der Zelle sitzt, verhindert den Sieg |
+| Niederlage | Alle Agenten oder alle Gefangenen sind tot. Stirbt nur einer, geht es weiter |
+| Schlüssel | Eine Wache kann Schlüssel zu Türen tragen. Wer sie besticht, bekommt sie, fällt sie, liegen sie am Boden und der erste Agent dort nimmt sie. Mit Schlüssel geht eine Tür in 0,5 s auf, auch ohne Schlosser |
+| Verstärkung | Kann eine andere Art sein, in Einsatz 2 der Werkschutz |
+| Kampagne | Merkt sich je Gefangenem, ob er lebend herauskam (`MissionRecord.Prisoners`, `Campaign.PrisonerAlive`) |
+
+In Einsatz 2 trägt der Schließer die Schlüssel zu beiden Zellen und der Türposten den zur Pforte. Die Texte im Telegrammstreifen und die Gespräche der Wachen stehen in der Missionsdatei (`rescueTexts`, `chatter`).
+
+Gemessen mit `dotnet run -c Release --project tools/Messingstadt.Balance -- --mission=mission_02`, je 300 Läufe, Kasse 600:
+
+| Spielweise | Einkauf | Siege | Tote Agenten | Wertung |
+|---|---|---|---|---|
+| Alle gehen zur Pforte, Otto öffnet | | 1 % | 3,96 | Laut |
+| Otto allein, der Rest wartet | | 0 % | 3,96 | Laut |
+| Erst kämpfen, dann befreien | | 48 % | 2,50 | Laut |
+| Laut durchs Hoftor | | 41 % | 2,63 | Laut |
+| Erst kämpfen, eine Maschinenpistole | 600 | 82 % | 0,94 | Laut |
+| Erst kämpfen, Schrotflinte, Rauchtopf, zwei Verbände | 560 | 66 % | 1,93 | Laut |
+| Erst kämpfen, vier Schrotflinten | 1400 | 14 % | 3,10 | Laut |
+| Erst kämpfen, vier Maschinenpistolen | 2400 | 98 % | 0,20 | Laut |
+| Leise ohne Geld: Otto allein nach Lageplan, Totschläger | 120 | 0 % | 0 | kommt nicht los |
+| Dasselbe mit Dietrich | 200 | 100 % | 0 | Leise |
+| Dasselbe, Klicks bis 0,5 s zu spät | 200 | 100 % | 0,91 | 9 % Leise, 91 % Laut |
+| Leise mit Geld: Otto und Emil nach Lageplan, Hundeführer und Schließer gekauft | 500 Bestechung | 100 % | 0 | Leise |
+| Dasselbe, Klicks bis 0,5 s zu spät | 500 Bestechung | 100 % | 0 | Leise |
+| Dasselbe, Klicks bis 1 s zu spät | 500 Bestechung | 100 % | 0,01 | 52 % Leise, 47 % Laut |
+
+In jedem Sieg kamen beide Gefangenen lebend heraus. Was die Zahlen sagen:
+
+- Wer ohne Plan hineingeht, verliert.
+- Der offene Kampf kostet mit der Grundausstattung den halben Trupp. Eine einzige Maschinenpistole hebt ihn von 48 auf 82 %. Schrotflinten allein taugen hier nicht, die Wege sind zu lang.
+- Leise ohne Geld geht nur mit Dietrich: Mit 2 s an der Pforte passt Otto nie zwischen Hund und Hundeführer, mit 1 s immer. Der Weg verzeiht aber keine Verspätung, und fliegt Otto auf, sterben die Wartenden am Start.
+- Leise mit Geld ist der verlässliche Weg und kostet 500.
+- „Unentdeckt“ erreicht keine gemessene Spielweise: Wer gekauft oder niedergeschlagen wird, hat den Trupp vorher bemerkt.
+
+Nicht gemessen ist das Hoftor mit Rauchtopf gegen den Wallposten. Im Spiel mit echten Wachen gespielt ist der laute Weg (`einsatz2_laut.txt`): vier Maschinenpistolen, 13 Wachen ausgeschaltet, ein Agent gefallen, beide Gefangenen im Wagen.
+
+### Mehrere Einsätze
+
+Jeder Einsatz hat eine Missionsdatei, eine Regelkarte, eine Lichtkarte und einen Grafikordner: `data/mission_02.json` nennt `mapId`, `lightId` und `scene`, die Stadt liegt in `game/assets/maps/<scene>/` mit demselben Aufbau wie die erste. Welcher Einsatz gespielt wird, bestimmt das gewählte Viertel im Stadtplan. Hat es eine andere Stadt, lädt das Spiel die Szene neu und setzt mit derselben Akte fort. Der Grundriss `data/scene_02.json` ist die gemeinsame Quelle: `tools/level/scene_to_map.py` schreibt daraus die Regelkarte und zeigt, was die Kamera verdeckt, `tools/level/placeholder_city.py` baut eine schlichte Platzhalterstadt samt Licht. Zielorte, Türen mit Spielbedeutung und Hauptwege dürfen nie hinter hohen Gebäuden liegen.
+
 ### Kampagne
 
 Die Logik steht in `src/Messingstadt.Core/Campaign.cs`. Sie liest am Ende eines Einsatzes nur, was die Spielregeln ergeben haben: Wertung, Lebenspunkte und Stürze der Agenten, tote und bestochene Wachen, Beute.

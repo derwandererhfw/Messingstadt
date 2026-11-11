@@ -370,6 +370,37 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void TheHeadlineMentionsADeadPrisoner()
+        {
+            World Won(bool rothDies)
+            {
+                var m = Mission(new() { Agent(13.5, 5.5, World.SkillLocksmith) }, new());
+                m.Headlines = new HeadlineData { Unseen = new HeadlineText { Head = "Arrest leer", Line = "Zwei fehlen.{prisoners}" } };
+                var w = new World(Map(), m);
+                w.OrderOpenDoor(0, 0);
+                Run(w, 20 + World.DoorTicks + World.FreeTicks + 5);
+                if (rothDies)
+                {
+                    Roth(w).Hp = 0;
+                }
+                else
+                {
+                    Roth(w).Captive = false;
+                    (Roth(w).X, Roth(w).Y) = (500, 500);
+                    Roth(w).Waiting = true;
+                }
+                (w.Units[0].X, w.Units[0].Y) = (1500, 1500);
+                (Weiss(w).X, Weiss(w).Y) = (500, 1500);
+                Weiss(w).Path.Clear();
+                Run(w, World.EscapeTicks + 2);
+                Assert.Equal(MissionState.Won, w.State);
+                return w;
+            }
+            Assert.Equal("Zwei fehlen.", Headlines.For(Won(false), false).Line);
+            Assert.Equal("Zwei fehlen. Einer der Gefangenen kam dabei ums Leben.", Headlines.For(Won(true), false).Line);
+        }
+
+        [Fact]
         public void ALostRescueLeavesThemInTheirCells()
         {
             var c = new Campaign();

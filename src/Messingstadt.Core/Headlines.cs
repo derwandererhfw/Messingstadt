@@ -5,7 +5,8 @@ namespace Messingstadt.Core
     /// <summary>
     /// Was am nächsten Morgen in der Zeitung steht. Die Stadt reagiert darauf, wie der Einsatz lief.
     /// Die Texte kommen aus der Mission (siehe docs/story.md), hier werden nur die Platzhalter gefüllt:
-    /// {item} Name des Ziels, {dead} tote Wachen, {fallen} verwundete Agenten, {loot} fehlende Beute, {paid} bestochene Wachen.
+    /// {item} Name des Ziels, {dead} tote Wachen, {fallen} verwundete Agenten, {loot} fehlende Beute, {paid} bestochene Wachen,
+    /// {prisoners} ein toter Gefangener beim Befreien.
     /// Platzhalter außer {item} werden zu einem Satz mit führendem Leerzeichen oder zu nichts.
     /// </summary>
     public static class Headlines
@@ -62,6 +63,7 @@ namespace Messingstadt.Core
                 .Replace("{dead}", Dead(deadGuards, deadBoys))
                 .Replace("{fallen}", Fallen(fallen))
                 .Replace("{loot}", loot)
+                .Replace("{prisoners}", world.Prisoners.Any(p => !p.Alive) ? " Einer der Gefangenen kam dabei ums Leben." : "")
                 .Replace("{paid}", paid ? " Die Stadtwache schweigt auffällig." : "")
                 .Trim();
         }
