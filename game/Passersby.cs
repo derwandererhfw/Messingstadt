@@ -16,10 +16,33 @@ namespace Messingstadt
     /// </summary>
     public partial class Passersby : Node2D
     {
-        // Zeilen im Figurenblatt. Sobald die Animation eigene Zeilen für Passanten liefert, nur hier eintragen.
-        private static readonly string[] Rows = { "Arbeiter", "Laufbursche" };
-        // Spalten fürs Kauern, falls eine Zeile sie hat. Sonst duckt sich die Figur behelfsweise durch Stauchen.
-        private static readonly string[] CowerColumns = { "cower", "kauern", "duck" };
+        // Die Besetzung, wie die Animation sie im Figurenblatt anlegt: Zeile und Farbvarianten über die Palette.
+        // Eine leere Variante ist die Grundfarbe.
+        private static readonly (string Name, string[] Variants)[] Cast =
+        {
+            ("Zivil_Arbeiter", new[] { "", "blau", "braun" }), ("Zivil_Frau", new[] { "", "gruen", "grau" }), ("Zivil_Herr", new[] { "", "grau" }),
+            ("Zivil_Junge", new[] { "", "braun" }), ("Zivil_Trinker", new[] { "", "grau" }),
+        };
+        // Bilder je Bewegung im Blatt der Passanten. Beim Kauern sind die ersten beiden der Übergang, der Rest die Schleife.
+        private static readonly Dictionary<string, int> MotionFrames = new()
+        {
+            ["walk"] = 12, ["run"] = 8, ["idle"] = 8, ["smoke"] = 6, ["startle"] = 3, ["cower"] = 5, ["read"] = 4,
+        };
+        private const int CowerLoopFrom = 2;
+        private const float CowerFramesPerSecond = 3f;
+        private const float SmokeFramesPerSecond = 1.4f;
+        private const float ReadFramesPerSecond = 0.8f;
+
+        // Platzhalter, bis das Blatt der Passanten in main ist: vorhandene Zeile und Spalte je Bewegung.
+        private static readonly Dictionary<string, string> PlaceholderRow = new()
+        {
+            ["Zivil_Arbeiter"] = "Arbeiter", ["Zivil_Frau"] = "Laufbursche", ["Zivil_Herr"] = "Arbeiter", ["Zivil_Junge"] = "Laufbursche",
+            ["Zivil_Trinker"] = "Arbeiter",
+        };
+        private static readonly Dictionary<string, string> PlaceholderColumn = new()
+        {
+            ["walk"] = "walk", ["run"] = "run", ["idle"] = "idle", ["smoke"] = "idle", ["startle"] = "look", ["cower"] = "idle", ["read"] = "idle",
+        };
 
         private const int MaxPeople = 5;
         private const int PeopleAtStart = 4;
@@ -31,7 +54,6 @@ namespace Messingstadt
         private const float DefaultWalkStride = 928f;
         private const float DefaultRunStride = 1635f;
         private const float IdleFramesPerSecond = 1.6f;
-        private const float LookFramesPerSecond = 2.2f;
         private const float MinLight = 0.3f;
         private const float Dim = 0.86f;
         private const float LaneJitter = 0.28f;
@@ -77,12 +99,15 @@ namespace Messingstadt
             public Vector2 To;
             public float Wait;
             public bool Look;
+            public string Pastime = "";
         }
 
         private sealed class Person
         {
             public Sprite2D Sprite = null!;
-            public string Row = "";
+            public string Name = "";
+            public string Variant = "";
+            public float ModeTime;
             public Vector2 Tile;
             public Vector2 Facing = new(0f, 1f);
             public readonly List<Step> Plan = new();
@@ -93,12 +118,12 @@ namespace Messingstadt
             public float Lane;
             public bool Cowers;
             public Vector2 Noise;
+            public Mode Shown;
         }
 
         private readonly Random _rng = new();
         private readonly List<Person> _people = new();
         private readonly Dictionary<string, (int Start, int Count)> _columns = new();
-        private readonly Dictionary<string, HashSet<string>> _has = new();
         private readonly Dictionary<string, (float Walk, float Run)> _strides = new();
         private int _views = 5;
         private World? _seenWorld;
@@ -117,8 +142,40 @@ namespace Messingstadt
 
         private float Rand(float min, float max) => min + (float)_rng.NextDouble() * (max - min);
 
-        /// <summary>Welche Zeile des Figurenblatts ein neuer Passant bekommt. Die einzige Stelle, an der sie gewählt wird.</summary>
-        private string PickRow() => Rows[_rng.Next(Rows.Length)];
+        // ---------------------------------------------------------------------------------------------------------
+        // Die einzige Stelle, an der Passanten das Figurenblatt anfassen. Sobald die Animation ihr Blatt in main hat,
+        // werden nur diese vier Methoden umgestellt, die Aufrufe von Main stehen jeweils dabei.
+        // ---------------------------------------------------------------------------------------------------------
+
+        /// <summary>Wer kommt: Zeile und Farbvariante eines neuen Passanten.</summary>
+        private (string Name, string Variant) PickFigure()
+        {
+            var (name, variants) = Cast[_rng.Next(Cast.Length)];
+            return (name, variants[_rng.Next(variants.Length)]);
+        }
+
+        /// <summary>Färbt die Figur ein. Später: Game.SetFigureVariant(sprite, name, variant).</summary>
+        private void Dress(Sprite2D sprite, string name, string variant)
+        {
+        }
+
+        /// <summary>
+        /// Ausschnitt im Blatt und wie stark die Figur behelfsweise gestaucht wird. Später:
+        /// Game.CivilFrame(name, view, motion, frame), Stauchung immer 1.
+        /// </summary>
+        private (Rect2 Region, float Squash) Frame(string name, int view, string motion, int frame)
+        {
+            var (start, count) = _columns.TryGetValue(PlaceholderColumn[motion], out var c) ? c : (0, 1);
+            int column = motion == "cower" ? start : start + frame % count;
+            return (Game.FigureFrame(PlaceholderRow[name], view, column).Region, motion == "cower" ? CowerSquash : 1f);
+        }
+
+        /// <summary>Schrittlänge in Spieleinheiten je Zyklus für walk und run. Später: Game.CivilStride(name, motion).</summary>
+        private float Stride(string name, string motion)
+        {
+            var (walk, run) = _strides.TryGetValue(PlaceholderRow[name], out var s) ? s : (DefaultWalkStride, DefaultRunStride);
+            return motion == "run" ? run : walk;
+        }
 
         public override void _Ready()
         {
@@ -128,18 +185,6 @@ namespace Messingstadt
             foreach (var c in root.GetProperty("columns").EnumerateObject())
             {
                 _columns[c.Name] = (c.Value[0].GetInt32(), c.Value[1].GetInt32());
-            }
-            if (root.TryGetProperty("has", out var has))
-            {
-                foreach (var row in has.EnumerateObject())
-                {
-                    var set = new HashSet<string>();
-                    foreach (var name in row.Value.EnumerateArray())
-                    {
-                        set.Add(name.GetString() ?? "");
-                    }
-                    _has[row.Name] = set;
-                }
             }
             if (root.TryGetProperty("stride", out var strides))
             {
@@ -191,15 +236,15 @@ namespace Messingstadt
             _people.Clear();
             // Die Straße ist schon belebt, wenn der Einsatz beginnt.
             var waiting = Add(new Vector2(StopLane, Rand(StopNorth, StopSouth)));
-            waiting.Plan.Add(new Step { To = waiting.Tile, Wait = Rand(6f, 16f), Look = true });
+            waiting.Plan.Add(new Step { To = waiting.Tile, Wait = Rand(6f, 16f), Look = true, Pastime = Pastime(atStop: true) });
             BoardTram(waiting);
             var sheltered = Add(Shelters[0]);
-            sheltered.Plan.Add(new Step { To = sheltered.Tile, Wait = Rand(10f, 24f), Look = true });
+            sheltered.Plan.Add(new Step { To = sheltered.Tile, Wait = Rand(10f, 24f), Look = true, Pastime = Pastime(atStop: false) });
             LeaveTo(sheltered, south: true);
             var south = Add(new Vector2(WestLane, Rand(13.5f, 16f)));
             LeaveTo(south, south: false);
             var north = Add(new Vector2(EastLane, Rand(0.5f, 2f)));
-            north.Plan.Add(new Step { To = Shelters[3], Wait = Rand(8f, 18f), Look = true });
+            north.Plan.Add(new Step { To = Shelters[3], Wait = Rand(8f, 18f), Look = true, Pastime = Pastime(atStop: false) });
             north.Plan.Add(new Step { To = new Vector2(north.Lane, NorthEdge) });
             while (_people.Count > PeopleAtStart)
             {
@@ -212,9 +257,11 @@ namespace Messingstadt
         {
             var person = new Person
             {
-                Sprite = Game.NewFigureSprite(), Row = PickRow(), Tile = tile, Phase = Rand(0f, 10f),
+                Sprite = Game.NewFigureSprite(), Tile = tile, Phase = Rand(0f, 10f),
                 Lane = (tile.X > 9f ? EastLane : WestLane) + Rand(-LaneJitter, LaneJitter),
             };
+            (person.Name, person.Variant) = PickFigure();
+            Dress(person.Sprite, person.Name, person.Variant);
             AddChild(person.Sprite);
             _people.Add(person);
             Place(person, 0f);
@@ -238,7 +285,7 @@ namespace Messingstadt
                 {
                     // Zur Haltestelle, warten, einsteigen.
                     var p = Add(new Vector2(WestLane, NorthEdge));
-                    p.Plan.Add(new Step { To = new Vector2(StopLane + Rand(-0.15f, 0.15f), Rand(StopNorth, StopSouth)), Wait = Rand(7f, 18f), Look = true });
+                    p.Plan.Add(new Step { To = new Vector2(StopLane + Rand(-0.15f, 0.15f), Rand(StopNorth, StopSouth)), Wait = Rand(7f, 18f), Look = true, Pastime = Pastime(atStop: true) });
                     BoardTram(p);
                     break;
                 }
@@ -249,7 +296,7 @@ namespace Messingstadt
                     p.Plan.Add(new Step { To = new Vector2(p.Lane, CrossingSouth) });
                     p.Plan.Add(new Step { To = new Vector2(p.Lane, CrossingNorth) });
                     var shelter = Shelters[_rng.Next(3)];
-                    p.Plan.Add(new Step { To = shelter, Wait = Rand(6f, 16f), Look = true });
+                    p.Plan.Add(new Step { To = shelter, Wait = Rand(6f, 16f), Look = true, Pastime = Pastime(atStop: false) });
                     p.Plan.Add(new Step { To = new Vector2(p.Lane, shelter.Y) });
                     p.Plan.Add(new Step { To = new Vector2(p.Lane, NorthEdge) });
                     break;
@@ -258,7 +305,7 @@ namespace Messingstadt
                 {
                     // Auf dem östlichen Gehweg ein Stück herein, an der Hallenwand rauchen, wieder hinaus.
                     var p = Add(new Vector2(EastLane, NorthEdge));
-                    p.Plan.Add(new Step { To = Shelters[3], Wait = Rand(8f, 20f), Look = true });
+                    p.Plan.Add(new Step { To = Shelters[3], Wait = Rand(8f, 20f), Look = true, Pastime = Pastime(atStop: false) });
                     p.Plan.Add(new Step { To = new Vector2(p.Lane, NorthEdge) });
                     break;
                 }
@@ -272,6 +319,9 @@ namespace Messingstadt
                 }
             }
         }
+
+        /// <summary>Was jemand beim Warten tut: an der Haltestelle eher lesen, an der Hauswand eher rauchen, sonst nur stehen.</summary>
+        private string Pastime(bool atStop) => _rng.Next(3) switch { 0 => atStop ? "read" : "smoke", 1 => atStop ? "" : "smoke", _ => "" };
 
         private void BoardTram(Person p)
         {
@@ -476,38 +526,54 @@ namespace Messingstadt
         private void Place(Person p, float movedTiles)
         {
             p.Walked += movedTiles * World.TileUnits;
-            var (walkStride, runStride) = _strides.TryGetValue(p.Row, out var s) ? s : (DefaultWalkStride, DefaultRunStride);
-            int column;
-            float squash = 1f;
+            p.ModeTime = p.Mode == p.Shown ? p.ModeTime + (float)GetProcessDeltaTime() : 0f;
+            p.Shown = p.Mode;
+            string motion;
+            int frame;
+            float beat = _time + p.Phase;
             switch (p.Mode)
             {
                 case Mode.Flee:
-                    column = Frame("run", p.Walked / runStride);
+                    motion = "run";
+                    frame = (int)(p.Walked / Stride(p.Name, motion) * MotionFrames[motion]);
                     break;
                 case Mode.Walk:
-                    column = Frame("walk", p.Walked / walkStride);
+                    motion = "walk";
+                    frame = (int)(p.Walked / Stride(p.Name, motion) * MotionFrames[motion]);
+                    break;
+                case Mode.Startled:
+                    // Der Schreck läuft einmal durch und hält auf dem letzten Bild.
+                    motion = "startle";
+                    frame = Mathf.Min(MotionFrames[motion] - 1, (int)(p.ModeTime / MinReactSeconds));
                     break;
                 case Mode.Cower:
-                    column = CowerFrame(p, out squash);
+                    // Erst hinunter, dann in der Schleife zittern.
+                    motion = "cower";
+                    int down = (int)(p.ModeTime * CowerFramesPerSecond * 2f);
+                    frame = down < CowerLoopFrom ? down : CowerLoopFrom + (int)(beat * CowerFramesPerSecond) % (MotionFrames[motion] - CowerLoopFrom);
                     break;
-                case Mode.Wait when p.Plan.Count > 0 && p.Plan[0].Look:
-                case Mode.GetUp:
-                    // Zwischendurch schaut sich die Figur um.
-                    column = (_time + p.Phase) % 9f < 2.7f
-                        ? Loop("look", (_time + p.Phase) % 9f * LookFramesPerSecond)
-                        : Loop("idle", (_time + p.Phase) * IdleFramesPerSecond);
+                case Mode.Wait when p.Plan.Count > 0 && p.Plan[0].Pastime == "smoke":
+                    motion = "smoke";
+                    frame = (int)(beat * SmokeFramesPerSecond);
+                    break;
+                case Mode.Wait when p.Plan.Count > 0 && p.Plan[0].Pastime == "read":
+                    motion = "read";
+                    frame = (int)(beat * ReadFramesPerSecond);
                     break;
                 default:
-                    column = Loop("idle", (_time + p.Phase) * IdleFramesPerSecond);
+                    motion = "idle";
+                    frame = (int)(beat * IdleFramesPerSecond);
                     break;
             }
-            // Am Boden gedacht wie bei den Einheiten: x - y läuft im Bild quer, x + y zur Kamera. Westen entsteht durch Spiegeln.
+            // Blick wie bei den Einheiten: 0 bis 4 für Süd, Südost, Ost, Nordost, Nord. Der Westen entsteht durch Spiegeln.
+            // Am Boden gedacht läuft x - y im Bild quer und x + y zur Kamera.
             float across = p.Facing.X - p.Facing.Y, toward = p.Facing.X + p.Facing.Y;
             float angle = Mathf.RadToDeg(Mathf.Atan2(toward, Mathf.Abs(across)));
             int view = Mathf.Clamp(Mathf.RoundToInt((90f - angle) / 45f), 0, _views - 1);
             int ux = (int)(p.Tile.X * World.TileUnits), uy = (int)(p.Tile.Y * World.TileUnits);
             var sprite = p.Sprite;
-            sprite.RegionRect = Game.FigureFrame(p.Row, view, column).Region;
+            var (region, squash) = Frame(p.Name, view, motion, frame % MotionFrames[motion]);
+            sprite.RegionRect = region;
             sprite.FlipH = across < 0f;
             sprite.Scale = Game.FigureScale * new Vector2(1f, squash);
             sprite.Position = Game.ToScreen(ux, uy) - Game.FigureFoot * new Vector2(1f, squash);
@@ -519,31 +585,5 @@ namespace Messingstadt
 
         /// <summary>Am Kartenrand blendet die Figur aus, statt hart zu verschwinden.</summary>
         private static float EdgeFade(float y) => Mathf.Clamp(Mathf.Min(y - NorthEdge, SouthEdge - y) / 0.7f, 0f, 1f);
-
-        private int Frame(string name, float strides)
-        {
-            var (start, count) = _columns.TryGetValue(name, out var c) ? c : (0, 1);
-            return start + (int)(strides * count) % count;
-        }
-
-        private int Loop(string name, float frames)
-        {
-            var (start, count) = _columns.TryGetValue(name, out var c) ? c : (0, 1);
-            return start + (int)frames % count;
-        }
-
-        private int CowerFrame(Person p, out float squash)
-        {
-            foreach (string name in CowerColumns)
-            {
-                if (_columns.ContainsKey(name) && _has.TryGetValue(p.Row, out var has) && has.Contains(name))
-                {
-                    squash = 1f;
-                    return Loop(name, (_time + p.Phase) * IdleFramesPerSecond);
-                }
-            }
-            squash = CowerSquash;
-            return Loop("idle", 0f);
-        }
     }
 }
