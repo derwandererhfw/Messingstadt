@@ -38,14 +38,15 @@ namespace Messingstadt
         private static readonly Color RainColor = new(0.78f, 0.84f, 1f);
         private static readonly Color LampColor = new(0.95f, 0.9f, 0.82f);
         private static readonly Color FlashColor = new(0.62f, 0.7f, 0.95f);
-        private static readonly Color SmokeColor = new(0.46f, 0.49f, 0.57f);
+        private static readonly Color SmokeColor = new(0.56f, 0.58f, 0.66f);
         private static readonly Color SteamColor = new(0.62f, 0.66f, 0.74f);
         private static readonly Color FogColor = new(0.5f, 0.56f, 0.7f);
 
         // Rauch, Dampf, Atem
         private const float SmokePerSecond = 2.4f;
-        private const float SmokeSeconds = 11f;
-        private const float SmokeAlpha = 0.17f;
+        private const float SmokeSeconds = 13f;
+        private const float SmokeAlpha = 0.26f;
+        private const float MinSmokePixels = 26f;
         private const float SteamPerSecond = 2.2f;
         private const float SteamSeconds = 4.5f;
         private const float SteamAlpha = 0.13f;
@@ -59,12 +60,15 @@ namespace Messingstadt
         private const float MaxPace = 1.2f;
         private const float StepsPerMeter = 4.2f;
         private const float LaneMeters = 1.5f;
-        private const float GateFade = 0.08f;
-        private const float MinGroupPause = 0.9f;
-        private const float MaxGroupPause = 4.2f;
+        private const float GateFade = 0.06f;
+        // Brennweite als Anteil der Bildbreite. Kleiner heißt weiterer Winkel: Die Straße wird kürzer, der Zug rückt schneller vor.
+        private const float FocalShare = 0.42f;
+        private const float StartBefore = 0.72f;
+        private const float MinGroupPause = 0.7f;
+        private const float MaxGroupPause = 3.2f;
         private const float LullChance = 0.12f;
-        private const int MaxWorkers = 46;
-        private const float BikeShare = 0.12f;
+        private const int MaxWorkers = 80;
+        private const float BikeShare = 0.035f;
         private const float MirrorAlpha = 0.3f;
         private const float MirrorSquash = 0.62f;
         private const float SimpleBelowPixels = 77f;
@@ -147,7 +151,7 @@ namespace Messingstadt
 
         private sealed class Worker
         {
-            public float At;
+            public float Depth;
             public float Meters;
             public float Lane;
             public float EndLane;
@@ -301,22 +305,35 @@ namespace Messingstadt
 
         private float Depth(string layer, float fallback) => _at.DepthOf(layer, fallback);
 
-        /// <summary>Fußpunkt und Maßstab an einer Stelle des Wegs, 0 ist vorn, Walk.Count - 1 das Tor.</summary>
-        private (Vector2 At, float Scale) Path(float at)
+        // Der Maßstab am Ort (Bildpunkte je Meter für Aufrechtes) fällt mit der Entfernung: Maßstab = Brennweite / Tiefe.
+        // Daraus ergibt sich, wie weit ein Punkt des Wegs weg ist, und die Arbeiter können in Metern gehen.
+        private float Focal => _at.Size.X * FocalShare;
+
+        private float NearDepth => Focal / _at.Walk[0].Scale;
+
+        private float GateDepth => Focal / _at.Walk[^1].Scale;
+
+        /// <summary>Fußpunkt und Maßstab in dieser Entfernung auf dem Weg. Vor dem ersten Punkt läuft der Weg gerade weiter aus dem Bild.</summary>
+        private (Vector2 At, float Scale) Path(float depth)
         {
-            int last = _at.Walk.Count - 1;
-            at = Mathf.Clamp(at, 0f, last);
-            int i = Mathf.Min((int)at, last - 1);
-            float f = at - i;
-            return (_at.Walk[i].At.Lerp(_at.Walk[i + 1].At, f), Mathf.Lerp(_at.Walk[i].Scale, _at.Walk[i + 1].Scale, f));
+            float scale = Focal / Mathf.Max(0.1f, depth);
+            int last = _at.Walk.Count - 1, i = 0;
+            while (i < last - 1 && _at.Walk[i + 1].Scale > scale)
+            {
+                i++;
+            }
+            var (a, big) = _at.Walk[i];
+            var (b, small) = _at.Walk[i + 1];
+            // Entlang einer Geraden am Boden wandert der Fußpunkt gleichmäßig mit dem Maßstab.
+            return (a + (b - a) * ((big - scale) / Mathf.Max(0.001f, big - small)), scale);
         }
 
-        private float Progress(Worker w) => w.At / (_at.Walk.Count - 1);
+        private float Progress(Worker w) => Mathf.Clamp((w.Depth - NearDepth) / (GateDepth - NearDepth), 0f, 1f);
 
         /// <summary>Füße eines Arbeiters im Bild und sein Maßstab. Vorn streut der Zug, zum Tor hin läuft er zusammen.</summary>
         private (Vector2 Foot, float Scale) Stand(Worker w)
         {
-            var (at, scale) = Path(w.At);
+            var (at, scale) = Path(w.Depth);
             return (at + new Vector2(Mathf.Lerp(w.Lane, w.EndLane, Progress(w)) * scale, 0f), scale);
         }
 
@@ -402,9 +419,9 @@ namespace Messingstadt
                 _drips.Add(new Drip { Eave = i % Mathf.Max(1, _at.Eaves.Count), Wait = Rand(0f, 3f), Shift = Rand(-14f, 14f) });
             }
             // Die Straße ist schon bevölkert, wenn das Bild erscheint.
-            for (float at = 0.6f; at < _at.Walk.Count - 1; at += Rand(0.12f, 0.5f))
+            for (float depth = NearDepth; depth < GateDepth; depth += Rand(0.8f, 3.4f))
             {
-                AddGroup(at);
+                AddGroup(depth);
             }
         }
 
@@ -550,17 +567,14 @@ namespace Messingstadt
             if (_time > _nextGroup && _workers.Count < MaxWorkers)
             {
                 _nextGroup = _time + (_rng.NextDouble() < LullChance ? Rand(MaxGroupPause, MaxGroupPause * 2.2f) : Rand(MinGroupPause, MaxGroupPause));
-                AddGroup(Rand(0f, 0.25f));
+                AddGroup(NearDepth * Rand(StartBefore, StartBefore + 0.08f));
             }
-            int last = _at.Walk.Count - 1;
             foreach (var w in _workers)
             {
                 // Gleichmäßiger Schritt in Metern: Im Bild werden die Gestalten zum Tor hin langsamer und kleiner.
-                int i = Mathf.Min((int)w.At, last - 1);
-                float stretch = Mathf.Max(1f, _at.Walk[i].At.DistanceTo(_at.Walk[i + 1].At));
-                float scale = Path(w.At).Scale;
-                w.At += w.Pace * scale * dt / stretch;
+                w.Depth += w.Pace * dt;
                 w.Meters += w.Pace * dt;
+                float scale = Path(w.Depth).Scale;
                 if (PersonPixels(w, scale) > BreathAbovePixels && _time > w.NextBreath)
                 {
                     // Atem in der kalten Luft, nur vorn zu sehen.
@@ -573,9 +587,10 @@ namespace Messingstadt
                     });
                 }
             }
-            _workers.RemoveAll(w => w.At >= last);
+            float gate = GateDepth;
+            _workers.RemoveAll(w => w.Depth >= gate);
             // Ferne zuerst zeichnen, Nahe darüber.
-            _workers.Sort((a, b) => b.At.CompareTo(a.At));
+            _workers.Sort((a, b) => b.Depth.CompareTo(a.Depth));
         }
 
         /// <summary>Höhe der Gestalt in Bildpunkten des Titelbilds.</summary>
@@ -583,7 +598,7 @@ namespace Messingstadt
 
 
 
-        private void AddGroup(float at)
+        private void AddGroup(float depth)
         {
             int count = _rng.Next(10) switch { < 4 => 1, < 8 => 2, _ => 3 };
             float lane = Rand(-LaneMeters, LaneMeters), end = Rand(-LaneMeters, LaneMeters) * 0.5f, pace = Rand(MinPace, MaxPace);
@@ -592,7 +607,7 @@ namespace Messingstadt
             {
                 _workers.Add(new Worker
                 {
-                    At = at + i * Rand(0.02f, 0.06f), Lane = lane + i * Rand(0.5f, 0.9f), EndLane = end + i * Rand(0.4f, 0.7f),
+                    Depth = depth + i * Rand(0.5f, 1.4f), Lane = lane + i * Rand(0.5f, 0.9f), EndLane = end + i * Rand(0.4f, 0.7f),
                     // Wer zusammen geht, hält fast denselben Schritt.
                     Pace = pace * Rand(0.97f, 1.03f), Phase = Rand(0f, Mathf.Tau), Tall = Rand(0.9f, 1.06f), Stoop = Rand(0.5f, 1f),
                     Pail = !bike && _rng.Next(3) > 0, Bike = bike, NextBreath = _time + Rand(0f, 3f),
@@ -708,7 +723,7 @@ namespace Messingstadt
                     break;
                 default:
                     _leafletFrom = _time;
-                    _leafletY = Path(Rand(1f, 2.6f)).At.Y;
+                    _leafletY = Path(NearDepth * Rand(1.1f, 2.2f)).At.Y;
                     break;
             }
         }
@@ -770,7 +785,7 @@ namespace Messingstadt
                 _puffs.Add(new Puff
                 {
                     Pos = new Vector2(stack.X + Rand(-0.25f, 0.25f) * stack.Z, stack.Y), Drift = new Vector2(wind, -15f), Life = SmokeSeconds,
-                    Size = Rand(0.6f, 1f) * stack.Z, Grow = 3.2f,
+                    Size = Rand(0.9f, 1.4f) * Mathf.Max(stack.Z, MinSmokePixels), Grow = 3.6f,
                     Color = new Color(SmokeColor, SmokeAlpha),
                 });
             }
@@ -1259,7 +1274,7 @@ namespace Messingstadt
             // Hinüber, kurz stehen, zurück.
             float across = t < 0.42f ? t / 0.42f : t < 0.58f ? 1f : 1f - (t - 0.58f) / 0.42f;
             bool walking = t is < 0.42f or > 0.58f;
-            var (spot, meter) = Path(_at.Walk.Count - 1.25f);
+            var (spot, meter) = Path(GateDepth * 0.9f);
             var foot = OnScreen(new Vector2(_at.Gate.X + Mathf.Lerp(4.5f, -3f, across) * meter, spot.Y));
             float height = TitleLayout.PersonMeters * 1.08f * meter * scale;
             float way = t < 0.5f ? -1f : 1f;
@@ -1286,7 +1301,7 @@ namespace Messingstadt
             {
                 return;
             }
-            var (spot, meter) = Path(1.4f);
+            var (spot, meter) = Path(NearDepth * 1.25f);
             var at = OnScreen(Mathf.Lerp(_at.Size.X + 40f, spot.X - 1.5f * meter, t), spot.Y - 0.2f * meter * t);
             float size = 0.3f * meter * scale, leap = Mathf.Abs(Mathf.Sin(t * 26f));
             var color = new Color(Shadow, Mathf.Clamp((1f - t) * 5f, 0f, 1f));
