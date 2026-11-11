@@ -20,6 +20,10 @@ Was in der Welt von Messingstadt gilt, mit Kennzeichen und Quelle. Kennzeichen s
 | Anton Weiß | Drucker, in Haft | KANON | `../story.md`, Einsatz 2 |
 | Ilse Marquardt | Ärztin der Krankenstube, erklärt den Dauertod | KANON, freigegeben 2026-11-06 | `texte/dauertod.md` |
 | Karl Hoffmann, Frieda Kranz, Willi Saß, Erwin Pohl, Lotte Becker, Max Kühn | Namen für Neue | KANON, freigegeben 2026-11-06 | `texte/dauertod.md` |
+| Kesselviertel, Nordwall, Gleisviertel, Kontorviertel, Altstadt | Die fünf Viertel des Stadtplans | VORSCHLAG Story 2026-11-11 (Altstadt ist KANON) | `stadtplan.md` |
+| Albert Dorn | Prokurist der Kontorbank, Einsatz 4 | VORSCHLAG Story 2026-11-11 | `stadtplan.md` |
+| Gustav Rademacher | Führer des Werkschutzes, Einsatz 5 | VORSCHLAG Story 2026-11-11 | `stadtplan.md` |
+| Linie 7 | Straßenbahn im Kesselviertel | IM SPIEL laut Hauptsession 2026-11-11, von Story nicht nachgeprüft | `stadtplan.md` |
 | Messingstädter Anzeiger | Zeitung, druckt die Sicht der Wache | KANON | `src/Messingstadt.Core/Headlines.cs` |
 | Hotel Adler | Hotel an der Querstraße | IM SPIEL | `tools/art/generate_concept.py` (Dachschild) |
 | Kurt | Laufbursche der Wache, in einem Arbeiter-Satz | IM SPIEL | `game/Chatter.cs` |
@@ -44,6 +48,7 @@ Nachnamen und Vornamen der Mächte stehen bisher nur in `../story.md`, nicht im 
 |---|---|---|
 | Untertitel „Die Stadt gehört den Brandt-Werken“ gegen drei Mächte im Konzept | `data/sequences/einstieg.json`, `../konzept.md` | ABLEITUNG: Brandts Selbstbild, bewusst so belassen |
 | Rückzug ohne Schuss: Schlagzeile und Telegramm erscheinen nie, weil der Einsatz dann neu beginnt | `src/Messingstadt.Core/Headlines.cs`, `src/Messingstadt.Core/Sequence.cs`, Auskunft Menüs 2026-11-03 | OFFEN: Texte bleiben als Rückfall |
+| Maschinenpistole: Text nennt ein Trommelmagazin, die Waffe hat 20 Schuss. Die Figur zeigt laut `docs/ausruestung.md` ebenfalls eine Trommel | `data/waffen.json`, `docs/ausruestung.md` | OFFEN: Textvorschlag in `texte/README.md`, Bild ist Sache der Grafik |
 | Währung ohne Namen, „Groschen“ in einem Satz | `game/Chatter.cs`, Kasse in `../konzept.md` | OFFEN |
 
 ## Offene Fragen zur Recherche
