@@ -1,6 +1,6 @@
 # Einsatz 3: Der Güterbahnhof (Gleisviertel, Sabotieren)
 
-Stand 2026-11-11. Bauvorlage in derselben Form wie `einsatz_02_nordwall.md`. Rahmen (Viertel, Auftragsart, Zug mit Streikbrechern, Hinweis von Rehm, vorbereitete Wachen) ist KANON. Karte, Gegner, Regeln und Texte sind VORSCHLAG der Story. Karte 20 × 20, Norden ist y = 0.
+Stand 2026-11-11. Bauvorlage in derselben Form wie `einsatz_02_nordwall.md`. Rahmen (Viertel, Auftragsart, Zug mit Streikbrechern, Hinweis von Rehm, vorbereitete Wachen) ist KANON. Karte, Gegner, Regeln und Texte sind VORSCHLAG der Story. Karte 20 × 20, Norden ist y = 0. Für die Schrägansicht gilt die Regel aus `../einsatz_02_grundriss.md`: Ein hohes Haus verdeckt drei Felder nördlich und westlich von sich. Zielorte, Türen und Hauptwege liegen deshalb nie dort, wichtige Türen zeigen nach Süden oder Osten, hohe Gebäude stehen am Nordrand.
 
 ## 1. Geschichte
 
@@ -41,9 +41,9 @@ Güterbahnhof Ost. Vier Gleise laufen von Ost nach West quer durch das Bild.
 | Gleise | y 8–12, ganze Breite | Vier Gleise bei y 8, 9, 10, 11. Schotter: Schritte sind lauter (Vorschlag: Hörweite 3 statt 2 Felder) |
 | Abgestellte Wagen | x 3–7, y 8 · x 9–13, y 10 · x 4–8, y 11 | Güterwagen, sperren Weg und Sicht. Dazwischen und darunter ist es schwarz |
 | Einfahrweiche | (18,5, 9,5) | Weichenbock mit Laterne am Ostende, frei im Licht |
-| Wasserturm | x 16–18, y 13–15 | Auf vier Beinen, unten offen. Sperrt die Sicht nicht |
-| Kohlenlager | x 1–5, y 13–17 | Bansen mit Kohlenhaufen |
-| Baracken | x 8–12, y 14–17 · x 13–15, y 16–19 | Schlafbaracken, Ofenrohre, einzelne Funzeln |
+| Wasserturm | x 10–12, y 2–5 | Hoch, deshalb am Nordrand zwischen Schuppen und Stellwerk. Auf vier Beinen, unten offen |
+| Kohlenlager | x 1–5, y 13–17 | Bansen mit Kohlenhaufen, niedrig (höchstens 40 hoch), damit sie die Gleise nicht verdecken |
+| Baracken | x 8–12, y 14–17 · x 13–15, y 16–19 | Schlafbaracken, ein Geschoss mit flachem Dach (höchstens 40 hoch), Ofenrohre, einzelne Funzeln |
 | Bahnübergang | x 0–2, y 5–8 | Schranke oben, hier wartet der Wagen |
 
 Laternen: Bogenlampe (6, 6,5) an der Rampe, Lampe (14,5, 6,8) über der Stellwerkstür, Weichenlaterne (18,5, 9,5), Signal (11, 7,5). Alles südlich der Gleise ist dunkel.
@@ -68,7 +68,7 @@ Alle aus dem Bestand.
 | Name | Art | Wo | Verhalten | Käuflich |
 |---|---|---|---|---|
 | Stellwerksposten | Werkschutz | (14,5, 6,5), Blick nach Süden | Posten vor der Tür | nein |
-| Stellwerksrunde | Werkschutz | Um das Stellwerk | Rundgang (12, 7) – (17, 7) – (17, 2) – (12, 2) | nein |
+| Stellwerksrunde | Werkschutz | Vor dem Stellwerk | Rundgang (12, 7) – (17, 7) – (17, 4) – (17, 7). Bleibt südlich und östlich des Stellwerks, dahinter wäre er verdeckt | nein |
 | Rampenschütze | Schütze | Laderampe | Rundgang (3, 6) – (9, 6). Sieht über alle Gleise | 200 |
 | Gleisstreife | Hundeführer mit Hund | Zwischen den Gleisen | Rundgang (2, 9) – (17, 9) | 300 |
 | Südstreife | Wachmann | Südlich der Gleise | Rundgang (6, 12) – (15, 12) | 200 |
@@ -177,7 +177,7 @@ Mit Spielhinweis, gegen die Karte oben geprüft:
 Bestochen:
 
 - Rampenschütze: „Ich putz mein Gewehr. Das dauert.“
-- Weichenposten: „Ich geh mal um den Wasserturm.“
+- Weichenposten: „Ich geh mal bis zum Prellbock.“
 - Lampenjunge: „Meine Lampe ist aus. Ich seh nichts.“
 
 Arbeiter in den Baracken (nur Darstellung, wie die Streikposten in Einsatz 1):

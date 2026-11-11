@@ -13,7 +13,7 @@ Leitbild: Die Stadt als Behörde. Alles ist aus dunklem Backstein, schwer, für 
 | Bauweise | Preußische Backsteinbauten der 1880er: Sockel aus Granit, Rundbogenfenster, Gesimse, flache Dächer mit Schiefer. Der alte Stadtwall ist älter, grob gemauert, mit zugesetzten Schießscharten und einem Wehrgang |
 | Materialien | Dunkelroter und brauner Klinker, grauer Granit, schwarzes Gusseisen (Gitter, Laternen, Geländer), grün angelaufenes Kupfer an Rinnen, vergitterte Fenster |
 | Farben | Klinker `#5A3A30` bis `#3E2A26`, Granit `#6C6A66`, Eisen `#24262A`, Fensterlicht gelblich-grün wie Gaslicht. Wenig Farbe, kein Werksgrün |
-| Typische Gebäude | Wachstube mit Freitreppe und Laterne über der Tür, Arresthof mit Zellentüren aus Eisen, Amtsgericht mit Säulenportal und Uhr, Kaserne der Wache mit langen Fensterreihen, Remise, Beamtenhäuser mit Vorgarten und Zaun |
+| Typische Gebäude | Wachstube am Wall mit Arresthof und Zellentüren aus Eisen, davor das niedrige Wachlokal mit Schild und Laterne über der Tür, Amtsgericht mit Säulenportal und Uhr, Kaserne der Wache mit langen Fensterreihen, Remise, Beamtenhäuser mit Vorgarten und Zaun |
 | Requisiten | Gefangenenwagen, Schilderhaus, Anschlagtafel mit Steckbriefen und Verordnungen, Fahrradständer mit Diensträdern, Kohlenluke, Fahnenmast ohne Fahne, Wasserpumpe, Aktenbündel hinter einem Fenster |
 | Licht | Wenige Gaslaternen in großen Abständen. Über Amtstüren eine einzelne Lampe im Drahtkorb. Die Fenster des Gerichts sind dunkel, in der Wachstube brennt Licht, in der Kaserne nur einzelne Stuben. Lange harte Schatten vom Wall |
 | Wetter | Kalter Nieselregen, Wind vom Wall herunter. Bodennebel sammelt sich am Fuß der Mauer |
