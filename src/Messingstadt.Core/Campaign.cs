@@ -81,7 +81,11 @@ namespace Messingstadt.Core
     /// <summary>Was zwischen den Einsätzen bleibt: Geld, Fahndung, Rückhalt, die Agenten und was in jedem Einsatz geschah.</summary>
     public sealed class Campaign
     {
-        public const int CurrentVersion = 3;
+        public const int CurrentVersion = 4;
+        public const int StartMoney = 600;
+
+        /// <summary>Das Viertel des ersten Einsatzes. Alte Stände mit einem Sieg bekommen es als erobert.</summary>
+        public const string FirstDistrict = "viertel_1";
 
         /// <summary>Plätze für Ausrüstung je Agent.</summary>
         public const int ItemSlots = 4;
@@ -96,7 +100,7 @@ namespace Messingstadt.Core
         public const int RecruitCost = 250;
         public const int MinSquad = 2;
         public const int BloodyNight = 3;
-        private const int BaseReward = 300;
+        public const int BaseReward = 300;
         private const int QuietBonus = 150;
         private const int UnseenBonus = 300;
         private const int UpgradeCostPerLevel = 150;
@@ -113,7 +117,7 @@ namespace Messingstadt.Core
         };
 
         public int Version { get; set; } = CurrentVersion;
-        public int Money { get; set; } = 300;
+        public int Money { get; set; } = StartMoney;
         public int Missions { get; set; }
 
         /// <summary>0 bis 4. Steigt mit Schüssen und Toten. Je angefangene zwei Stufen rückt eine Wache mehr zur Verstärkung an.</summary>
@@ -127,6 +131,12 @@ namespace Messingstadt.Core
         public List<AgentRecord> Agents { get; set; } = new();
         public Dictionary<string, MissionRecord> Records { get; set; } = new();
 
+        /// <summary>Kennungen der Viertel, die dem Roten Hammer gehören. Alle anderen gehören den Brandt-Werken.</summary>
+        public List<string> Conquered { get; set; } = new();
+
+        /// <summary>Kennung des gewählten Viertels, dort läuft der nächste Einsatz.</summary>
+        public string District { get; set; } = "";
+
         /// <summary>Die Kiste der Truppe: Gekauftes, das gerade niemand trägt.</summary>
         public List<string> Stash { get; set; } = new();
 
@@ -138,7 +148,10 @@ namespace Messingstadt.Core
         public List<string> LastDeaths { get; set; } = new();
         public List<string> LastNewcomers { get; set; } = new();
 
-        public static int Reward(MissionRating rating) => BaseReward + rating switch
+        public static int Reward(MissionRating rating) => Reward(rating, BaseReward);
+
+        /// <summary>Lohn für einen Sieg: der Grundlohn des Viertels plus Zuschlag für die Wertung.</summary>
+        public static int Reward(MissionRating rating, int baseReward) => baseReward + rating switch
         {
             MissionRating.Unseen => UnseenBonus,
             MissionRating.Quiet => QuietBonus,
@@ -152,6 +165,42 @@ namespace Messingstadt.Core
 
         /// <summary>Gemessen mit --kampagne im Balance-Werkzeug: Eine Wache mehr je Stufe trieb laute Spielweisen in eine Abwärtsspirale.</summary>
         public static int ExtraReinforcements(int heat) => (heat + 1) / 2;
+
+        public DistrictOwner Owner(string districtId) => Conquered.Contains(districtId) ? DistrictOwner.RoterHammer : DistrictOwner.Brandt;
+
+        public DistrictState State(CityMapData map, string districtId)
+        {
+            var district = map.Get(districtId);
+            return Conquered.Contains(districtId) ? DistrictState.Taken
+                : district == null || district.Mission.Length == 0 ? DistrictState.NoMission
+                : district.Requires.All(Conquered.Contains) ? DistrictState.Open
+                : DistrictState.Locked;
+        }
+
+        /// <summary>Lässt sich dort ein Einsatz starten? Auch ein erobertes Viertel bleibt spielbar, ein Viertel ohne Mission nie.</summary>
+        public bool CanSelect(CityMapData map, string districtId) =>
+            map.Get(districtId) is { } district && district.Mission.Length > 0 && district.Requires.All(Conquered.Contains);
+
+        public bool TrySelect(CityMapData map, string districtId)
+        {
+            if (!CanSelect(map, districtId))
+            {
+                return false;
+            }
+            District = districtId;
+            return true;
+        }
+
+        /// <summary>Das gewählte Viertel samt Auftrag. Ohne gültige Wahl das erste offene, sonst das erste spielbare. Null, wenn nichts spielbar ist.</summary>
+        public DistrictData? Selected(CityMapData map)
+        {
+            if (!CanSelect(map, District))
+            {
+                District = (map.Districts.Find(d => State(map, d.Id) == DistrictState.Open)
+                    ?? map.Districts.Find(d => CanSelect(map, d.Id)))?.Id ?? "";
+            }
+            return map.Get(District);
+        }
 
         public AgentRecord Agent(string name) => Agents.Find(a => a.Name == name)
             ?? throw new ArgumentException($"Unbekannter Agent {name}");
@@ -273,14 +322,22 @@ namespace Messingstadt.Core
             return true;
         }
 
-        /// <summary>Verbucht einen beendeten Einsatz. Beute zählt nur, wenn der Trupp entkommt.</summary>
-        public void Finish(World world)
+        /// <summary>
+        /// Verbucht einen beendeten Einsatz. Beute zählt nur, wenn der Trupp entkommt.
+        /// Mit Viertel gilt dessen Grundlohn, und bei einem Sieg gehört es danach dem Roten Hammer.
+        /// </summary>
+        public void Finish(World world, DistrictData? district = null)
         {
             bool won = world.State == MissionState.Won;
-            Money = won ? world.Money + Reward(world.Rating) : world.Money - (world.LootTaken ? world.LootValue : 0);
+            int reward = Reward(world.Rating, district?.Reward ?? BaseReward);
+            Money = won ? world.Money + reward : world.Money - (world.LootTaken ? world.LootValue : 0);
             if (won)
             {
                 Missions++;
+                if (district != null && !Conquered.Contains(district.Id))
+                {
+                    Conquered.Add(district.Id);
+                }
             }
             Settle(world, won, false);
         }
@@ -540,6 +597,13 @@ namespace Messingstadt.Core
             LastFirstFalls ??= new();
             LastDeaths ??= new();
             LastNewcomers ??= new();
+            District ??= "";
+            Conquered = (Conquered ?? new()).Where(d => !string.IsNullOrEmpty(d)).Distinct().ToList();
+            // Vor dem Stadtplan gab es nur den ersten Einsatz. Wer ihn gewonnen hat, hält sein Viertel.
+            if (version < 4 && (Missions > 0 || Records.Values.Any(r => r != null && r.Won)) && !Conquered.Contains(FirstDistrict))
+            {
+                Conquered.Add(FirstDistrict);
+            }
             Stash = (Stash ?? new()).Where(i => !string.IsNullOrEmpty(i)).ToList();
             Agents = (Agents ?? new()).Where(a => a != null && !string.IsNullOrEmpty(a.Name)).GroupBy(a => a.Name).Select(g => g.First()).ToList();
             foreach (var a in Agents)

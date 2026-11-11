@@ -1,0 +1,29 @@
+{
+  "districts": [
+    {
+      "id": "viertel_1", "name": "Querstraße", "kind": "Diebstahl",
+      "briefing": "Im Mietshaus liegt das Kontobuch der Brandt-Werke. Holt es, bevor der Bote kommt.",
+      "mission": "mission_01", "reward": 300, "requires": []
+    },
+    {
+      "id": "viertel_2", "name": "Nordviertel", "kind": "Befreiung",
+      "briefing": "Die Wachstube Nord hält zwei von uns fest. Holt sie heraus.",
+      "mission": "", "reward": 350, "requires": ["viertel_1"]
+    },
+    {
+      "id": "viertel_3", "name": "Güterbahnhof", "kind": "Sabotage",
+      "briefing": "Ein Zug bringt Streikbrecher aus dem Umland. Er darf nicht ankommen.",
+      "mission": "", "reward": 400, "requires": ["viertel_2"]
+    },
+    {
+      "id": "viertel_4", "name": "Kontorviertel", "kind": "Einbruch",
+      "briefing": "Im Schließfach der Kontorbank liegt das Zweitbuch mit den Klarnamen.",
+      "mission": "", "reward": 450, "requires": ["viertel_3"]
+    },
+    {
+      "id": "viertel_5", "name": "Altstadt", "kind": "Flucht",
+      "briefing": "Das Versteck ist verraten. Bringt Buch und Verwundete durch die Stadt.",
+      "mission": "", "reward": 500, "requires": ["viertel_4"]
+    }
+  ]
+}
