@@ -38,7 +38,9 @@ RAIL_WEST = [(46, 566), (190, 556), (330, 520), (470, 440), (566, 356)]
 RAIL_EAST = [(566, 356), (700, 290), (860, 232), (1040, 186), (1234, 150)]
 MAIN = [(800, 474), (792, 600), (772, 730), (762, 854)]
 TRAM_LINE = [(46, 300), (160, 318), (290, 300), (400, 262), (486, 262), (600, 214), (760, 150), (900, 110), (1040, 104)]
-LABELS = {1: ((800, 112), (640, 176)), 2: ((214, 196), (300, 440)), 3: ((1040, 424), (1150, 510)), 4: ((1010, 704), (1130, 790)), 5: ((420, 660), (610, 790))}
+# Je Viertel: Mittelpunkt für den Namen und für den Stempel. Beide liegen so weit auseinander, dass ein Stempel von
+# 240 x 64 Bildpunkten, leicht gedreht, den Namen nicht berührt und ganz im Viertel bleibt (siehe check_anchors).
+LABELS = {1: ((860, 92), (636, 204)), 2: ((212, 196), (188, 468)), 3: ((1108, 436), (852, 388)), 4: ((1012, 692), (1012, 796)), 5: ((420, 652), (564, 796))}
 # Je Viertel: Winkel des Straßenrasters, Blockmaß längs und quer, Straßenbreite, jede wievielte Straße breit ist, Art
 STYLE = {
     1: (-0.36, 92, 60, 6.5, 3, "works"),
@@ -393,9 +395,10 @@ def write_plan(preview=None):
         masks[dnum] = alpha
         Image.merge("LA", (Image.new("L", (W, H), 255), alpha)).save(OUT / f"viertel_{dnum}.png", optimize=True)
         box = alpha.getbbox()
-        outline = [poly[0]] + [p for i, p in enumerate(poly[1:-1], 1) if i % 3 == 0 or p in ((566, 356), (800, 474))] + [poly[-1]]
+        outline = simplify(poly)
         info["districts"].append({"id": dnum, "mask": f"viertel_{dnum}.png", "label": list(LABELS[dnum][0]), "stamp": list(LABELS[dnum][1]),
                                   "bounds": list(box), "polygon": [[round(x), round(y)] for x, y in outline]})
+    check_anchors(info, masks)
     (OUT / "plan.json").write_text(json.dumps(info, ensure_ascii=False, indent=1), encoding="utf-8")
     print("Stadtplan geschrieben:", OUT, plan.size)
 
@@ -416,9 +419,45 @@ def write_plan(preview=None):
         for dnum, (label, stamp) in LABELS.items():
             name = {1: "KESSELVIERTEL", 2: "NORDWALL", 3: "GLEISVIERTEL", 4: "KONTORVIERTEL", 5: "ALTSTADT"}[dnum]
             pd.text(label, name, font=ImageFont.load_default(size=22), fill=(0x21, 0x1C, 0x1A, 255), anchor="mm", stroke_width=2, stroke_fill=(0xAD, 0x9E, 0x7A, 255))
-            pd.ellipse((stamp[0] - 20, stamp[1] - 20, stamp[0] + 20, stamp[1] + 20), outline=(24, 18, 16, 255), width=2)
+            ca, sa = math.cos(-0.14), math.sin(-0.14)
+            box = [(stamp[0] + ca * i * 120 - sa * j * 32, stamp[1] + sa * i * 120 + ca * j * 32) for i, j in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+            pd.line(box + box[:1], fill=(244, 236, 214, 255), width=3)
+            pd.text(stamp, "HAMMER HÄLT", font=ImageFont.load_default(size=24), fill=(244, 236, 214, 255), anchor="mm")
         shown.convert("RGB").save(preview)
         print("Vorschau:", preview)
+
+
+def simplify(poly):
+    """Umriss mit weniger Punkten: Von den Kurven bleibt jeder dritte Punkt, Ecken am Rahmen und Knoten bleiben alle."""
+    x0, y0, x1, y1 = FRAME
+    fixed = set(RIVER + RAIL_WEST + RAIL_EAST + MAIN)
+    out = []
+    for i, (x, y) in enumerate(poly):
+        on_frame = x in (x0, x1) or y in (y0, y1)
+        if on_frame or (x, y) in fixed or i % 3 == 0:
+            out.append((x, y))
+    return out
+
+
+def check_anchors(info, masks):
+    """Prüft plan.json gegen die Masken: Umriss deckt die Maske, Name und Stempel liegen im Viertel und berühren sich nicht."""
+    for entry in info["districts"]:
+        alpha = np.asarray(masks[entry["id"]]) > 127
+        shape = Image.new("L", (W, H), 0)
+        ImageDraw.Draw(shape).polygon([tuple(q) for q in entry["polygon"]], fill=255)
+        differ = int((alpha != (np.asarray(shape) > 127)).sum())
+        assert differ < alpha.sum() * 0.012, (entry["id"], "Umriss weicht von der Maske ab", differ)
+        lx, ly = entry["label"]
+        sx, sy = entry["stamp"]
+        name = (lx - 110, ly - 22, lx + 110, ly + 22)
+        ca, sa = math.cos(-0.14), math.sin(-0.14)
+        corners = [(sx + ca * i * 120 - sa * j * 32, sy + sa * i * 120 + ca * j * 32) for i, j in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+        stamp = (min(c[0] for c in corners), min(c[1] for c in corners), max(c[0] for c in corners), max(c[1] for c in corners))
+        for bx0, by0, bx1, by1 in (name, stamp):
+            assert alpha[int(by0):int(by1), int(bx0):int(bx1)].all(), (entry["id"], "Name oder Stempel ragt aus dem Viertel")
+        apart = stamp[0] > name[2] or stamp[2] < name[0] or stamp[1] > name[3] or stamp[3] < name[1]
+        assert apart, (entry["id"], "Stempel berührt den Namen")
+    print("Umrisse und Anker geprüft")
 
 
 def offset(points, distance):
