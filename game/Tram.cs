@@ -74,7 +74,7 @@ namespace Messingstadt
             {
                 float x0 = t.GetProperty("x0").GetSingle(), y0 = t.GetProperty("y0").GetSingle();
                 float x1 = t.GetProperty("x1").GetSingle(), y1 = t.GetProperty("y1").GetSingle();
-                if (Mathf.IsEqualApprox(t.GetProperty("z1").GetSingle(), TramHeight) && x1 - x0 < MaxWidth && y1 - y0 > MinLength)
+                if (MapSite.Current.Tram && Mathf.IsEqualApprox(t.GetProperty("z1").GetSingle(), TramHeight) && x1 - x0 < MaxWidth && y1 - y0 > MinLength)
                 {
                     _exists = true;
                     _wallX = x1;

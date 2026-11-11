@@ -66,6 +66,23 @@ namespace Messingstadt
         private static readonly string[] Reporting = { "Wache! Wache!", "Da ist wer! Ich hol die Wache!" };
         private static readonly string[] Bitten = { "Der Hund! Ein Schuss, und alle hören es.", "Weg, du Mistvieh! Soll ich schießen?" };
 
+        // Zurufe der Befreiten aus mission.prisoners[].lines. Jeder fällt einmal, im passenden Moment.
+        private const float FollowAfterSeconds = 5f;
+        private const float AnswerAfterSeconds = 1.6f;
+        private const float GapSeconds = 2.5f;
+        private const string AnswerKey = "freedAnswer";
+        private static readonly Color PrisonerColor = new(0.84f, 0.93f, 0.82f);
+        private static readonly Color AgentColor = new(0.95f, 0.9f, 0.75f);
+
+        /// <summary>Was ein Befreiter schon gesagt hat und seit wann er frei ist.</summary>
+        private sealed class Rescued
+        {
+            public bool WasCaptive = true;
+            public float FreedAt = -1f;
+            public float QuietUntil;
+            public readonly HashSet<string> Said = new();
+        }
+
         private sealed class Speech
         {
             public Func<Vector2?> Where = null!;
@@ -79,6 +96,8 @@ namespace Messingstadt
         private readonly Dictionary<int, GuardState> _lastState = new();
         private readonly HashSet<int> _bribedSpoken = new();
         private readonly HashSet<int> _bittenSpoken = new();
+        private readonly Dictionary<int, Rescued> _rescued = new();
+        private readonly List<(float At, Func<Vector2?> Where, string Text)> _answers = new();
         private World? _world;
         private float _time;
         private float _nextTalk = 5f;
@@ -124,7 +143,10 @@ namespace Messingstadt
                 _bribedSpoken.Clear();
                 _bittenSpoken.Clear();
                 _speeches.Clear();
+                _rescued.Clear();
+                _answers.Clear();
             }
+            ListenToPrisoners(world);
             foreach (var u in world.Units)
             {
                 if (u.Faction == Faction.Guard && u.Alive && !u.Type.Bites)
@@ -143,6 +165,113 @@ namespace Messingstadt
             }
             _speeches.RemoveAll(s => _time > s.Until || s.Where() == null);
             QueueRedraw();
+        }
+
+        /// <summary>
+        /// Die Befreiten reden an fünf Stellen: wenn die Zelle aufgeht, wenn sie eine Weile mitgelaufen sind, wenn eine
+        /// Wache etwas merkt, wenn geschossen wird und am Wagen. Die Zeilen stehen in der Mission. Fehlt eine, bleibt der
+        /// Moment stumm.
+        /// </summary>
+        private void ListenToPrisoners(World world)
+        {
+            for (int i = _answers.Count - 1; i >= 0; i--)
+            {
+                if (_time >= _answers[i].At)
+                {
+                    Say(_answers[i].Where, _answers[i].Text, SpeechSeconds, AgentColor);
+                    _answers.RemoveAt(i);
+                }
+            }
+            if (!world.IsRescue)
+            {
+                return;
+            }
+            bool noticed = false, fighting = false;
+            foreach (var g in world.Units)
+            {
+                if (g.Faction == Faction.Guard && g.Alive)
+                {
+                    noticed |= g.GuardState is GuardState.Noticing or GuardState.Investigate or GuardState.Search;
+                    fighting |= g.GuardState == GuardState.Combat;
+                }
+            }
+            bool shots = world.Shots.Count > 0 && world.Tick - world.Shots[^1].Tick < World.TickRate;
+            foreach (var u in world.Prisoners)
+            {
+                if (!_rescued.TryGetValue(u.Id, out var state))
+                {
+                    _rescued[u.Id] = state = new Rescued { WasCaptive = u.Captive };
+                }
+                if (!u.Alive)
+                {
+                    continue;
+                }
+                var lines = Game.Mission.Prisoners.Find(p => p.Name == u.Name)?.Lines;
+                if (lines == null)
+                {
+                    continue;
+                }
+                if (state.WasCaptive && !u.Captive)
+                {
+                    state.WasCaptive = false;
+                    state.FreedAt = _time;
+                    if (Speak(u, state, lines, "freed"))
+                    {
+                        Answer(world, lines);
+                    }
+                }
+                if (u.Captive || _time < state.QuietUntil)
+                {
+                    continue;
+                }
+                // Das Dringlichste zuerst: Schüsse vor Entdeckung, der Wagen vor dem Murren unterwegs.
+                if ((shots || fighting) && Speak(u, state, lines, "shots"))
+                {
+                    continue;
+                }
+                if (noticed && Speak(u, state, lines, "noticed"))
+                {
+                    continue;
+                }
+                if (world.EscapeProgress > 0 && Speak(u, state, lines, "wagon"))
+                {
+                    continue;
+                }
+                if (u.FollowId >= 0 && !u.Waiting && _time - state.FreedAt > FollowAfterSeconds)
+                {
+                    Speak(u, state, lines, "follow");
+                }
+            }
+        }
+
+        private bool Speak(Unit u, Rescued state, Dictionary<string, string> lines, string moment)
+        {
+            if (!lines.TryGetValue(moment, out string? text) || text.Length == 0 || !state.Said.Add(moment))
+            {
+                return false;
+            }
+            // Zwischen zwei Sätzen desselben Befreiten liegt eine Pause, damit sie sich nicht überdecken.
+            state.QuietUntil = _time + SpeechSeconds + GapSeconds;
+            Say(() => u.Alive ? Game.UnitPos(u) : null, text, SpeechSeconds, PrisonerColor);
+            return true;
+        }
+
+        /// <summary>Antwort eines Agenten auf den ersten Satz, etwa freedAnswerHanna. Nur wenn dieser Agent dabei ist und lebt.</summary>
+        private void Answer(World world, Dictionary<string, string> lines)
+        {
+            foreach (var (key, text) in lines)
+            {
+                if (!key.StartsWith(AnswerKey) || text.Length == 0)
+                {
+                    continue;
+                }
+                string name = key[AnswerKey.Length..];
+                var agent = world.Units.Find(a => a.Faction == Faction.Agent && a.Alive && a.Name == name);
+                if (agent != null)
+                {
+                    _answers.Add((_time + AnswerAfterSeconds, () => agent.Alive ? Game.UnitPos(agent) : null, text));
+                }
+            }
         }
 
         private void AgentCriesOut(World world, Unit dog)

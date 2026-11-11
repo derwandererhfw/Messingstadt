@@ -13,6 +13,8 @@ namespace Messingstadt
     /// Nähe, erschrecken sie: Die meisten rennen aus dem Bild, manche kauern sich hin. Die Straße bleibt leer, bis es
     /// eine Weile ruhig war. Reine Darstellung: Sie stehen nicht in der Welt der Regeln, versperren nichts, melden
     /// nichts, und der Mauszeiger kennt sie nicht. Aus Messingstadt.Core wird nur gelesen.
+    /// Das Kesselviertel hat seine festen Gehwege hier im Code. Jede andere Karte nennt ihre Wege in den Daten
+    /// (MapSite.Walks): wer geht, von wo nach wo, wo er stehen bleibt. Ohne Wege gibt es dort keine Passanten.
     /// </summary>
     public partial class Passersby : Node2D
     {
@@ -31,10 +33,6 @@ namespace Messingstadt
         private const float ReadFramesPerSecond = 1f;
         private const float StartleFramesPerSecond = 10f;
 
-        private const int MaxPeople = 5;
-        private const int PeopleAtStart = 4;
-        private const float MinSpawnPause = 5f;
-        private const float MaxSpawnPause = 12f;
         private const float WalkTilesPerSecond = 1.25f;
         private const float HurryTilesPerSecond = 1.9f;
         private const float RunTilesPerSecond = 3.3f;
@@ -50,6 +48,14 @@ namespace Messingstadt
         private const float MaxReactSeconds = 0.7f;
         private const float CowerShare = 0.3f;
         private const float GetUpSeconds = 4f;
+        // Klänge der Ton-Session. Die Pegel sind deren Vorschläge, gehört hat sie noch niemand.
+        private const float StepDb = -24f;
+        private const float StepReach = 220f;
+        private const float StepPause = 0.34f;
+        private const float StepHeardPixels = 190f;
+        private const float GaspDb = -8f;
+        private const float GaspReach = 400f;
+        private const float GaspPause = 6f;
         // DepthZ liegt 20 über dem Objekt dahinter, Einheiten beginnen 2 darüber. So bleiben Passanten unter ihnen.
         private const int UnitsAbove = 19;
 
@@ -58,6 +64,8 @@ namespace Messingstadt
         private const float EastLane = 11.1f;
         private const float NorthEdge = -0.8f;
         private const float SouthEdge = 20.8f;
+        // So weit vor dem Kartenrand ist eine Figur ganz ausgeblendet.
+        private const float BeyondEdge = 0.8f;
         private const float CrossingNorth = 8.6f;
         private const float CrossingSouth = 12.4f;
         private const float StopLane = 7.05f;
@@ -83,6 +91,9 @@ namespace Messingstadt
             public float Wait;
             public bool Look;
             public string Pastime = "";
+            // Nur auf Wegen aus den Daten: der wievielte Punkt des Wegs das ist und wohin die Figur dort schaut.
+            public int Index = -1;
+            public Vector2? Facing;
         }
 
         private sealed class Person
@@ -102,12 +113,18 @@ namespace Messingstadt
             public bool Cowers;
             public Vector2 Noise;
             public Mode Shown;
+            // Der Weg aus den Daten, in Gehrichtung, und der letzte Punkt, den die Figur erreicht hat. Null im Kesselviertel.
+            public MapSite.WalkPoint[]? Route;
+            public MapSite.Walk? Walk;
+            public int Reached;
         }
 
         private readonly Random _rng = new();
         private readonly List<Person> _people = new();
         private readonly List<Vector2> _positions = new();
-        private const float MapTiles = 20f;
+        private MapSite _site = null!;
+        private float _mapWidth = 20f;
+        private float _mapHeight = 20f;
         private int _views = 5;
         private World? _seenWorld;
         private int _lastShotTick;
@@ -116,6 +133,8 @@ namespace Messingstadt
         private float _calmAt;
         private float _nextSpawn;
         private float _nextBodyCheck;
+        private float _nextStep;
+        private float _nextGasp;
         private int _testScareFrame = -1;
         private int _frames;
         private static readonly Vector2 TestScareTile = new(9f, 9f);
@@ -138,7 +157,7 @@ namespace Messingstadt
                 _positions.Clear();
                 foreach (var p in _people)
                 {
-                    if (p.Tile.X >= 0f && p.Tile.Y >= 0f && p.Tile.X < MapTiles && p.Tile.Y < MapTiles)
+                    if (p.Tile.X >= 0f && p.Tile.Y >= 0f && p.Tile.X < _mapWidth && p.Tile.Y < _mapHeight)
                     {
                         _positions.Add(p.Tile);
                     }
@@ -154,9 +173,19 @@ namespace Messingstadt
         // ---------------------------------------------------------------------------------------------------------
 
         /// <summary>Wer kommt: Zeile und Farbvariante eines neuen Passanten.</summary>
-        private (string Name, string Variant) PickFigure()
+        private (string Name, string Variant) PickFigure(string[]? only = null)
         {
             var (name, variants) = Cast[_rng.Next(Cast.Length)];
+            if (only != null && only.Length > 0)
+            {
+                // Der Weg legt fest, wer ihn geht. Ein Name, den das Blatt nicht kennt, fällt auf irgendwen zurück.
+                string wanted = only[_rng.Next(only.Length)];
+                int row = Array.FindIndex(Cast, c => c.Name == wanted);
+                if (row >= 0)
+                {
+                    (name, variants) = Cast[row];
+                }
+            }
             return (name, variants[_rng.Next(variants.Length)]);
         }
 
@@ -171,6 +200,13 @@ namespace Messingstadt
 
         public override void _Ready()
         {
+            // Feste Gehwege hat nur das Kesselviertel. Andere Karten brauchen Wege in ihren Daten, sonst bleibt die Straße leer.
+            _site = MapSite.Current;
+            if (!_site.Passersby && _site.Walks.Count == 0)
+            {
+                SetProcess(false);
+                return;
+            }
             using var doc = JsonDocument.Parse(File.ReadAllText(FiguresPath));
             var root = doc.RootElement;
             _views = root.GetProperty("views").GetInt32();
@@ -201,10 +237,17 @@ namespace Messingstadt
                 _testScareFrame = -1;
                 Scare(TestScareTile, ShotHeardTiles);
             }
-            if (_time >= _calmAt && _time >= _nextSpawn && _people.Count < MaxPeople)
+            if (_time >= _calmAt && _time >= _nextSpawn && _people.Count < _site.WalkersMax)
             {
-                _nextSpawn = _time + Rand(MinSpawnPause, MaxSpawnPause);
-                Arrive();
+                _nextSpawn = _time + Rand(_site.WalkerPause.X, _site.WalkerPause.Y);
+                if (_site.Passersby)
+                {
+                    Arrive();
+                }
+                else
+                {
+                    ArriveOnWalk(alreadyThere: false);
+                }
             }
             for (int i = _people.Count - 1; i >= 0; i--)
             {
@@ -222,12 +265,22 @@ namespace Messingstadt
             _lastShotTick = world.Shots.Count > 0 ? world.Shots[^1].Tick : 0;
             _alarmRunning = false;
             _calmAt = 0f;
-            _nextSpawn = _time + Rand(MinSpawnPause, MaxSpawnPause);
+            _nextSpawn = _time + Rand(_site.WalkerPause.X, _site.WalkerPause.Y);
+            _mapWidth = world.Map.Width;
+            _mapHeight = world.Map.Height;
             foreach (var p in _people)
             {
                 p.Sprite.QueueFree();
             }
             _people.Clear();
+            if (!_site.Passersby)
+            {
+                for (int i = 0; i < _site.WalkersAtStart; i++)
+                {
+                    ArriveOnWalk(alreadyThere: true);
+                }
+                return;
+            }
             // Die Straße ist schon belebt, wenn der Einsatz beginnt.
             var waiting = Add(new Vector2(StopLane, Rand(StopNorth, StopSouth)));
             waiting.Plan.Add(new Step { To = waiting.Tile, Wait = Rand(6f, 16f), Look = true, Pastime = Pastime(atStop: true) });
@@ -240,21 +293,81 @@ namespace Messingstadt
             var north = Add(new Vector2(EastLane, Rand(0.5f, 2f)));
             north.Plan.Add(new Step { To = Shelters[3], Wait = Rand(8f, 18f), Look = true, Pastime = Pastime(atStop: false) });
             north.Plan.Add(new Step { To = new Vector2(north.Lane, NorthEdge) });
-            while (_people.Count > PeopleAtStart)
+            while (_people.Count > _site.WalkersAtStart)
             {
                 _people[^1].Sprite.QueueFree();
                 _people.RemoveAt(_people.Count - 1);
             }
         }
 
-        private Person Add(Vector2 tile)
+        /// <summary>
+        /// Ein Passant auf einem Weg aus den Daten. Jeder Weg hat höchstens einen Gänger, sonst stünden zwei Betrunkene
+        /// an derselben Wand. alreadyThere setzt ihn gleich an den ersten Halt des Wegs: Die Straße lebt schon, wenn
+        /// der Einsatz beginnt.
+        /// </summary>
+        private void ArriveOnWalk(bool alreadyThere)
+        {
+            float total = 0f;
+            foreach (var w in _site.Walks)
+            {
+                total += _people.Exists(p => p.Walk == w) ? 0f : w.Weight;
+            }
+            if (total <= 0f)
+            {
+                return;
+            }
+            float pick = Rand(0f, total);
+            MapSite.Walk? walk = null;
+            foreach (var w in _site.Walks)
+            {
+                if (_people.Exists(p => p.Walk == w))
+                {
+                    continue;
+                }
+                walk = w;
+                pick -= w.Weight;
+                if (pick <= 0f)
+                {
+                    break;
+                }
+            }
+            var route = (MapSite.WalkPoint[])walk!.Points.Clone();
+            if (walk.BothWays && _rng.Next(2) == 0)
+            {
+                Array.Reverse(route);
+            }
+            int from = 0;
+            if (alreadyThere)
+            {
+                from = Array.FindIndex(route, point => point.WaitMax > 0f);
+                if (from < 0)
+                {
+                    // Ein Weg ohne Halt: irgendwo unterwegs, nicht am Rand.
+                    from = Math.Min(1, route.Length - 2);
+                }
+            }
+            var person = Add(route[from].Tile, walk.Cast);
+            person.Walk = walk;
+            person.Route = route;
+            person.Reached = from;
+            for (int i = alreadyThere ? from : 1; i < route.Length; i++)
+            {
+                person.Plan.Add(new Step
+                {
+                    To = route[i].Tile, Wait = route[i].WaitMax > 0f ? Rand(route[i].WaitMin, route[i].WaitMax) : 0f,
+                    Pastime = route[i].Pastime, Index = i, Facing = route[i].Look,
+                });
+            }
+        }
+
+        private Person Add(Vector2 tile, string[]? cast = null)
         {
             var person = new Person
             {
                 Sprite = Game.NewFigureSprite(), Tile = tile, Phase = Rand(0f, 10f),
                 Lane = (tile.X > 9f ? EastLane : WestLane) + Rand(-LaneJitter, LaneJitter),
             };
-            (person.Name, person.Variant) = PickFigure();
+            (person.Name, person.Variant) = PickFigure(cast);
             Dress(person.Sprite, person.Name, person.Variant);
             AddChild(person.Sprite);
             _people.Add(person);
@@ -408,8 +521,35 @@ namespace Messingstadt
             }
         }
 
+        /// <summary>
+        /// Schritte nur für Passanten nahe der Bildmitte und nie dichter als StepPause, sonst klappert die ganze Straße.
+        /// Ein Schritt fällt, wenn der halbe Doppelschritt voll ist.
+        /// </summary>
+        private void Footstep(Person p, float walkedBefore)
+        {
+            float half = Stride(p.Name, p.Mode == Mode.Flee ? "run" : "walk") / 2f;
+            if ((int)(walkedBefore / half) == (int)(p.Walked / half) || _time < _nextStep)
+            {
+                return;
+            }
+            var at = Game.ToScreen((int)(p.Tile.X * World.TileUnits), (int)(p.Tile.Y * World.TileUnits));
+            var camera = GetViewport().GetCamera2D();
+            if (camera == null || at.DistanceTo(camera.GetScreenCenterPosition()) > StepHeardPixels)
+            {
+                return;
+            }
+            _nextStep = _time + StepPause;
+            Game.Sound.Play("step_soft", at, StepDb, StepReach);
+        }
+
         private void Startle(Person p, Vector2 noise)
         {
+            // Ein scharfes Einatmen, aber nur von einem: Erschrecken alle zugleich, hört man es sonst als Chor.
+            if (_time >= _nextGasp)
+            {
+                _nextGasp = _time + GaspPause;
+                Game.Sound.Play("gasp", Game.ToScreen((int)(p.Tile.X * World.TileUnits), (int)(p.Tile.Y * World.TileUnits)), GaspDb, GaspReach);
+            }
             p.Mode = Mode.Startled;
             p.Timer = Rand(MinReactSeconds, MaxReactSeconds);
             p.Noise = noise;
@@ -426,6 +566,16 @@ namespace Messingstadt
         {
             p.Mode = hurry ? Mode.Walk : Mode.Flee;
             p.Plan.Clear();
+            if (p.Route != null)
+            {
+                // Auf dem eigenen Weg zu dem Ende, das weiter vom Lärm liegt: zurück über die Punkte, die er kam, oder voran.
+                bool onward = p.Route[^1].Tile.DistanceTo(p.Noise) > p.Route[0].Tile.DistanceTo(p.Noise);
+                for (int i = onward ? p.Reached + 1 : p.Reached; i >= 0 && i < p.Route.Length; i += onward ? 1 : -1)
+                {
+                    p.Plan.Add(new Step { To = p.Route[i].Tile });
+                }
+                return;
+            }
             bool south = p.Noise.Y < p.Tile.Y;
             // Der östliche Gehweg endet im Süden beim Lager, von dort geht es nur nach Norden hinaus.
             if (p.Lane > 9f)
@@ -493,12 +643,23 @@ namespace Messingstadt
                     {
                         moved = to.Length();
                         p.Tile = step.To;
+                        if (step.Index >= 0)
+                        {
+                            p.Reached = step.Index;
+                        }
                         if (step.Wait > 0f && p.Mode != Mode.Flee)
                         {
                             p.Mode = Mode.Wait;
                             p.Timer = step.Wait;
-                            // Wer wartet, schaut zur Straße.
-                            p.Facing = new Vector2(p.Tile.X < 9f ? 1f : -1f, 0.25f).Normalized();
+                            // Wer wartet, schaut zur Straße. Auf Wegen aus den Daten dorthin, wohin der Punkt weist.
+                            if (p.Route == null)
+                            {
+                                p.Facing = new Vector2(p.Tile.X < 9f ? 1f : -1f, 0.25f).Normalized();
+                            }
+                            else if (step.Facing is Vector2 look && look.LengthSquared() > 0f)
+                            {
+                                p.Facing = look.Normalized();
+                            }
                         }
                         else
                         {
@@ -519,7 +680,12 @@ namespace Messingstadt
 
         private void Place(Person p, float movedTiles)
         {
+            float before = p.Walked;
             p.Walked += movedTiles * World.TileUnits;
+            if (movedTiles > 0f)
+            {
+                Footstep(p, before);
+            }
             p.ModeTime = p.Mode == p.Shown ? p.ModeTime + (float)GetProcessDeltaTime() : 0f;
             p.Shown = p.Mode;
             string motion;
@@ -572,13 +738,17 @@ namespace Messingstadt
             sprite.FlipH = across < 0f;
             sprite.Position = Game.ToScreen(ux, uy) - Game.FigureFoot;
             // Unter den Einheiten derselben Tiefe: Agenten und Wachen bleiben im Zweifel obenauf.
-            sprite.ZIndex = Game.DepthZ(Mathf.Clamp(p.Tile.X, 0.05f, 19.95f), Mathf.Clamp(p.Tile.Y, 0.05f, 19.95f)) - UnitsAbove;
-            var light = Game.FigureLight(Mathf.Clamp(ux, 0, 20 * World.TileUnits - 1), Mathf.Clamp(uy, 0, 20 * World.TileUnits - 1), MinLight);
+            sprite.ZIndex = Game.DepthZ(Mathf.Clamp(p.Tile.X, 0.05f, _mapWidth - 0.05f), Mathf.Clamp(p.Tile.Y, 0.05f, _mapHeight - 0.05f)) - UnitsAbove;
+            var light = Game.FigureLight(Mathf.Clamp(ux, 0, (int)_mapWidth * World.TileUnits - 1), Mathf.Clamp(uy, 0, (int)_mapHeight * World.TileUnits - 1), MinLight);
             // Das Blatt malt Passanten schon grauer und dunkler als Agenten und Wachen.
-            sprite.Modulate = new Color(light.R, light.G, light.B, EdgeFade(p.Tile.Y));
+            sprite.Modulate = new Color(light.R, light.G, light.B, EdgeFade(p.Tile));
         }
 
         /// <summary>Am Kartenrand blendet die Figur aus, statt hart zu verschwinden.</summary>
-        private static float EdgeFade(float y) => Mathf.Clamp(Mathf.Min(y - NorthEdge, SouthEdge - y) / 0.7f, 0f, 1f);
+        private float EdgeFade(Vector2 tile)
+        {
+            float inside = Mathf.Min(Mathf.Min(tile.X, _mapWidth - tile.X), Mathf.Min(tile.Y, _mapHeight - tile.Y)) + BeyondEdge;
+            return Mathf.Clamp(inside / 0.7f, 0f, 1f);
+        }
     }
 }
