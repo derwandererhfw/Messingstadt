@@ -11,9 +11,10 @@ from pathlib import Path
 
 import numpy as np
 
-from hoerproben import AUDIO, DRIZZLE, MUSIC_DB, RATE, ROOT, SHOWER, gain, looped, weather
+from hoerproben import AUDIO, DRIZZLE, MUSIC_DB, RATE, ROOT, SHOWER, gain, limited, looped, weather
 
 ALT = "6479d44"
+ALT2 = "2e6684e"
 OUT = ROOT / "work" / "hoerproben" / "vergleich"
 PAUSE = 1.5
 
@@ -35,8 +36,8 @@ def new(name):
     return read(str(AUDIO / f"{name}.wav"))
 
 
-def old(name):
-    raw = subprocess.run(["git", "show", f"{ALT}:game/assets/audio/{name}.wav"], capture_output=True, check=True, cwd=ROOT).stdout
+def old(name, commit=ALT):
+    raw = subprocess.run(["git", "show", f"{commit}:game/assets/audio/{name}.wav"], capture_output=True, check=True, cwd=ROOT).stdout
     return read(io.BytesIO(raw))
 
 
@@ -46,10 +47,15 @@ def pitched(x, pitch):
     return np.stack([np.interp(at, np.arange(len(x)), x[:, c]) for c in (0, 1)], axis=1)
 
 
-def sequence(events, bed_rain=DRIZZLE):
+def old_weather(seconds, strength):
+    x = np.concatenate([old("rain", ALT2)] * (int(seconds / 12) + 1))[:int(seconds * RATE)]
+    return x * gain(-27 + 16 * np.log10(strength)) + looped("wind", seconds) * gain(-30)
+
+
+def sequence(events, bed_rain=DRIZZLE, bed=weather):
     """events: (Zeit, Klang, Lautstärke in dB). Darunter Regen und Wind."""
     seconds = max(at + len(x) / RATE for at, x, _ in events) + 0.5
-    out = weather(seconds, bed_rain)
+    out = bed(seconds, bed_rain)
     for at, x, db in events:
         i = int(at * RATE)
         out[i:i + len(x)] += x[:len(out) - i] * gain(db)
@@ -61,6 +67,7 @@ def both(before, after):
 
 
 def save(name, x):
+    x = limited(x)
     data = (np.clip(x, -1, 1) * 32767).astype("<i2")
     with wave.open(str(OUT / f"{name}.wav"), "wb") as f:
         f.setnchannels(2)
@@ -106,8 +113,50 @@ def new_shot(kind, i):
     return new(f"{name}_{i % count}")
 
 
+def round_two():
+    """Runde 2: Signale, Regen, Tiefes, Brummen, Hörner. Alt aus ALT2, neu aus dem Ordner."""
+    def before(name):
+        return old(name, ALT2)
+
+    def lined(load, items, gap=0.6, bed=weather):
+        events, at = [], 0.5
+        for name, db in items:
+            x = load(name)
+            events.append((at, x, db))
+            at += len(x) / RATE + gap
+        return sequence(events, DRIZZLE, bed)
+
+    def loops(load, items, seconds=5):
+        events, at = [], 0.5
+        for name, db in items:
+            x = load(name)
+            x = np.concatenate([x] * (int(seconds * RATE / len(x)) + 1))[:int(seconds * RATE)]
+            events.append((at, x, db))
+            at += seconds + 0.6
+        return sequence(events)
+
+    signals = (("whistle", -3), ("boy_whistle", -5), ("alarm_bell", 0), ("coins", -4), ("chain", -17), ("chain", -17), ("click", -3))
+    save("I_pfeifen_glocke_muenzen_kette_klick", both(lined(before, signals), lined(new, signals)))
+    save("J_dietrich_12_sekunden", both(loops(before, (("lockpick", -8),), 12), loops(new, (("lockpick", -8),), 12)))
+    seconds = 12
+    rain = [np.concatenate([w(seconds, s) for s in (SHOWER, DRIZZLE)]) for w in (old_weather, weather)]
+    save("K_regen_schauer_dann_niesel", both(rain[0], rain[1]))
+    far = (("train", -27), ("tram", -29), ("thunder_0", -18))
+    save("L_gueterzug_strassenbahn_donner", both(lined(before, far), lined(new, far)))
+    # Brummen im Spiel ist sehr leise und nur aus der Nähe zu hören. Hier 12 dB lauter als im Spiel, sonst hört man nichts.
+    hums = (("lamp", -26), ("neon", -22), ("tram_hum", -18), ("machine", -14), ("airship", 1), ("diesel", -8))
+    save("M_brummen_lampe_neon_bahn_maschine_luftschiff_diesel_12dB_lauter", both(loops(before, hums), loops(new, hums)))
+    horns = (("factory_horn", -29), ("foghorn", -29), ("church_bell", -30), ("win", -2), ("lose", -2))
+    save("N_schichthorn_nebelhorn_kirche_sieg_niederlage", both(lined(before, horns), lined(new, horns)))
+    fresh = (("gasp_0", -8), ("gasp_1", -8), ("shop_buy", -8), ("shop_equip", -8), ("shop_sell", -8), ("map_select", -10), ("map_accept", -8), ("stamp", -6),
+             ("tram_spark", -10), ("cell_door", -6), ("keys", -8))
+    save("O_neu_erschrecken_waffenkammer_stadtplan_stempel_funken_zellentuer_schluessel", lined(new, fresh, 0.9))
+    save("P_neu_arbeiterschritte_schleife", loops(new, (("crowd_steps", -10),), 16))
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
+    round_two()
     save("A_schritte_leise_stiefel_rennen", both(steps(old), steps(new)))
     for label, kind, pace, count in (("B_pistole", "pistole", 1.4, 4), ("C_schrotflinte", "schrot", 2.2, 3), ("D_maschinenpistole_salve", "mp", 0.11, 8), ("E_gewehr", "gewehr", 2.4, 3)):
         save(label, both(shots([old_shot(kind, i) for i in range(4)], 0, pace, count), shots([new_shot(kind, i) for i in range(4)], 0, pace, count)))

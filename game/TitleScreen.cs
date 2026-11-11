@@ -23,8 +23,9 @@ namespace Messingstadt
 
         // Laterne und Schlote im Titelbild, in Bildpunkten von title.png (1920 x 1080).
         // Die rechte Laterne, damit links hinter dem Menü Ruhe bleibt.
-        private static readonly Vector2 ImageLamp = new(1694, 458);
-        private static readonly Vector2[] ImageSmoke = { new(1157, 62), new(1422, 192) };
+        // Werte aus assets/title/title.json (lamps, stacks), das tools/art/title_scene.py schreibt.
+        private static readonly Vector2 ImageLamp = new(1831, 375);
+        private static readonly Vector2[] ImageSmoke = { new(1152, 53), new(1352, 103) };
 
         private Texture2D? _image;
         private TitleAmbience? _ambience;

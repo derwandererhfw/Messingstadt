@@ -378,11 +378,16 @@ SIGN_MASK = sign_mask()
 
 
 def main():
+    """Schreibt den Schriftzug. Das Titelbild selbst baut inzwischen title_scene.py in Ebenen, mit den Häusern des Spiels.
+
+    Die alte Straße in Schwarzweiß und Blau gibt es weiter mit dem Schalter --altes-bild, als title_alt.png zum Vergleich.
+    """
     OUT.mkdir(parents=True, exist_ok=True)
-    gray, blue = render()
-    finish(gray, blue).save(OUT / "title.png", optimize=True)
+    if "--altes-bild" in sys.argv:
+        gray, blue = render()
+        finish(gray, blue).save(OUT.parents[2] / "work" / "title_alt.png", optimize=True)
     logo().save(OUT / "title_logo.png", optimize=True)
-    print(f"Titelbild und Schriftzug in {OUT}")
+    print(f"Schriftzug in {OUT}")
 
 
 if __name__ == "__main__":

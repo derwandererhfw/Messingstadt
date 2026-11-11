@@ -64,6 +64,12 @@ Eingabe (Godot) -> Befehle -> World.Tick() -> Zustand -> Darstellung (Godot)
   `plan.json` nennt Kartenfeld, Ankerpunkte für Namen und Stempel und den Umriss jedes Viertels. Fluss, Bahn und eine
   Hauptstraße sind die Grenzen. Nachbarn teilen sich dieselben Kurvenpunkte, deshalb bleibt zwischen den Masken keine Lücke.
 
+- **Titelbild in Ebenen:** `tools/art/title_scene.py` baut die Straße zum Werkstor aus den Fassaden des Spiels, in die
+  Fluchtlinie gekippt. In `game/assets/title/` liegen `title.png` (fertig zusammengesetzt), die Ebenen
+  `title_sky/_factory/_street/_left/_right/_front.png`, auf ihren Inhalt zugeschnitten, und die Leuchtebenen
+  `title_*_lit.png` mit allen Fenstern und der Leuchtschrift. `title.json` nennt Lage und Tiefe der Ebenen, Fenster,
+  Schild, Tor, Schlote, Laternen, Pfützen und den Weg der Arbeiter. Alles außer Rot ist entsättigt.
+
 ## Zeichenreihenfolge
 
 Statische Objekte sind beim Export vorsortiert. Eine Figur wird vor dem ersten Objekt eingereiht, das

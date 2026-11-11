@@ -30,6 +30,9 @@ expect citymap viertel_2: brandt brandt brandt brandt brandt
 # Ein Klick auf den Plan wählt das Viertel: erst das fünfte, dann das erste
 clickdistrict 5
 expect citymap viertel_5: brandt brandt brandt brandt brandt
+# Die Altstadt hat noch keinen Einsatz
+expect focus 5  Altstadt   kein Auftrag
+seetext Für dieses Viertel liegt noch kein Auftrag vor. K. meldet sich.
 clickdistrict 1
 expect citymap viertel_1: brandt brandt brandt brandt brandt
 # Enter nimmt das Viertel, es folgt die Waffenkammer. Von dort führt Esc zurück auf den Plan
