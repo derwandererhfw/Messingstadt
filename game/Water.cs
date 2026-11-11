@@ -20,7 +20,10 @@ namespace Messingstadt
         private const float BeamMaxDepth = 0.3f;
         private const float BeamMaxHeight = 80f;
         private const float MinLight = 0.1f;
-        private const int SplashesAtFullRain = 46;
+        private const int SplashesAtFullRain = 120;
+        private const float RoofSplashesPerTile = 2.2f;
+        private const float RoofSplashAlpha = 0.6f;
+        private static readonly Color RoofSplashColor = new(0.5f, 0.58f, 0.8f);
         private const float SplashSeconds = 0.14f;
         private const float StreamLight = 0.42f;
         private const float StreamBaseAlpha = 0.16f;
@@ -30,7 +33,7 @@ namespace Messingstadt
         private const float StreamSpeed = 150f;
         private const float DripLight = 0.6f;
         private const float DripGravity = 620f;
-        private const int DripsPerWall = 9;
+        private const int DripsPerWall = 14;
         private const int DripsPerBeam = 14;
         private static readonly Color WaterTint = new(1.05f, 1.15f, 1.4f);
 
@@ -152,6 +155,56 @@ namespace Messingstadt
             private static int Units(float tile) => (int)(Mathf.Clamp(tile, 0.1f, 19.9f) * World.TileUnits);
         }
 
+        /// <summary>Tropfen zerplatzen auf einem Dach. Die Höhe folgt den Dachflächen aus dem Manifest.</summary>
+        private sealed partial class Roof : Node2D
+        {
+            private readonly List<Splash> _hits = new();
+            private readonly Random _rng = new();
+            private float _debt;
+
+            public Main Game = null!;
+            public float X0, Y0, X1, Y1, Eave;
+            public List<(float A, float B, float D)> Planes = new();
+
+            public override void _Process(double delta)
+            {
+                float dt = (float)delta;
+                _debt += Game.Climate.RainStrength * RoofSplashesPerTile * (X1 - X0) * (Y1 - Y0) * dt;
+                while (_debt >= 1f)
+                {
+                    _debt -= 1f;
+                    float x = X0 + (float)_rng.NextDouble() * (X1 - X0), y = Y0 + (float)_rng.NextDouble() * (Y1 - Y0);
+                    // Das Dach ist der Körper unter allen seinen Flächen: Es gilt die niedrigste.
+                    float z = float.MaxValue;
+                    foreach (var (a, b, d) in Planes)
+                    {
+                        z = Mathf.Min(z, d - a * x - b * y);
+                    }
+                    z = Planes.Count == 0 ? Eave : Mathf.Max(Eave, z);
+                    _hits.Add(new Splash { Pos = Game.ToScreen((int)(x * World.TileUnits), (int)(y * World.TileUnits)) - new Vector2(0f, z) });
+                }
+                foreach (var s in _hits)
+                {
+                    s.Age += dt;
+                }
+                _hits.RemoveAll(s => s.Age >= SplashSeconds);
+                QueueRedraw();
+            }
+
+            public override void _Draw()
+            {
+                var night = Game.NightColor;
+                foreach (var s in _hits)
+                {
+                    float f = s.Age / SplashSeconds;
+                    var color = new Color(RoofSplashColor.R / night.R, RoofSplashColor.G / night.G, RoofSplashColor.B / night.B, RoofSplashAlpha * (1f - f));
+                    float spread = 0.8f + 1.8f * f;
+                    DrawRect(new Rect2(s.Pos + new Vector2(-spread, -f * 1.5f), new Vector2(0.7f, 0.7f)), color);
+                    DrawRect(new Rect2(s.Pos + new Vector2(spread, -f * 1.5f), new Vector2(0.7f, 0.7f)), color);
+                }
+            }
+        }
+
         private sealed class Splash
         {
             public Vector2 Pos;
@@ -182,6 +235,10 @@ namespace Messingstadt
                 float w = x1 - x0, d = y1 - y0;
                 bool house = w * d >= MinFootprint && z1 >= MinHeight;
                 bool beam = w >= BeamMinLength && d <= BeamMaxDepth && z1 <= BeamMaxHeight;
+                if (t.TryGetProperty("roof", out var roofs) && roofs.ValueKind == JsonValueKind.Array && roofs.GetArrayLength() > 0)
+                {
+                    AddRoof(roofs[0], (x0 + x1) / 2f, (y0 + y1) / 2f, z1);
+                }
                 if (house)
                 {
                     AddHouse(x0, y0, x1, y1, z1);
@@ -212,6 +269,22 @@ namespace Messingstadt
             wall.AddEdge(Tile(x0, y1), Tile(x1, y1), z1);
             wall.AddEdge(Tile(x1, y1), Tile(x1, y0), z1);
             wall.MakeDrips(DripsPerWall);
+        }
+
+        private void AddRoof(JsonElement r, float middleX, float middleY, float wallHeight)
+        {
+            var roof = new Roof
+            {
+                Game = this.Game, ZIndex = Game.PerchZ(middleX, middleY, wallHeight) + 1, LightMask = 0,
+                X0 = r.GetProperty("x0").GetSingle(), Y0 = r.GetProperty("y0").GetSingle(), X1 = r.GetProperty("x1").GetSingle(),
+                Y1 = r.GetProperty("y1").GetSingle(), Eave = r.GetProperty("z0").GetSingle(),
+            };
+            foreach (var plane in r.GetProperty("planes").EnumerateArray())
+            {
+                // Fläche a·x + b·y + z = d, x und y in Feldern, z in Bildpunkten.
+                roof.Planes.Add((plane[0].GetSingle(), plane[1].GetSingle(), plane[3].GetSingle()));
+            }
+            AddChild(roof);
         }
 
         private void AddTram(float x1, float y0, float y1)

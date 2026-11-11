@@ -49,7 +49,12 @@ void fragment() {
     float n = texture(noise_map, vec2(px.x, px.y * 2.0) / 640.0 + vec2(TIME * 0.008, TIME * 0.003)).r;
     float smog = smoothstep(0.34, 0.76, n);
     float cover = smog * (0.06 + 0.6 * fx.g);
+    // Je weiter draußen vor der Karte, desto dichter steht der Dunst: Die Stadt verliert sich, statt schwarz abzubrechen.
+    float outside = max(max(-mx, -my), max(mx - 20.0, my - 20.0));
+    float far = smoothstep(0.5, 9.0, outside) * (0.3 + 0.22 * n);
     vec3 c = (haze + lightning * vec3(0.3, 0.35, 0.48)) * cover;
+    c += (vec3(0.2, 0.24, 0.38) + lightning * vec3(0.3, 0.35, 0.48)) * far * (1.0 - cover);
+    cover = cover + far * (1.0 - cover);
     float breath = 0.74 + 0.2 * sin(TIME * 0.4 + fx.b * 12.0) + 0.06 * sin(TIME * 2.3 + fx.b * 20.0);
     c += vec3(0.5, 0.17, 0.04) * fx.r * breath * (0.3 + 0.7 * smog);
     // Pfosten und Bahn decken ab (Alpha), die Lichtinseln addieren sich nur (Farbe ohne Alpha).
