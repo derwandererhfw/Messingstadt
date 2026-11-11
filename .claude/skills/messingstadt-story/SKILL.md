@@ -16,6 +16,8 @@ Dieser Skill steuert die Story-Arbeit. Er ändert nichts an Spielregeln, Sequenz
 | `docs/story/kanon.md` | Was gilt, mit Kennzeichnung und Quelle. Widersprüche, offene Fragen, Kontinuitätsregeln |
 | `docs/story/wissen.md` | Was der Trupp vor und nach jedem Einsatz weiß |
 | `docs/story/stadtplan.md` | Die fünf Viertel, Aufträge auf dem Stadtplan, Farben beider Seiten, Texte für den Plan. Daten in `stadtplan-vorlage.json` |
+| `docs/story/einsatz_XX_*.md` | Bauvorlage je Einsatz: Geschichte, Ort, Gegner, Ablauf, alle Texte, Bedarf der anderen Bereiche |
+| `docs/story/grafikthemen.md` | Grafikthema je Viertel für die Grafik-Session: Bauweise, Material, Farben, Licht, Geräusche, was man dort nie sieht |
 | `docs/story/texte/` | Entwürfe und Redaktionsnotizen zu Spieltexten |
 | `docs/story/NOIR_STYLE_GUIDE.md` | Erzählweise, Bildsprache und Farben für Sequenzen und längere Erzähltexte. Dazu gehört der Skill `messingstadt-noir`, der sich diesem Skill unterordnet |
 | `docs/konzept.md` | Spielregeln. Lesen, nicht ändern, außer in Absprache |

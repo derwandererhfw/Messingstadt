@@ -12,7 +12,9 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 | Zeitungstexte je Mission (`headlines`) | Für Einsatz 1 fertig, in `main` |
 | Berufe auf der Akte (`role`) | Für Einsatz 1 eingetragen, Commit e7e194c auf `claude/story-62427b` |
 | Arbeitsumgebung (Skill, dieser Ordner) | Angelegt am 2026-11-06 |
-| Einsatz 2 bis 6 | Nur als Verlauf in `../story.md`, keine Texte |
+| Stadtplan mit fünf Vierteln | Im Spiel, Texte aus `stadtplan.md` |
+| Einsatz 2 bis 6 | Bauvorlagen `einsatz_02_nordwall.md` bis `einsatz_06_anzeiger.md`, Stand 2026-11-11. Noch nicht gebaut, Texte noch nicht im Spiel |
+| Grafikthemen der Viertel | `grafikthemen.md`, Stand 2026-11-11 |
 
 ## Entscheidungsprotokoll
 
@@ -36,12 +38,18 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 | 2026-11-11 | Stadtplan zur Einsatzwahl: fünf Viertel, anfangs alle bei den Brandt-Werken, nach einem gelungenen Einsatz hält der Hammer das Viertel. Inhalt in `stadtplan.md` | Nutzer über die Hauptsession |
 | 2026-11-11 | Einsatz 4 wird Überzeugen (ein Prokurist schließt Valks Schließfach auf), Einsatz 5 wird Ausschalten (Führer des Werkschutzes, der die Altstadt abriegelt). „Der Anzeiger“ bleibt sechster Einsatz | Nutzer über die Hauptsession („Ja, beide ändern“) |
 | 2026-11-11 | Namen freigegeben: Kesselviertel, Nordwall, Gleisviertel, Kontorviertel, Altstadt, Fischmarkt, Prokurist Albert Dorn, Werkschutzführer Gustav Rademacher | Nutzer („Ja, freigeben“) |
+| 2026-11-11 | Auftrag: Story weiterschreiben. Zuerst Einsatz 2 als Bauvorlage, dann Grafikthema je Viertel, dann Einsatz 3 bis 5 und Finale | Nutzer über die Hauptsession |
 
 ## Offene Entscheidungen
 
 | Frage | Wer entscheidet | Folgen |
 |---|---|---|
 | Stadtplan: Kann ein Viertel an Brandt zurückfallen? Wie sieht der Notstand auf dem Plan aus? | Nutzer mit Kampagne | Vorschläge in `stadtplan.md`, Abschnitt Offen |
+| Je Einsatz volle oder kleine Fassung der neuen Regel: Gefangene (2), Sabotageziele mit Zeitdruck (3), Zielperson überzeugen (4), Zielperson ausschalten (5), Entscheidung und Halten (6) | Nutzer mit Mechanik | Jeweils Abschnitt 4 der Bauvorlage. Die kleine Fassung kommt ohne neue Regel aus, macht den Einsatz aber dem ersten ähnlicher |
+| Halber Bestechungspreis, wenn Greta dabei ist? | Nutzer mit Mechanik | Gäbe Greta eine Rolle in Einsatz 2, 4 und 5 |
+| Neue Gegnerart Werkschutzführer (Rademacher) | Nutzer mit Gegner | `einsatz_05_altstadt.md`, Abschnitt 3 |
+| Texte, Namen und Orte der Bauvorlagen für Einsatz 2 bis 6 | Nutzer | Stehen als VORSCHLAG in den Bauvorlagen und werden am gebauten Einsatz abgenommen |
+| Schlusssequenz teils im Präsens | Nutzer mit Sequenzen | `einsatz_06_anzeiger.md`, Abschnitt 5 |
 | Eigene Fähigkeiten für Greta und Hanna? | Nutzer mit Mechanik | Vorschlag Story: Greta fälscht Papiere, Hanna bringt Beute schneller weg |
 | Wann erfährt der Trupp vom Plan mit dem Notstand? | Nutzer | Siehe `wissen.md`, betrifft Einsatz 2 bis 4 |
 | Welche Währung gilt in Messingstadt? | Nutzer | Im Spiel stehen nur Zahlen (200, 300). Ein Arbeiter sagt „Groschen“ |
@@ -49,5 +57,5 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 ## Nächste Schritte
 
 1. Einbau der Dauertod-Texte durch Kampagne und Menüs begleiten.
-2. Einsatz 2 „Die Wachstube“ im Modus Missionsdesign planen und vorlegen.
+2. Einsatz 2 „Die Wachstube“ wird gebaut. Danach Sätze mit Spielhinweis gegen die Karte prüfen, `{prisoners}` in `Headlines.cs` einbauen und die Texte in die Missionsdatei eintragen.
 3. Recherche zum Zeitkolorit für die offenen Fragen in `kanon.md`.
