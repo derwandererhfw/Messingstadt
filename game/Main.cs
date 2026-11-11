@@ -563,7 +563,8 @@ void fragment() {
             ["panel"] = _panel.Visible.ToString(),
             ["hud"] = _paper.Visible.ToString(),
             ["help"] = _help.Visible.ToString(),
-            ["helpline"] = _help.Text,
+            ["helpline"] = _helpPlain,
+            ["helprows"] = string.Join(" / ", _help.Text.Split('\n').Select(row => row.Replace(' ', ' ').Trim())),
             ["resting"] = RestingLine.Replace("\n", "; "),
             ["stamps"] = string.Join(",", World.Units.Where(u => u.Faction == Faction.Agent && !u.Alive).Select(u => $"{u.Name}:{FallStamp(u)}")),
             ["begun"] = SlotBegun(_slot).ToString(),
@@ -624,20 +625,29 @@ void fragment() {
             return mission;
         }
 
-        /// <summary>Weltpositionen der Zivilisten für das Peilgerät, in Bildpunkten der Welt wie Node2D.Position. Wer Passanten hat, füllt die Liste.</summary>
-        public List<Vector2> PeilCivilians { get; } = new();
-
-        /// <summary>Bild eines Agenten für sein Feld in der Spalte. Die einzige Stelle, an der es gewählt wird: bisher ein Ausschnitt aus dem Figurenblatt.</summary>
-        public (Texture2D Sheet, Rect2 Region, Material Look) AgentPortrait(Unit u)
+        /// <summary>
+        /// Brustbild eines Agenten für sein Feld in der Spalte, aus game/assets/hud (tools/art/portraits.py). Die einzige Stelle,
+        /// an der es gewählt wird. Ein Bild je Agent, wer anders heißt, ist ein Rekrut. Zustände zeigt die Spalte durch Abdunkeln und Stempel.
+        /// </summary>
+        public Texture2D AgentPortrait(Unit u)
         {
-            var cell = FigureRegion(_animator.SpriteName(u), PortraitView, PortraitColumn);
-            return (_figures, new Rect2(cell.Position + cell.Size * PortraitCrop.Position, cell.Size * PortraitCrop.Size), _figureMaterial);
+            string who = u.Name.ToLowerInvariant();
+            string key = PortraitNames.Contains(who) ? who : "rekrut";
+            if (!_portraits.TryGetValue(key, out var picture))
+            {
+                var image = Image.LoadFromFile(ProjectSettings.GlobalizePath($"res://assets/hud/portrait_{key}.png"));
+                // Das Bild ist viel größer als sein Feld, ohne Mipmaps flimmert es beim Verkleinern.
+                image.GenerateMipmaps();
+                picture = ImageTexture.CreateFromImage(image);
+                _portraits[key] = picture;
+            }
+            return picture;
         }
 
-        // Von vorn und im Stehen, Spalte "idle" im Figurenblatt.
-        private const int PortraitView = 0, PortraitColumn = 2;
-        // Anteil der Zelle, der Kopf und Oberkörper zeigt.
-        private static readonly Rect2 PortraitCrop = new(0.31f, 0.09f, 0.4f, 0.46f);
+        private static readonly string[] PortraitNames = { "greta", "otto", "emil", "hanna" };
+        private readonly Dictionary<string, Texture2D> _portraits = new();
+        // Die Hilfezeile ohne Umbruch, wie HelpLine sie liefert.
+        private string _helpPlain = "";
 
         /// <summary>Agent, dessen Rauchtopf auf ein Ziel wartet, sonst -1.</summary>
         public int SmokeArmedFor => _smokeArmed;
@@ -2142,7 +2152,8 @@ void fragment() {
             _paper.Refresh(World, Selected, telegram, info);
             _banner.Text = _paused && !ControlsLocked ? "PAUSE" : "";
             _help.Visible = _paper.Visible && !_finished;
-            string help = HelpLine();
+            _helpPlain = HelpLine();
+            string help = Hud.FitHelp(_helpPlain, _help.Size.X, 12);
             if (_help.Text != help)
             {
                 _help.Text = help;

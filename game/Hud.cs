@@ -28,6 +28,35 @@ namespace Messingstadt
         private const int LevelDots = 3;
         private static readonly Color SelectedEdge = new(0.95f, 0.78f, 0.35f);
         private static readonly Color Board = new(0.17f, 0.15f, 0.13f);
+        private static readonly Color HurtTint = new(0.85f, 0.6f, 0.55f);
+        private static readonly Color DownTint = new(0.32f, 0.3f, 0.3f);
+        private const string HelpGap = "   ";
+
+        /// <summary>
+        /// Hilfezeile für die Breite neben der Spalte. Passt sie nicht in eine Zeile, wird sie an der Lücke zwischen zwei Gruppen
+        /// geteilt, die der Mitte am nächsten liegt. So steht nie ein einzelnes Wort allein in der zweiten Zeile. Innerhalb einer
+        /// Gruppe wie "WASD F P M" bricht nichts um.
+        /// </summary>
+        public static string FitHelp(string text, float width, int fontSize)
+        {
+            var groups = text.Split(HelpGap).Select(g => g.Replace(' ', ' ')).ToArray();
+            string line = string.Join(HelpGap, groups);
+            if (width <= 0f || groups.Length < 2 || PaperUi.Typewriter.GetStringSize(text, HorizontalAlignment.Left, -1, fontSize).X <= width)
+            {
+                return line;
+            }
+            int best = 1;
+            float bestGap = float.MaxValue;
+            for (int i = 1; i < groups.Length; i++)
+            {
+                float gap = Math.Abs(string.Join(HelpGap, groups.Take(i)).Length - string.Join(HelpGap, groups.Skip(i)).Length);
+                if (gap < bestGap)
+                {
+                    (best, bestGap) = (i, gap);
+                }
+            }
+            return string.Join(HelpGap, groups.Take(best)) + "\n" + string.Join(HelpGap, groups.Skip(best));
+        }
 
         private sealed class Field
         {
@@ -36,7 +65,7 @@ namespace Messingstadt
             public ColorRect Paper = null!;
             public Label Name = null!;
             public TextureRect Portrait = null!;
-            public AtlasTexture Picture = null!;
+            public ColorRect Frame = null!;
             public Label Doing = null!;
             public Label State = null!;
             public Control Alive = null!;
@@ -140,17 +169,17 @@ namespace Messingstadt
             f.Name = PaperUi.Text("", 13, PaperUi.Ink, PaperUi.Typewriter);
             f.Name.Position = new Vector2(5, 1);
             root.AddChild(f.Name);
-            f.Alive = new Control { Size = new Vector2(FieldWidth, FieldHeight), MouseFilter = MouseFilterEnum.Ignore };
-            root.AddChild(f.Alive);
-            // Lichtbild wie in einer Personalakte, dunkel hinterlegt.
-            f.Alive.AddChild(new ColorRect { Position = new Vector2(5, 31), Size = new Vector2(36, 45), Color = new Color(0.25f, 0.23f, 0.2f), MouseFilter = MouseFilterEnum.Ignore });
-            f.Picture = new AtlasTexture();
+            // Lichtbild wie in einer Personalakte, dunkel hinterlegt. Es bleibt auch bei Niedergegangenen stehen, nur abgedunkelt.
+            f.Frame = new ColorRect { Position = new Vector2(5, 31), Size = new Vector2(36, 46), Color = new Color(0.25f, 0.23f, 0.2f), MouseFilter = MouseFilterEnum.Ignore };
+            root.AddChild(f.Frame);
             f.Portrait = new TextureRect
             {
-                Texture = f.Picture, Position = new Vector2(6, 32), Size = new Vector2(34, 43), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered, TextureFilter = TextureFilterEnum.Nearest, MouseFilter = MouseFilterEnum.Ignore,
+                Position = new Vector2(1, 1), Size = new Vector2(34, 44), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered, TextureFilter = TextureFilterEnum.LinearWithMipmaps, MouseFilter = MouseFilterEnum.Ignore,
             };
-            f.Alive.AddChild(f.Portrait);
+            f.Frame.AddChild(f.Portrait);
+            f.Alive = new Control { Size = new Vector2(FieldWidth, FieldHeight), MouseFilter = MouseFilterEnum.Ignore };
+            root.AddChild(f.Alive);
             f.Doing = Small("", new Color(PaperUi.Ink, 0.8f));
             f.Doing.Position = new Vector2(5, 16);
             f.Doing.Size = new Vector2(FieldWidth - 8, 14);
@@ -278,6 +307,10 @@ namespace Messingstadt
             f.Alive.Visible = u.Alive;
             f.Strike.Visible = false;
             f.Stamp.Visible = !u.Alive;
+            f.Frame.Visible = true;
+            f.Portrait.Texture = Game.AgentPortrait(u);
+            // Ein Bild je Agent: angeschlagen ist es rötlich gedämpft, niedergegangen dunkel.
+            f.Portrait.Modulate = !u.Alive ? DownTint : u.Hp * 2 < u.MaxHp ? HurtTint : Colors.White;
             f.State.Position = new Vector2(StateLeft, 33);
             f.State.Size = new Vector2(FieldWidth - StateLeft - 2, 44);
             if (!u.Alive)
@@ -286,10 +319,6 @@ namespace Messingstadt
                 f.State.Text = "";
                 return;
             }
-            var (sheet, region, look) = Game.AgentPortrait(u);
-            f.Picture.Atlas = sheet;
-            f.Picture.Region = region;
-            f.Portrait.Material = look;
             f.Doing.Text = u.CarriesItem ? "trägt das Buch" : u.BandageTicks > 0 ? "verbindet sich" : u.Sprinting ? "rennt" : Game.AgentRole(index);
             string light = Game.LightWord(u);
             f.State.Text = u.Hp * 2 < u.MaxHp ? (light.Length > 0 ? $"angeschlagen\n{light}" : "angeschlagen") : light;
@@ -306,6 +335,7 @@ namespace Messingstadt
             f.Paper.Color = PaperUi.PaperDark;
             f.Edge.Color = new Color(0f, 0f, 0f, 0.45f);
             f.Alive.Visible = false;
+            f.Frame.Visible = false;
             f.Stamp.Visible = false;
             f.Strike.Visible = true;
             // Ohne Bild gehört die ganze Breite dem Grund.
@@ -322,6 +352,7 @@ namespace Messingstadt
             f.Paper.Color = new Color(PaperUi.PaperDark, 0.45f);
             f.Edge.Color = new Color(0f, 0f, 0f, 0.3f);
             f.Alive.Visible = false;
+            f.Frame.Visible = false;
             f.Stamp.Visible = false;
             f.Strike.Visible = false;
             f.State.Text = "";
@@ -464,9 +495,13 @@ namespace Messingstadt
                         Add(Tile(u.X, u.Y) - center, Kind.Guard, false);
                     }
                 }
-                foreach (var at in Game.PeilCivilians)
+                // Die Passanten der Kulisse, in Kartenfeldern. Die Liste gehört Passersby und wird jedes Mal neu gelesen.
+                if (Game.Passersby != null)
                 {
-                    Add(Game.ScreenToMap(at) - center, Kind.Civilian, false);
+                    foreach (var tile in Game.Passersby.Positions)
+                    {
+                        Add(tile - center, Kind.Civilian, false);
+                    }
                 }
                 // Ziel und Fluchtwagen bleiben als Marke am Rand, wenn sie zu weit weg sind: so zeigen sie die Richtung.
                 if (!world.ItemTaken)
@@ -555,7 +590,7 @@ namespace Messingstadt
                             DrawCircle(p, 3.5f, new Color(GuardDot, glow));
                             break;
                         default:
-                            DrawCircle(p, 2.5f, new Color(CivilianDot, glow));
+                            DrawCircle(p, 3f, new Color(CivilianDot, glow));
                             break;
                     }
                 }
