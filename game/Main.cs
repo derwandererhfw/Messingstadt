@@ -362,7 +362,7 @@ void fragment() {
             {
                 Game = this, Sound = _sound, Sheet = LoadTexture("res://assets/critters.png"), Glow = _critterGlow,
                 Gullies = _ambience.Steam.ConvertAll(ScreenToMap),
-                WorkerSpot = WorkerTile, WorkerDoor = WorkerDoorTile,
+                WorkerSpot = WorkerTile, WorkerDoor = WorkerDoorTile, HomeCity = FirstCity,
             });
             _menus = new Menus { Game = this };
             AddChild(_menus);
@@ -647,6 +647,8 @@ void fragment() {
             ["hp"] = string.Join(",", World.Units.Where(u => u.Faction == Faction.Agent).Select(u => u.Hp)),
             ["smokes"] = World.Smokes.Count.ToString(),
             ["mission"] = MissionId,
+            ["guards"] = World.Units.Count(u => u.Faction == Faction.Guard && u.Alive).ToString(),
+            ["agents"] = World.Units.Count(u => u.Faction == Faction.Agent && u.Alive).ToString(),
             ["scene"] = s_scene,
             ["telegram"] = _paper.TelegramText,
             ["state"] = World.State.ToString(),
@@ -1046,8 +1048,12 @@ void fragment() {
             _critterGlow = glow;
             AddChild(new Haze { Game = this });
             AddChild(new Drains { Game = this });
-            Passersby = new Passersby { Game = this, FiguresPath = Globalize("res://assets/figures.json") };
-            AddChild(Passersby);
+            if (FirstCity)
+            {
+                // Wege und Unterstände der Passanten sind auf die erste Stadt gemünzt.
+                Passersby = new Passersby { Game = this, FiguresPath = Globalize("res://assets/figures.json") };
+                AddChild(Passersby);
+            }
             AddChild(new SmokePot { Game = this, TestAt = _testPot });
             AddChild(new RainLayer { Game = this, ZIndex = 3900 });
         }
@@ -1206,7 +1212,10 @@ void fragment() {
         /// <summary>Dateien, die zur Stadt eines Einsatzes gehören. Fehlen sie im Ordner der Szene, gibt es sie dort nicht.</summary>
         private static readonly string[] SceneOnly = { "skyline.png", "skyline_fx.png", "skyline.json" };
 
-        /// <summary>Grafik der Stadt liegt je Szene in einem eigenen Ordner unter assets. Alles andere, etwa Figuren und Schrift, gilt für alle.</summary>
+        /// <summary>
+        /// Die Stadt des ersten Einsatzes liegt direkt in assets, jede weitere in assets/maps/&lt;id&gt; mit denselben Dateinamen.
+        /// Was dort fehlt, etwa Figuren und Schrift, gilt für alle Karten und kommt aus assets.
+        /// </summary>
         private static string Scened(string resPath)
         {
             const string root = "res://assets/";
@@ -1214,7 +1223,7 @@ void fragment() {
             {
                 return resPath;
             }
-            string inScene = root + s_scene + "/" + resPath[root.Length..];
+            string inScene = root + "maps/" + s_scene + "/" + resPath[root.Length..];
             bool sceneOnly = Array.IndexOf(SceneOnly, resPath[root.Length..]) >= 0;
             return sceneOnly || File.Exists(ProjectSettings.GlobalizePath(inScene)) ? inScene : resPath;
         }

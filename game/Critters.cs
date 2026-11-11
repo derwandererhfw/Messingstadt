@@ -76,6 +76,8 @@ namespace Messingstadt
         public Texture2D Sheet = null!;
         public Texture2D Glow = null!;
         public List<Vector2> Gullies = new();
+        /// <summary>Tauben auf festen Dachkanten und der Arbeiter am Hotel gehören zur Stadt des ersten Einsatzes.</summary>
+        public bool HomeCity = true;
         public Vector2 WorkerSpot;
         public Vector2 WorkerDoor;
 
@@ -110,7 +112,7 @@ namespace Messingstadt
                 rat.TargetY = rat.Y;
                 _rats.Add(rat);
             }
-            foreach (var (x, y, z) in Perches)
+            foreach (var (x, y, z) in HomeCity ? Perches : Array.Empty<(float X, float Y, float Z)>())
             {
                 var seat = Game.ToScreen((int)(x * World.TileUnits), (int)(y * World.TileUnits)) - new Vector2(0, z);
                 var pigeon = new Pigeon
@@ -122,6 +124,7 @@ namespace Messingstadt
                 _pigeons.Add(pigeon);
             }
             AddWorker();
+            _worker.Visible = HomeCity;
         }
 
         private void AddWorker()
@@ -364,7 +367,7 @@ namespace Messingstadt
 
         private void ShowWorker(bool show)
         {
-            _worker.Visible = show;
+            _worker.Visible = show && HomeCity;
             _ember.Visible = show;
             _emberLight.Visible = show;
             _workerSmoke.Visible = show;

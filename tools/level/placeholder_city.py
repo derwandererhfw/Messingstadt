@@ -1,7 +1,7 @@
 """Platzhalterstadt für einen Einsatz, gebaut aus dem Grundriss data/scene_<nr>.json mit den Bausteinen von generate_concept.py.
 
 Aufruf: python tools/level/placeholder_city.py 02
-Schreibt game/assets/<id>/ (Boden, Objekte, Manifest, Feinfassungen, Lichtkarten) und data/light_<nr>.json.
+Schreibt game/assets/maps/<id>/ (Boden, Objekte, Manifest, Feinfassungen, Lichtkarten) und data/light_<nr>.json.
 Die Stadt des ersten Einsatzes bleibt unberührt: Generator und Lichtbake laufen in einem eigenen Arbeitsordner.
 Vorläufig, bis die Grafik das Viertel selbst baut. Schlichte Fassaden, flache Dächer, keine Kulisse.
 """
@@ -67,6 +67,11 @@ def main():
                 gc.name_plate(faces[0], gc.draw_on(faces[0]), w * 16, 6, b["name"], 7)
             gc.building(b["x0"], b["y0"], w, d, h, faces[0], faces[1], s, things)
             solids.append((b["x0"], b["y0"], b["x1"], b["y1"]))
+        for g in scene.get("gates", []):
+            # Tor in einer Mauerlücke: ein niedriger dunkler Kasten, damit die Lücke von oben zu sehen ist.
+            w, d = g["x1"] - g["x0"], g["y1"] - g["y0"]
+            faces = [gc.wall(side * 32, g["height"], ("iron",))[0] for side in (w, d)]
+            gc.building(g["x0"], g["y0"], w, d, g["height"], faces[0], faces[1], s, things)
         for p in scene["props"]:
             if p["kind"] == "fluchtwagen":
                 gc.getaway_truck(p["x"] - 0.7, p["y"] - 0.7, s, things)
@@ -84,7 +89,7 @@ def main():
     env = dict(os.environ, MESSINGSTADT_BAKE_ROOT=str(work))
     subprocess.run([sys.executable, str(ART / "bake_light.py")], check=True, env=env)
 
-    target = ROOT / "game" / "assets" / scene["id"]
+    target = ROOT / "game" / "assets" / "maps" / scene["id"]
     if target.exists():
         shutil.rmtree(target)
     target.mkdir(parents=True)
@@ -92,6 +97,9 @@ def main():
     for name in ("ground.png", "manifest.json", "panes.json", "backdrop.png"):
         if (assets / name).exists():
             shutil.copy(assets / name, target / name)
+    manifest = json.loads((target / "manifest.json").read_text(encoding="utf-8"))
+    manifest["map"] = scene["id"]
+    (target / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     for name in ("things", "hd", "light"):
         shutil.copytree(assets / name, target / name)
     shutil.copy(work / "data" / "light_01.json", ROOT / "data" / f"light_{nr}.json")
