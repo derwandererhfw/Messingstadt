@@ -1006,11 +1006,47 @@ AGENTS = {
                   hair=(150, 84, 48), bun=True, hem=27, belt=20, scale=0.92, strap=True, satchel=True, trim=(150, 124, 86),
                   scarf=(168, 160, 140)),
 }
+def _worn(color):
+    """Rostbrauner Ton für Rekruten: gleiche Helligkeit, röter. Grau sähe den Wachen zu ähnlich."""
+    level = sum(color) / 3
+    return (min(255, round(level * 1.3)), round(level * 0.86), round(level * 0.62))
+
+
+# Rekruten tragen die Gestalt eines der vier, aber rostbraun. Das ist nur eine zweite Palettenzeile, kein eigenes Bild.
+for _spec in AGENTS.values():
+    _spec["variants"] = {"rekrut": dict(coat=tuple(_worn(c) for c in _spec["coat"]), scarf=(96, 100, 96))}
+
+# Passanten, reine Kulisse: gedeckte Farben, kein Lichtsaum, keine Waffe. Farbvarianten stehen als weitere Palettenzeilen bereit.
+CIVILIANS = {
+    # Arbeiter mit Henkelmann
+    "Zivil_Arbeiter": dict(coat=((44, 52, 66), (66, 78, 96), (88, 100, 118)), legs="soot", hat="peak", hat_c=(70, 66, 62), shirt="ash",
+                           hair="hair", hem=25, belt=20, pail=True, trim=(96, 100, 108),
+                           variants={"blau": dict(coat=((36, 48, 78), (54, 72, 110), (74, 94, 134))),
+                                     "braun": dict(coat=((60, 46, 34), (90, 70, 50), (116, 94, 70)))}),
+    # Frau mit Kopftuch und Einkaufsnetz, langer Rock
+    "Zivil_Frau": dict(coat=((70, 50, 56), (104, 74, 82), (130, 98, 104)), legs="soot", hat="kerchief", hat_c=(150, 60, 52), shirt="ash",
+                       hair="hair", hem=37, belt=20, bulk=0.95, scale=0.94, net=True, trim=(120, 104, 76),
+                       variants={"gruen": dict(coat=((46, 62, 50), (70, 92, 74), (94, 116, 96)), hat_c=(64, 84, 130)),
+                                 "grau": dict(coat=((60, 60, 66), (90, 90, 98), (116, 116, 124)), hat_c=(160, 128, 62))}),
+    # Herr mit Melone, der geschlossene Schirm dient als Stock
+    "Zivil_Herr": dict(coat=((34, 34, 40), (54, 54, 62), (76, 76, 86)), legs="soot", hat="bowler", hat_c=(30, 28, 30), shirt="paper",
+                       hair="hair", hem=34, belt=21, umbrella=True,
+                       variants={"grau": dict(coat=((70, 70, 74), (104, 104, 108), (130, 130, 134)), hat_c=(70, 68, 68))}),
+    # Zeitungsjunge: klein, Mütze, ein Packen Zeitungen unter dem Arm
+    "Zivil_Junge": dict(coat=((70, 74, 60), (102, 108, 88), (126, 132, 110)), legs="iron", hat="peak", hat_c=(96, 80, 60), shirt="ash",
+                        hair="hair", hem=22, belt=20, scale=0.78, strap=True, papers=True, trim=(80, 60, 44),
+                        variants={"braun": dict(coat=((66, 50, 38), (98, 76, 56), (124, 100, 76)))}),
+    # Betrunkener: ohne Hut, Flasche in der Hand, schwankt
+    "Zivil_Trinker": dict(coat=((58, 54, 44), (88, 82, 66), (112, 106, 88)), legs="iron", hat="none", hat_c="soot", shirt="ash",
+                          hair=(120, 116, 108), hem=30, belt=21, bottle=True, drunk=True, band=(40, 70, 50),
+                          variants={"grau": dict(coat=((52, 54, 58), (78, 82, 88), (102, 106, 112)))}),
+}
 # Mit anderer Waffe in der Hand gibt es eigene Zeilen im Figurenblatt. Das Spiel wählt nach Name und Waffe.
 WEAPON_ROWS = {"": "pistol", "_Schrot": "sawn", "_MP": "smg", "_Knueppel": "club"}
 # Was figures3d.py rendert: die Agenten zuerst, dann alle übrigen Figuren. "Agent" bleibt nur für das Konzeptblatt.
 SHEET_SPECS = {name + suffix: dict(spec, gun=gun, agent=True) for name, spec in AGENTS.items() for suffix, gun in WEAPON_ROWS.items()}
 SHEET_SPECS.update({name: spec for name, spec in SPECS.items() if name != "Agent"})
+SHEET_SPECS.update({name: dict(spec, gun="none", civil=True) for name, spec in CIVILIANS.items()})
 
 
 def figure(s, ox, oy, spec, direction, step=0, aim=False):

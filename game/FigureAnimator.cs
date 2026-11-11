@@ -39,6 +39,12 @@ namespace Messingstadt
 
         private readonly Dictionary<string, HashSet<string>> _has = new();
         private readonly List<string> _agents = new();
+        private readonly Dictionary<string, Dictionary<string, int>> _variants = new();
+        private readonly Dictionary<string, (int Start, int Count)> _civilColumns = new();
+        private readonly List<string> _civilians = new();
+
+        /// <summary>Zeilen der Passanten im Figurenblatt, etwa Zivil_Arbeiter.</summary>
+        public IReadOnlyList<string> Civilians => _civilians;
 
         // Agenten mit anderer Waffe in der Hand haben eigene Zeilen im Blatt, siehe AGENTS in generate_concept.py.
         private static readonly Dictionary<string, string> WeaponRows = new()
@@ -105,6 +111,24 @@ namespace Messingstadt
                     _agents.Add(figure.Name);
                 }
             }
+            foreach (var figure in root.GetProperty("variants").EnumerateObject())
+            {
+                var rows = new Dictionary<string, int>();
+                foreach (var v in figure.Value.EnumerateObject())
+                {
+                    rows[v.Name] = v.Value.GetInt32();
+                }
+                _variants[figure.Name] = rows;
+            }
+            var civil = root.GetProperty("civil");
+            foreach (var n in civil.GetProperty("names").EnumerateArray())
+            {
+                _civilians.Add(n.GetString()!);
+            }
+            foreach (var c in civil.GetProperty("columns").EnumerateObject())
+            {
+                _civilColumns[c.Name] = (c.Value[0].GetInt32(), c.Value[1].GetInt32());
+            }
             (IdleFirst, IdleCount) = _columns["idle"];
             (WalkFirst, WalkCount) = _columns["walk"];
         }
@@ -142,6 +166,30 @@ namespace Messingstadt
             }
             return s.Row;
         }
+
+        /// <summary>Ob die Figur keiner der vier ist, sondern ein Rekrut in geliehener Gestalt. Er trägt dann Feldgrau.</summary>
+        public bool IsRecruit(Unit u) => u.Faction == Faction.Agent && !_names.Contains(u.Name);
+
+        /// <summary>Zeile in der Palette für eine Farbvariante der Figur, -1 für die Grundfarbe.</summary>
+        public int PaletteRow(string name, string variant) =>
+            variant.Length > 0 && _variants.TryGetValue(name, out var rows) && rows.TryGetValue(variant, out int row) ? row : -1;
+
+        /// <summary>Namen der Farbvarianten einer Figur, ohne die Grundfarbe.</summary>
+        public IEnumerable<string> Variants(string name) => _variants.TryGetValue(name, out var rows) ? rows.Keys : System.Array.Empty<string>();
+
+        /// <summary>Spalte für eine Bewegung der Passanten: walk, run, idle, smoke, startle, cower, read. frame läuft im Kreis.</summary>
+        public int CivilColumn(string motion, int frame)
+        {
+            var (start, count) = _civilColumns[motion];
+            return start + Mathf.PosMod(frame, count);
+        }
+
+        /// <summary>Bildzahl einer Bewegung der Passanten.</summary>
+        public int CivilFrames(string motion) => _civilColumns[motion].Count;
+
+        /// <summary>Weg je Zyklus in Spieleinheiten für walk oder run einer Figur. Wer danach weiterschaltet, gleitet nicht.</summary>
+        public float StrideOf(string name, string motion) =>
+            _strides.TryGetValue(name, out var table) && table.TryGetValue(motion, out float stride) ? stride : DefaultStride;
 
         /// <summary>Ob es diese Bewegung für die Figur im Blatt gibt. Manche gibt es nur für Agenten oder nur mit einer Waffe.</summary>
         private bool Has(Unit u, string motion) => _has.TryGetValue(SpriteName(u), out var motions) && motions.Contains(motion);

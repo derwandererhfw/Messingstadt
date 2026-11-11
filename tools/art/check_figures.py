@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import figures3d as f  # noqa: E402
 
 ASSETS = f.ROOT / "game" / "assets"
+Image.MAX_IMAGE_PIXELS = None  # Das Blatt ist groß, aber unser eigenes.
 CONTACT = 0.25  # So nah am Boden gilt ein Schuh oder eine Pfote als aufgesetzt, darüber hebt er gerade ab.
 
 
@@ -94,8 +95,9 @@ def main():
             draw.line([(s * w, 0), (s * w, board.height)], fill=(140, 140, 90))
             draw.text((s * w + 3, 3), motion, fill=(255, 255, 160))
         board.save(out / f"blatt_{name}.png")
-        for motion, (s, k) in meta["columns"].items():
-            if not f.applies(f.SPECS[name], motion):
+        civil = name in meta["civil"]["names"]
+        for motion, (s, k) in (meta["civil"]["columns"] if civil else meta["columns"]).items():
+            if not civil and not f.applies(f.SPECS[name], motion):
                 continue
             frames = []
             for c in range(s, s + k):
