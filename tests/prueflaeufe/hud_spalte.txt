@@ -1,0 +1,54 @@
+# Spalte am linken Rand: Klick auf ein Agentenfeld wählt aus, Klick auf einen Platz wechselt die Waffe, löst Verband und Rauchtopf aus, Klick in die Spalte gibt keinen Befehl.
+# Aufruf mit --menu --script-writes --peil=1.5 in einem eigenen APPDATA-Ordner, in dem waffen_akte.json als Godot/app_userdata/Messingstadt/kampagne.json liegt.
+wait 20
+click Spiel laden
+key Enter
+wait 20
+expect hud True
+expect selected 0,1,2,3
+expect slots » Pistole  10/10 |   MP  20/20 |   Rauch  x1 |   Verband  x1
+# Feld 2 wählt Otto wie die Taste 2, Feld 1 wieder Greta
+clickat 175 56
+expect selected 1
+expect slots » Pistole  10/10 |   Dietrich | frei | frei
+clickat 61 56
+expect selected 0
+expect slots » Pistole  10/10 |   MP  20/20 |   Rauch  x1 |   Verband  x1
+# Platz 2: Maschinenpistole in die Hand, wie E
+clickat 118 312
+expect weapons Greta:MP 20, Otto:Pistole 10, Emil:ohne Waffe, Hanna:Knüppel
+expect slots   Pistole  10/10 | » MP  20/20 |   Rauch  x1 |   Verband  x1
+# Klicks in die Spalte geben keinen Gehbefehl: zwischen die Felder, auf das Brett, auf das Peilgerät
+clickat 117 108
+clickat 118 470
+clickat 118 650
+expect moving 0
+expect selected 0
+# Verband: unverletzt bleibt er liegen, verletzt heilt er
+clickat 118 370
+expect items Greta:pistole+maschinenpistole+rauchtopf+verbandszeug, Otto:pistole+dietrich, Emil:, Hanna:totschlaeger+pistole
+hurt Greta 50
+clickat 118 370
+waitfor hp 90,100,100,100
+expect slots   Pistole  10/10 | » MP  20/20 |   Rauch  x1 | frei
+# Rauchtopf: der Platz wartet auf ein Ziel, der nächste Klick in die Welt wirft und ist kein Gehbefehl
+clickat 118 341
+expect armed 0
+expect slots   Pistole  10/10 | » MP  20/20 |   Rauch: Ziel anklicken | frei
+clicktile Greta 0 -2
+expect armed -1
+expect smokes 1
+expect moving 0
+# Ein Klick in die Welt gibt weiter einen Gehbefehl
+clicktile Greta -3 0
+expect selected 0
+expect moving 1
+# Niedergegangen: Stempel im Feld
+fell Otto
+wait 5
+seetext KRANKENSTUBE
+# Das Peilgerät schlägt im eingestellten Takt aus
+expect peilsec 1.5
+remember peil
+wait 120
+changed peil

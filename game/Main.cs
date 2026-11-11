@@ -177,7 +177,7 @@ void fragment() {
         private float _figureRes = 1f;
         private Sprite2D _book = null!;
         private Camera2D _camera = null!;
-        private PaperUi _paper = null!;
+        private Hud _paper = null!;
         private Chatter _chatter = null!;
         private Label _banner = null!;
         // Eine Zwischensequenz läuft, das Spiel steht still.
@@ -206,6 +206,11 @@ void fragment() {
         private int _slot = 1;
         private Button? _panelFocus;
         private Armory _armory = null!;
+        private float _hudShift;
+        private float _peilSeconds = Hud.PeilSeconds;
+        private const float HudShiftPerSecond = 240f;
+        // Agent, dessen Rauchtopf auf den nächsten Linksklick in die Welt wartet. -1: keiner.
+        private int _smokeArmed = -1;
         private string _upgradeFocus = "";
         private ColorRect _planBand = null!;
         private int _queuedX, _queuedY, _queuedTick;
@@ -580,6 +585,11 @@ void fragment() {
             ["hp"] = string.Join(",", World.Units.Where(u => u.Faction == Faction.Agent).Select(u => u.Hp)),
             ["smokes"] = World.Smokes.Count.ToString(),
             ["armory"] = _armory.State,
+            ["fields"] = _paper.FieldTexts,
+            ["slots"] = _paper.SlotTexts,
+            ["peil"] = _paper.PeilState,
+            ["peilsec"] = _paper.PeilInterval.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture),
+            ["armed"] = _smokeArmed.ToString(),
             ["stash"] = string.Join("+", _campaign.Stash),
             ["gear"] = string.Join(", ", _campaign.Roster().Where(a => !a.Dead).Select(a => $"{a.Name}:{string.Join("+", a.Items)}")),
         };
@@ -606,6 +616,49 @@ void fragment() {
             mission.Light = _lightData;
             mission.Catalog = Catalog;
             return mission;
+        }
+
+        /// <summary>Weltpositionen der Zivilisten für das Peilgerät, in Bildpunkten der Welt wie Node2D.Position. Wer Passanten hat, füllt die Liste.</summary>
+        public List<Vector2> PeilCivilians { get; } = new();
+
+        /// <summary>Bild eines Agenten für sein Feld in der Spalte. Die einzige Stelle, an der es gewählt wird: bisher ein Ausschnitt aus dem Figurenblatt.</summary>
+        public (Texture2D Sheet, Rect2 Region, Material Look) AgentPortrait(Unit u)
+        {
+            var cell = FigureRegion(_animator.SpriteName(u), PortraitView, PortraitColumn);
+            return (_figures, new Rect2(cell.Position + cell.Size * PortraitCrop.Position, cell.Size * PortraitCrop.Size), _figureMaterial);
+        }
+
+        // Von vorn und im Stehen, Spalte "idle" im Figurenblatt.
+        private const int PortraitView = 0, PortraitColumn = 2;
+        // Anteil der Zelle, der Kopf und Oberkörper zeigt.
+        private static readonly Rect2 PortraitCrop = new(0.31f, 0.09f, 0.4f, 0.46f);
+
+        /// <summary>Agent, dessen Rauchtopf auf ein Ziel wartet, sonst -1.</summary>
+        public int SmokeArmedFor => _smokeArmed;
+
+        /// <summary>
+        /// Klick auf einen Platz im Inventar: Waffe in die Hand wie E, Verband wie H. Der Rauchtopf wartet danach auf einen Linksklick
+        /// in die Welt, das entspricht G mit der Maus über dem Ziel. Ein zweiter Klick auf den Platz nimmt das zurück.
+        /// </summary>
+        public void UseSlot(int unitId, int slot)
+        {
+            if (ControlsLocked || unitId >= World.Units.Count || slot >= World.Units[unitId].Items.Count)
+            {
+                return;
+            }
+            var item = World.Units[unitId].Items[slot];
+            if (item.Def.IsWeapon)
+            {
+                World.SelectWeapon(unitId, slot);
+            }
+            else if (item.Def.Kind == ItemKind.Medkit)
+            {
+                World.OrderUseMedkit(unitId);
+            }
+            else if (item.Def.Kind == ItemKind.Smoke)
+            {
+                _smokeArmed = _smokeArmed == unitId ? -1 : unitId;
+            }
         }
 
         /// <summary>Kurzes Wort für die Akte: Steht der Agent im Dunkeln oder im Licht?</summary>
@@ -741,6 +794,10 @@ void fragment() {
                 offset += (_focusAt - _camera.Position) * FocusPull * strength;
                 zoom += FocusZoom * strength;
             }
+            // Die Spielfläche beginnt rechts der Spalte: Die Bildmitte der Welt rückt um die halbe Spaltenbreite nach rechts.
+            float shift = _paper.Visible ? Hud.ColumnWidth / 2f / zoom : 0f;
+            _hudShift = Mathf.MoveToward(_hudShift, shift, HudShiftPerSecond * dt);
+            offset.X -= _hudShift;
             _camera.Offset = offset;
             _camera.Zoom = new Vector2(zoom, zoom);
         }
@@ -942,6 +999,10 @@ void fragment() {
                 {
                     _forceSequence = a["--seq=".Length..];
                     _sequencesForced = true;
+                }
+                else if (a.StartsWith("--peil="))
+                {
+                    _peilSeconds = float.Parse(a["--peil=".Length..], System.Globalization.CultureInfo.InvariantCulture);
                 }
                 else if (a.StartsWith("--seq-time="))
                 {
@@ -1190,11 +1251,12 @@ void fragment() {
             AddChild(new FilmLook { Layer = 2 });
             var layer = new CanvasLayer { Layer = 3 };
             AddChild(layer);
-            _paper = new PaperUi { Game = this };
+            _paper = new Hud { Game = this };
             layer.AddChild(_paper);
+            _paper.PeilInterval = _peilSeconds;
             _planBand = new ColorRect
             {
-                AnchorRight = 1f, OffsetLeft = 10f, OffsetTop = 62f, OffsetRight = -18f, OffsetBottom = 108f, Visible = false,
+                AnchorRight = 1f, OffsetLeft = Hud.ColumnWidth + 8f, OffsetTop = 62f, OffsetRight = -10f, OffsetBottom = 108f, Visible = false,
                 Color = PaperUi.PaperDark, MouseFilter = Control.MouseFilterEnum.Stop,
             };
             layer.AddChild(_planBand);
@@ -1202,19 +1264,30 @@ void fragment() {
                 "LAGEPLAN  Grün: nie bewacht. Gelb bis Rot: immer öfter im Blick. Punkte: Wege der Wachen. Klick: losgehen, sobald frei.\n"
                 + "Zum Buch führt der Weg über die Straße in die Gasse am Mietshaus, zum Wagen hinten um das Lager.",
                 13, PaperUi.Ink, PaperUi.Typewriter);
-            _planLegend.Position = new Vector2(20, 65);
+            _planLegend.Position = new Vector2(Hud.ColumnWidth + 18f, 65);
+            _planLegend.AnchorRight = 1f;
+            _planLegend.OffsetRight = -16f;
+            _planLegend.ClipText = true;
             _planLegend.Visible = false;
             layer.AddChild(_planLegend);
             _help = PaperUi.Text(
                 "Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen, Otto: Tür   Q halten: Lageplan   1-4 Leertaste   WASD F P M   Esc: Menü",
                 12, new Color(0.75f, 0.72f, 0.65f, 0.75f), PaperUi.Typewriter);
+            // Rechts neben der Spalte, bei schmalem Fenster bricht die Zeile nach oben um.
             _help.AnchorTop = 1f;
             _help.AnchorBottom = 1f;
-            _help.OffsetLeft = 12f;
+            _help.AnchorRight = 1f;
+            _help.OffsetLeft = Hud.ColumnWidth + 12f;
+            _help.OffsetRight = -10f;
             _help.OffsetTop = -23f;
+            _help.OffsetBottom = -6f;
+            _help.GrowVertical = Control.GrowDirection.Begin;
+            _help.VerticalAlignment = VerticalAlignment.Bottom;
+            _help.AutowrapMode = TextServer.AutowrapMode.WordSmart;
             layer.AddChild(_help);
             _banner = PaperUi.Text("", 34, new Color(1f, 0.85f, 0.4f), PaperUi.Serif);
             _banner.AnchorRight = 1f;
+            _banner.OffsetLeft = Hud.ColumnWidth;
             _banner.AnchorTop = 0.45f;
             _banner.AnchorBottom = 0.45f;
             _banner.HorizontalAlignment = HorizontalAlignment.Center;
@@ -1495,6 +1568,7 @@ void fragment() {
             WaitingIds.Clear();
             _panel.Visible = false;
             _armory.Visible = false;
+            _smokeArmed = -1;
             World = new World(_map, _mission);
             foreach (var u in World.Units)
             {
@@ -2142,7 +2216,13 @@ void fragment() {
                 if (mouse.ButtonIndex == MouseButton.Left)
                 {
                     var agent = UnitUnderCursor(worldPos, Faction.Agent);
-                    if (agent != null)
+                    if (_smokeArmed >= 0)
+                    {
+                        var at = ScreenToMap(worldPos);
+                        World.OrderThrowSmoke(_smokeArmed, (int)Mathf.Floor(at.X), (int)Mathf.Floor(at.Y));
+                        _smokeArmed = -1;
+                    }
+                    else if (agent != null)
                     {
                         if (!mouse.ShiftPressed) Selected.Clear();
                         Selected.Add(agent.Id);
@@ -2158,6 +2238,10 @@ void fragment() {
                             MarkerTime = MarkerSeconds;
                         }
                     }
+                }
+                else if (mouse.ButtonIndex == MouseButton.Right && _smokeArmed >= 0)
+                {
+                    _smokeArmed = -1;
                 }
                 else if (mouse.ButtonIndex == MouseButton.Right)
                 {

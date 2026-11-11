@@ -1,4 +1,4 @@
-# Aussetzende außerhalb des Ergebnis-Bildschirms: im Aktenschrank unter der Akte und im Einsatz auf einem Zettel neben den Akten.
+# Aussetzende außerhalb des Ergebnis-Bildschirms: im Aktenschrank unter der Akte und im Einsatz durchgestrichen in den freien Agentenfeldern der Spalte.
 # Aufruf mit --menu --script-writes in einem eigenen APPDATA-Ordner, in dem akte_angeschlagen.json als Godot/app_userdata/Messingstadt/kampagne.json liegt.
 # Otto ist angeschlagen, Hanna liegt in der Krankenstube, beide setzen aus. Greta und Emil gehen.
 wait 20
@@ -14,5 +14,8 @@ expect screen
 expect hud True
 expect resting Otto: angeschlagen, setzt aus; Hanna: Krankenstube, setzt aus
 expect helpline Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen   Q halten: Lageplan   1-2 Leertaste   WASD F P M   Esc: Menü
-seetext SETZT AUS
-seetext Otto: angeschlagen\nHanna: Krankenstube
+# In der Spalte stehen sie durchgestrichen in den freien Agentenfeldern
+seetext OTTO
+seetext angeschlagen,\nsetzt aus
+seetext HANNA
+seetext Krankenstube,\nsetzt aus
