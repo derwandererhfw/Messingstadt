@@ -813,6 +813,13 @@ def menu_sounds():
     save("menu_select", fade(thud + 0.45 * paper, 0.001, 0.1), 0.55)
 
 
+def peil_band(rng, count, low, high):
+    spec = np.fft.rfft(rng.standard_normal(count))
+    f = np.fft.rfftfreq(count, 1 / RATE)
+    out = np.fft.irfft(spec / (1 + (f / high) ** 6) * (1 - 1 / (1 + (f / low) ** 6)), count)
+    return out / np.abs(out).max()
+
+
 def peil_ping():
     """Peilgerät von 1927: ein Relais zieht an und fällt ab, dahinter summt kurz die Röhre. Dumpf, damit es über Minuten nicht nervt."""
     rng = own_rng("peil_ping")
@@ -825,7 +832,14 @@ def peil_ping():
             x += clack * gain * (t >= at)
         swell = np.minimum(t / 0.03, 1) * decay(t, 0.11)
         x += 0.22 * (np.sin(2 * np.pi * hum_hz * t) + 0.5 * np.sin(2 * np.pi * 2 * hum_hz * t) + 0.2 * np.sin(2 * np.pi * 3 * hum_hz * t)) * swell
-        save(f"peil_ping_{i}", fade(x, 0.001, 0.08), 0.4)
+        # Mitten, damit das Gerät auch im Regen und auf kleinen Lautsprechern durchkommt: Anker schlägt an, die Röhre summt mit Obertönen.
+        own = own_rng(f"peil_ping_{i}")
+        x = 0.45 * x / np.abs(x).max()
+        for at, gain in ((0.0, 1.0), (gap, 0.5)):
+            tt = np.maximum(t - at, 0)
+            x += gain * (1.3 * peil_band(own, len(t), 500, 1700) * decay(tt, 0.012) + 0.35 * np.sin(2 * np.pi * 3.1 * thunk * tt) * decay(tt, 0.02)) * (t >= at)
+        x += 0.12 * (np.sin(2 * np.pi * 4 * hum_hz * t) + 0.7 * np.sin(2 * np.pi * 6 * hum_hz * t) + 0.4 * np.sin(2 * np.pi * 8 * hum_hz * t)) * swell
+        save(f"peil_ping_{i}", fade(x, 0.001, 0.08), 0.42)
 
 
 # ---------- Überarbeitung: Körper aus gefiltertem Rauschen statt nackter Sinustöne ----------
@@ -1052,6 +1066,7 @@ def soft_signals():
 
 
 RAIN_DROPS = 420
+RAIN_DROP_SHARE = 0.35
 RAIN_DBA = -18.5
 
 
@@ -1073,7 +1088,8 @@ def rain_surface(rng):
         drop = fade(kinds[rng.choice(3, p=(0.55, 0.25, 0.2))](), 0.0008, 0.01)
         at = rng.integers(0, n - len(d))
         drops[at:at + len(d)] += drop / np.abs(drop).max() * rng.uniform(0.2, 1.0) ** 2
-    x = bed / np.sqrt(np.mean(bed ** 2)) + 0.6 * drops / np.sqrt(np.mean(drops ** 2))
+    # Die Tropfen standen dem Nutzer zu weit vorn. Sie liegen jetzt deutlich unter dem Grundrauschen.
+    x = bed / np.sqrt(np.mean(bed ** 2)) + RAIN_DROP_SHARE * drops / np.sqrt(np.mean(drops ** 2))
     return loopable(x)
 
 

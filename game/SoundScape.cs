@@ -28,7 +28,8 @@ namespace Messingstadt
         private const float DarkLayerDb = MusicDb - 2f;
         private const float SilentDb = -60f;
         private const float DarkLight = 0.42f;
-        private const float RainDb = -27f;
+        // Der Nutzer fand den Regen mit hörbaren Tropfen zu laut, deshalb 5 dB unter dem alten Pegel.
+        private const float RainDb = -32f;
         private const float RainCurveDb = 16f;
         private const float RainInAlleyDrop = 2f;
         private const float WindDb = -30f;
@@ -58,6 +59,8 @@ namespace Messingstadt
         private const float LimiterCeilingDb = -0.5f;
         private const string PeilPing = "peil_ping";
         private const float PeilAlarmPitch = 1.18f;
+        // Bei -22 dB aus dem HUD war das Peilgerät nicht zu hören. Der Aufschlag hier lässt den Aufruf, wie er ist.
+        private const float PeilBoostDb = 10f;
         private const float HeartDb = -10f;
         private const float PrisonerStepDb = -24f;
         private const float HeartRisePerSecond = 4f;
@@ -425,6 +428,7 @@ namespace Messingstadt
             {
                 // Im Gefecht tickt das Peilgerät etwas schärfer.
                 pitch = Mathf.Lerp(1f, PeilAlarmPitch, _fightLevel) * (1f + (float)(_rng.NextDouble() * 2 - 1) * 0.03f);
+                volume += PeilBoostDb;
             }
             if (IsMenuSound(name))
             {

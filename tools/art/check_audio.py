@@ -39,7 +39,7 @@ MAX_SIGNAL_ABOVE_4K = 1.0
 MAX_RAIN_ABOVE_4K = 15.0
 FOR_OTHERS = ("gasp_0", "gasp_1", "shop_buy", "shop_sell", "shop_equip", "map_select", "map_accept", "stamp", "crowd_steps", "tram_spark", "cell_door", "keys")
 MAX_OTHERS_ABOVE_4K = 4.0
-MAX_RAIN_GAME_DBA = -45.0
+MAX_RAIN_GAME_DBA = -49.0
 MAX_MUSIC_GAME_DBA = -43.0
 MAX_MUSIC_ABOVE_2K = 0.1
 MAX_CITY_ABOVE_2K = 1.0
@@ -48,7 +48,9 @@ MAX_MATCH_ABOVE_4K = 10.0
 MAX_MENU_ABOVE_4K = 5.0
 MAX_MENU_BELOW_120 = 50.0
 MAX_PEIL_ABOVE_2K = 3.0
-MAX_PEIL_DBA = -34.0
+MAX_PEIL_DBA = -28.0
+MIN_PEIL_GAME_DBA = -50.0
+MIN_PEIL_ABOVE_400 = 40.0
 TITLE_SECONDS = 72
 MAX_FIGHT_BELOW_120 = 60.0
 MAX_HEART_BELOW_120 = 75.0
@@ -181,6 +183,10 @@ def main():
         x, rate = load(f"peil_ping_{i}")
         check(share(x, rate, 2000, 1e9) <= MAX_PEIL_ABOVE_2K, f"peil_ping_{i}: über 2 kHz {share(x, rate, 2000, 1e9):.2f} %")
         check(dba(x, rate) <= MAX_PEIL_DBA, f"peil_ping_{i}: {dba(x, rate):.1f} dB(A) in der Datei, Grenze {MAX_PEIL_DBA}")
+        # Der Nutzer hat das Gerät nicht gehört. Es braucht Mitten und einen Mindestpegel im Spiel (Aufruf aus dem HUD bei -22 dB).
+        in_game = dba(x, rate) - 22 + code_db("PeilBoostDb")
+        check(in_game >= MIN_PEIL_GAME_DBA, f"peil_ping_{i}: im Spiel {in_game:.1f} dB(A), mindestens {MIN_PEIL_GAME_DBA}")
+        check(share(x, rate, 400, 1e9) >= MIN_PEIL_ABOVE_400, f"peil_ping_{i}: über 400 Hz {share(x, rate, 400, 1e9):.0f} %")
 
     x, rate = load("match")
     check(share(x, rate, 4000, 1e9) <= MAX_MATCH_ABOVE_4K, f"Streichholz über 4 kHz: {share(x, rate, 4000, 1e9):.1f} %")

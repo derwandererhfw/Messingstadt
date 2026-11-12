@@ -154,8 +154,44 @@ def round_two():
     save("P_neu_arbeiterschritte_schleife", loops(new, (("crowd_steps", -10),), 16))
 
 
+def verdict():
+    """Nach dem ersten Urteil: Regen in Stufen und Peilgerät in Stufen, jeweils über der ruhigen Musik. Ansage durch Pausen getrennt."""
+    seconds = 12
+    music = looped("music_calm", seconds) * gain(MUSIC_DB)
+    wind = looped("wind", seconds) * gain(-30)
+    gap = np.zeros((int(PAUSE * RATE), 2))
+
+    def rain(x, db):
+        return np.concatenate([x] * 2)[:seconds * RATE] * gain(db)
+
+    before = old("rain", "0a084f6")
+    parts = []
+    for db in (-27, -31, -35):
+        parts += [music + wind + rain(before, db), gap]
+    save("R1_regen_bisher_dann_4dB_leiser_dann_8dB_leiser", np.concatenate(parts[:-1]))
+    parts = []
+    for db in (-27, -31, -35):
+        parts += [music + wind + rain(new("rain"), db), gap]
+    save("R2_regen_tropfen_zurueckgenommen_gleiche_drei_stufen", np.concatenate(parts[:-1]))
+
+    def pings(load, db, bed_rain):
+        out = music + weather(seconds, bed_rain)
+        for k, at in enumerate((1.0, 3.6, 6.4, 9.2)):
+            x = load(f"peil_ping_{k % 3}")
+            i = int(at * RATE)
+            out[i:i + len(x)] += x * gain(db)
+        return out
+
+    for label, bed_rain in (("S1_peilton_im_niesel", DRIZZLE), ("S2_peilton_im_schauer", SHOWER)):
+        parts = [pings(lambda n: old(n, "0a084f6"), -22, bed_rain), gap]
+        for db in (-16, -12, -8):
+            parts += [pings(new, db, bed_rain), gap]
+        save(label + "_bisher_dann_neu_in_drei_stufen", np.concatenate(parts[:-1]))
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
+    verdict()
     round_two()
     save("A_schritte_leise_stiefel_rennen", both(steps(old), steps(new)))
     for label, kind, pace, count in (("B_pistole", "pistole", 1.4, 4), ("C_schrotflinte", "schrot", 2.2, 3), ("D_maschinenpistole_salve", "mp", 0.11, 8), ("E_gewehr", "gewehr", 2.4, 3)):
