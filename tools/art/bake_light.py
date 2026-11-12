@@ -68,6 +68,26 @@ BLUR_RADIUS = 2
 # Fensterlicht, wie es die Spielregeln kennen: aus work/light/windows.json eines Laufs übernommen, nur bei gewollter Änderung neu
 RULES_WINDOWS = Path(__file__).with_name("rules_windows.json")
 
+# Himmelslicht der Spielregeln. Das Bild darf dunkler werden (SKY, MOON_COLOR), das Schleichlicht rechnet weiter hiermit.
+RULES_SKY = (0.27, 0.29, 0.40)
+
+
+def trial(name, value):
+    """Probewerte für Vergleichsbilder: MS_<NAME> in der Umgebung skaliert oder ersetzt eine Konstante, ohne die Datei zu ändern."""
+    raw = os.environ.get("MS_" + name)
+    if raw is None:
+        return value
+    if "," in raw:
+        return tuple(float(v) for v in raw.split(","))
+    return tuple(v * float(raw) for v in value) if isinstance(value, tuple) else value * float(raw)
+
+
+SKY, VOID_LIGHT, MOON_COLOR = trial("SKY", SKY), trial("SKY", VOID_LIGHT), trial("MOON", MOON_COLOR)
+LAMP_COLOR, SPEC_STRENGTH, PUDDLE_SPEC = trial("LAMP_COLOR", LAMP_COLOR), trial("SPEC", SPEC_STRENGTH), trial("SPEC", PUDDLE_SPEC)
+for _t in WINDOW_TYPES.values():
+    _t["power"] = trial("WINDOW", _t["power"])
+
+
 
 def is_emissive(rgba):
     rgb = rgba[..., :3].astype(np.int32)
@@ -325,7 +345,7 @@ def main():
 
     scene = {
         "ox": manifest["ox"], "oy": manifest["oy"], "zScale": Z_SCALE, "mapSize": 20, "stride": STRIDE,
-        "sky": SKY, "groundAlbedo": (groundless.mean(axis=0)[:3] / 255).tolist(),
+        "sky": SKY, "rulesSky": RULES_SKY, "groundAlbedo": (groundless.mean(axis=0)[:3] / 255).tolist(),
         "lampColor": LAMP_COLOR, "fireColor": FIRE_COLOR,
         "windowTypes": [{"color": t["color"], "power": t["power"]} for t in WINDOW_TYPES.values()],
         "specStrength": SPEC_STRENGTH, "puddleSpec": PUDDLE_SPEC,

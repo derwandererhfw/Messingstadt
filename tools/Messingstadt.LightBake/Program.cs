@@ -24,6 +24,8 @@ float ox = root.GetProperty("ox").GetSingle(), oy = root.GetProperty("oy").GetSi
 float zScale = root.GetProperty("zScale").GetSingle();
 int mapSize = root.GetProperty("mapSize").GetInt32();
 Vector3 skyColor = Vec(root.GetProperty("sky"));
+// Himmelslicht fürs Schleichen: bleibt beim alten Wert, auch wenn das Bild dunkler oder heller wird.
+Vector3 rulesSky = root.TryGetProperty("rulesSky", out var frozenSky) ? Vec(frozenSky) : skyColor;
 Vector3 groundAlbedo = Vec(root.GetProperty("groundAlbedo"));
 Vector3 lampColor = Vec(root.GetProperty("lampColor"));
 Vector3 fireColor = Vec(root.GetProperty("fireColor"));
@@ -299,7 +301,7 @@ Vector3 Incoming(Vector3 from, Vector3 dir, int ignore, ref uint rng)
     {
         if (!Closest(from, dir, ignore, out var pos, out var n, out var albedo, out int hit))
         {
-            return total + throughput * (dir.Z > 0f ? skyColor : Vector3.Zero);
+            return total + throughput * (dir.Z > 0f ? (rulesPass ? rulesSky : skyColor) : Vector3.Zero);
         }
         throughput *= albedo;
         total += throughput * DirectForBounce(pos, n, hit, ref rng);
