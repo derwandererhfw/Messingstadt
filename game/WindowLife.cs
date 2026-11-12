@@ -73,7 +73,11 @@ namespace Messingstadt
             public float PeekAt = -1f;
             public float PeekUntil;
             public float CurtainAt = -1f;
+            // Wie viel Licht gerade aus dem Fenster fällt, 0 bis 1. Für Höfe und die Lichtflicken der Grafik.
+            public float Level;
         }
+
+        private readonly Dictionary<int, Pane> _byId = new();
 
         private readonly Random _rng = new();
         private readonly List<Pane> _panes = new();
@@ -111,6 +115,12 @@ namespace Messingstadt
                 }
             }
         }
+
+        /// <summary>
+        /// Wie viel Licht gerade aus einem Fenster, einem Buchstaben oder dem Schweißfenster fällt, 0 bis 1.
+        /// Unbekannte Kennungen geben 0.
+        /// </summary>
+        public float PaneLevel(int id) => _byId.TryGetValue(id, out var pane) ? pane.Level : 0f;
 
         /// <summary>Wie ein Fenster gerade aussieht. Alpha 0 heißt: wie im vorberechneten Bild.</summary>
         public Color PaneLook(int id) => _states.GetPixel(id, 0);
@@ -177,6 +187,7 @@ namespace Messingstadt
                 StaysLit = _rng.NextDouble() >= HushShare,
             };
             _panes.Add(pane);
+            _byId[pane.Id] = pane;
         }
 
         public override void _Ready()
@@ -249,6 +260,14 @@ namespace Messingstadt
                     PaneKind.Candle => UpdateCandle(pane),
                     PaneKind.Letter => pane == _brokenLetter && _time < _stutterUntil && _rng.NextDouble() < 0.5 || _time < _dropoutUntil ? DeadLetter : NeonColor,
                     _ => UpdateWindow(pane, dt),
+                };
+                pane.Level = pane.Kind switch
+                {
+                    PaneKind.Dark => 0f,
+                    PaneKind.Letter => look == NeonColor ? 1f : 0f,
+                    PaneKind.Weld => pane.Light == null ? 0f : Mathf.Clamp(pane.Light.Energy, 0f, 1f),
+                    PaneKind.Toggle => pane.On ? 1f : 0f,
+                    _ => look == DarkPane ? 0f : 1f,
                 };
                 _states.SetPixel(pane.Id, 0, Hushable(pane) ? Hushed(pane, look) : look);
             }
