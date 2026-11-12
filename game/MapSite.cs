@@ -88,6 +88,15 @@ namespace Messingstadt
         /// <summary>Die Lichtquellen aus dem Manifest (sources). Leer: Die Karte nennt keine, dann gelten die Laternen des Einsatzes.</summary>
         public List<LightSource> Sources { get; } = new();
 
+        /// <summary>
+        /// Wie unruhig die Laternen brennen: 0 ruhig wie elektrisches Licht, 1 wie Gaslicht, das wogt und zuckt.
+        /// Aus dem Manifest (lampUnrest). Fehlt der Eintrag, brennt eine Karte mit Gaslaternen unruhig.
+        /// </summary>
+        public float LampUnrest { get; private set; }
+
+        /// <summary>Lampen, die an einer Schnur pendeln: Feld x, y, Höhe der Aufhängung und Länge der Schnur in Bildpunkten.</summary>
+        public List<(Vector2 Tile, float Height, float Cord)> SwingLamps { get; } = new();
+
         /// <summary>Die eine Laterne, die flackert und aussetzt. Null: Auf dieser Karte brennen alle ruhig.</summary>
         public Vector2? StutterLamp { get; private set; }
 
@@ -186,6 +195,22 @@ namespace Messingstadt
                         new Vector2(s.GetProperty("x").GetSingle(), s.GetProperty("y").GetSingle()), s.GetProperty("z").GetSingle(),
                         s.GetProperty("kind").GetString() ?? "", new Color(c[0].GetSingle(), c[1].GetSingle(), c[2].GetSingle()),
                         s.GetProperty("reach").GetSingle()));
+                }
+            }
+            if (Sources.Exists(s => s.Kind == "gas"))
+            {
+                LampUnrest = 1f;
+            }
+            if (root.TryGetProperty("lampUnrest", out var lampUnrest))
+            {
+                LampUnrest = lampUnrest.GetSingle();
+            }
+            if (root.TryGetProperty("swingLamps", out var swing))
+            {
+                SwingLamps.Clear();
+                foreach (var l in swing.EnumerateArray())
+                {
+                    SwingLamps.Add((Pair(l), l[2].GetSingle(), l[3].GetSingle()));
                 }
             }
             if (root.TryGetProperty("passersby", out var people))

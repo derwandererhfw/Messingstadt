@@ -19,6 +19,8 @@ namespace Messingstadt
         private const int FlashTicks = 3;
         private const float FlashEnergy = 0.95f;
         private const float FlashScale = 0.75f;
+        private const float ShotgunEnergy = 1.6f;
+        private const float ShotgunScale = 1.35f;
         private const float MinValveSeconds = 16f;
         private const float MaxValveSeconds = 45f;
         private const float PlumeWindShare = 0.55f;
@@ -42,6 +44,10 @@ namespace Messingstadt
         private readonly List<Ripple> _ripples = new();
         private readonly List<Paper> _papers = new();
         private readonly List<PointLight2D> _flashLights = new();
+        private float _nextGasDip = 2f;
+        private float _gasDipFrom = -10f;
+        private float _gasDipSeconds = 0.2f;
+        private float _gasDipDepth;
         private readonly List<CpuParticles2D> _plumes = new();
         private float _time;
         private float _stutterUntil;
@@ -182,18 +188,21 @@ namespace Messingstadt
             {
                 var shot = world.Shots[i];
                 int age = world.Tick - shot.Tick;
-                if (age > (AirTest.Light ? FlashTicks : 1))
+                bool bright = AirTest.Light && !AirTest.Off("muendung");
+                if (age > (bright ? FlashTicks : 1))
                 {
                     break;
                 }
                 _flashLights[used].Position = Game.ToScreen(shot.FromX, shot.FromY) + new Vector2(0, -20);
                 _flashLights[used].Visible = true;
-                if (AirTest.Light)
+                if (bright)
                 {
                     // Der Schuss reißt die Umgebung für einen Augenblick warm aus dem Dunkel und glimmt kurz nach.
+                    // Die Schrotflinte blitzt breiter und heller als Pistole und Maschinenpistole.
+                    bool shotgun = shot.Weapon == "schrotflinte";
                     float fade = 1f - age / (FlashTicks + 1f);
-                    _flashLights[used].Energy = FlashEnergy * fade * fade;
-                    _flashLights[used].TextureScale = FlashScale;
+                    _flashLights[used].Energy = FlashEnergy * (shotgun ? ShotgunEnergy : 1f) * fade * fade;
+                    _flashLights[used].TextureScale = FlashScale * (shotgun ? ShotgunScale : 1f);
                 }
                 used++;
             }
@@ -211,6 +220,20 @@ namespace Messingstadt
                 _stutterUntil = _time + Rand(0.25f, 0.7f);
             }
             float unrest = 1f + 0.05f * Mathf.Sin(_time * 3f) + 0.025f * Mathf.Sin(_time * 11f);
+            float gas = AirTest.Off("gas") ? 0f : MapSite.Current.LampUnrest;
+            if (gas > 0f)
+            {
+                // Gaslicht brennt unruhig: Die Flamme wogt, zuckt im Zug und sackt ab und zu kurz zusammen.
+                if (_time > _nextGasDip)
+                {
+                    _nextGasDip = _time + Rand(1.5f, 6f);
+                    _gasDipFrom = _time;
+                    _gasDipSeconds = Rand(0.12f, 0.35f);
+                    _gasDipDepth = Rand(0.12f, 0.3f);
+                }
+                float dip = _time < _gasDipFrom + _gasDipSeconds ? Mathf.Sin((_time - _gasDipFrom) / _gasDipSeconds * Mathf.Pi) * _gasDipDepth : 0f;
+                unrest = 1f + gas * (0.07f * Mathf.Sin(_time * 4.1f) + 0.05f * Mathf.Sin(_time * 9.7f + 1.3f) + 0.035f * Mathf.Sin(_time * 23f) - dip);
+            }
             float stutter = _time < _stutterUntil && _rng.NextDouble() < 0.5 ? 0.12f : unrest;
             float fire = 1f + 0.35f * Mathf.Sin(_time * 9f) * Mathf.Sin(_time * 14f);
             Game.SetFlicker(stutter, unrest, fire);

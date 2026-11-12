@@ -87,7 +87,7 @@ void fragment() {
     vec4 b = texture(light_b, UV);
     vec3 l = 4.0 * a * a + 4.0 * b.r * b.r * (stutter - 1.0) * lamp_color
         + 4.0 * b.b * b.b * (unrest - 1.0) * lamp_color + 4.0 * b.g * b.g * (fire - 1.0) * fire_color
-        + 4.0 * b.a * b.a * lightning * vec3(0.72, 0.82, 1.0);
+        + 4.0 * b.a * b.a * lightning * vec3(0.66, 0.8, 1.08);
     float shade = dot(COLOR.rgb, vec3(0.34));
     COLOR.rgb *= max(l, vec3(0.0)) / night;
     float pane = texture(pane_ids, UV).r;
