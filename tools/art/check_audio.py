@@ -48,6 +48,8 @@ MAX_MATCH_ABOVE_4K = 10.0
 MAX_MENU_ABOVE_4K = 5.0
 MAX_MENU_BELOW_120 = 50.0
 MAX_PEIL_ABOVE_2K = 3.0
+STINGERS = ("music_in_fight", "music_to_calm")
+MAX_STINGER_GAME_DBA = -38.0
 MAX_PEIL_DBA = -28.0
 MIN_PEIL_GAME_DBA = -50.0
 MIN_PEIL_ABOVE_400 = 40.0
@@ -159,6 +161,12 @@ def main():
             calm_power += 10 ** (level / 10)
     both = 10 * np.log10(calm_power)
     check(both <= MAX_MUSIC_GAME_DBA, f"Ruhe und Verdacht zusammen: {both:.1f} dB(A), Grenze {MAX_MUSIC_GAME_DBA}")
+
+    for name in STINGERS:
+        x, rate = load(name)
+        level = dba(x, rate) + code_db("MusicDb") + 3
+        check(level <= MAX_STINGER_GAME_DBA, f"{name}: {level:.1f} dB(A) im Spiel, Grenze {MAX_STINGER_GAME_DBA}")
+        check(share(x, rate, 2000, 1e9) <= MAX_MUSIC_ABOVE_2K, f"{name}: über 2 kHz {share(x, rate, 2000, 1e9):.3f} %")
 
     x, rate = load("music_tension")
     check(share(x, rate, 0, 120) <= MAX_FIGHT_BELOW_120, f"Gefecht unter 120 Hz: {share(x, rate, 0, 120):.0f} %")

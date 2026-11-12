@@ -1248,9 +1248,198 @@ def for_others():
     save_level("keys", fade(clinks(rng, 0.9, 9, 0.7, 1700, 600, 4000), 0.001, 0.1), -32.0)
 
 
+# ---------- Neue Musik: Instrumente mit Obertönen, mehr Bewegung, Einsätze für den Lagenwechsel ----------
+# Der Nutzer hat die Probe der ruhigen Lage freigegeben. Länge, Tonart und Takt bleiben, damit die Lagen synchron laufen.
+
+NEW_THEME = (
+    (6, 69, 3.5), (9.5, 67, 0.5), (10, 65, 3), (13.5, 62, 2), (15.5, 60, 0.5), (16, 58, 1.5), (18, 62, 5),
+    (30, 70, 3.5), (33.5, 72, 0.5), (34, 69, 3), (37.5, 64, 2), (39.5, 62, 0.5), (40, 61, 1.5), (42, 64, 5),
+    (54, 69, 3.5), (57.5, 70, 0.5), (58, 72, 3), (61.5, 70, 2), (63.5, 67, 0.5), (64, 63, 1.5), (66, 67, 5),
+    (78, 63, 3.5), (81.5, 65, 0.5), (82, 62, 3), (85.5, 61, 2), (87.5, 64, 0.5), (88, 61, 1.5), (90, 61, 2.5), (92.5, 62, 3),
+)
+NEW_COUNTER = ((49, 57, 4), (53, 53, 3), (61, 58, 4), (65, 55, 3), (73, 55, 4), (77, 51, 3), (85, 52, 4), (89, 49, 3))
+MUSIC_LEVELS = {"music_calm": -26.2, "music_dark": -29.6, "music_suspect": -32.4, "music_tension": -26.9, "music_title": -26.1}
+STINGER_DBA = -24.0
+
+
+def bowed(note, seconds, attack, release, rng, top=2500, rolloff=1.25, vibrato=0.0, odd=False, cents=0.0):
+    """Gestrichener oder geblasener Ton: Obertöne bis top, Vibrato setzt verzögert ein."""
+    t = np.arange(int(seconds * MUSIC_RATE)) / MUSIC_RATE
+    f = midi(note) * 2 ** (cents / 1200)
+    phase = 2 * np.pi * f * t + vibrato * np.minimum(t / 1.2, 1) * np.sin(2 * np.pi * 5.2 * t + rng.uniform(0, 6.28))
+    out = np.zeros_like(t)
+    k = 1
+    while k * f < top and k <= 16:
+        out += np.sin(k * phase + rng.uniform(0, 6.28)) / k ** rolloff
+        k += 2 if odd else 1
+    env = np.minimum(1, t / attack) * np.minimum(1, (seconds - t) / release)
+    return out * np.sin(np.clip(env, 0, 1) * np.pi / 2) ** 2
+
+
+def plucked(note, rng):
+    """Gezupfter Kontrabass: hohe Teiltöne klingen schneller aus als der Grundton."""
+    t = np.arange(int(2.5 * MUSIC_RATE)) / MUSIC_RATE
+    f = midi(note)
+    out = np.zeros_like(t)
+    k = 1
+    while k * f < 900:
+        out += np.sin(2 * np.pi * k * f * t + rng.uniform(0, 6.28)) / k ** 1.3 * np.exp(-t * (0.9 + 0.5 * k))
+        k += 1
+    return out * np.minimum(t / 0.006, 1)
+
+
+def timpani(seconds=1.4, low=52):
+    t = np.arange(int(seconds * MUSIC_RATE)) / MUSIC_RATE
+    return np.sin(2 * np.pi * np.cumsum(low + 28 * np.exp(-t / 0.04)) / MUSIC_RATE) * np.exp(-t / 0.4) + 0.4 * np.sin(2 * np.pi * 1.5 * low * t) * np.exp(-t / 0.25)
+
+
+def unit(x):
+    return x / np.abs(x).max()
+
+
+def layer_out(name, mid, side, full=False):
+    """Stellt die Mitte auf den Pegel der alten Datei und legt den Raum als Seitenspur daneben."""
+    mid = mid * 10 ** ((MUSIC_LEVELS[name] - a_level(mid, MUSIC_RATE)) / 20)
+    side = side * 0.45 * np.sqrt(np.mean(mid ** 2) / np.mean(side ** 2))
+    if full:
+        save_stereo(name, 0.893 * mid + side, 0.893 * mid - side, MUSIC_RATE)
+    else:
+        save_layer(name, 0.893 * mid, side)
+
+
+def string_pad(rng, chords, seconds_each, attack, top=2500):
+    size = len(chords) * seconds_each * MUSIC_RATE
+    pad = np.zeros(size)
+    for i, chord in enumerate(chords):
+        for note in chord:
+            for cents in (-6, 0, 7):
+                place(pad, i * seconds_each, bowed(note, seconds_each + 5, attack, 4.5, rng, top, vibrato=0.03, cents=cents))
+    return pad
+
+
+def new_music():
+    rng = own_rng("new_music")
+    size = MUSIC_SECONDS * MUSIC_RATE
+    t = np.arange(size) / MUSIC_RATE
+    strings = spectrum_filter(string_pad(rng, CHORDS, CHORD_SECONDS, 2.8), 1800) * (0.8 + 0.2 * np.sin(2 * np.pi * 8 * t / MUSIC_SECONDS))
+    bow = spectrum_filter(rng.standard_normal(size), 2500, 300) * np.abs(strings) / np.abs(strings).max()
+    bass = np.zeros(size)
+    for i, chord in enumerate(CHORDS):
+        for offset, step, level in ((0, 0, 1.0), (6, 0, 0.7), (9, 7, 0.6)):
+            place(bass, i * CHORD_SECONDS + offset, plucked(chord[0] + step, rng) * level)
+    theme = np.zeros(size)
+    for start, note, length in NEW_THEME:
+        place(theme, start, bowed(note - 12, length + 1.5, 0.18, 1.5, rng, 2600, 1.1, 0.05))
+    theme = spectrum_filter(theme, 1500, 250)
+    counter = np.zeros(size)
+    for start, note, length in NEW_COUNTER:
+        place(counter, start, bowed(note, length + 1.2, 0.3, 1.2, rng, 2200, 1.3, 0.03, odd=True))
+    counter = spectrum_filter(counter, 1400, 150)
+    drone = np.sin(2 * np.pi * midi(26) * t) * (0.75 + 0.25 * np.sin(2 * np.pi * 4 * t / MUSIC_SECONDS))
+    brush = spectrum_filter(rng.standard_normal(size), 3000, 800) * np.exp(-((t % 1.5) / 0.25)) * (0.5 + 0.5 * np.sin(2 * np.pi * 2 * t / MUSIC_SECONDS)) ** 2
+    strings_room = unit(hall(strings, 7.0, 0.45, rng))
+    strings_side = unit(hall(strings, 7.0, 1.0, rng))
+    calm = strings_room + 0.02 * unit(bow) + 0.45 * unit(bass) + 0.5 * unit(hall(theme, 8.0, 0.6, rng)) + 0.22 * unit(hall(counter, 8.0, 0.6, rng)) + 0.3 * unit(drone) + 0.04 * unit(brush)
+    layer_out("music_calm", calm, strings_side * 0.4 + unit(hall(theme, 8.0, 1.0, rng)) * 0.3, full=True)
+
+    # Dunkel: die Streicher nur als Schatten, darunter ein liegender Celloton je Akkord und der Bass auf der Eins.
+    pedal = np.zeros(size)
+    low_bass = np.zeros(size)
+    for i, chord in enumerate(CHORDS):
+        place(pedal, i * CHORD_SECONDS, bowed(chord[0] + 12, CHORD_SECONDS + 4, 3.0, 4.0, rng, 700, 1.4, 0.02))
+        place(low_bass, i * CHORD_SECONDS, plucked(chord[0], rng))
+    dark = 0.9 * unit(spectrum_filter(strings_room, 480)) + 0.5 * unit(hall(pedal, 6.0, 0.4, rng)) + 0.3 * unit(low_bass) + 0.4 * unit(drone)
+    layer_out("music_dark", dark, unit(spectrum_filter(strings_side, 480)))
+
+    # Verdacht: zitternde Streicher über derselben Harmonie mit einem Halbton Reibung, dazu ein leiser Paukenwirbel am Akkordanfang.
+    tremolo = np.zeros(size)
+    roll = np.zeros(size)
+    for i, chord in enumerate(CHORDS):
+        for note in chord[2:4]:
+            place(tremolo, i * CHORD_SECONDS, bowed(note, CHORD_SECONDS + 3, 1.5, 3.0, rng, 2200, 1.2, cents=5))
+        place(tremolo, i * CHORD_SECONDS, bowed(chord[3] + 1, CHORD_SECONDS + 3, 4.0, 3.0, rng, 1800, 1.4) * 0.3)
+        for k in range(10):
+            place(roll, i * CHORD_SECONDS + k * 0.14, timpani(0.6, 48) * (0.3 + 0.07 * k))
+    tremolo = spectrum_filter(tremolo * (0.55 + 0.45 * np.sin(2 * np.pi * TREMOLO_PER_LOOP * t / MUSIC_SECONDS)), 1700, 130)
+    suspect = unit(hall(tremolo, 3.0, 0.3, rng)) + 0.25 * unit(spectrum_filter(roll, 300))
+    layer_out("music_suspect", suspect, unit(hall(tremolo, 3.0, 1.0, rng)))
+
+    # Gefecht: gestoßene tiefe Streicher auf der Bassfigur, dieselbe Figur zwei Oktaven höher, Blech am Akkordanfang, Pauke und Besen.
+    low = np.zeros(size)
+    upper = np.zeros(size)
+    brass = np.zeros(size)
+    drums = np.zeros(size)
+    steps_ = int(MUSIC_SECONDS / PULSE_SECONDS)
+    swish_t = np.arange(int(0.2 * MUSIC_RATE)) / MUSIC_RATE
+    for step in range(steps_):
+        when = step * PULSE_SECONDS
+        note = CHORDS[int(when // CHORD_SECONDS)][0] + BASS_PATTERN[step % len(BASS_PATTERN)]
+        accent = 1.0 if step % 2 == 0 else 0.7
+        place(low, when, bowed(note + 12, 0.42, 0.015, 0.25, rng, 900, 1.0) * accent)
+        place(upper, when, bowed(note + 24, 0.44, 0.02, 0.28, rng, 2400, 1.2) * accent)
+        if step % 4 == 0:
+            place(drums, when, timpani(0.5, 46) * 1.4)
+        elif step % 2 == 1:
+            place(drums, when, spectrum_filter(rng.standard_normal(len(swish_t)), 1800, 500) * np.exp(-swish_t / 0.04) * 0.25)
+    for i, chord in enumerate(CHORDS):
+        for offset in (0, 6):
+            for note in chord[1:4]:
+                place(brass, i * CHORD_SECONDS + offset, bowed(note, 2.2, 0.06, 1.6, rng, 1800, 1.0))
+    fight = unit(hall(spectrum_filter(low, 900), 2.5, 0.25, rng)) + 0.45 * unit(hall(spectrum_filter(upper, 1800, 140), 2.5, 0.3, rng)) + 0.35 * unit(hall(spectrum_filter(brass, 1500), 3.0, 0.4, rng)) + 0.7 * unit(spectrum_filter(drums, 1900))
+    layer_out("music_tension", fight, unit(hall(spectrum_filter(upper, 1800, 140), 2.5, 1.0, rng)))
+
+    # Titel: dieselben Instrumente, langsamer und weiter.
+    seconds = len(TITLE_CHORDS) * TITLE_CHORD_SECONDS
+    size = seconds * MUSIC_RATE
+    t = np.arange(size) / MUSIC_RATE
+    pad = spectrum_filter(string_pad(rng, TITLE_CHORDS, TITLE_CHORD_SECONDS, 4.5), 1700) * (0.8 + 0.2 * np.sin(2 * np.pi * 6 * t / seconds))
+    cello = np.zeros(size)
+    for start, note, length in TITLE_MELODY:
+        place(cello, start, bowed(note, length + 2.5, 0.5, 2.5, rng, 2400, 1.15, 0.06))
+    cello = spectrum_filter(cello, 1500, 90)
+    drum = np.zeros(size)
+    pizz = np.zeros(size)
+    for k in range(seconds // TITLE_DRUM_SECONDS):
+        place(drum, k * TITLE_DRUM_SECONDS, timpani() * (1.0 if k % 2 == 0 else 0.6))
+    for i, chord in enumerate(TITLE_CHORDS):
+        place(pizz, i * TITLE_CHORD_SECONDS, plucked(chord[0], rng))
+        place(pizz, i * TITLE_CHORD_SECONDS + 9, plucked(chord[0] + 7, rng) * 0.6)
+    title = unit(hall(pad, 9.0, 0.5, rng)) + 0.6 * unit(hall(cello, 8.0, 0.55, rng)) + 0.3 * unit(spectrum_filter(drum, 300)) + 0.35 * unit(pizz)
+    layer_out("music_title", title, unit(hall(pad, 9.0, 1.0, rng)) * 0.4 + unit(hall(cello, 8.0, 1.0, rng)) * 0.25, full=True)
+
+    # Einsätze für den Lagenwechsel. Ohne Terz, damit sie über jedem Akkord der Folge stehen können.
+    n = int(3.5 * MUSIC_RATE)
+    rise = np.zeros(n)
+    for k in range(6):
+        place(rise, k * 0.11, timpani(0.5, 46) * (0.4 + 0.12 * k))
+    place(rise, 0.7, timpani(1.6, 46) * 1.6)
+    swell = np.zeros(n)
+    for note in (38, 45, 50):
+        swell[:int(2.6 * MUSIC_RATE)] += bowed(note, 2.6, 0.7, 1.6, rng, 1500, 1.1)
+    stinger = unit(spectrum_filter(rise, 400)) + 0.6 * unit(spectrum_filter(swell, 1500))
+    save_stinger("music_in_fight", stinger)
+    n = int(5.0 * MUSIC_RATE)
+    settle = np.zeros(n)
+    for note, level in ((38, 1.0), (50, 0.6), (57, 0.4)):
+        settle[:int(4.6 * MUSIC_RATE)] += bowed(note, 4.6, 0.9, 3.4, rng, 1300, 1.3, 0.03) * level
+    settle[:int(2.5 * MUSIC_RATE)] += 1.5 * plucked(38, rng)
+    save_stinger("music_to_calm", spectrum_filter(settle, 1300))
+
+
+def save_stinger(name, x):
+    x = x * 10 ** ((STINGER_DBA - a_level(x, MUSIC_RATE)) / 20)
+    # Paukenspitzen weich abfangen, statt den ganzen Einsatz leiser zu machen.
+    x = np.tanh(x / 0.5) * 0.5
+    with wave.open(str(OUT / f"{name}.wav"), "wb") as f:
+        f.setnchannels(1)
+        f.setsampwidth(2)
+        f.setframerate(MUSIC_RATE)
+        f.writeframes((x * 32767).astype("<i2").tobytes())
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld, dog, siren, factory_horn, train, radio, heartbeat, typewriter, fresh_random, dog_fight, boy_whistle, wind_gust, distant_shots, tram, foghorn, church_bell, shutter, gutter, piano, tram_hum, match, title_theme, menu_sounds, peil_ping, new_shots, new_steps, new_hits, reloads, field_kit, soft_signals, new_rain, rails, new_hums, new_signals, for_others):
+    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld, dog, siren, factory_horn, train, radio, heartbeat, typewriter, fresh_random, dog_fight, boy_whistle, wind_gust, distant_shots, tram, foghorn, church_bell, shutter, gutter, piano, tram_hum, match, title_theme, menu_sounds, peil_ping, new_shots, new_steps, new_hits, reloads, field_kit, soft_signals, new_rain, rails, new_hums, new_signals, for_others, new_music):
         make()
     files = list(OUT.glob("*.wav"))
     print(f"{len(files)} Geräusche, {sum(f.stat().st_size for f in files) // 1024} KiB")
