@@ -1,0 +1,96 @@
+{
+ "bandage": {
+  "quellen": {
+   "09/kenney_rpg-audio.zip:Audio/cloth1.ogg": "6dbeaf8544da958d8f2adcb4a4a4b76c1ade34a05f8ab9edccd327da7375f38b",
+   "09/kenney_rpg-audio.zip:Audio/cloth2.ogg": "6dbeaf8544da958d8f2adcb4a4a4b76c1ade34a05f8ab9edccd327da7375f38b",
+   "09/kenney_rpg-audio.zip:Audio/cloth3.ogg": "6dbeaf8544da958d8f2adcb4a4a4b76c1ade34a05f8ab9edccd327da7375f38b",
+   "09/kenney_rpg-audio.zip:Audio/cloth4.ogg": "6dbeaf8544da958d8f2adcb4a4a4b76c1ade34a05f8ab9edccd327da7375f38b"
+  },
+  "sha256": "55ea69efa99771a1050d0e2010d89c411cdc062440c4413a2b5915774001c7bb"
+ },
+ "dog_0": {
+  "quellen": {
+   "04/freesound_612857_13194336-hq.mp3": "4cd88bcabb8f0d18a11cd4f34a4bdc57a5a798a3707a8649a371792b443ebe56"
+  },
+  "sha256": "ba4187ca911056bcdf143e13cd342f8e764d3d50a25b3f35645779ceca1fd425"
+ },
+ "dog_1": {
+  "quellen": {
+   "04/freesound_612857_13194336-hq.mp3": "4cd88bcabb8f0d18a11cd4f34a4bdc57a5a798a3707a8649a371792b443ebe56"
+  },
+  "sha256": "c8487d71e69dfbaca30b1f8a8516ffe8132fe2cf7ba3cb1a362d013d860d25a7"
+ },
+ "dog_2": {
+  "quellen": {
+   "04/freesound_612857_13194336-hq.mp3": "4cd88bcabb8f0d18a11cd4f34a4bdc57a5a798a3707a8649a371792b443ebe56"
+  },
+  "sha256": "a063eced4fe6a7aaa4f6c78de000dbcd430961a1f3d39cac29742a8a0650ce50"
+ },
+ "dog_3": {
+  "quellen": {
+   "04/freesound_612857_13194336-hq.mp3": "4cd88bcabb8f0d18a11cd4f34a4bdc57a5a798a3707a8649a371792b443ebe56"
+  },
+  "sha256": "ace82e02a8a4e23e5177d7c6a7a7e3ed76ee249760c6b0d8a214aa4bf702041a"
+ },
+ "door_open_0": {
+  "quellen": {
+   "07/freesound_346267_470543-hq.mp3": "c28360ce5b55827617e0b2e44127dbeca9581184edb8bee8a4a98e07ea409244"
+  },
+  "sha256": "96aa958801c794a3d6cb1698bc60d941d9976ab31209e7e5b9184e40f98fc3ce"
+ },
+ "door_open_1": {
+  "quellen": {
+   "07/freesound_346267_470543-hq.mp3": "c28360ce5b55827617e0b2e44127dbeca9581184edb8bee8a4a98e07ea409244"
+  },
+  "sha256": "4c435d7b9b5cdbad9ddeedb93f0f904d2e3f68391fefbeb40eb16d679681d0d5"
+ },
+ "door_open_2": {
+  "quellen": {
+   "09/kenney_rpg-audio.zip:Audio/doorOpen_2.ogg": "6dbeaf8544da958d8f2adcb4a4a4b76c1ade34a05f8ab9edccd327da7375f38b"
+  },
+  "sha256": "69e4d98d2c77be5921dd4e9fac42467cccdd056dc394edeab5789f77c77bb412"
+ },
+ "gasp_0": {
+  "quellen": {
+   "01/freesound_318078_5057106-hq.mp3": "a4e7c8d41a9c99fd6cbf48843c1d4cdb2f5630c0629b7ecf3fbdc5a3a70b1630"
+  },
+  "sha256": "cd738ab88e9d82696307f1dd19e878bec1381f06c0684dfe72471978e4d5c225"
+ },
+ "gasp_1": {
+  "quellen": {
+   "01/freesound_318078_5057106-hq.mp3": "a4e7c8d41a9c99fd6cbf48843c1d4cdb2f5630c0629b7ecf3fbdc5a3a70b1630"
+  },
+  "sha256": "3e955d93b1e62b08cf3785d697167e140716818e6a030850bc4277ea689a1b31"
+ },
+ "pages": {
+  "quellen": {
+   "09/kenney_rpg-audio.zip:Audio/bookFlip1.ogg": "6dbeaf8544da958d8f2adcb4a4a4b76c1ade34a05f8ab9edccd327da7375f38b"
+  },
+  "sha256": "5646376937b8162c0790a3cddd6501741f9da2e15b056016f5f22568194aeb8b"
+ },
+ "pages_0": {
+  "quellen": {
+   "09/kenney_rpg-audio.zip:Audio/bookFlip1.ogg": "6dbeaf8544da958d8f2adcb4a4a4b76c1ade34a05f8ab9edccd327da7375f38b"
+  },
+  "sha256": "5646376937b8162c0790a3cddd6501741f9da2e15b056016f5f22568194aeb8b"
+ },
+ "pages_1": {
+  "quellen": {
+   "09/kenney_rpg-audio.zip:Audio/bookFlip2.ogg": "6dbeaf8544da958d8f2adcb4a4a4b76c1ade34a05f8ab9edccd327da7375f38b"
+  },
+  "sha256": "acdaca9b295e38d53fdc6b9a8199f8f81cc20afa382294812fea88e9d1ffd1e2"
+ },
+ "pages_2": {
+  "quellen": {
+   "09/kenney_rpg-audio.zip:Audio/bookFlip3.ogg": "6dbeaf8544da958d8f2adcb4a4a4b76c1ade34a05f8ab9edccd327da7375f38b"
+  },
+  "sha256": "e72d125d08800d5f9935c16b18563243af69a4d1ae52733f5ac9e14bb7b0da11"
+ },
+ "shop_equip": {
+  "quellen": {
+   "09/kenney_rpg-audio.zip:Audio/dropLeather.ogg": "6dbeaf8544da958d8f2adcb4a4a4b76c1ade34a05f8ab9edccd327da7375f38b",
+   "09/kenney_rpg-audio.zip:Audio/handleSmallLeather.ogg": "6dbeaf8544da958d8f2adcb4a4a4b76c1ade34a05f8ab9edccd327da7375f38b"
+  },
+  "sha256": "6b030df5632a8d4f4328d6af08b45969aaea50fcbdf4f8bce578b6fe90df5391"
+ }
+}

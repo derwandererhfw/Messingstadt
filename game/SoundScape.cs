@@ -177,11 +177,12 @@ namespace Messingstadt
             {
                 _sounds[Path.GetFileNameWithoutExtension(path)] = AudioStreamWav.LoadFromFile(path);
             }
-            // Liegt ein Klang nur in nummerierten Fassungen vor (hit_0, hit_1), wählt sein Grundname zufällig eine davon.
+            // Liegt ein Klang in nummerierten Fassungen vor (hit_0, hit_1), wählt sein Grundname zufällig eine davon.
+            // Das gilt auch, wenn es die Datei ohne Nummer zusätzlich gibt, etwa weil eine Sequenz sie beim Namen nennt.
             foreach (string name in _sounds.Keys)
             {
                 int cut = name.LastIndexOf('_');
-                if (cut > 0 && int.TryParse(name[(cut + 1)..], out _) && !_sounds.ContainsKey(name[..cut]))
+                if (cut > 0 && int.TryParse(name[(cut + 1)..], out _))
                 {
                     _variants[name[..cut]] = _variants.GetValueOrDefault(name[..cut]) + 1;
                 }
