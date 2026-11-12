@@ -78,7 +78,7 @@ Alle fünf sind verschlossen. Regeln wie in `../konzept.md`: Schlosser 2 s, mit 
 
 - Start: Böschung an der Südgasse, x 9–13, y 28–30.
 - Ziel: Wagen der Wäscherei im Kohlenhof, Zone x 27–30, y 20–23.
-- Verstärkung: aus der Kasernentür (19,5, 5,5) auf den Exerzierplatz, gerufen über das Telefon in der Schreibstube. Wer den Draht kappt, hat keine Verstärkung. Die Regel baut die Gegner-Session.
+- Verstärkung: Wachleute aus der Kasernentür (19,5, 5,5) auf den Exerzierplatz, gerufen über das Telefon in der Schreibstube. Kasten, Dreyer und Proske, wenn sie Einsatz 1 überlebt haben, sonst Hinz, Wendt und Rogge. Der Werkschutz kommt erst um sechs und tritt im Einsatz nicht als Verstärkung auf. Der Mann vom Werk am Hoftor bleibt. Wer den Draht kappt, hat keine Verstärkung. Die Regel baut die Gegner-Session.
 - Bis 2026-11-12: Start im Durchgang, Wagen in der Wallgasse, Werkschutz vom Ostende der Wallstraße.
 
 ## 3. Gegner
@@ -334,13 +334,13 @@ Auf der Südgasse läuft Zander Streife. Er kreuzt den Friedhofsweg und den Weg 
 
 ### Helfer
 
-Das Zeichen ist eine Kerze im Fenster, kein Text. Brennt sie, ist die Tür offen. Nach Blut in Einsatz 1 brennt keine.
+Das Zeichen ist eine Kerze im Fenster, kein Text. Brennt sie, ist die Tür offen. Die Stadt hilft, solange am Trupp kein Blut klebt. Heute heißt das im Spiel: kein Toter in Einsatz 1 (`Campaign.HouseHelps`). Entscheidet sich der Nutzer für die Blutschuld von 0 bis 6, gilt stattdessen die Stufe „hilft“. Die Texte passen zu beidem.
 
 | Wer | Tür | Bedingung | Satz, wenn der Trupp durchgeht |
 |---|---|---|---|
-| Matthes Kroll, Totengräber | Pforte des Totengräbers [5, 17] | Kein Toter in Einsatz 1 | „Geht nur. Die hier verraten keinen.“ |
-| Agnes Töpfer, Witwe eines Wachmanns | Hoftür [8, 20] | Kein Toter in Einsatz 1 | „Geht durch. Ich hab nichts gehört.“ |
-| Else Radtke, Wirtin | Kellerluke [20, 22] | Greta lebt, oder kein Toter in Einsatz 1 | Mit Greta im Trupp: „Durch den Keller, Lenz. Wie früher.“ Sonst: „Durch den Keller. Schnell.“ |
+| Matthes Kroll, Totengräber | Pforte des Totengräbers [5, 17] | Die Stadt hilft | „Geht nur. Die hier verraten keinen.“ |
+| Agnes Töpfer, Witwe eines Wachmanns | Hoftür [8, 20] | Die Stadt hilft | „Geht durch. Ich hab nichts gehört.“ |
+| Else Radtke, Wirtin | Kellerluke [20, 22] | Greta lebt, oder die Stadt hilft | Mit Greta im Trupp: „Durch den Keller, Lenz. Wie früher.“ Sonst: „Durch den Keller. Schnell.“ |
 
 Ist die Tür zu und ein Agent steht davor, höchstens ein Satz hinter der Tür:
 
@@ -404,7 +404,7 @@ Vorschlag, falls der Spieler die Kerze nicht von selbst versteht: ein Satz am En
 
 ### Zeitung mit Namen
 
-Vorbereitet für das Totenbuch. Die Felder liefert die Kampagne, der Einbau in `Headlines.cs` ist noch nicht gemacht. Gebraucht werden je Totem: Name, Anrede (Wachmann, Oberwachtmeister, Wachtmeister, Werkschutzmann, Laufbursche) und bei Jungen das Alter.
+Vorbereitet für das Totenbuch. Die Felder liefert die Kampagne, der Einbau in `Headlines.cs` ist noch nicht gemacht. Gebraucht werden je Totem: Name, Anrede und bei Jungen das Alter. Das Totenbuch liefert Name, Seite, Art, Mission, Viertel und Nacht. Die Anrede folgt aus der Art: Wachmann, Schütze und Hundeführer heißen „Wachmann“, der Offizier „Wachtmeister“, der Werkschutz „Werkschutzmann“, der Laufbursche „Laufbursche“. Zwei freiwillige Felder je Wache in der Missionsdatei überschreiben das: `rank` (etwa „Oberwachtmeister“ für Vogt, „Bote“ für Pagel) und `age` (14 für Lüders, 13 für Pagel). Fehlt `age` bei einem Jungen, entfällt das Alter im Satz. Hunde nennt die Zeitung nicht.
 
 | Fall | `{dead}` |
 |---|---|
