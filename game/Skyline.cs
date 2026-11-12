@@ -39,6 +39,7 @@ uniform vec2 origin;
 uniform vec2 size;
 uniform float lightning = 0.0;
 uniform vec2 tiles = vec2(20.0, 20.0);
+uniform float air = 1.0;
 void fragment() {
     vec2 px = UV * size;
     float a = (px.x - origin.x) / 32.0, b = (px.y - origin.y) / 16.0;
@@ -50,10 +51,10 @@ void fragment() {
     vec3 fx = texture(fx_map, UV).rgb;
     float n = texture(noise_map, vec2(px.x, px.y * 2.0) / 640.0 + vec2(TIME * 0.008, TIME * 0.003)).r;
     float smog = smoothstep(0.34, 0.76, n);
-    float cover = smog * (0.06 + 0.6 * fx.g);
+    float cover = smog * (0.06 + 0.6 * fx.g) * air;
     // Je weiter draußen vor der Karte, desto dichter steht der Dunst: Die Stadt verliert sich, statt schwarz abzubrechen.
     float outside = max(max(-mx, -my), max(mx - tiles.x, my - tiles.y));
-    float far = smoothstep(0.5, 9.0, outside) * (0.3 + 0.22 * n);
+    float far = smoothstep(0.5, 9.0, outside) * (0.3 + 0.22 * n) * air;
     vec3 c = (haze + lightning * vec3(0.3, 0.35, 0.48)) * cover;
     c += (vec3(0.2, 0.24, 0.38) + lightning * vec3(0.3, 0.35, 0.48)) * far * (1.0 - cover);
     cover = cover + far * (1.0 - cover);
@@ -136,6 +137,7 @@ void fragment() {
             _material.SetShaderParameter("origin", Game.ToScreen(0, 0) + margin);
             _material.SetShaderParameter("size", size);
             _material.SetShaderParameter("fx_map", effects);
+            _material.SetShaderParameter("air", AirTest.Off("rand") ? 0f : AirTest.Scale);
             LightMask = 0;
             AddChild(new Sprite2D
             {

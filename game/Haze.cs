@@ -67,7 +67,8 @@ namespace Messingstadt
         public override void _Process(double delta)
         {
             // Im Schauer hängt mehr Wasser in der Luft, im Blitz leuchtet der Dunst kurz auf.
-            float strength = 1f + RainBoost * Game.Climate.RainStrength + 0.8f * Mathf.Min(1f, Game.Lightning);
+            float strength = (1f + RainBoost * Game.Climate.RainStrength + 0.8f * Mathf.Min(1f, Game.Lightning)) * AirTest.Scale;
+            Visible = !AirTest.Off("dunst");
             foreach (var sheet in _sheets)
             {
                 sheet.Modulate = new Color(1f, 1f, 1f, strength);

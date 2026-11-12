@@ -15,6 +15,10 @@ namespace Messingstadt
         private const float RipplesPerSecond = 2.2f;
         private const float RippleSeconds = 0.8f;
         private const int FlashLights = 6;
+        // Vorschau (--licht): Mündungsfeuer als Licht auf Boden, Wänden und Figuren.
+        private const int FlashTicks = 3;
+        private const float FlashEnergy = 0.95f;
+        private const float FlashScale = 0.75f;
         private const float MinValveSeconds = 16f;
         private const float MaxValveSeconds = 45f;
         private const float PlumeWindShare = 0.55f;
@@ -177,12 +181,20 @@ namespace Messingstadt
             for (int i = world.Shots.Count - 1; i >= 0 && used < _flashLights.Count; i--)
             {
                 var shot = world.Shots[i];
-                if (world.Tick - shot.Tick > 1)
+                int age = world.Tick - shot.Tick;
+                if (age > (AirTest.Light ? FlashTicks : 1))
                 {
                     break;
                 }
                 _flashLights[used].Position = Game.ToScreen(shot.FromX, shot.FromY) + new Vector2(0, -20);
                 _flashLights[used].Visible = true;
+                if (AirTest.Light)
+                {
+                    // Vorschau: Der Schuss reißt die Umgebung für einen Augenblick warm aus dem Dunkel und glimmt kurz nach.
+                    float fade = 1f - age / (FlashTicks + 1f);
+                    _flashLights[used].Energy = FlashEnergy * fade * fade;
+                    _flashLights[used].TextureScale = FlashScale;
+                }
                 used++;
             }
             for (int i = used; i < _flashLights.Count; i++)
