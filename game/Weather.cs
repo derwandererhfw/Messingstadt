@@ -37,6 +37,9 @@ namespace Messingstadt
         private const float MaxStormPause = 95f;
         private const float FirstStormSeconds = 18f;
         private const float FlashFadePerSecond = 7f;
+        private const float HardFlashFadePerSecond = 12f;
+        private const float AfterglowLight = 0.26f;
+        private const float AfterglowSeconds = 1.3f;
         private const float MinThunderDelay = 0.6f;
         private const float MaxThunderDelay = 4.5f;
         private const float MinRumblePause = 18f;
@@ -217,6 +220,7 @@ void fragment() {
         private float _nextCity = 12f;
         private float _time;
         private float _flash;
+        private float _afterglow;
         private readonly List<float> _strokes = new();
         private float _thunderAt = -1f;
         private string _thunderSound = "";
@@ -517,7 +521,10 @@ void fragment() {
             {
                 if (_time >= _strokes[i])
                 {
-                    _flash = Mathf.Max(_flash, Rand(0.7f, 1.25f));
+                    // Der Schlag reißt die Karte hart und kalt auf, danach glimmt der Himmel einen Atemzug lang nach.
+                    bool hard = !AirTest.Off("blitz");
+                    _flash = Mathf.Max(_flash, hard ? Rand(1.0f, 1.7f) : Rand(0.7f, 1.25f));
+                    _afterglow = hard ? AfterglowLight : 0f;
                     _strokes.RemoveAt(i);
                     // Etwa jeder dritte Schlag bleibt im Wolkenband verborgen und erhellt nur die Stadt.
                     if (_rng.NextDouble() < VisibleBoltShare)
@@ -526,7 +533,9 @@ void fragment() {
                     }
                 }
             }
-            _flash = HeldFlash >= 0f ? HeldFlash : Mathf.Max(0f, _flash - _flash * FlashFadePerSecond * dt - 0.2f * dt);
+            _afterglow = Mathf.Max(0f, _afterglow - AfterglowLight / AfterglowSeconds * dt);
+            float fade = AirTest.Off("blitz") ? FlashFadePerSecond : HardFlashFadePerSecond;
+            _flash = HeldFlash >= 0f ? HeldFlash : Mathf.Max(_afterglow, _flash - _flash * fade * dt - 0.2f * dt);
             Game.SetLightning(_flash);
             if (HeldFlash >= 0f && !_boltShown && _time > 0.2f)
             {
@@ -551,6 +560,7 @@ void fragment() {
             {
                 // Im Regen streut die nasse Luft das Licht, der Kegel steht dann deutlicher.
                 float level = cone.Stutters ? Game.StutterLevel : Game.UnrestLevel;
+                level *= 1f + 0.07f * (AirTest.Off("gas") ? 0f : MapSite.Current.LampUnrest) * Mathf.Sin(_time * 6.3f + cone.Shape.Position.X * 0.37f + cone.Shape.Polygon[0].X * 0.11f);
                 cone.Shape.Modulate = new Color(1f, 1f, 1f, level * (1f + ConeRainBoost * RainStrength));
                 if (cone.Halo != null)
                 {

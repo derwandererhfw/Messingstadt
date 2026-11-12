@@ -11,8 +11,8 @@ namespace Messingstadt
     /// eigene Kulisse gibt. Die Daten kommen aus dem Manifest der Karte. Nur für das Kesselviertel, die erste Karte,
     /// gibt es Vorgaben im Code, weil ihr Manifest diese Felder noch nicht hat. Auf jeder anderen Karte bleibt ein
     /// Effekt ohne seine Daten einfach aus.
-    /// Neben dem Manifest darf eine site.json liegen. Sie gehört der Atmosphäre, hat dieselben Felder und geht vor,
-    /// damit ein neu erzeugtes Manifest sie nicht überschreibt.
+    /// Unter assets/sites/<Kartenordner>.json liegen die Daten der Atmosphäre. Sie haben dieselben Felder wie das
+    /// Manifest und gehen vor. Dort überschreibt sie kein neu erzeugter Kartenordner.
     /// Der Lader der Karten ruft Use mit dem Manifest der Karte auf, bevor die Stadt gebaut wird. Ohne Aufruf gilt
     /// das alte Manifest unter res://assets/manifest.json.
     /// </summary>
@@ -88,6 +88,15 @@ namespace Messingstadt
         /// <summary>Die Lichtquellen aus dem Manifest (sources). Leer: Die Karte nennt keine, dann gelten die Laternen des Einsatzes.</summary>
         public List<LightSource> Sources { get; } = new();
 
+        /// <summary>
+        /// Wie unruhig die Laternen brennen: 0 ruhig wie elektrisches Licht, 1 wie Gaslicht, das wogt und zuckt.
+        /// Aus dem Manifest (lampUnrest). Fehlt der Eintrag, brennt eine Karte mit Gaslaternen unruhig.
+        /// </summary>
+        public float LampUnrest { get; private set; }
+
+        /// <summary>Lampen, die an einer Schnur pendeln: Feld x, y, Höhe der Aufhängung und Länge der Schnur in Bildpunkten.</summary>
+        public List<(Vector2 Tile, float Height, float Cord)> SwingLamps { get; } = new();
+
         /// <summary>Die eine Laterne, die flackert und aussetzt. Null: Auf dieser Karte brennen alle ruhig.</summary>
         public Vector2? StutterLamp { get; private set; }
 
@@ -116,7 +125,10 @@ namespace Messingstadt
             string here = Path.GetDirectoryName(manifestPath) ?? "";
             site.Skyline |= !legacy && File.Exists(Path.Combine(here, "skyline.png"));
             // Was im Manifest steht, ersetzt die Vorgabe. Was in site.json steht, ersetzt beides.
-            foreach (string file in new[] { manifestPath, Path.Combine(here, "site.json") })
+            // Die Daten der Atmosphäre liegen unter assets/sites/<Kartenordner>.json: Der Kartenordner selbst wird von der
+            // Grafik neu erzeugt und dabei geleert. Eine site.json im Kartenordner gilt weiter, falls dort eine liegt.
+            string own = ProjectSettings.GlobalizePath($"res://assets/sites/{folder}.json");
+            foreach (string file in new[] { manifestPath, own, Path.Combine(here, "site.json") })
             {
                 if (File.Exists(file))
                 {
@@ -186,6 +198,22 @@ namespace Messingstadt
                         new Vector2(s.GetProperty("x").GetSingle(), s.GetProperty("y").GetSingle()), s.GetProperty("z").GetSingle(),
                         s.GetProperty("kind").GetString() ?? "", new Color(c[0].GetSingle(), c[1].GetSingle(), c[2].GetSingle()),
                         s.GetProperty("reach").GetSingle()));
+                }
+            }
+            if (Sources.Exists(s => s.Kind == "gas"))
+            {
+                LampUnrest = 1f;
+            }
+            if (root.TryGetProperty("lampUnrest", out var lampUnrest))
+            {
+                LampUnrest = lampUnrest.GetSingle();
+            }
+            if (root.TryGetProperty("swingLamps", out var swing))
+            {
+                SwingLamps.Clear();
+                foreach (var l in swing.EnumerateArray())
+                {
+                    SwingLamps.Add((Pair(l), l[2].GetSingle(), l[3].GetSingle()));
                 }
             }
             if (root.TryGetProperty("passersby", out var people))
@@ -274,6 +302,8 @@ namespace Messingstadt
             Strikers = new Fire(new Vector2(13.25f, 18.7f), new Vector2[] { new(12.65f, 18.55f), new(13.85f, 18.6f), new(13.4f, 19.3f) }, new Vector2(12.35f, 18.02f));
             Passersby = true;
             StutterLamp = new Vector2(5.6f, 10.5f);
+            // Über der Seitentür des Hotels, wo der Arbeiter raucht.
+            SwingLamps.Add((new Vector2(6.12f, 15.75f), 44f, 10f));
             Tram = true;
             Skyline = true;
         }

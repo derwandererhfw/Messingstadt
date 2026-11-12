@@ -64,6 +64,17 @@ namespace Messingstadt
         public Main Game = null!;
         public string ManifestPath = "";
 
+        /// <summary>Ob auf der Karte eine Bahn steht, wo ihre Stirnseite liegt und wie hell ihr Licht gerade brennt.</summary>
+        public bool Exists => _exists;
+
+        public float MiddleX => _wallX - _width / 2f;
+
+        public float FrontY => _y1;
+
+        public float Light => _light;
+
+        private float _width;
+
         private float Rand(float min, float max) => min + (float)_rng.NextDouble() * (max - min);
 
         public override void _Ready()
@@ -78,6 +89,7 @@ namespace Messingstadt
                 {
                     _exists = true;
                     _wallX = x1;
+                    _width = x1 - x0;
                     _y0 = y0;
                     _y1 = y1;
                     // Direkt über der Bahn, aber unter allem, was davor steht.
