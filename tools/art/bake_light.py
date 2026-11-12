@@ -32,11 +32,22 @@ LAMP_COLOR = (1.0, 0.74, 0.42)  # elektrische Laternen des Kesselviertels. Fürs
 MAP_LAMPS = {
     # scale: Stärke im Bild gegenüber den Regeln. cut: Bei so vielen Feldern Abstand endet das Licht im Bild weich, 0 = nie.
     "": dict(color=LAMP_COLOR, kind="elektrisch", reach=4.2, scale=1.6, cut=4.2),
-    "nordwall": dict(color=(0.90, 0.95, 0.56), kind="gas", reach=4.0, scale=1.0, cut=0.0),  # Gasglühlicht: grünlich-gelb und etwas schwächer im Umkreis
+    "nordwall": dict(color=(0.90, 0.95, 0.56), kind="gas", reach=5.0, scale=1.3, cut=5.0),  # Gasglühlicht: grünlich-gelb und etwas schwächer im Umkreis
 }
 FIRE_REACH = 3.0
-MOON_SPEC = 2.4  # Nässeglanz auf Dächern: Der Mond spiegelt sich in Flecken, wo die Fläche zur Kamera vermittelt
+MOON_SPEC = 6.0  # Nässeglanz auf Dächern: Der Mond spiegelt sich in Flecken, wo die Fläche zur Kamera vermittelt
 RIM_LIGHT = 2.6  # Kantenlicht: Die obere Umrisskante von Häusern und Aufbauten fängt den Mond, so stark wie das Mondlicht mal diesem Wert
+# Lichtteppiche: Hinter jedem erleuchteten Fenster der unteren Geschosse hängt eine Lampe, ihr Licht fällt durch die Öffnung
+# aufs Pflaster, das Fensterkreuz wirft Schatten. Dauerhaft brennende Fenster gehen fest ins Licht ein, schaltende (toggle)
+# bekommen einen Lichtflicken, siehe "patches" im Manifest.
+CARPET_POWER = 6.0
+CARPET_REACH = 4.4
+CARPET_MAX_SILL = 70  # Fenster, deren Unterkante höher liegt, werfen ihr Licht zu weit und zu schwach
+CARPET_DEPTH = 0.55  # so viele Felder hinter der Wand hängt die Lampe
+NEON_COLOR, NEON_POWER, NEON_REACH = (1.0, 0.16, 0.12), 2.6, 6.5
+WELD_COLOR, WELD_POWER, WELD_REACH = (0.62, 0.8, 1.0), 5.0, 5.5
+RAIL_GLOSS = 2.4  # Schienenköpfe sind blank: Sie werfen das Licht, das sie trifft, um diesen Faktor stärker zurück
+MAP_RAILS = {"": ("x", (8.42, 8.58, 9.42, 9.58)), "nordwall": ("y", (10.8, 11.2))}
 RIM_KINDS = ("", "prop", "gate", "boiler")
 FIRE_COLOR = (1.0, 0.45, 0.15)
 LAMP_POWER = 4.2
@@ -159,10 +170,23 @@ def resize_float(values, size):
     return np.stack(channels, axis=-1)
 
 
-def write_maps(name, rgba, light, deltas, ids, pane_light, halo, box, rim=False):
+def write_maps(name, rgba, light, deltas, ids, pane_light, halo, box, rim=False, rails=None):
     """Schreibt Licht (_a), Anteile fürs Flackern (_b) und Fensterkennung (_w) in der Größe des angezeigten Bilds."""
     size = (rgba.shape[1], rgba.shape[0])
     a = np.array(Image.fromarray(encode(light)).resize(size, Image.BILINEAR))
+    if rails is not None:
+        # Blanke Schienenköpfe: in der Auflösung des Bilds, damit der Glanz so schmal bleibt wie die Schiene.
+        axis, lines, ox, oy = rails
+        k = rgba.shape[0] / light.shape[0] / STRIDE
+        ys, xs = np.mgrid[0:rgba.shape[0], 0:rgba.shape[1]]
+        ua, ub = ((xs + 0.5) / k - ox) / 32, ((ys + 0.5) / k - oy) / 16
+        across = (ua + ub) / 2 if axis == "x" else (ub - ua) / 2
+        head = np.zeros(across.shape, bool)
+        for line in lines:
+            head |= np.abs(across - line) < 0.02
+        level = (a.astype(np.float32) / 255) ** 2 * MAX_LIGHT
+        level[head] *= RAIL_GLOSS
+        a = encode(level)
     if rim and RIM_LIGHT > 0:
         # Kantenlicht in der Auflösung des angezeigten Bilds: ein Punkt breit voll, der darunter halb.
         solid = rgba[..., 3] > 128
@@ -188,6 +212,31 @@ def write_maps(name, rgba, light, deltas, ids, pane_light, halo, box, rim=False)
     Image.fromarray(b).save(OUT / f"{name}_b.png", optimize=True)
     if ids.any():
         Image.fromarray(ids).convert("RGB").save(OUT / f"{name}_w.png")
+
+
+def carpet_source(pane, thing, ox, oy):
+    """Lampe hinter einem Fenster und seine Öffnung in Feldern, aus der Lage des Fensters im Bild. None, wenn es zu hoch liegt."""
+    left = pane["x"] + pane["u"]
+    if pane["slope"] > 0:  # Südwand: nach rechts im Bild wächst x
+        c = thing["y1"]
+        a0 = (left - ox) / 32 + c
+        a1 = a0 + pane["w"] / 32
+        top = oy + (a0 + c) * 16 - (pane["y"] + int(pane["u"] * pane["slope"]) + pane["v"])
+        axis = 1
+    else:  # Ostwand: nach rechts im Bild sinkt y
+        c = thing["x1"]
+        a1 = c - (left - ox) / 32
+        a0 = a1 - pane["w"] / 32
+        top = oy + (c + a1) * 16 - (pane["y"] - int(pane["u"] * -pane["slope"]) + pane["v"])
+        axis = 0
+    sill = top - pane["h"]
+    if sill > CARPET_MAX_SILL or sill < 2:
+        return None
+    mid = (a0 + a1) / 2
+    lamp = (top + 7) / Z_SCALE
+    pos = [c - CARPET_DEPTH, mid, lamp] if axis == 0 else [mid, c - CARPET_DEPTH, lamp]
+    return {"type": "window", "pos": pos, "axis": axis, "c": c, "a0": a0, "a1": a1, "z0": sill / Z_SCALE, "z1": top / Z_SCALE,
+            "bar": max(0.025, pane["w"] / 32 * 0.07)}
 
 
 def room_light(u, v, source):
@@ -274,7 +323,7 @@ def main():
                       "rulesAlbedo": frozen["boxes"].get(key, albedo), "roof": t.get("roof", []),
                       # Kleinkram wirft im Bild Schatten, fürs Schleichlicht aber keinen. Durchbrochenes wie Fahrräder nie.
                       "ghost": {"prop": 1, "open": 2}.get(t["kind"], 0)})
-        sprites.append({"name": Path(t["file"]).stem, "box": len(boxes) - 1, "left": t["px"], "top": t["py"], "kind": t["kind"]})
+        sprites.append({"name": Path(t["file"]).stem, "box": len(boxes) - 1, "left": t["px"], "top": t["py"], "kind": t["kind"], "thing": t})
         images.append(rgba)
 
     # Jedes erleuchtete Fenster und jeder Buchstabe bekommt eine Kennung für das Spiel.
@@ -295,6 +344,7 @@ def main():
         screens.add(picker.choice([w for w in by_house[houses[turn % len(houses)]] if w not in screens]))
     panes_out = []
     welding_placed = False
+    extras, groups, signs = [], [], {}
     type_names = list(WINDOW_TYPES)
     weights = [WINDOW_TYPES[name]["weight"] for name in type_names]
     for sprite, rgba in zip(sprites, images):
@@ -342,6 +392,22 @@ def main():
                     sprite["lit"][y, x] = type_names.index(type_name) + 1
                     sprite["halo"][y, x] = WINDOW_TYPES[type_name]["color"]
                     sprite["halo"][y, x] *= WINDOW_TYPES[type_name]["pane"][1]
+        # Zusatzquellen fürs Bild, siehe CARPET_POWER
+        thing = sprite["thing"]
+        if pane["kind"] == "sign":
+            signs.setdefault(id(thing), (thing, []))[1].append(pane_id)
+        elif pane["kind"] == "window" and kind in ("window", "toggle", "weld") and pane_id not in screens:
+            source = carpet_source(pane, thing, manifest["ox"], manifest["oy"])
+            strength = WINDOW_TYPES[type_name]["power"] / 0.014
+            if source and (kind != "window" or strength > 0):
+                source.update(group=-1, color=WINDOW_TYPES[type_name]["color"], power=CARPET_POWER * strength, reach=CARPET_REACH)
+                if kind == "toggle":
+                    source.update(group=len(groups), color=WINDOW_TYPES["gluehlampe"]["color"], power=CARPET_POWER)
+                    groups.append({"kind": "fenster", "panes": [pane_id], "color": source["color"]})
+                elif kind == "weld":
+                    source.update(group=len(groups), color=WELD_COLOR, power=WELD_POWER, reach=WELD_REACH)
+                    groups.append({"kind": "schweiss", "panes": [pane_id], "color": WELD_COLOR})
+                extras.append(source)
         if pixels:
             ys, xs = zip(*pixels)
             panes_out.append({"id": pane_id, "kind": kind, "x": sprite["left"] + sum(xs) / len(xs), "y": sprite["top"] + sum(ys) / len(ys)})
@@ -358,6 +424,16 @@ def main():
             sprite["w"], sprite["h"] = mask.shape[1], mask.shape[0]
             f.write(mask.tobytes())
 
+    for thing, ids in signs.values():
+        # Leuchtschrift: eine Reihe roter Lichtpunkte vor dem Schild, alle Buchstaben zusammen ein Lichtflicken
+        count = 6
+        for i in range(count):
+            f = (i + 0.5) / count
+            extras.append({"type": "point", "group": len(groups), "color": NEON_COLOR, "power": NEON_POWER / count, "reach": NEON_REACH,
+                           "pos": [thing["x0"] + (thing["x1"] - thing["x0"]) * f, thing["y1"] + 0.12, (thing["z0"] + thing["z1"]) / 2 / Z_SCALE]})
+        groups.append({"kind": "neon", "panes": ids, "color": NEON_COLOR})
+    rails = MAP_RAILS.get(args.get("map", ""))
+    rails = rails and (rails[0], rails[1], manifest["ox"], manifest["oy"])
     lamp = dict(MAP_LAMPS.get(args.get("map", ""), MAP_LAMPS[""]))
     lamp["color"] = trial("LAMP_COLOR", lamp["color"])
     # Für Lichtkegel, Dunst und Flackern im Spiel: jede Quelle mit Ort, Höhe in Bildpunkten, Farbe, Art und Reichweite in Feldern.
@@ -375,7 +451,7 @@ def main():
     scene = {
         "ox": manifest["ox"], "oy": manifest["oy"], "zScale": Z_SCALE, "mapSize": 20, "stride": STRIDE,
         "sky": SKY, "rulesSky": RULES_SKY, "groundAlbedo": (groundless.mean(axis=0)[:3] / 255).tolist(),
-        "lampColor": LAMP_COLOR, "lampPicture": lamp["color"], "lampScale": trial("LAMP", lamp["scale"]), "lampReach": float(os.environ.get("MS_CUT", lamp["cut"])), "fireColor": FIRE_COLOR, "moonSpec": MOON_SPEC,
+        "lampColor": LAMP_COLOR, "lampPicture": lamp["color"], "lampScale": trial("LAMP", lamp["scale"]), "lampReach": float(os.environ.get("MS_CUT", lamp["cut"])), "fireColor": FIRE_COLOR, "moonSpec": MOON_SPEC, "extras": extras, "extraGroups": len(groups),
         "windowTypes": [{"color": t["color"], "power": t["power"]} for t in WINDOW_TYPES.values()],
         "specStrength": SPEC_STRENGTH, "puddleSpec": PUDDLE_SPEC,
         "flashDirection": FLASH_DIRECTION, "flashAmbient": FLASH_AMBIENT,
@@ -392,10 +468,24 @@ def main():
 
     data = np.fromfile(WORK / "light.bin", dtype="<f4")
     at = 0
+    channels = 10 + len(groups)
+    canvas_h, canvas_w = images[0].shape[:2]
+    patches = [np.zeros((canvas_h, canvas_w, 3), np.float32) for _ in groups]
     for sprite, rgba in zip(sprites, images):
         h, w = sprite["h"], sprite["w"]
-        block = data[at:at + w * h * 10].reshape(h, w, 10)
-        at += w * h * 10
+        block = data[at:at + w * h * channels].reshape(h, w, channels)
+        at += w * h * channels
+        # Lichtflicken: Was diese Gruppe auf dem Sprite beleuchtet, mit seiner Farbe. Spätere Sprites verdecken frühere.
+        top, left = sprite["top"], sprite["left"]
+        y0, x0 = max(0, top), max(0, left)
+        y1, x1 = min(canvas_h, top + rgba.shape[0]), min(canvas_w, left + rgba.shape[1])
+        if groups and y1 > y0 and x1 > x0:
+            part = rgba[y0 - top:y1 - top, x0 - left:x1 - left]
+            seen = part[..., 3] > 128
+            extra = resize_float(np.maximum(block[..., 10:], 0), (rgba.shape[1], rgba.shape[0]))[y0 - top:y1 - top, x0 - left:x1 - left]
+            for g, group in enumerate(groups):
+                lit = part[..., :3] / 255.0 * extra[..., g:g + 1] * np.array(group["color"])
+                patches[g][y0:y1, x0:x1][seen] = lit[seen]
         void = block[..., 0] < 0
         block[void] = 0
         mask = half_mask(rgba, np.zeros(rgba.shape[:2], np.uint8)) > 0
@@ -414,7 +504,7 @@ def main():
                 halo = blur(halo, everywhere)
         fine = fine_images.get(sprite["name"])
         if fine is None:
-            write_maps(sprite["name"], rgba, light, deltas, sprite["ids"], sprite["pane_light"], halo, sprite["box"], sprite.get("kind") in RIM_KINDS)
+            write_maps(sprite["name"], rgba, light, deltas, sprite["ids"], sprite["pane_light"], halo, sprite["box"], sprite.get("kind") in RIM_KINDS, rails if sprite["box"] < 0 else None)
             continue
         # Feines Bild: Licht weich hochgerechnet, Selbstleuchten und Fenster aber Bildpunkt für Bildpunkt aus dem feinen
         # Bild. Glas ist dort, wo die Fensterfläche hell ist, also auch neben den nun dünneren Sprossen.
@@ -424,7 +514,21 @@ def main():
         ids = np.where(bright, area, 0).astype(np.uint8)
         size = (fine.shape[1], fine.shape[0])
         write_maps(sprite["name"], fine, light, deltas, ids, upscale(sprite["area_light"], factor),
-                   None if halo is None else resize_float(halo, size), sprite["box"], sprite.get("kind") in RIM_KINDS)
+                   None if halo is None else resize_float(halo, size), sprite["box"], sprite.get("kind") in RIM_KINDS, rails if sprite["box"] < 0 else None)
+
+    for old in OUT.glob("patch_*.png"):
+        old.unlink()
+    listed = []
+    for g, (group, patch) in enumerate(zip(groups, patches)):
+        ys, xs = np.nonzero(patch.max(axis=2) > 0.012)
+        if not len(ys):
+            continue
+        y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+        Image.fromarray((np.clip(patch[y0:y1, x0:x1], 0, 1) * 255 + 0.5).astype(np.uint8)).save(OUT / f"patch_{g:02d}.png", optimize=True)
+        listed.append({"file": f"light/patch_{g:02d}.png", "px": int(x0), "py": int(y0), **group, "color": list(group["color"])})
+    manifest["patches"] = listed
+    (ASSETS / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    print(f"{len(extras)} Zusatzquellen, {len(listed)} Lichtflicken")
 
     size = 20 * GRID_RES
     grid = np.fromfile(WORK / "grid.bin", dtype="<f4").reshape(size, size, 7)

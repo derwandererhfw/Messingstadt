@@ -134,9 +134,9 @@ void fragment() {
 
         // Bewegte Figuren nehmen ihr Licht aus dem Lichtgitter. Damit sie lesbar bleiben, gibt es eine Mindesthelligkeit,
         // und das Licht färbt den braunen Mantel nur gedämpft ein.
-        private const float AgentMinLight = 0.6f;
+        private const float AgentMinLight = 0.78f;  // angehoben, als die Nacht dunkler wurde: Agenten bleiben zwischen den Laternen lesbar
         private const float SpottedGuardMinLight = 0.5f;
-        private const float HiddenGuardMinLight = 0.26f;
+        private const float HiddenGuardMinLight = 0.32f;
         private const float FallenMinLight = 0.42f;
         private const float BookMinLight = 0.7f;
         private const float FigureMaxLight = 1.2f;
