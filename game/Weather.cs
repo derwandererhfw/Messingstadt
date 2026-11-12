@@ -55,7 +55,7 @@ namespace Messingstadt
         private const float ConeRadius = 46f;
         private const float ConeAlpha = 0.3f;
         private const float ConeRainBoost = 0.7f;
-        // Vorschau (--licht): Hof um die Laterne.
+        // Hof um die Laterne.
         private const float HaloScale = 0.5f;
         private const float HaloAlpha = 0.32f;
 
@@ -107,7 +107,7 @@ void fragment() {
             {
                 float rain = Weather.RainStrength;
                 float lamp = Stutters ? Weather.Game.StutterLevel : Weather.Game.UnrestLevel;
-                // Vorschau (--licht): mehr und hellere Fäden, damit der Regen im Licht aufblitzt.
+                // mehr und hellere Fäden, damit der Regen im Licht aufblitzt.
                 float boost = AirTest.Light ? 1.6f : 1f;
                 int count = Mathf.CeilToInt(Threads * boost * Mathf.Clamp(rain * 1.5f, 0f, 1f));
                 var slant = new Vector2(Weather.Wind * 0.006f, 1f);
@@ -395,7 +395,7 @@ void fragment() {
                 Sprite2D? halo = null;
                 if (AirTest.Light)
                 {
-                    // Vorschau: Die feuchte Luft um die Lampe leuchtet mit. Ein weicher Hof, im Regen größer und heller.
+                    // Die feuchte Luft um die Lampe leuchtet mit. Ein weicher Hof, im Regen größer und heller.
                     halo = new Sprite2D
                     {
                         Texture = Glow, Material = additive, Position = foot - new Vector2(0, ConeHeight + 2f), Scale = Vector2.One * HaloScale,

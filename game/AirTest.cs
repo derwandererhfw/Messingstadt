@@ -6,19 +6,22 @@ namespace Messingstadt
     /// <summary>
     /// Prüfschalter für alles, was die Luft sichtbar macht. Damit lässt sich messen, wie viel jede Schicht die Nacht
     /// aufhellt, und Stufen lassen sich nebeneinander stellen, ohne den Code umzubauen.
-    /// --luft=0.4 schwächt Dunstschleier, Bodennebel und den Dunst am Kartenrand auf diesen Anteil.
+    /// --luft=1 setzt Dunstschleier, Bodennebel und den Dunst am Kartenrand auf diesen Anteil. Vorgabe ist 0.35:
+    /// Der Dunst soll Licht tragen, nicht die Schatten grau machen.
     /// --ohne=dunst,nebel,rand,regen,glanz,kegel schaltet einzelne Schichten ganz ab.
-    /// --licht zeigt die Vorschau der neuen Lichteffekte: Halo um Laternen, Regen im Licht, Mündungsfeuer.
-    /// Ohne Schalter bleibt alles, wie es ist.
+    /// --ohne-licht nimmt Halo um Laternen, Regen im Licht und das helle Mündungsfeuer zum Vergleich wieder weg.
     /// </summary>
     public static class AirTest
     {
         private static bool s_read;
-        private static float s_scale = 1f;
+        private static float s_scale = Haze;
         private static string[] s_off = Array.Empty<string>();
-        private static bool s_light;
+        private static bool s_light = true;
 
-        /// <summary>Anteil, auf den Dunst, Nebel und Randdunst geschwächt werden. 1 ist der Stand ohne Schalter.</summary>
+        /// <summary>So viel Dunst, Bodennebel und Randdunst steht in der Luft, gemessen am Stand vor dem Abdunkeln der Welt.</summary>
+        private const float Haze = 0.35f;
+
+        /// <summary>Anteil, auf den Dunst, Nebel und Randdunst geschwächt werden. 1 ist der Stand vor dem Abdunkeln.</summary>
         public static float Scale
         {
             get
@@ -28,7 +31,7 @@ namespace Messingstadt
             }
         }
 
-        /// <summary>Ob die Vorschau der neuen Lichteffekte läuft.</summary>
+        /// <summary>Ob Halo, Regen im Licht und das helle Mündungsfeuer laufen.</summary>
         public static bool Light
         {
             get
@@ -61,9 +64,9 @@ namespace Messingstadt
                 {
                     s_off = a["--ohne=".Length..].Split(',');
                 }
-                else if (a == "--licht")
+                else if (a == "--ohne-licht")
                 {
-                    s_light = true;
+                    s_light = false;
                 }
             }
         }
