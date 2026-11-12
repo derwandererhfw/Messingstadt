@@ -98,6 +98,30 @@ hinter einer anderen steht. Der Träger des Kontobuchs bekommt dabei genau das a
 |---|---|---|
 | Otto, Schlosser | Tür öffnen | Rechtsklick auf die Türmarke, 2 s neben der Tür stehen. Danach kann jeder hindurch. Die Sicht bleibt gesperrt |
 | Emil, Buchhalter | Bestechen | Rechtsklick auf eine Wache, wenn nur Emil gewählt ist. 200 aus der Kasse, wirkt ab 2 Feldern Abstand, nur solange die Wache nicht kämpft. Sie ignoriert danach Agenten und Alarm, bis jemand auf sie schießt |
+| Greta, Truppführerin | Kennt die Stadtwache | Ist sie dabei, nimmt jede Wache nur den halben Preis. Dabei heißt: Sie lebt, ist im Einsatz und steht höchstens 5 Felder vom Bestechenden oder sieht die Wache selbst auf höchstens 8 Felder. Es zählt der Augenblick, in dem das Geld übergeben wird |
+
+#### Gretas Nachlass
+
+Entscheidung des Nutzers: halber Preis, wenn Greta dabei ist. Die Regel gilt in allen Einsätzen (`World.LeaderBacks`, `World.BribePrice(wache, bestechender)`). Sie hängt an der Person: Wer Greta nach ihrem Tod ersetzt, kennt die Wache nicht. Setzt sie aus oder liegt sie in der Krankenstube, ist sie nicht im Einsatz, und es gilt der volle Preis. Der Text am Mauszeiger über einer Wache nennt den Preis, der gerade gilt („käuflich für 150, Greta ist dabei“ oder „käuflich für 300, mit Greta in der Nähe 150“). Zwei Schalter für Messungen: `LeaderDiscountPercent` (0 schaltet ab) und `LeaderDiscountUses` (so oft je Einsatz).
+
+Gemessen mit `--mission=mission_02 --greta`, je 300 Läufe, Kasse 600. Greta muss dafür mit durch die Gasse, drei statt zwei queren die Wallstraße:
+
+| Spielweise | Bestechung | bleibt | genau | 0,5 s spät | 1 s spät | 2 s spät |
+|---|---|---|---|---|---|---|
+| Otto und Emil, Greta bleibt am Start (voller Preis) | 500 | 100 | 100 % leise | 100 % leise | 100 % Siege, 52 % leise | 75 % Siege |
+| Otto, Emil und Greta, voller Preis (ohne die Regel) | 500 | 100 | 100 % leise | 8 % Siege | 5 % | 2 % |
+| Otto, Emil und Greta, halber Preis | 250 | 350 | 100 % leise | 9 % Siege | 5 % | 2 % |
+| dasselbe, ein Drittel Nachlass | 335 | 265 | 100 % leise | 9 % | 5 % | 3 % |
+| dasselbe, halber Preis nur für die erste Wache | 350 | 250 | 100 % leise | 8 % | 5 % | 2 % |
+| Otto allein mit Dietrich und Totschläger | 0 | 400 | 100 % leise | 100 % leise | 52 % | 26 % |
+
+- Der halbe Preis kippt den Einsatz nicht. Er spart 250, kostet aber die Nachsicht: Zu dritt ist das Fenster auf der Wallstraße so eng, dass schon 0,5 s Verspätung fast immer auffliegt. In 272 von 300 Läufen bemerkt die Wallstreife 2 die Letzte, die quert.
+- Die Fassungen mit weniger Nachlass ändern am Ausgang nichts, nur an der Kasse. Deshalb bleibt es beim halben Preis.
+- Absicherung: Fliegt der Weg mit Greta auf und der Trupp kämpft, gewinnt er mit einer Schrotflinte vom gesparten Geld in 54 bis 63 % der Läufe, ohne Nachlass mit Pistolen in 49 bis 62 %. Eine Maschinenpistole (600) ist neben der Bestechung auch zum halben Preis nicht bezahlbar.
+- Greta im dunklen Durchgang stehen lassen und den Hundeführer von dort „sehen“ geht nicht auf: Er bemerkt Emil in der Gasse, ehe er nah genug ist. Gemessen 0 % Siege.
+- Otto allein behält seinen Grund: der billigste Weg, der 0,5 s verzeiht. Otto und Emil zu zweit bleiben der sicherste. Mit Greta wird es billig und knapp.
+- Einsatz 1: Das Werkzeug hat dort keine Spielweise mit Bestechung, die gewinnt. Der leise Weg (Greta schleicht allein) braucht kein Geld. Geändert sind nur die Preise: Wachmann und Schütze 100 statt 200, Offizier 200 statt 400, Hundeführer 150 statt 300, Laufbursche 25 statt 50.
+- Im Spiel gespielt: `greta_nachlass.txt`, leise gewonnen mit 250 Bestechung. `einsatz2_leise.txt` prüft den vollen Preis, wenn Greta am Start bleibt.
 
 ### Ausrüstung
 

@@ -18,6 +18,8 @@ clickfield 6 7
 key Key2
 clickfield 6 8
 waittick 510
+# Greta steht am Start, zu weit weg: voller Preis, der Text nennt, was mit ihr zu sparen wäre
+waitcontains prices Hundeführer: käuflich für 300, mit Greta in der Nähe 150
 key Key3
 rclickunit Hundeführer
 waitcontains bribed Hundeführer

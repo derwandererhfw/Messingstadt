@@ -31,6 +31,8 @@ var catalog = Loader.ParseCatalog(File.ReadAllText(Path.Combine(dataDir, "waffen
 string[][]? loadout = null;
 // Ändert den Einsatz für eine Messreihe, ohne die Datei anzufassen, etwa ein zusätzlicher Posten.
 Action<MissionData>? variant = null;
+// Stellt eine neue Welt für eine Messreihe ein, etwa den Nachlass der Truppführerin.
+Action<World>? tune = null;
 bool withCatalog = true;
 if (args.Length > 0 && args[0] == "--ohne-magazin")
 {
@@ -74,7 +76,9 @@ World NewWorld(int seed)
 {
     var mission = LitMission();
     mission.Seed = seed;
-    return new World(Loader.ParseMap(mapJson), mission);
+    var world = new World(Loader.ParseMap(mapJson), mission);
+    tune?.Invoke(world);
+    return world;
 }
 
 (int X, int Y) ExitTile(World w) => (w.Exit.X0 / World.TileUnits, (w.Exit.Y0 + w.Exit.Y1) / 2 / World.TileUnits);
@@ -711,7 +715,7 @@ Func<Action<World>> Rescue(bool alone, bool fightFirst, string[]? bribes = null,
         if (bribes != null && bribeIndex < bribes.Length)
         {
             var target = w.Units.Find(u => u.Name == bribes[bribeIndex]);
-            if (emil == null || target == null || !target.Alive || target.Bribed || target.GuardState == GuardState.Combat || w.Money < target.Type.BribeCost)
+            if (emil == null || target == null || !target.Alive || target.Bribed || target.GuardState == GuardState.Combat || w.Money < w.BribePrice(target, emil))
             {
                 bribeIndex++;
             }
@@ -784,12 +788,13 @@ Func<Action<World>> Rescue(bool alone, bool fightFirst, string[]? bribes = null,
 // lag: Der Klick kommt zufällig bis zu so viele Takte zu spät.
 int quietRun = 0;
 WatchMap? quietWatch = null;
-Func<Action<World>> QuietWithMoney(int lag, string[]? club = null) => () =>
+Func<Action<World>> QuietWithMoney(int lag, string[]? club = null, bool withGreta = false, bool gretaWatches = false) => () =>
 {
     var watch = quietWatch ??= WatchMap.Measure(Loader.ParseMap(mapJson), LitMission());
     // Jeder Lauf verspätet sich anders, sonst gäbe es nur ganz oder gar nicht.
     var rng = new Random(1927 + quietRun++);
-    int stage = 0, goAt = -1;
+    int stage = 0, goAt = -1, lastStage = -1;
+    bool gretaHome = false;
     return w =>
     {
         var otto = w.Units.Find(u => u.Skill == World.SkillLocksmith && u.Alive);
@@ -799,6 +804,8 @@ Func<Action<World>> QuietWithMoney(int lag, string[]? club = null) => () =>
             return;
         }
         Unit Guard(string name) => w.Units.First(u => u.Name == name);
+        var handler = Guard("Hundeführer");
+        var keeper = Guard("Schließer");
         int Door(string name) => w.Doors.FindIndex(d => d.Name == name);
         bool At(Unit u, int x, int y) => u.Path.Count == 0 && u.TileX == x && u.TileY == y;
         // Ist die Straße zwischen zwei Feldern frei, wenn man jetzt losgeht? Geprüft wird nur das Stück auf der Wallstraße.
@@ -825,8 +832,42 @@ Func<Action<World>> QuietWithMoney(int lag, string[]? club = null) => () =>
             }
             return false;
         }
-        var handler = Guard("Hundeführer");
-        var keeper = Guard("Schließer");
+        // Greta geht mit, damit die Wachen den halben Preis nehmen: immer ein paar Felder hinter Emil, nie im Hof.
+        var greta = withGreta ? w.Units.Find(u => u.Skill == World.SkillLeader && u.Alive) : null;
+        if (gretaWatches)
+        {
+            // Greta quert nicht. Sie rückt im dunklen Durchgang auf Emils Platz nach und sieht von dort die Gasse hinauf.
+            var watcher = w.Units.Find(u => u.Skill == World.SkillLeader && u.Alive);
+            if (watcher != null && stage >= 2 && !gretaHome)
+            {
+                gretaHome = true;
+                w.OrderMove(watcher.Id, 6, 15);
+            }
+            if (watcher != null && stage == 2 && !handler.Bribed && handler.Alive && handler.GuardState == GuardState.Patrol && !w.LeaderBacks(emil, handler))
+            {
+                // Mit dem Geld warten, bis der Hundeführer so weit die Gasse herunter ist, dass Greta ihn sieht.
+                return;
+            }
+        }
+        void PlaceGreta()
+        {
+            if (greta != null && stage != lastStage && stage < 6)
+            {
+                var (gx, gy) = stage switch { 0 => (6, 16), 1 => (6, 16), 2 => (5, 8), 3 => (5, 8), _ => (5, 7) };
+                w.OrderMove(greta.Id, gx, gy);
+            }
+            // Zurück geht sie für sich, in ihrem eigenen Fenster: Sie ist schneller als die Befreiten und stünde sonst zu früh auf der Straße.
+            if (greta != null && stage >= 6 && !gretaHome && greta.Path.Count == 0 && StreetClear(greta, 6, 16, World.WalkSpeed(greta)))
+            {
+                gretaHome = true;
+                w.OrderMove(greta.Id, 6, 16);
+            }
+            lastStage = stage;
+        }
+        if (greta != null && stage == 1 && greta.Path.Count > 0)
+        {
+            return;
+        }
         switch (stage)
         {
             case 0:
@@ -835,7 +876,7 @@ Func<Action<World>> QuietWithMoney(int lag, string[]? club = null) => () =>
                 stage = 1;
                 break;
             case 1:
-                if (At(otto, 7, 15) && At(emil, 6, 15) && Go(StreetClear(emil, 6, 7, World.WalkSpeed(emil))))
+                if (At(otto, 7, 15) && At(emil, 6, 15) && Go(StreetClear(emil, 6, 7, World.WalkSpeed(emil)) && (greta == null || StreetClear(greta, 5, 8, World.WalkSpeed(greta)))))
                 {
                     // In die dunkle Gasse, nicht an ihren hellen Ausgang: Der Hundeführer ist auf seinem Rundgang nicht immer gleich da.
                     w.OrderMove(emil.Id, 6, 7);
@@ -903,6 +944,8 @@ Func<Action<World>> QuietWithMoney(int lag, string[]? club = null) => () =>
                 }
                 break;
         }
+        // Im selben Takt wie die anderen, sonst läuft sie eine halbe Sekunde hinterher.
+        PlaceGreta();
     };
 };
 
@@ -1039,7 +1082,7 @@ static bool YardDone(World w, Unit otto, Unit? emil, string[]? names, bool names
             // Wer schon schießt, nimmt kein Geld mehr.
             continue;
         }
-        if (!clubbed && (emil == null || w.Money < w.BribePrice(g)))
+        if (!clubbed && (emil == null || w.Money < w.BribePrice(g, emil)))
         {
             // Kein Geld mehr: Er bleibt, wie er ist.
             continue;
@@ -1065,15 +1108,31 @@ static bool YardDone(World w, Unit otto, Unit? emil, string[]? names, bool names
     return true;
 }
 
+// Erst der leise Plan. Fliegt er auf, kämpft der ganze Trupp und befreit danach, wie ein Spieler mit einer Waffe als Absicherung.
+Func<Action<World>> QuietThenFight(Func<Action<World>> quiet) => () =>
+{
+    var plan = quiet();
+    Action<World>? fight = null;
+    return w =>
+    {
+        if (fight == null && w.Rating == MissionRating.Loud)
+        {
+            fight = Rescue(false, true)();
+        }
+        (fight ?? plan)(w);
+    };
+};
+
 void ReportRescue(string name, Func<Action<World>> make, int money = 600)
 {
-    int wins = 0, dead = 0, saved = 0, ticks = 0, unseen = 0, quietWins = 0, loud = 0, all = 0;
+    int wins = 0, dead = 0, saved = 0, ticks = 0, unseen = 0, quietWins = 0, loud = 0, all = 0, paid = 0;
     for (int seed = 1; seed <= Runs; seed++)
     {
         var mission = LitMission();
         mission.Seed = seed * 7919;
         mission.Money = money;
         var w = new World(Loader.ParseMap(mapJson), mission);
+        tune?.Invoke(w);
         var strategy = make();
         for (int i = 0; i < MaxTicks && w.State == MissionState.Running; i++)
         {
@@ -1084,6 +1143,7 @@ void ReportRescue(string name, Func<Action<World>> make, int money = 600)
             w.Step();
         }
         bool won = w.State == MissionState.Won;
+        paid += money - w.Money;
         wins += won ? 1 : 0;
         dead += w.Units.Count(u => u.Faction == Faction.Agent && !u.Alive);
         saved += won ? w.Prisoners.Count(p => p.Alive) : 0;
@@ -1093,7 +1153,52 @@ void ReportRescue(string name, Func<Action<World>> make, int money = 600)
         quietWins += won && w.Rating == MissionRating.Quiet ? 1 : 0;
         loud += w.Rating == MissionRating.Loud ? 1 : 0;
     }
-    Console.WriteLine($"{name,-34} Sieg {100 * wins / Runs,3}%  beide gerettet {100 * all / Runs,3}%  tote Agenten {(double)dead / Runs:0.00}  unentdeckt {100 * unseen / Runs,3}%  leise {100 * quietWins / Runs,3}%  laut {100 * loud / Runs,3}%  Dauer {ticks / Runs / 20,3}s");
+    Console.WriteLine($"{name,-34} Sieg {100 * wins / Runs,3}%  beide gerettet {100 * all / Runs,3}%  tote Agenten {(double)dead / Runs:0.00}  unentdeckt {100 * unseen / Runs,3}%  leise {100 * quietWins / Runs,3}%  laut {100 * loud / Runs,3}%  Dauer {ticks / Runs / 20,3}s  bezahlt {paid / Runs,3}");
+}
+
+// Nachlass der Truppführerin: --greta misst vorher und nachher. Fassungen: kein Nachlass, halber Preis, ein Drittel, halber Preis einmal je Einsatz.
+if (args.Length > 0 && args[0] == "--greta")
+{
+    var versions = new (string Name, int Percent, int Uses)[] { ("Voller Preis", 0, -1), ("Halber Preis", 50, -1), ("Ein Drittel Nachlass", 33, -1), ("Halber Preis, nur einmal", 50, 1) };
+    var p1 = new[] { "pistole" };
+    foreach (var (label, percent, uses) in versions)
+    {
+        if (args.Length > 1 && args[1] != percent.ToString())
+        {
+            continue;
+        }
+        tune = w => { w.LeaderDiscountPercent = percent; w.LeaderDiscountUses = uses; };
+        Console.WriteLine($"== {label} ({missionId}, je {Runs} Läufe, Kasse 600)");
+        if (LitMission().Prisoners.Count == 0)
+        {
+            // Für Einsätze mit Gegenstand gibt es noch keine Spielweise mit Bestechung, die gewinnt: Hier stehen nur die Preise.
+            var sample = NewWorld(7919);
+            var payer = sample.Units.Find(u => u.Skill == World.SkillBookkeeper)!;
+            Console.WriteLine(string.Join(", ", sample.Units.Where(u => u.Faction == Faction.Guard && u.Type.BribeCost > 0 && u.LeashedTo < 0)
+                .Select(u => $"{u.Name} {u.Type.BribeCost * (100 - percent) / 100}")));
+            continue;
+        }
+        loadout = null;
+        quietWatch = null;
+        foreach (int lag in new[] { 0, 10, 20, 30, 40 })
+        {
+            ReportRescue($"Otto, Emil und Greta, {lag / 20.0:0.0#} s spät", QuietWithMoney(lag, withGreta: true));
+        }
+        foreach (int lag in new[] { 0, 10, 20, 30, 40 })
+        {
+            ReportRescue($"Greta sieht vom Durchgang zu, {lag / 20.0:0.0#} s spät", QuietWithMoney(lag, gretaWatches: true));
+        }
+        // Was vom Geld bleibt, geht in eine Waffe für den Fall, dass es laut wird.
+        string[] spare = percent switch { 0 => new[] { "pistole" }, 33 => new[] { "pistole", "verbandszeug", "rauchtopf" }, _ => new[] { "schrotflinte" } };
+        loadout = new[] { uses == 1 ? new[] { "pistole", "verbandszeug" } : spare, p1, p1, p1 };
+        foreach (int lag in new[] { 20, 30, 40 })
+        {
+            ReportRescue($"  dazu Absicherung {string.Join("+", loadout[0])}, {lag / 20.0:0.0#} s", QuietThenFight(QuietWithMoney(lag, withGreta: true)));
+        }
+        loadout = null;
+    }
+    tune = null;
+    return;
 }
 
 // Wer bemerkt Otto zuerst, und wo steht er dann? Zeigt, an welcher Stelle der Weg ohne Geld am engsten ist. --wer <Takte Verspätung>
@@ -1108,9 +1213,10 @@ if (args.Length > 0 && args[0] == "--wer")
     {
         var mission = LitMission();
         mission.Seed = seed * 7919;
-        mission.Money = 0;
+        bool three = args.Contains("greta");
+        mission.Money = three ? 600 : 0;
         var w = new World(Loader.ParseMap(mapJson), mission);
-        var strategy = QuietLocksmith(lag)();
+        var strategy = three ? QuietWithMoney(lag, withGreta: true)() : QuietLocksmith(lag)();
         string first = "niemand";
         int started = -1;
         for (int i = 0; i < MaxTicks && w.State == MissionState.Running; i++)
@@ -1125,11 +1231,12 @@ if (args.Length > 0 && args[0] == "--wer")
             {
                 started = w.Tick;
             }
-            var seen = w.Units.Find(u => u.Faction == Faction.Guard && u.Name != "Schließer" && u.GuardState != GuardState.Patrol);
+            var seen = w.Units.Find(u => u.Faction == Faction.Guard && u.Name != "Schließer" && !u.Bribed && u.GuardState != GuardState.Patrol
+                && (!args.Contains("greta") || u.GuardState == GuardState.Combat));
             if (seen != null && first == "niemand")
             {
                 bool back = !w.Prisoners.Any(p => p.Captive);
-                first = $"{seen.Name,-14} Otto bei {otto.TileX,2},{otto.TileY,2} {(back ? "Rückweg" : "Hinweg")}";
+                first = $"{seen.Name,-14} Otto bei {otto.TileX,2},{otto.TileY,2} {(back ? "Rückweg" : "Hinweg")}" + (args.Contains("greta") ? $", Greta bei {w.Units[0].TileX},{w.Units[0].TileY}, Emil bei {w.Units[2].TileX},{w.Units[2].TileY}" : "");
             }
         }
         starts += started < 0 ? 0 : started;
@@ -1159,13 +1266,15 @@ if (args.Length > 0 && args[0] == "--spur")
     }
     loadout = new[] { p1, new[] { "pistole", "totschlaeger", "dietrich" }, p1, p1 };
     var mission = LitMission();
-    mission.Money = way == "allein" ? 0 : way == "geld" ? 600 : 400;
+    mission.Money = way == "allein" ? 0 : way == "geld" || way == "greta" || way == "blick" ? 600 : 400;
     var w = new World(Loader.ParseMap(mapJson), mission);
     var strategy = (way switch
     {
         "schlag" => QuietWithMoney(0, new[] { "Schließer", "Hofposten" }),
         "kauf" => QuietLocksmith(0, new[] { "Schließer", "Hofposten" }),
         "allein" => QuietLocksmith(0),
+        "greta" => QuietWithMoney(0, withGreta: true),
+        "blick" => QuietWithMoney(0, gretaWatches: true),
         _ => QuietWithMoney(0),
     })();
     var states = w.Units.ToDictionary(u => u.Id, u => u.GuardState);
