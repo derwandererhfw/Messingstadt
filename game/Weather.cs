@@ -55,6 +55,10 @@ namespace Messingstadt
         private const float ConeRadius = 46f;
         private const float ConeAlpha = 0.3f;
         private const float ConeRainBoost = 0.7f;
+        // Reichweite in Feldern, für die Kegel und Hof ihre Grundgröße haben, und wie stark dichte Nachbarn dämpfen.
+        private const float DefaultReach = 4.5f;
+        private const float CrowdTiles = 4.5f;
+        private const float CrowdDim = 0.15f;
         // Hof um die Laterne.
         private const float HaloScale = 0.5f;
         private const float HaloAlpha = 0.32f;
@@ -93,24 +97,43 @@ void fragment() {
         /// </summary>
         private sealed partial class ConeRain : Node2D
         {
-            private const int Threads = 24;
-            private const float FallsPerSecond = 2.3f;
-            private const float ThreadLength = 8f;
-            private const float ThreadAlpha = 0.75f;
-            private const float SplashAlpha = 0.6f;
+            private const int Threads = 34;
+            private const float FallsPerSecond = 1.9f;
+            private const float ThreadLength = 17f;
+            private const float ThreadAlpha = 0.85f;
+            private const float SplashAlpha = 0.45f;
+            // Jeder Faden besteht aus vier Stücken mit weichem Anfang und Ende. Alle Fäden eines Kegels gehen in einem
+            // Zeichenaufruf hinaus: Einzeln und geglättet gezeichnet kosteten sie gut zehn Bilder pro Sekunde.
+            private const int Pieces = 4;
+            private static readonly float[] PieceAlpha = { 0.3f, 1f, 0.8f, 0.25f };
+            private Vector2[] _lines = System.Array.Empty<Vector2>();
+            private Color[] _lineColors = System.Array.Empty<Color>();
 
             public Weather Weather = null!;
             public Color Glow;
             public bool Stutters;
+            /// <summary>Höhe der Lampe über dem Pflaster und Halbmesser des Lichtkreises am Boden, in Bildpunkten.</summary>
+            public float Height = ConeHeight;
+            public float Radius = ConeRadius;
+            /// <summary>Wo viele Quellen dicht stehen, nimmt sich jede zurück.</summary>
+            public float Share = 1f;
 
             public override void _Draw()
             {
                 float rain = Weather.RainStrength;
                 float lamp = Stutters ? Weather.Game.StutterLevel : Weather.Game.UnrestLevel;
-                // mehr und hellere Fäden, damit der Regen im Licht aufblitzt.
-                float boost = AirTest.Light ? 1.6f : 1f;
-                int count = Mathf.CeilToInt(Threads * boost * Mathf.Clamp(rain * 1.5f, 0f, 1f));
+                if (!AirTest.Light)
+                {
+                    return;
+                }
+                int count = Mathf.CeilToInt(Threads * Mathf.Clamp(rain * 1.5f, 0f, 1f));
                 var slant = new Vector2(Weather.Wind * 0.006f, 1f);
+                if (_lines.Length != count * Pieces * 2)
+                {
+                    _lines = new Vector2[count * Pieces * 2];
+                    _lineColors = new Color[count * Pieces];
+                }
+                int used = 0;
                 for (int i = 0; i < count; i++)
                 {
                     // Feste Zufallswerte je Faden: Platz quer im Kegel, Tiefe und Versatz im Fall.
@@ -119,22 +142,43 @@ void fragment() {
                     float deep = Mathf.Sin(i * 78.233f) * 12543.21f;
                     deep = deep - Mathf.Floor(deep);
                     float fall = (Weather._time * FallsPerSecond * (0.85f + 0.3f * deep) + deep * 7f) % 1f;
-                    float ground = ConeHeight + (deep - 0.5f) * ConeRadius * 0.7f;
+                    float ground = Height + (deep - 0.5f) * Radius * 0.7f;
                     // Der Faden fällt senkrecht und wird erst sichtbar, wo er in den Kegel eintritt.
                     float top = Mathf.Abs(side) * ground * 0.9f;
-                    var at = new Vector2(side * ConeRadius * 0.85f, top + fall * (ground - top));
-                    float alpha = Mathf.Min(1f, ThreadAlpha * boost * lamp * (1f - side * side) * (1f - 0.55f * fall));
+                    var at = new Vector2(side * Radius * 0.85f, top + fall * (ground - top));
+                    // Am hellsten dicht unter der Lampe, zum Rand des Kegels und zum Boden hin verliert sich der Faden.
+                    // Er blendet beim Eintritt in den Kegel weich ein und vor dem Pflaster weich aus.
+                    float near = 1f - Mathf.Clamp(at.Length() / (Height * 1.25f), 0f, 1f);
+                    float soft = Mathf.Sin(Mathf.Clamp(fall / 0.9f, 0f, 1f) * Mathf.Pi);
+                    float alpha = ThreadAlpha * Share * lamp * (1f - side * side) * (0.25f + 0.75f * near * near) * (0.35f + 0.65f * soft);
                     if (fall > 0.9f)
                     {
                         // Unten zerplatzt der Tropfen auf dem Pflaster.
                         float f = (fall - 0.9f) / 0.1f;
-                        var hit = new Vector2(side * ConeRadius * 0.85f, ground);
-                        var color = new Color(Glow, SplashAlpha * lamp * (1f - side * side) * (1f - f));
+                        var hit = new Vector2(side * Radius * 0.85f, ground);
+                        var color = new Color(Glow, SplashAlpha * Share * lamp * (1f - side * side) * (1f - f));
                         DrawRect(new Rect2(hit + new Vector2(-1f - 2f * f, -1.5f * f), new Vector2(0.7f, 0.7f)), color);
                         DrawRect(new Rect2(hit + new Vector2(1f + 2f * f, -1.5f * f), new Vector2(0.7f, 0.7f)), color);
                         continue;
                     }
-                    DrawLine(at, at + slant * ThreadLength, new Color(Glow, alpha), AirTest.Light ? 0.8f : 0.6f);
+                    // Ein Faden mit hellem Kern und auslaufenden Enden statt eines harten Strichs.
+                    var head = at - slant * ThreadLength * 0.5f;
+                    for (int k = 0; k < Pieces; k++)
+                    {
+                        _lines[used * 2] = head + slant * ThreadLength * k / Pieces;
+                        _lines[used * 2 + 1] = head + slant * ThreadLength * (k + 1) / Pieces;
+                        _lineColors[used] = new Color(Glow, alpha * PieceAlpha[k]);
+                        used++;
+                    }
+                }
+                for (int i = used; i < _lineColors.Length; i++)
+                {
+                    _lines[i * 2] = _lines[i * 2 + 1] = Vector2.Zero;
+                    _lineColors[i] = Colors.Transparent;
+                }
+                if (_lines.Length > 0)
+                {
+                    DrawMultilineColors(_lines, _lineColors);
                 }
             }
         }
@@ -144,6 +188,8 @@ void fragment() {
             public Polygon2D Shape = null!;
             public Sprite2D? Halo;
             public bool Stutters;
+            public float Share = 1f;
+            public float Reach = 1f;
         }
 
         private readonly Random _rng = new();
@@ -369,19 +415,49 @@ void fragment() {
         public void AddLampCones(IEnumerable<double[]> lamps, Vector2 stutterLamp)
         {
             var additive = new CanvasItemMaterial { BlendMode = CanvasItemMaterial.BlendModeEnum.Add };
-            var glow = new Color(LampColor.R / Night.R, LampColor.G / Night.G, LampColor.B / Night.B);
-            foreach (var lamp in lamps)
+            // Die Karte nennt ihre Quellen mit Höhe, Farbe und Reichweite. Ohne diese Angaben gelten die Laternen des
+            // Einsatzes im warmen Gelb.
+            var sources = new List<MapSite.LightSource>();
+            foreach (var s in MapSite.Current.Sources)
             {
+                if (s.Kind != "feuer")
+                {
+                    sources.Add(s);
+                }
+            }
+            if (sources.Count == 0)
+            {
+                foreach (var lamp in lamps)
+                {
+                    sources.Add(new MapSite.LightSource(new Vector2((float)lamp[0], (float)lamp[1]), ConeHeight + 3f, "elektrisch", LampColor, DefaultReach));
+                }
+            }
+            foreach (var source in sources)
+            {
+                double[] lamp = { source.Tile.X, source.Tile.Y };
+                var glow = new Color(source.Color.R / Night.R, source.Color.G / Night.G, source.Color.B / Night.B);
+                float height = Mathf.Max(12f, source.Height - 3f);
+                float radius = ConeRadius * source.Reach / DefaultReach * Mathf.Min(1f, height / ConeHeight + 0.25f);
+                // Stehen viele Quellen dicht beisammen, hellen sich Kegel und Höfe gegenseitig auf. Jede nimmt sich dann zurück.
+                int crowd = 0;
+                foreach (var other in MapSite.Current.Sources)
+                {
+                    if (other != source && other.Tile.DistanceTo(source.Tile) < CrowdTiles)
+                    {
+                        crowd++;
+                    }
+                }
+                float share = 1f / (1f + CrowdDim * crowd);
                 int ux = (int)(lamp[0] * Messingstadt.Core.World.TileUnits), uy = (int)(lamp[1] * Messingstadt.Core.World.TileUnits);
                 var foot = Game.ToScreen(ux, uy);
                 var points = new Vector2[ConePoints + 1];
                 var colors = new Color[ConePoints + 1];
-                points[0] = foot - new Vector2(0, ConeHeight);
-                colors[0] = new Color(glow, ConeAlpha);
+                points[0] = foot - new Vector2(0, height);
+                colors[0] = new Color(glow, ConeAlpha * share);
                 for (int i = 0; i < ConePoints; i++)
                 {
                     float a = Mathf.Pi * 0.08f + i / (ConePoints - 1f) * Mathf.Pi * 0.84f;
-                    points[i + 1] = foot + new Vector2(Mathf.Cos(a) * ConeRadius, Mathf.Sin(a) * ConeRadius * 0.5f);
+                    points[i + 1] = foot + new Vector2(Mathf.Cos(a) * radius, Mathf.Sin(a) * radius * 0.5f);
                     colors[i + 1] = new Color(glow, 0f);
                 }
                 var shape = new Polygon2D
@@ -398,16 +474,16 @@ void fragment() {
                     // Die feuchte Luft um die Lampe leuchtet mit. Ein weicher Hof, im Regen größer und heller.
                     halo = new Sprite2D
                     {
-                        Texture = Glow, Material = additive, Position = foot - new Vector2(0, ConeHeight + 2f), Scale = Vector2.One * HaloScale,
-                        ZIndex = shape.ZIndex, LightMask = 0, Modulate = new Color(glow, HaloAlpha),
+                        Texture = Glow, Material = additive, Position = foot - new Vector2(0, height + 2f), Scale = Vector2.One * HaloScale,
+                        ZIndex = shape.ZIndex, LightMask = 0, Modulate = new Color(glow, HaloAlpha * share),
                     };
                     AddChild(halo);
                 }
-                _cones.Add(new Cone { Shape = shape, Halo = halo, Stutters = stutters });
+                _cones.Add(new Cone { Shape = shape, Halo = halo, Stutters = stutters, Share = share, Reach = source.Reach / DefaultReach });
                 var rain = new ConeRain
                 {
-                    Weather = this, Material = additive, Position = foot - new Vector2(0, ConeHeight), ZIndex = shape.ZIndex,
-                    Glow = glow, Stutters = stutters, LightMask = 0,
+                    Weather = this, Material = additive, Position = foot - new Vector2(0, height), ZIndex = shape.ZIndex,
+                    Glow = glow, Stutters = stutters, LightMask = 0, Height = height, Radius = radius, Share = share,
                 };
                 AddChild(rain);
                 _coneRain.Add(rain);
@@ -478,8 +554,8 @@ void fragment() {
                 cone.Shape.Modulate = new Color(1f, 1f, 1f, level * (1f + ConeRainBoost * RainStrength));
                 if (cone.Halo != null)
                 {
-                    cone.Halo.Modulate = new Color(cone.Halo.Modulate, HaloAlpha * level * (0.7f + 0.6f * RainStrength));
-                    cone.Halo.Scale = Vector2.One * HaloScale * (1f + 0.25f * RainStrength);
+                    cone.Halo.Modulate = new Color(cone.Halo.Modulate, HaloAlpha * cone.Share * level * (0.7f + 0.6f * RainStrength));
+                    cone.Halo.Scale = Vector2.One * HaloScale * cone.Reach * (1f + 0.25f * RainStrength);
                 }
             }
         }
