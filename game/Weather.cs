@@ -55,6 +55,9 @@ namespace Messingstadt
         private const float ConeRadius = 46f;
         private const float ConeAlpha = 0.3f;
         private const float ConeRainBoost = 0.7f;
+        // Hof um die Laterne.
+        private const float HaloScale = 0.5f;
+        private const float HaloAlpha = 0.32f;
 
         // Nebel: Der Shader liest die Lichtkarte des Bodens, die Schwaden leuchten also genau dort, wo Licht fällt.
         private const string FogShaderCode = @"
@@ -67,6 +70,7 @@ uniform vec2 size;
 uniform float lightning = 0.0;
 uniform float density = 1.0;
 uniform float wind_shift = 0.0;
+uniform float air = 1.0;
 void fragment() {
     vec2 px = UV * size;
     float a = (px.x - origin.x) / 32.0, b = (px.y - origin.y) / 16.0;
@@ -81,7 +85,7 @@ void fragment() {
     float amount = max(smoothstep(0.46, 0.78, n) * 0.5 * density * edge, rim * (0.3 + 0.45 * n));
     vec3 l = texture(ground_light, UV).rgb;
     l = (1.0 - step(inside, 0.0)) * 4.0 * l * l + lightning * vec3(0.5, 0.58, 0.72);
-    COLOR = vec4(mix(l * vec3(0.82, 0.86, 0.95) + vec3(0.03, 0.035, 0.05), vec3(0.086, 0.098, 0.17), rim * 0.8) / night, amount);
+    COLOR = vec4(mix(l * vec3(0.82, 0.86, 0.95) + vec3(0.03, 0.035, 0.05), vec3(0.086, 0.098, 0.17), rim * 0.8) / night, amount * air);
 }";
 
         /// <summary>
@@ -103,7 +107,9 @@ void fragment() {
             {
                 float rain = Weather.RainStrength;
                 float lamp = Stutters ? Weather.Game.StutterLevel : Weather.Game.UnrestLevel;
-                int count = Mathf.CeilToInt(Threads * Mathf.Clamp(rain * 1.5f, 0f, 1f));
+                // mehr und hellere Fäden, damit der Regen im Licht aufblitzt.
+                float boost = AirTest.Light ? 1.6f : 1f;
+                int count = Mathf.CeilToInt(Threads * boost * Mathf.Clamp(rain * 1.5f, 0f, 1f));
                 var slant = new Vector2(Weather.Wind * 0.006f, 1f);
                 for (int i = 0; i < count; i++)
                 {
@@ -117,7 +123,7 @@ void fragment() {
                     // Der Faden fällt senkrecht und wird erst sichtbar, wo er in den Kegel eintritt.
                     float top = Mathf.Abs(side) * ground * 0.9f;
                     var at = new Vector2(side * ConeRadius * 0.85f, top + fall * (ground - top));
-                    float alpha = ThreadAlpha * lamp * (1f - side * side) * (1f - 0.55f * fall);
+                    float alpha = Mathf.Min(1f, ThreadAlpha * boost * lamp * (1f - side * side) * (1f - 0.55f * fall));
                     if (fall > 0.9f)
                     {
                         // Unten zerplatzt der Tropfen auf dem Pflaster.
@@ -128,7 +134,7 @@ void fragment() {
                         DrawRect(new Rect2(hit + new Vector2(1f + 2f * f, -1.5f * f), new Vector2(0.7f, 0.7f)), color);
                         continue;
                     }
-                    DrawLine(at, at + slant * ThreadLength, new Color(Glow, alpha), 0.6f);
+                    DrawLine(at, at + slant * ThreadLength, new Color(Glow, alpha), AirTest.Light ? 0.8f : 0.6f);
                 }
             }
         }
@@ -136,6 +142,7 @@ void fragment() {
         private sealed class Cone
         {
             public Polygon2D Shape = null!;
+            public Sprite2D? Halo;
             public bool Stutters;
         }
 
@@ -208,7 +215,8 @@ void fragment() {
             _fog.SetShaderParameter("origin", GroundOrigin);
             _fog.SetShaderParameter("size", GroundSize);
             // Die Nebelfläche hat die Maße des Bodens und liegt direkt darauf, unter den Gebäuden.
-            AddChild(new Sprite2D { Texture = GroundLight, Centered = false, ZIndex = 0, Material = _fog });
+            _fog.SetShaderParameter("air", AirTest.Scale);
+            AddChild(new Sprite2D { Texture = GroundLight, Centered = false, ZIndex = 0, Material = _fog, Visible = !AirTest.Off("nebel") });
             var additive = new CanvasItemMaterial { BlendMode = CanvasItemMaterial.BlendModeEnum.Add };
             // Der nahe Strahl trifft einen Schornstein und liegt vorn, der ferne geht hinter den Häusern der Karte nieder.
             _bolt = new LightningBolt { Material = additive, Night = Night, ZIndex = BoltNearZ };
@@ -383,7 +391,19 @@ void fragment() {
                 };
                 AddChild(shape);
                 bool stutters = Mathf.Abs((float)lamp[0] - stutterLamp.X) < 0.01f && Mathf.Abs((float)lamp[1] - stutterLamp.Y) < 0.01f;
-                _cones.Add(new Cone { Shape = shape, Stutters = stutters });
+                shape.Visible = !AirTest.Off("kegel");
+                Sprite2D? halo = null;
+                if (AirTest.Light)
+                {
+                    // Die feuchte Luft um die Lampe leuchtet mit. Ein weicher Hof, im Regen größer und heller.
+                    halo = new Sprite2D
+                    {
+                        Texture = Glow, Material = additive, Position = foot - new Vector2(0, ConeHeight + 2f), Scale = Vector2.One * HaloScale,
+                        ZIndex = shape.ZIndex, LightMask = 0, Modulate = new Color(glow, HaloAlpha),
+                    };
+                    AddChild(halo);
+                }
+                _cones.Add(new Cone { Shape = shape, Halo = halo, Stutters = stutters });
                 var rain = new ConeRain
                 {
                     Weather = this, Material = additive, Position = foot - new Vector2(0, ConeHeight), ZIndex = shape.ZIndex,
@@ -454,7 +474,13 @@ void fragment() {
             foreach (var cone in _cones)
             {
                 // Im Regen streut die nasse Luft das Licht, der Kegel steht dann deutlicher.
-                cone.Shape.Modulate = new Color(1f, 1f, 1f, (cone.Stutters ? Game.StutterLevel : Game.UnrestLevel) * (1f + ConeRainBoost * RainStrength));
+                float level = cone.Stutters ? Game.StutterLevel : Game.UnrestLevel;
+                cone.Shape.Modulate = new Color(1f, 1f, 1f, level * (1f + ConeRainBoost * RainStrength));
+                if (cone.Halo != null)
+                {
+                    cone.Halo.Modulate = new Color(cone.Halo.Modulate, HaloAlpha * level * (0.7f + 0.6f * RainStrength));
+                    cone.Halo.Scale = Vector2.One * HaloScale * (1f + 0.25f * RainStrength);
+                }
             }
         }
 

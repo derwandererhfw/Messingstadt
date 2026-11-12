@@ -31,6 +31,7 @@ namespace Messingstadt
 
         public override void _Process(double delta)
         {
+            Visible = !AirTest.Off("regen");
             var size = GetViewSize();
             float rain = Game.Climate.RainStrength;
             _active = (int)(MaxDrops * rain);

@@ -229,6 +229,7 @@ void fragment() {
         public override void _Process(double delta)
         {
             _time += (float)delta;
+            Visible = !AirTest.Off("glanz");
             QueueRedraw();
         }
 
