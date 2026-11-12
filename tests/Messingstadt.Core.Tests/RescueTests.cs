@@ -245,6 +245,41 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void ADoorOfTheCityStandsOpenWhenSupportIsHighEnough()
+        {
+            MissionData WithSupport(int support, params string[] refusing)
+            {
+                var m = Mission(new() { Agent(13.5, 5.5) }, new());
+                m.Doors[0].OpenAtSupport = 3;
+                m.Doors[0].Helper = "witwe";
+                m.Support = support;
+                m.Refusing = refusing.ToList();
+                return m;
+            }
+            var low = new World(Map(), WithSupport(2));
+            Assert.False(low.Doors[0].Open);
+            Assert.Null(low.Map.FindPath(13, 5, 16, 5));
+
+            var high = new World(Map(), WithSupport(3));
+            Assert.True(high.Doors[0].Open && high.Doors[0].LeftOpen);
+            Assert.NotNull(high.Map.FindPath(13, 5, 16, 5));
+            // Die andere Tür hat keinen Helfer und bleibt zu.
+            Assert.False(high.Doors[1].Open);
+
+            var refused = new World(Map(), WithSupport(5, "witwe"));
+            Assert.False(refused.Doors[0].Open);
+        }
+
+        [Fact]
+        public void TheCampaignHandsItsSupportToTheMission()
+        {
+            var campaign = new Campaign { Support = 4 };
+            var m = Mission(new() { Agent(13.5, 5.5) }, new());
+            campaign.Prepare(m);
+            Assert.Equal(4, m.Support);
+        }
+
+        [Fact]
         public void APrisonerStillInHisCellBlocksTheWin()
         {
             var w = FreedWeiss();

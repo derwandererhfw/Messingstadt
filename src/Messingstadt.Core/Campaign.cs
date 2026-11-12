@@ -237,6 +237,7 @@ namespace Messingstadt.Core
         {
             Current = missionId;
             mission.Money = Money;
+            mission.Support = Support;
             foreach (var a in mission.Agents)
             {
                 if (!Agents.Exists(r => r.Slot == a.Name))

@@ -783,6 +783,59 @@ Func<Action<World>> Rescue(bool alone, bool fightFirst, string[]? bribes = null,
     };
 };
 
+// Der Rückweg zum Wagen, wenn der Trupp wieder im dunklen Durchgang steht. Drei Wege und eine Abkürzung:
+// "friedhof": Pforte des Totengräbers, über den Friedhof, Südpforte, die dunkle Böschung entlang nach Osten.
+// "hoefe": Hoftür der Witwe, Westhof, Hoftür am Osthof, Kellerluke, Kellerhals.
+// "gang": ohne Tür den Friedhofsgang hinunter und die Südgasse entlang. "platz": die Wallstraße nach Osten am Exerzierplatz vorbei.
+// Der Führer öffnet, was zu ist, und wartet an jeder Station, bis alle aufgeschlossen haben.
+string homeRoute = "gang";
+Func<Action<World, Unit, List<Unit>>> HomeRun = () =>
+{
+    int step = 0;
+    return (w, lead, others) =>
+    {
+        object[] plan = homeRoute switch
+        {
+            "friedhof" => new object[] { "Pforte des Totengräbers", (3, 20), "Südpforte des Friedhofs", (2, 29), (25, 29), (28, 21) },
+            "hoefe" => new object[] { "Hoftür der Witwe", (11, 20), "Hoftür am Osthof", (18, 20), "Kellerluke der Kneipe", (20, 25), (28, 21) },
+            "platz" => new object[] { (8, 11), (22, 11), (23, 19), (28, 21) },
+            _ => new object[] { (7, 24), (28, 21) },
+        };
+        foreach (var o in others.Where(o => o.Alive && o.Path.Count == 0 && World.Distance(o, lead) > 2 * World.TileUnits))
+        {
+            w.OrderMove(o.Id, lead.TileX, lead.TileY);
+        }
+        if (step >= plan.Length)
+        {
+            return;
+        }
+        if (plan[step] is string doorName)
+        {
+            int door = w.Doors.FindIndex(d => d.Name == doorName);
+            if (w.Doors[door].Open)
+            {
+                step++;
+            }
+            else if (lead.DoorTarget < 0)
+            {
+                w.OrderOpenDoor(lead.Id, door);
+            }
+            return;
+        }
+        var (x, y) = ((int, int))plan[step];
+        bool last = step == plan.Length - 1;
+        bool together = w.Prisoners.Where(p => p.Alive && !p.Captive).All(p => p.Path.Count == 0 || World.Distance(p, lead) <= 4 * World.TileUnits);
+        if (lead.Path.Count == 0 && (lead.TileX, lead.TileY) == (x, y))
+        {
+            step += together || last ? 1 : 0;
+        }
+        else if (lead.Path.Count == 0 || lead.Path[^1] != (x, y))
+        {
+            w.OrderMove(lead.Id, x, y);
+        }
+    };
+};
+
 // Der leise Weg von Einsatz 2, wie ihn die Vorlage beschreibt: Otto und Emil warten im Durchgang, queren die Wallstraße im Fenster
 // des Lageplans, Emil kauft Hundeführer und Schließer, beide öffnen je eine Zelle und führen die Gefangenen im nächsten Fenster zurück.
 // lag: Der Klick kommt zufällig bis zu so viele Takte zu spät.
@@ -795,6 +848,7 @@ Func<Action<World>> QuietWithMoney(int lag, string[]? club = null, bool withGret
     var rng = new Random(1927 + quietRun++);
     int stage = 0, goAt = -1, lastStage = -1;
     bool gretaHome = false;
+    var home = HomeRun();
     return w =>
     {
         var otto = w.Units.Find(u => u.Skill == World.SkillLocksmith && u.Alive);
@@ -809,7 +863,7 @@ Func<Action<World>> QuietWithMoney(int lag, string[]? club = null, bool withGret
         int Door(string name) => w.Doors.FindIndex(d => d.Name == name);
         bool At(Unit u, int x, int y) => u.Path.Count == 0 && u.TileX == x && u.TileY == y;
         // Ist die Straße zwischen zwei Feldern frei, wenn man jetzt losgeht? Geprüft wird nur das Stück auf der Wallstraße.
-        bool StreetClear(Unit u, int x, int y, int speed)
+        bool StreetClear(Unit u, int x, int y, int speed, int delay = 20)
         {
             var path = w.Map.FindPath(u.TileX, u.TileY, x, y);
             if (path == null)
@@ -817,7 +871,7 @@ Func<Action<World>> QuietWithMoney(int lag, string[]? club = null, bool withGret
                 return false;
             }
             var street = path.Where(t => t.Y >= 9 && t.Y <= 13).ToList();
-            return street.Count == 0 || watch.FirstRisk(street, street[0].X * 1000 + 500, street[0].Y * 1000 + 500, speed, w.Tick + 20, 0) < 0;
+            return street.Count == 0 || watch.FirstRisk(street, street[0].X * 1000 + 500, street[0].Y * 1000 + 500, speed, w.Tick + delay, 0) < 0;
         }
         bool Go(bool clear)
         {
@@ -853,14 +907,14 @@ Func<Action<World>> QuietWithMoney(int lag, string[]? club = null, bool withGret
         {
             if (greta != null && stage != lastStage && stage < 6)
             {
-                var (gx, gy) = stage switch { 0 => (6, 16), 1 => (6, 16), 2 => (5, 8), 3 => (5, 8), _ => (5, 7) };
+                var (gx, gy) = stage switch { 0 => (7, 16), 1 => (7, 16), 2 => (5, 8), 3 => (5, 8), _ => (5, 7) };
                 w.OrderMove(greta.Id, gx, gy);
             }
             // Zurück geht sie für sich, in ihrem eigenen Fenster: Sie ist schneller als die Befreiten und stünde sonst zu früh auf der Straße.
-            if (greta != null && stage >= 6 && !gretaHome && greta.Path.Count == 0 && StreetClear(greta, 6, 16, World.WalkSpeed(greta)))
+            if (greta != null && stage >= 6 && !gretaHome && greta.Path.Count == 0 && StreetClear(greta, 7, 16, World.WalkSpeed(greta)))
             {
                 gretaHome = true;
-                w.OrderMove(greta.Id, 6, 16);
+                w.OrderMove(greta.Id, 7, 16);
             }
             lastStage = stage;
         }
@@ -928,7 +982,8 @@ Func<Action<World>> QuietWithMoney(int lag, string[]? club = null, bool withGret
                 break;
             case 5:
                 bool gathered = w.Prisoners.Where(p => p.Alive).All(p => p.TileX <= 7 && p.Path.Count == 0 && World.Distance(p, w.Units[p.FollowId < 0 ? otto.Id : p.FollowId]) <= 2500);
-                if (At(otto, 5, 6) && At(emil, 6, 6) && gathered && Go(StreetClear(emil, 7, 15, World.PrisonerSpeed)))
+                if (At(otto, 5, 6) && At(emil, 6, 6) && gathered && Go(StreetClear(emil, 7, 15, World.PrisonerSpeed)
+                    && w.Prisoners.Where(p => p.Alive).All(p => StreetClear(p, 7, 15, World.PrisonerSpeed) && StreetClear(p, 6, 15, World.PrisonerSpeed, 40))))
                 {
                     w.OrderMove(emil.Id, 6, 15);
                     w.OrderMove(otto.Id, 7, 15);
@@ -938,10 +993,11 @@ Func<Action<World>> QuietWithMoney(int lag, string[]? club = null, bool withGret
             case 6:
                 if (At(otto, 7, 15) && At(emil, 6, 15) && w.Prisoners.Where(p => p.Alive).All(p => p.TileY >= 13))
                 {
-                    w.OrderMove(otto.Id, 1, 18);
-                    w.OrderMove(emil.Id, 0, 18);
                     stage = 7;
                 }
+                break;
+            case 7:
+                home(w, otto, w.Units.Where(u => u.Faction == Faction.Agent && u.Alive && u != otto && (u == emil || u == greta)).ToList());
                 break;
         }
         // Im selben Takt wie die anderen, sonst läuft sie eine halbe Sekunde hinterher.
@@ -956,6 +1012,7 @@ Func<Action<World>> QuietLocksmith(int lag, string[]? buy = null) => () =>
     var watch = quietWatch ??= WatchMap.Measure(Loader.ParseMap(mapJson), LitMission());
     var rng = new Random(4711 + quietRun++);
     int stage = 0, goAt = -1;
+    var home = HomeRun();
     return w =>
     {
         var otto = w.Units.Find(u => u.Skill == World.SkillLocksmith && u.Alive);
@@ -1053,13 +1110,11 @@ Func<Action<World>> QuietLocksmith(int lag, string[]? buy = null) => () =>
             case 6:
                 if (At(7, 15) && w.Prisoners.Where(p => p.Alive).All(p => p.TileY >= 13))
                 {
-                    w.OrderMove(otto.Id, 1, 18);
-                    if (emil != null)
-                    {
-                        w.OrderMove(emil.Id, 0, 18);
-                    }
                     stage = 7;
                 }
+                break;
+            case 7:
+                home(w, otto, emil == null ? new List<Unit>() : new List<Unit> { emil });
                 break;
         }
     };
@@ -1249,6 +1304,23 @@ if (args.Length > 0 && args[0] == "--wer")
     foreach (var (k, v) in tally.OrderByDescending(t => t.Value).Take(14))
     {
         Console.WriteLine($"{v,4}  {k}");
+    }
+    return;
+}
+
+// Wann ist ein Feld bewacht? --fenster x y zeigt je halbe Sekunde ein Zeichen, # bewacht, . frei.
+if (args.Length > 2 && args[0] == "--fenster")
+{
+    var watch = WatchMap.Measure(Loader.ParseMap(mapJson), LitMission());
+    for (int a = 1; a + 1 < args.Length; a += 2)
+    {
+        int fx = int.Parse(args[a]), fy = int.Parse(args[a + 1]);
+        var line = new System.Text.StringBuilder();
+        for (int t = 0; t < 1400; t += 10)
+        {
+            line.Append(watch.IsWatched(fx, fy, t) ? '#' : '.');
+        }
+        Console.WriteLine($"{fx,2},{fy,2} {line}");
     }
     return;
 }

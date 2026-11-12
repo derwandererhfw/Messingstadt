@@ -29,6 +29,12 @@ namespace Messingstadt.Core
         public int MarkX, MarkY;
         public bool Open;
         public int Progress;
+
+        /// <summary>Wer diese Tür offen lassen kann, leer bei gewöhnlichen Türen.</summary>
+        public string Helper = "";
+
+        /// <summary>True, wenn ein Bewohner sie vor dem Einsatz offen gelassen hat.</summary>
+        public bool LeftOpen;
     }
 
     /// <summary>Wie leise der Einsatz bisher lief: nie bemerkt, bemerkt ohne Schuss, Schüsse gefallen.</summary>
@@ -243,11 +249,21 @@ namespace Messingstadt.Core
             Press = mission.Headlines;
             foreach (var d in mission.Doors)
             {
-                var door = new Door { Name = d.Name };
+                var door = new Door { Name = d.Name, Helper = d.Helper };
+                // Türen der Stadt: Bei genug Rückhalt lässt ein Bewohner sie offen, sonst braucht sie Schlosser, Dietrich oder Schlüssel.
+                door.LeftOpen = d.OpenAtSupport > 0 && mission.Support >= d.OpenAtSupport && !mission.Refusing.Contains(d.Helper);
+                door.Open = door.LeftOpen;
                 foreach (var t in d.Tiles)
                 {
                     door.Tiles.Add(((int)t[0], (int)t[1]));
-                    Map.Block((int)t[0], (int)t[1], true);
+                    if (door.Open)
+                    {
+                        Map.Unblock((int)t[0], (int)t[1]);
+                    }
+                    else
+                    {
+                        Map.Block((int)t[0], (int)t[1], true);
+                    }
                 }
                 if (d.Mark is { Length: 2 })
                 {

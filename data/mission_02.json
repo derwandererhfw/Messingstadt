@@ -9,14 +9,20 @@
   "scene": "nordwall",
   "itemName": "Gefangene",
   "item": [10.5, 7.5],
-  "exit": { "x0": 0, "y0": 17, "x1": 2, "y1": 20 },
-  "reinforcements": { "x": 19.5, "y": 11.5, "sprite": "Werkschutz", "type": "werkschutz", "firstDelay": 8, "interval": 5, "count": 3 },
+  "exit": { "x0": 27, "y0": 20, "x1": 30, "y1": 23 },
+  "reinforcements": { "x": 19.5, "y": 5.5, "sprite": "Werkschutz", "type": "werkschutz", "firstDelay": 8, "interval": 5, "count": 3 },
   "doors": [
     { "name": "Pforte zur Gerichtsgasse", "tiles": [[7, 7]], "mark": [6.5, 7.5] },
     { "name": "Hoftor", "tiles": [[13, 7]], "mark": [14.5, 7.5] },
     { "name": "Zelle 1", "tiles": [[9, 5], [9, 4]], "mark": [9.5, 6.5] },
     { "name": "Zelle 2", "tiles": [[11, 5], [11, 4]], "mark": [11.5, 6.5] },
-    { "name": "Schreibstube", "tiles": [[13, 9]], "mark": [13.5, 10.5] }
+    { "name": "Schreibstube", "tiles": [[13, 9]], "mark": [13.5, 10.5] },
+    { "name": "Friedhofspforte", "tiles": [[4, 13]], "mark": [4.5, 12.5] },
+    { "name": "Pforte des Totengräbers", "tiles": [[5, 17]], "mark": [6.5, 17.5], "helper": "totengraeber", "openAtSupport": 2 },
+    { "name": "Südpforte des Friedhofs", "tiles": [[2, 25]], "mark": [2.5, 26.5] },
+    { "name": "Hoftür der Witwe", "tiles": [[8, 20]], "mark": [7.5, 20.5], "helper": "witwe", "openAtSupport": 3 },
+    { "name": "Hoftür am Osthof", "tiles": [[16, 20]], "mark": [15.5, 20.5] },
+    { "name": "Kellerluke der Kneipe", "tiles": [[20, 22]], "mark": [20.5, 21.5], "helper": "wirtin", "openAtSupport": 4 }
   ],
   "loot": { "name": "Bußgeldkasse", "x": 13.5, "y": 9.5, "value": 300 },
   "prisoners": [
@@ -90,10 +96,10 @@
   },
   "lamps": [[2.5, 10.5], [10.5, 10.5], [16.5, 10.5], [11.5, 10.1], [10.5, 6.2]],
   "agents": [
-    { "name": "Greta", "role": "Truppführerin", "skill": "truppfuehrerin", "sprite": "Agent", "x": 6.5, "y": 18.5, "legs": 2, "heart": 2 },
-    { "name": "Otto", "role": "Schlosser", "sprite": "Agent", "x": 7.5, "y": 18.5, "legs": 1, "heart": 3, "skill": "schlosser" },
-    { "name": "Emil", "role": "Buchhalter", "sprite": "Agent", "x": 8.5, "y": 18.5, "legs": 1, "heart": 1, "skill": "buchhalter" },
-    { "name": "Hanna", "role": "Kurierin", "sprite": "Agent", "x": 7.5, "y": 19.5, "legs": 3, "heart": 1 }
+    { "name": "Greta", "role": "Truppführerin", "skill": "truppfuehrerin", "sprite": "Agent", "x": 9.5, "y": 28.5, "legs": 2, "heart": 2 },
+    { "name": "Otto", "role": "Schlosser", "sprite": "Agent", "x": 10.5, "y": 28.5, "legs": 1, "heart": 3, "skill": "schlosser" },
+    { "name": "Emil", "role": "Buchhalter", "sprite": "Agent", "x": 11.5, "y": 28.5, "legs": 1, "heart": 1, "skill": "buchhalter" },
+    { "name": "Hanna", "role": "Kurierin", "sprite": "Agent", "x": 10.5, "y": 29.5, "legs": 3, "heart": 1 }
   ],
   "guards": [
     { "name": "Wallstreife 1", "sprite": "Wachmann", "x": 0.5, "y": 11.5, "patrol": [[13, 11], [0, 11]] },
