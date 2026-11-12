@@ -10,21 +10,6 @@ namespace Messingstadt.Core
         Guard,
     }
 
-    /// <summary>Was aus einer Wache in einem Einsatz wurde. Nur Dead steht im Totenbuch.</summary>
-    public enum GuardFate
-    {
-        /// <summary>Hat den Einsatz überstanden und etwas gemerkt.</summary>
-        Survived,
-
-        /// <summary>Hat den Einsatz überstanden und nichts gemerkt.</summary>
-        Unaware,
-        Bribed,
-
-        /// <summary>Niedergeschlagen, lebt.</summary>
-        KnockedOut,
-        Dead,
-    }
-
     /// <summary>Eine Wache am Ende eines Einsatzes, so wie die Spiellogik sie meldet.</summary>
     public sealed class GuardReport
     {
@@ -38,13 +23,13 @@ namespace Messingstadt.Core
         /// Liest die Wachen eines beendeten Einsatzes, ohne Hunde. Die einzige Stelle, die weiß, woran die Spiellogik tot, niedergeschlagen,
         /// gekauft und ahnungslos erkennt.
         /// </summary>
-        public static List<GuardReport> From(World world) => world.Units
-            .Where(u => u.Faction == Faction.Guard && u.Type != GuardType.Hund)
-            .Select(u => new GuardReport
+        public static List<GuardReport> From(World world) => world.GuardOutcomes()
+            .Where(o => o.Type != GuardType.Hund.Id)
+            .Select(o => new GuardReport
             {
-                Name = u.Name,
-                Kind = u.Type.Id,
-                Fate = !u.Alive ? GuardFate.Dead : u.Bribed ? GuardFate.Bribed : GuardFate.Survived,
+                Name = o.Person.Length > 0 ? o.Person : o.Role,
+                Kind = o.Type,
+                Fate = o.Fate,
             })
             .ToList();
     }

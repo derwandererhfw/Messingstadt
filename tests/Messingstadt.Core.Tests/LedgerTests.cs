@@ -79,7 +79,8 @@ namespace Messingstadt.Core.Tests
             Assert.Equal(GuardFate.Bribed, c.FateOf("Behrens"));
             Assert.True(c.WasBribed("Behrens"));
             Assert.False(c.WasBribed("Pieper"));
-            Assert.Equal(GuardFate.Survived, c.FateOf("Pieper"));
+            // Pieper hat im ganzen Einsatz nichts gemerkt: Das unterscheidet der Kern jetzt von „bemerkt und überlebt“.
+            Assert.Equal(GuardFate.Unaware, c.FateOf("Pieper"));
             Assert.Null(c.FateOf("Niemand"));
             Assert.Equal(new[] { "Behrens", "Pieper" }, c.Survivors("mission_01").Select(g => g.Name));
             Assert.Empty(c.Survivors("mission_02"));
