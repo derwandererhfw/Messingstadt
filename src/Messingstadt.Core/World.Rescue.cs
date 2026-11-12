@@ -178,6 +178,49 @@ namespace Messingstadt.Core
         /// <summary>Was das Bestechen dieser Wache kostet. Hier säße ein Nachlass, etwa wenn eine bestimmte Agentin dabei ist.</summary>
         public int BribePrice(Unit guard) => guard.Type.BribeCost;
 
+        /// <summary>Rufweite der Truppführerin: So nah am Bestechenden gilt sie als dabei.</summary>
+        public const int LeaderRange = 5 * TileUnits;
+
+        /// <summary>So weit sieht sie eine Wache und gilt damit ebenfalls als dabei.</summary>
+        public const int LeaderSight = 8 * TileUnits;
+
+        /// <summary>Nachlass in Prozent, wenn die Truppführerin dabei ist. 0 schaltet die Regel ab.</summary>
+        public int LeaderDiscountPercent { get; set; } = 50;
+
+        /// <summary>So oft gilt der Nachlass je Einsatz, -1 heißt immer.</summary>
+        public int LeaderDiscountUses { get; set; } = -1;
+
+        public int LeaderDiscountsUsed { get; private set; }
+
+        /// <summary>Kann der Nachlass in diesem Einsatz noch gelten, wenn die Truppführerin herankommt?</summary>
+        public bool LeaderBacksLater => LeaderDiscountPercent > 0 && (LeaderDiscountUses < 0 || LeaderDiscountsUsed < LeaderDiscountUses)
+            && Units.Exists(l => l.Alive && l.Faction == Faction.Agent && l.Skill == SkillLeader);
+
+        /// <summary>
+        /// Ist die Truppführerin bei dieser Bestechung dabei? Sie lebt, ist im Einsatz und steht in Rufweite des Bestechenden
+        /// oder sieht die Wache selbst. Wer aussetzt oder in der Krankenstube liegt, ist nicht im Einsatz und zählt nicht.
+        /// </summary>
+        public bool LeaderBacks(Unit briber, Unit guard)
+        {
+            if (LeaderDiscountPercent <= 0 || (LeaderDiscountUses >= 0 && LeaderDiscountsUsed >= LeaderDiscountUses))
+            {
+                return false;
+            }
+            return Units.Exists(l => l.Alive && l.Faction == Faction.Agent && l.Skill == SkillLeader
+                && (Distance(l, briber) <= LeaderRange || CanSee(l, guard, LeaderSight)));
+        }
+
+        /// <summary>Was diese Wache jetzt von diesem Agenten nimmt, mit dem Nachlass der Truppführerin, wenn sie dabei ist.</summary>
+        public int BribePrice(Unit guard, Unit briber) =>
+            LeaderBacks(briber, guard) ? guard.Type.BribeCost * (100 - LeaderDiscountPercent) / 100 : guard.Type.BribeCost;
+
+        private int PayBribe(Unit guard, Unit briber)
+        {
+            int price = BribePrice(guard, briber);
+            LeaderDiscountsUsed += price < guard.Type.BribeCost ? 1 : 0;
+            return price;
+        }
+
         /// <summary>Eine bestochene Wache gibt ihre Schlüssel dem, der gezahlt hat.</summary>
         private void HandOverKeys(Unit from, Unit to)
         {

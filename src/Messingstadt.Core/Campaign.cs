@@ -243,7 +243,8 @@ namespace Messingstadt.Core
                 {
                     Agents.Add(new AgentRecord { Name = a.Name, Slot = a.Name, Legs = a.Legs, Heart = a.Heart });
                 }
-                foreach (var record in Agents.Where(x => x.Slot == a.Name && x.Skill == ""))
+                // Was die Truppführerin kann, hängt an der Person, nicht am Platz: Wer sie ersetzt, kennt die Wache nicht.
+                foreach (var record in Agents.Where(x => x.Slot == a.Name && x.Skill == "" && (a.Skill != World.SkillLeader || x.Name == a.Name)))
                 {
                     record.Skill = a.Skill;
                 }
@@ -258,6 +259,10 @@ namespace Messingstadt.Core
                 var record = Agents.LastOrDefault(r => r.Slot == a.Name && r.Ready);
                 if (record != null)
                 {
+                    if (a.Skill == World.SkillLeader && record.Name != a.Name)
+                    {
+                        a.Skill = "";
+                    }
                     a.Name = record.Name;
                     a.Legs = record.Legs;
                     a.Heart = record.Heart;
@@ -299,6 +304,7 @@ namespace Messingstadt.Core
         private AgentRecord Recruit(string slot)
         {
             string skill = Agents.First(a => a.Slot == slot).Skill;
+            skill = skill == World.SkillLeader ? "" : skill;
             var next = Newcomers.FirstOrDefault(n => n.Skill == skill && !Agents.Exists(a => a.Name == n.Name));
             var record = next != null
                 ? new AgentRecord { Name = next.Name, Slot = slot, Skill = skill, Job = next.Job }

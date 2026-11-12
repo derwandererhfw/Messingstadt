@@ -90,7 +90,7 @@
   },
   "lamps": [[2.5, 10.5], [10.5, 10.5], [16.5, 10.5], [11.5, 10.1], [10.5, 6.2]],
   "agents": [
-    { "name": "Greta", "role": "Truppführerin", "sprite": "Agent", "x": 6.5, "y": 18.5, "legs": 2, "heart": 2 },
+    { "name": "Greta", "role": "Truppführerin", "skill": "truppfuehrerin", "sprite": "Agent", "x": 6.5, "y": 18.5, "legs": 2, "heart": 2 },
     { "name": "Otto", "role": "Schlosser", "sprite": "Agent", "x": 7.5, "y": 18.5, "legs": 1, "heart": 3, "skill": "schlosser" },
     { "name": "Emil", "role": "Buchhalter", "sprite": "Agent", "x": 8.5, "y": 18.5, "legs": 1, "heart": 1, "skill": "buchhalter" },
     { "name": "Hanna", "role": "Kurierin", "sprite": "Agent", "x": 7.5, "y": 19.5, "legs": 3, "heart": 1 }
