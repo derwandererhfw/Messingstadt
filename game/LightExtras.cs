@@ -126,7 +126,7 @@ namespace Messingstadt
                     var sprite = new Sprite2D
                     {
                         Texture = Glow, Material = additive, Position = Map(tile.X, tile.Y) - new Vector2(0, height), Scale = Vector2.One * FireHaloScale,
-                        ZIndex = Game.DepthZ(Mathf.Clamp(tile.X, 0.05f, 19.95f), Mathf.Clamp(tile.Y, 0.05f, 19.95f)) + 1, LightMask = 0, Modulate = Lit(color, FireHaloAlpha),
+                        ZIndex = Game.DepthZ(Mathf.Clamp(tile.X, 0.05f, MapSite.Tiles.X - 0.05f), Mathf.Clamp(tile.Y, 0.05f, MapSite.Tiles.Y - 0.05f)) + 1, LightMask = 0, Modulate = Lit(color, FireHaloAlpha),
                     };
                     AddChild(sprite);
                     _fires.Add((sprite, FireHaloAlpha));
@@ -219,7 +219,7 @@ namespace Messingstadt
         private void AddSwing(Vector2 tile, float height, float cord, Material additive)
         {
             var color = MapSite.Current.Sources.Count > 0 ? MapSite.Current.Sources[0].Color : WindowWarm;
-            int z = Game.DepthZ(Mathf.Clamp(tile.X, 0.05f, 19.95f), Mathf.Clamp(tile.Y, 0.05f, 19.95f)) + 1;
+            int z = Game.DepthZ(Mathf.Clamp(tile.X, 0.05f, MapSite.Tiles.X - 0.05f), Mathf.Clamp(tile.Y, 0.05f, MapSite.Tiles.Y - 0.05f)) + 1;
             var swing = new Swing { Foot = Map(tile.X, tile.Y), Height = height, Cord = cord, Phase = tile.X * 1.7f + tile.Y, Color = color };
             swing.Body = new Layer { ZIndex = z, LightMask = 0, Paint = layer => PaintSwing(layer, swing) };
             swing.Halo = new Sprite2D { Texture = Glow, Material = additive, Scale = Vector2.One * 0.3f, ZIndex = z, LightMask = 0, Modulate = Lit(color, 0.34f) };
@@ -279,9 +279,10 @@ namespace Messingstadt
         private void PaintWindowHalos(Layer layer)
         {
             var size = new Vector2(WindowHaloPixels, WindowHaloPixels);
+            var seen = ViewCull.Seen(layer, WindowHaloPixels);
             foreach (var (id, kind, center) in Windows.AllPanes)
             {
-                if (kind == "sign")
+                if (kind == "sign" || !seen.HasPoint(center))
                 {
                     continue;
                 }

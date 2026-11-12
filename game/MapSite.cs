@@ -51,7 +51,14 @@ namespace Messingstadt
         private static bool TestWithoutKessel() => System.Array.IndexOf(OS.GetCmdlineUserArgs(), "--ohne-kessel") >= 0;
 
         /// <summary>Stellt auf das Manifest einer Karte um. kessel erzwingt oder verbietet die Vorgaben des Kesselviertels.</summary>
-        public static void Use(string manifestPath, bool? kessel = null) => _current = Load(manifestPath, TestWithoutKessel() ? false : kessel);
+        public static void Use(string manifestPath, bool? kessel = null, int width = 20, int height = 20)
+        {
+            Tiles = new Vector2(width, height);
+            _current = Load(manifestPath, TestWithoutKessel() ? false : kessel);
+        }
+
+        /// <summary>Breite und Höhe der gespielten Karte in Feldern. Alles, was die Kulisse an den Kartenrand bindet, liest sie hier.</summary>
+        public static Vector2 Tiles { get; private set; } = new(20f, 20f);
 
         public string ManifestPath { get; private set; } = "";
 

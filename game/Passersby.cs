@@ -124,6 +124,7 @@ namespace Messingstadt
         private readonly List<Vector2> _positions = new();
         private MapSite _site = null!;
         private float _mapWidth = 20f;
+        private Rect2 _seen = new(-1e6f, -1e6f, 2e6f, 2e6f);
         private float _mapHeight = 20f;
         private int _views = 5;
         private World? _seenWorld;
@@ -225,6 +226,7 @@ namespace Messingstadt
         {
             float dt = (float)delta;
             _time += dt;
+            _seen = ViewCull.Seen(this, 60f);
             var world = Game.World;
             if (world != _seenWorld)
             {
@@ -742,6 +744,8 @@ namespace Messingstadt
             var light = Game.FigureLight(Mathf.Clamp(ux, 0, (int)_mapWidth * World.TileUnits - 1), Mathf.Clamp(uy, 0, (int)_mapHeight * World.TileUnits - 1), MinLight);
             // Das Blatt malt Passanten schon grauer und dunkler als Agenten und Wachen.
             sprite.Modulate = new Color(light.R, light.G, light.B, EdgeFade(p.Tile));
+            // Wer außerhalb des Bilds geht, wird nicht gezeichnet. Sein Weg läuft weiter.
+            sprite.Visible = _seen.HasPoint(sprite.Position + Game.FigureFoot);
         }
 
         /// <summary>Am Kartenrand blendet die Figur aus, statt hart zu verschwinden.</summary>
