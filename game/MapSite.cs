@@ -35,6 +35,12 @@ namespace Messingstadt
         /// </summary>
         public sealed record Walk(string[] Cast, float Weight, bool BothWays, WalkPoint[] Points);
 
+        /// <summary>
+        /// Eine Lichtquelle der Karte, wie die Grafik sie backt: Feld, Höhe in Bildpunkten, Art (elektrisch, gas, feuer),
+        /// Farbe und Reichweite in Feldern.
+        /// </summary>
+        public sealed record LightSource(Vector2 Tile, float Height, string Kind, Color Color, float Reach);
+
         private static MapSite? _current;
 
         /// <summary>Die Daten der Karte, auf der gerade gespielt wird.</summary>
@@ -78,6 +84,9 @@ namespace Messingstadt
 
         /// <summary>Ob sich die Stadt jenseits des Kartenrands im Dunst verliert, auch ohne gemalte Kulisse.</summary>
         public bool Haze { get; private set; } = true;
+
+        /// <summary>Die Lichtquellen aus dem Manifest (sources). Leer: Die Karte nennt keine, dann gelten die Laternen des Einsatzes.</summary>
+        public List<LightSource> Sources { get; } = new();
 
         /// <summary>Die eine Laterne, die flackert und aussetzt. Null: Auf dieser Karte brennen alle ruhig.</summary>
         public Vector2? StutterLamp { get; private set; }
@@ -166,6 +175,18 @@ namespace Messingstadt
             {
                 // null schaltet das Flackern ab.
                 StutterLamp = stutter.ValueKind == JsonValueKind.Array ? Pair(stutter) : null;
+            }
+            if (root.TryGetProperty("sources", out var sources))
+            {
+                Sources.Clear();
+                foreach (var s in sources.EnumerateArray())
+                {
+                    var c = s.GetProperty("color");
+                    Sources.Add(new LightSource(
+                        new Vector2(s.GetProperty("x").GetSingle(), s.GetProperty("y").GetSingle()), s.GetProperty("z").GetSingle(),
+                        s.GetProperty("kind").GetString() ?? "", new Color(c[0].GetSingle(), c[1].GetSingle(), c[2].GetSingle()),
+                        s.GetProperty("reach").GetSingle()));
+                }
             }
             if (root.TryGetProperty("passersby", out var people))
             {
