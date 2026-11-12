@@ -13,7 +13,7 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 | Berufe auf der Akte (`role`) | Für Einsatz 1 eingetragen, Commit e7e194c auf `claude/story-62427b` |
 | Arbeitsumgebung (Skill, dieser Ordner) | Angelegt am 2026-11-06 |
 | Stadtplan mit fünf Vierteln | Im Spiel, Texte aus `stadtplan.md` |
-| Einsatz 2 | Gebaut mit Platzhaltergrafik, in `main` (`data/mission_02.json`). Texte der Vorlage wörtlich übernommen, Zurufe der Befreiten werden noch nicht angezeigt |
+| Einsatz 2 | Wird auf 30 × 30 vergrößert („Der lange Rückweg“), Vorlage seit 2026-11-12 in Abschnitt 8 angeglichen, Namen und Rufe in `texte/wachen.md`. Der Kern ist gebaut, in `main` (`data/mission_02.json`). Texte der Vorlage wörtlich übernommen, Zurufe der Befreiten werden noch nicht angezeigt |
 | Einsatz 3 bis 6 | Bauvorlagen `einsatz_03_gleisviertel.md` bis `einsatz_06_anzeiger.md`, Stand 2026-11-11. Noch nicht gebaut |
 | Grafikthemen der Viertel | `grafikthemen.md`, Stand 2026-11-11 |
 

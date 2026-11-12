@@ -43,14 +43,14 @@ Regeln:
 
 ### Neu für den größeren Nordwall
 
-Fünf zur Auswahl, Posten nach dem Grundriss der Level-Session.
+Posten von der Hauptsession festgelegt (2026-11-12), Grundriss in `../../einsatz_02_grundriss.md`.
 
 | Posten | Name | Hintergrund |
 |---|---|---|
-| Kasernentor | Alfred Zander, 43 | Frau und Schwiegermutter im Beamtenhof. Nimmt Geld |
-| Exerzierplatz | Oskar Lindner, 26 | Neu aus der Provinz, will befördert werden. Nimmt kein Geld |
+| Streife auf der Südgasse | Alfred Zander, 43 | Frau und Schwiegermutter im Beamtenhof. Nimmt Geld |
+| Fahnenmast auf dem Exerzierplatz | Oskar Lindner, 26 | Neu aus der Provinz, will befördert werden. Nimmt kein Geld |
 | Friedhofsstreife | Eduard Buchholz, 58 | Ältester der Wache, kennt den Totengräber. Nimmt Geld und schaut gern weg |
-| Beamtenhöfe | Erich Fenske, 34 | Wohnt selbst dort, seine Kinder schlafen zwei Türen weiter. Nimmt Geld |
+| Nachtwächter in der Mittelgasse | Erich Fenske, 34 | Wohnt im Beamtenhaus B, seine Frau steht am Fenster zum Osthof. Nimmt Geld |
 | Remise | Bernhard Roloff, 40 | Pferdeknecht mit Dienstmütze, vom Werk mitbezahlt. Nicht käuflich |
 
 Verstärkung aus der Kaserne: Kasten, Dreyer und Proske aus Einsatz 1, wenn sie leben. Sonst Paulus Hinz, 30, Kaspar Wendt, 25, Anselm Rogge, 47.
@@ -133,4 +133,4 @@ Für die Gespräche der Wachen, höchstens einer je Einsatz.
 
 ## Später
 
-Vom Nutzer für jetzt zurückgestellt, als Ideen aufgehoben (2026-11-12): Leichenhalle am Gericht mit den Toten aus Einsatz 1, Kneipe der Wachleute als begehbarer Ort, dritter Gefangener, Verlegungsliste in der Schreibstube, Asservatenkammer mit Pauls Schuhen, Gretas Personalakte, Innenräume, Wachablösung.
+Ausführlich in `../einsatz_02_nordwall.md`, Abschnitt 8. Vom Nutzer für jetzt zurückgestellt (2026-11-12): Leichenhalle am Gericht mit den Toten aus Einsatz 1, Kneipe der Wachleute als begehbarer Ort, dritter Gefangener, Verlegungsliste in der Schreibstube, Asservatenkammer mit Pauls Schuhen, Gretas Personalakte, Innenräume, Wachablösung.
