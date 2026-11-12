@@ -57,6 +57,18 @@ namespace Messingstadt.Core
 
         public static string Died(string name) => $"{name} ist tot.";
 
+        /// <summary>Zeile für das Ergebnis: die Toten des Einsatzes mit Namen, erst der Trupp, dann die Wache. Leer ohne Tote.</summary>
+        public static string DeadLine(IReadOnlyList<LedgerEntry> dead, int most = 4)
+        {
+            string Names(LedgerSide side)
+            {
+                var names = dead.Where(e => e.Side == side).Select(e => e.Name).ToList();
+                return names.Count <= most ? string.Join(", ", names) : $"{string.Join(", ", names.Take(most))} und {names.Count - most} weitere";
+            }
+            string squad = Names(LedgerSide.Squad), guards = Names(LedgerSide.Guard);
+            return string.Join("   ", new[] { squad.Length > 0 ? $"Tote im Trupp: {squad}." : "", guards.Length > 0 ? $"Tote der Wache: {guards}." : "" }.Where(t => t.Length > 0));
+        }
+
         /// <summary>Zeile für das Ergebnis eines Einsatzes der Art Befreien: wer herauskam und wer nicht. Leer ohne Gefangene.</summary>
         public static string Rescue(IReadOnlyDictionary<string, bool> prisoners)
         {
@@ -91,9 +103,9 @@ namespace Messingstadt.Core
     }
 
     /// <summary>Was zwischen den Einsätzen bleibt: Geld, Fahndung, Rückhalt, die Agenten und was in jedem Einsatz geschah.</summary>
-    public sealed class Campaign
+    public sealed partial class Campaign
     {
-        public const int CurrentVersion = 4;
+        public const int CurrentVersion = 5;
         public const int StartMoney = 600;
 
         /// <summary>Das Viertel des ersten Einsatzes. Alte Stände mit einem Sieg bekommen es als erobert.</summary>
@@ -358,7 +370,7 @@ namespace Messingstadt.Core
                     Conquered.Add(district.Id);
                 }
             }
-            Settle(world, won, false);
+            Settle(world, won, false, district?.Id ?? District);
         }
 
         /// <summary>Kostet der Abbruch den Trupp? Vor dem ersten Schuss kann niemand gefallen sein, der Rückzug ist frei.</summary>
@@ -370,12 +382,12 @@ namespace Messingstadt.Core
             Money = world.Money - (world.LootTaken ? world.LootValue : 0);
             if (AbandonCostsSquad(world))
             {
-                Settle(world, false, true);
+                Settle(world, false, true, District);
             }
         }
 
         /// <summary>Folgen eines Einsatzes, der zählt: Agenten, Fahndung, Rückhalt, Beitrag und der Eintrag für die Story.</summary>
-        private void Settle(World world, bool won, bool abandoned)
+        private void Settle(World world, bool won, bool abandoned, string districtId)
         {
             var squad = world.Units.Where(u => u.Faction == Faction.Agent).ToList();
             LastFirstFalls.Clear();
@@ -413,6 +425,7 @@ namespace Messingstadt.Core
                 record.Items = record.Dead ? new List<string>() : World.ItemIds(u);
             }
 
+            Remember(GuardReport.From(world), Agents.Where(a => LastDeaths.Contains(a.Name)), districtId);
             int deadGuards = world.Units.Count(u => u.Faction == Faction.Guard && !u.Alive);
             int bribed = world.Units.Count(u => u.Faction == Faction.Guard && u.Bribed);
             var rating = world.Rating;
@@ -671,6 +684,7 @@ namespace Messingstadt.Core
                     a.Items.Clear();
                 }
             }
+            RepairLedger(version);
         }
     }
 }

@@ -481,7 +481,7 @@ namespace Messingstadt.Core.Tests
 
         [Theory]
         [InlineData("{\"Version\":3,\"Money\":650,\"Missions\":1,\"Records\":{\"mission_01\":{\"Attempts\":1,\"Won\":true}}}", SaveStatus.Migrated)]
-        [InlineData("{\"Version\":4,\"Current\":\"mission_02\",\"Records\":{\"mission_02\":{\"Attempts\":1,\"Won\":true,\"Prisoners\":null},\"kaputt\":null}}", SaveStatus.Loaded)]
+        [InlineData("{\"Version\":5,\"Current\":\"mission_02\",\"Records\":{\"mission_02\":{\"Attempts\":1,\"Won\":true,\"Prisoners\":null},\"kaputt\":null}}", SaveStatus.Loaded)]
         [InlineData("{\"Money\":900,\"Missions\":2}", SaveStatus.Migrated)]
         public void SavesWithoutPrisonersLoadCleanly(string json, SaveStatus expected)
         {
