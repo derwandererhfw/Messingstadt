@@ -47,6 +47,9 @@ namespace Messingstadt
         private const int CalmLayer = 0, DarkLayer = 1, SuspectLayer = 2, FightLayer = 3;
         private const float LayerFadePerSecond = 0.35f;
         private const float TitleDb = MusicDb;
+        private const float StingerDb = MusicDb + 3f;
+        private const float BeatSeconds = 0.5f;
+        private const float StingerPause = 10f;
         private const float TitleFadePerSecond = 0.5f;
         private const float SuspectRisePerSecond = 0.7f;
         private const float DarkUnderFight = 0.7f;
@@ -91,6 +94,11 @@ namespace Messingstadt
         private float _nextBark;
         private AudioStreamPlayer2D _lockpick = null!;
         private AudioStreamSynchronized _layers = null!;
+        private AudioStreamPlayer _musicPlayer = null!;
+        private bool _wasAlarmed;
+        private string? _stinger;
+        private float _stingerAt;
+        private float _nextStinger;
         private AudioStreamPlayer _rain = null!;
         private AudioStreamPlayer _wind = null!;
         private AudioStreamPlayer _gust = null!;
@@ -208,7 +216,8 @@ namespace Messingstadt
             SetLayer(DarkLayer, DarkLayerDb, 0f);
             SetLayer(SuspectLayer, MusicDb, 0f);
             SetLayer(FightLayer, MusicDb, 0f);
-            AddChild(new AudioStreamPlayer { Stream = _layers, Autoplay = true, Bus = MusicBus });
+            _musicPlayer = new AudioStreamPlayer { Stream = _layers, Autoplay = true, Bus = MusicBus };
+            AddChild(_musicPlayer);
         }
 
         // Gleiche Leistung beim Überblenden: Der Sinus hält die Summe zweier Lagen ungefähr gleich laut.
@@ -273,6 +282,7 @@ namespace Messingstadt
                 suspicious = _heldMusic == "verdacht";
             }
             UpdateTitle(dt);
+            UpdateStinger(world, alarmed);
             float fade = LayerFadePerSecond * dt;
             _calmLevel = Mathf.MoveToward(_calmLevel, alarmed || dark ? 0f : 1f, fade);
             _darkLevel = Mathf.MoveToward(_darkLevel, alarmed ? DarkUnderFight : dark ? 1f : 0f, fade);
@@ -286,6 +296,33 @@ namespace Messingstadt
             bool noticed = world.Units.Exists(u => u.Alive && u.Faction == Faction.Guard && u.GuardState == GuardState.Noticing);
             _heartLevel = Mathf.MoveToward(_heartLevel, noticed ? 1f : 0f, (noticed ? HeartRisePerSecond : HeartFallPerSecond) * dt);
             _heart.VolumeDb = Faded(HeartDb, _heartLevel);
+        }
+
+        /// <summary>
+        /// Beim Wechsel in den Alarm und zurück setzt ein kurzer Einsatz ein: Paukenwirbel hinein, ausklingender Akkord heraus.
+        /// Die Lagen blenden sofort mit dem Spiel, nur dieser Einsatz wartet auf den nächsten Schlag der Musik.
+        /// </summary>
+        private void UpdateStinger(World world, bool alarmed)
+        {
+            if (alarmed != _wasAlarmed)
+            {
+                _wasAlarmed = alarmed;
+                if (world.State == MissionState.Running && !_titleWanted && _time >= _nextStinger)
+                {
+                    _stinger = alarmed ? "music_in_fight" : "music_to_calm";
+                    float position = _musicPlayer.GetPlaybackPosition();
+                    _stingerAt = _time + (BeatSeconds - position % BeatSeconds) % BeatSeconds;
+                    _nextStinger = _time + StingerPause;
+                }
+            }
+            if (_stinger != null && _time >= _stingerAt)
+            {
+                var player = new AudioStreamPlayer { Stream = _sounds[_stinger], VolumeDb = StingerDb, Autoplay = true, Bus = MusicBus };
+                player.Finished += player.QueueFree;
+                AddChild(player);
+                PlayedByGroup["einsatz"] = PlayedByGroup.GetValueOrDefault("einsatz") + 1;
+                _stinger = null;
+            }
         }
 
         private void UpdateTitle(float dt)
@@ -479,6 +516,8 @@ namespace Messingstadt
         {
             _reloading.Clear();
             _keysHeld.Clear();
+            _wasAlarmed = false;
+            _stinger = null;
             _keysOnGround = 0;
             _bandaging.Clear();
             _smokes.Clear();

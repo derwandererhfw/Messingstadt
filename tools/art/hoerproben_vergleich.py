@@ -189,8 +189,61 @@ def verdict():
         save(label + "_bisher_dann_neu_in_drei_stufen", np.concatenate(parts[:-1]))
 
 
+ALT_MUSIK = "ec7a0ec"
+DARK_DB = MUSIC_DB - 2
+
+
+def music_round():
+    """Jede Lage alt gegen neu, dann der Wechsel Ruhe, Gefecht, Ruhe mit den neuen Einsätzen."""
+    seconds = 30
+
+    def cut(x, start=0):
+        x = np.concatenate([x, x])
+        return x[int(start * RATE):int((start + seconds) * RATE)]
+
+    def mix(load, parts, start=0):
+        out = weather(seconds, DRIZZLE)
+        for name, db in parts:
+            out = out + cut(load(name), start) * gain(db)
+        return out
+
+    def before(name):
+        return old(name, ALT_MUSIK)
+
+    fight_dark = DARK_DB + 20 * np.log10(np.sin(0.7 * np.pi / 2))
+    for label, parts, start in (("T1_musik_ruhe", (("music_calm", MUSIC_DB),), 0), ("T2_musik_dunkel", (("music_dark", DARK_DB),), 0),
+                                ("T3_musik_verdacht", (("music_calm", MUSIC_DB), ("music_suspect", MUSIC_DB)), 12),
+                                ("T4_musik_gefecht", (("music_dark", fight_dark), ("music_tension", MUSIC_DB)), 24), ("T5_titelthema", (("music_title", MUSIC_DB),), 0)):
+        save(label + "_alt_dann_neu", both(mix(before, parts, start), mix(new, parts, start)))
+
+    # Wechsel: 12 s Ruhe, Alarm, 20 s Gefecht, Entwarnung, 16 s Ruhe. Überblendung wie im Spiel, Einsatz auf dem nächsten Schlag.
+    total = 48
+    t = np.arange(total * RATE) / RATE
+    want = ((t >= 12.2) & (t < 32.3)).astype(float)
+    level = np.empty_like(want)
+    value = 0.0
+    for i, w in enumerate(want):
+        value += np.clip(w - value, -0.35 / RATE, 0.35 / RATE)
+        level[i] = value
+
+    def run(name):
+        x = new(name)
+        return np.concatenate([x] * (total * RATE // len(x) + 1))[:total * RATE]
+
+    out = weather(total, DRIZZLE)
+    out += run("music_calm") * gain(MUSIC_DB) * np.sin((1 - level) * np.pi / 2)[:, None]
+    out += run("music_dark") * gain(DARK_DB) * np.sin(0.7 * level * np.pi / 2)[:, None]
+    out += run("music_tension") * gain(MUSIC_DB) * np.sin(level * np.pi / 2)[:, None]
+    for at, name in ((12.5, "music_in_fight"), (32.5, "music_to_calm")):
+        x = new(name) * gain(MUSIC_DB + 3)
+        i = int(at * RATE)
+        out[i:i + len(x)] += x[:len(out) - i]
+    save("T6_wechsel_ruhe_gefecht_ruhe_mit_einsaetzen", out)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
+    music_round()
     verdict()
     round_two()
     save("A_schritte_leise_stiefel_rennen", both(steps(old), steps(new)))
