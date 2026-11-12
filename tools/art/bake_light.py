@@ -46,7 +46,8 @@ CARPET_MAX_SILL = 70  # Fenster, deren Unterkante höher liegt, werfen ihr Licht
 CARPET_DEPTH = 0.55  # so viele Felder hinter der Wand hängt die Lampe
 NEON_COLOR, NEON_POWER, NEON_REACH = (1.0, 0.16, 0.12), 2.6, 6.5
 WELD_COLOR, WELD_POWER, WELD_REACH = (0.62, 0.8, 1.0), 5.0, 5.5
-RAIL_GLOSS = 2.4  # Schienenköpfe sind blank: Sie werfen das Licht, das sie trifft, um diesen Faktor stärker zurück
+RAIL_GLOSS = 1.5  # Schienenköpfe sind blank: Sie werfen das Licht, das sie trifft, um diesen Faktor stärker zurück
+RAIL_GLOSS_CAP = 0.85  # aber nie über diesen Lichtwert hinaus: Eine Schiene leuchtet nicht heller als das Pflaster unter der Laterne
 MAP_RAILS = {"": ("x", (8.42, 8.58, 9.42, 9.58)), "nordwall": ("y", (10.8, 11.2))}
 RIM_KINDS = ("", "prop", "gate", "boiler")
 FIRE_COLOR = (1.0, 0.45, 0.15)
@@ -185,7 +186,7 @@ def write_maps(name, rgba, light, deltas, ids, pane_light, halo, box, rim=False,
         for line in lines:
             head |= np.abs(across - line) < 0.02
         level = (a.astype(np.float32) / 255) ** 2 * MAX_LIGHT
-        level[head] *= RAIL_GLOSS
+        level[head] = np.maximum(level[head], np.minimum(level[head] * RAIL_GLOSS, RAIL_GLOSS_CAP))
         a = encode(level)
     if rim and RIM_LIGHT > 0:
         # Kantenlicht in der Auflösung des angezeigten Bilds: ein Punkt breit voll, der darunter halb.
