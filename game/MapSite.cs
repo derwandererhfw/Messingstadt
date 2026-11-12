@@ -41,6 +41,14 @@ namespace Messingstadt
         /// </summary>
         public sealed record LightSource(Vector2 Tile, float Height, string Kind, Color Color, float Reach);
 
+        /// <summary>
+        /// Ein Haus, dessen Fenster zeigt, wie seine Bewohner zum Trupp stehen. Window ist die Stelle an der Fassade
+        /// (Feld und Höhe in Bildpunkten). Helper: ein Helferhaus mit der Kennung der Kampagne, das eine Kerze ins
+        /// Fenster stellt, wenn es hilft. Sonst ein Haus, das nie hilft und nach Blut als erstes die Läden schließt.
+        /// Darkens nennt ein Fenster, das für den Trupp ausgeht, wenn er in die Nähe kommt.
+        /// </summary>
+        public sealed record House(string Id, Vector2 Window, float Height, bool Helper, Vector2? Darkens);
+
         private static MapSite? _current;
 
         /// <summary>Die Daten der Karte, auf der gerade gespielt wird.</summary>
@@ -103,6 +111,9 @@ namespace Messingstadt
 
         /// <summary>Lampen, die an einer Schnur pendeln: Feld x, y, Höhe der Aufhängung und Länge der Schnur in Bildpunkten.</summary>
         public List<(Vector2 Tile, float Height, float Cord)> SwingLamps { get; } = new();
+
+        /// <summary>Häuser, deren Fenster die Stimmung der Stadt zeigen (houses). Leer: keine benannten Häuser.</summary>
+        public List<House> Houses { get; } = new();
 
         /// <summary>Die eine Laterne, die flackert und aussetzt. Null: Auf dieser Karte brennen alle ruhig.</summary>
         public Vector2? StutterLamp { get; private set; }
@@ -221,6 +232,18 @@ namespace Messingstadt
                 foreach (var l in swing.EnumerateArray())
                 {
                     SwingLamps.Add((Pair(l), l[2].GetSingle(), l[3].GetSingle()));
+                }
+            }
+            if (root.TryGetProperty("houses", out var houses))
+            {
+                Houses.Clear();
+                foreach (var h in houses.EnumerateArray())
+                {
+                    Houses.Add(new House(
+                        h.GetProperty("id").GetString() ?? "", Pair(h.GetProperty("window")),
+                        h.TryGetProperty("height", out var height) ? height.GetSingle() : 30f,
+                        h.TryGetProperty("helper", out var helper) && helper.ValueKind == JsonValueKind.True,
+                        h.TryGetProperty("darkens", out var darkens) ? Pair(darkens) : null));
                 }
             }
             if (root.TryGetProperty("passersby", out var people))

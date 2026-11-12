@@ -38,6 +38,8 @@ namespace Messingstadt
         private const float ShotShadowAlpha = 0.55f;
         private const int ShotShadowTicks = 2;
         private static readonly Color WindowWarm = new(1f, 0.76f, 0.46f);
+        private static readonly Color CandleLight = new(1f, 0.7f, 0.32f);
+        private const float CandleHaloPixels = 54f;
         private static readonly Color ScreenCold = new(0.62f, 0.72f, 1f);
         private static readonly Color NeonRed = new(1f, 0.3f, 0.22f);
         private static readonly Color GuardLamp = new(1f, 0.82f, 0.5f);
@@ -80,6 +82,9 @@ namespace Messingstadt
         private Layer? _guardLamps;
         private Layer? _shotShadows;
         private Layer? _beam;
+        private Layer? _candles;
+        private readonly List<Vector2> _candleSpots = new();
+        private World? _candleWorld;
         private Color _unNight;
         private float _time;
 
@@ -167,6 +172,11 @@ namespace Messingstadt
             {
                 _beam = new Layer { Material = additive, ZIndex = 0, LightMask = 0, Paint = PaintTramBeam };
                 AddChild(_beam);
+            }
+            if (!AirTest.Off("kerzen") && site.Houses.Count > 0)
+            {
+                _candles = new Layer { Material = additive, ZIndex = OverCityZ, LightMask = 0, Paint = PaintCandles };
+                AddChild(_candles);
             }
             if (!AirTest.Off("pendel"))
             {
@@ -273,6 +283,61 @@ namespace Messingstadt
             _guardLamps?.QueueRedraw();
             _shotShadows?.QueueRedraw();
             _beam?.QueueRedraw();
+            if (_candles != null)
+            {
+                if (Game.World != _candleWorld && Game.World != null)
+                {
+                    _candleWorld = Game.World;
+                    FindCandles();
+                }
+                _candles.QueueRedraw();
+            }
+        }
+
+        /// <summary>
+        /// Wo in diesem Einsatz eine Kerze brennt: im Fenster jedes Hauses, das dem Trupp hilft. Hat die Karte dort ein
+        /// Fenster, steht die Kerze darin, sonst an der genannten Stelle der Fassade.
+        /// </summary>
+        private void FindCandles()
+        {
+            _candleSpots.Clear();
+            foreach (var house in MapSite.Current.Houses)
+            {
+                // Häuser außerhalb der Karte oder ohne Wand daneben gibt es auf dieser Fassung der Karte noch nicht.
+                if (!house.Helper || !CityMood.HouseHelps(Game, house.Id) || !HasWall(house.Window))
+                {
+                    continue;
+                }
+                _candleSpots.Add(Windows.HelperPane(house.Id) ?? Map(house.Window.X, house.Window.Y) - new Vector2(0, house.Height));
+            }
+        }
+
+        private bool HasWall(Vector2 tile)
+        {
+            var map = Game.World.Map;
+            foreach (var (dx, dy) in new[] { (0f, 0f), (-0.6f, 0f), (0.6f, 0f), (0f, -0.6f), (0f, 0.6f) })
+            {
+                int x = Mathf.FloorToInt(tile.X + dx), y = Mathf.FloorToInt(tile.Y + dy);
+                if (x >= 0 && y >= 0 && x < map.Width && y < map.Height && map.IsBlocked(x, y))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>Die Kerze im Helferfenster: eine kleine ruhige Flamme mit warmem Hof. Wer sie sieht, weiß: Hier hilft jemand.</summary>
+        private void PaintCandles(Layer layer)
+        {
+            for (int i = 0; i < _candleSpots.Count; i++)
+            {
+                var at = _candleSpots[i];
+                float flame = 0.82f + 0.12f * Mathf.Sin(_time * 3.1f + i * 2f) + 0.06f * Mathf.Sin(_time * 7.7f + i);
+                var halo = new Vector2(CandleHaloPixels, CandleHaloPixels);
+                layer.DrawTextureRect(Glow, new Rect2(at - halo / 2f, halo), false, Lit(CandleLight, 0.3f * flame));
+                var core = new Vector2(7f, 9f);
+                layer.DrawTextureRect(Glow, new Rect2(at - core / 2f, core), false, Lit(CandleLight, 0.95f * flame));
+            }
         }
 
         /// <summary>Ein weicher Hof um jedes Fenster, hinter dem Licht brennt. Geht das Licht aus, geht der Hof mit.</summary>
