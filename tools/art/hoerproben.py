@@ -22,7 +22,7 @@ WIND_DB = -30.0
 GUST_DB = -24.0
 HEART_DB = -10.0
 SHOWER, DRIZZLE, PAUSE = 1.0, 0.3, 0.03
-CITY = (("dog", -26), ("siren", -31), ("train", -27), ("factory_horn", -29), ("tram", -29), ("foghorn", -29), ("church_bell", -30), ("shutter", -18), ("distant_shots", -16))
+CITY = (("dog_0", -26), ("siren", -31), ("train", -27), ("factory_horn", -29), ("tram", -29), ("foghorn", -29), ("church_bell", -30), ("shutter", -18), ("distant_shots", -16))
 
 
 def load(name):

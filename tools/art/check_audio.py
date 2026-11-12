@@ -5,6 +5,7 @@ Aufruf: python tools/art/check_audio.py [--neu]
 Die Messung ersetzt kein Hören. dB(A) ist nur eine Näherung ans Gehör.
 """
 import hashlib
+import json
 import re
 import sys
 import tempfile
@@ -215,11 +216,20 @@ def main():
         x, _ = load(path.stem)
         check(np.abs(x).max() < 0.999, f"{path.stem}: Spitze {db(np.abs(x).max()):.1f} dBFS")
 
+    # Klänge aus Aufnahmen lassen sich ohne die Rohdateien nicht neu erzeugen. Sie müssen der festgehaltenen Prüfsumme entsprechen.
+    recorded = json.loads((Path(__file__).parent / "recordings.json").read_text(encoding="utf-8"))
+    for name, entry in recorded.items():
+        check(hashlib.sha256((AUDIO / f"{name}.wav").read_bytes()).hexdigest() == entry["sha256"], f"{name}: aus Aufnahme, Prüfsumme stimmt")
+    for name in ("dog", "door_open"):
+        check(not (AUDIO / f"{name}.wav").exists(), f"{name}.wav: ersetzt durch nummerierte Fassungen aus Aufnahmen")
+
     if "--neu" in sys.argv:
         with tempfile.TemporaryDirectory() as folder:
             generate_audio.OUT = Path(folder)
             generate_audio.main()
             for path in sorted(AUDIO.glob("*.wav")):
+                if path.stem in recorded:
+                    continue
                 other = Path(folder) / path.name
                 same = other.exists() and hashlib.sha256(other.read_bytes()).digest() == hashlib.sha256(path.read_bytes()).digest()
                 check(same, f"{path.stem}: bytegleich neu erzeugt")

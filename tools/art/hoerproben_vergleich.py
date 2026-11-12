@@ -259,8 +259,40 @@ def loud_one():
     save("U3_tauben_fliegen_auf_bisher_dann_8dB_leiser", both(scene(new("pigeons"), -8.4, (1, 4, 7, 10)), scene(new("pigeons"), -16.4, (1, 4, 7, 10))))
 
 
+ALT_AUFNAHMEN = "e94a35d"
+
+
+def recordings():
+    """Klänge aus freien Aufnahmen gegen die synthetischen davor, im Pegel wie im Einsatz, über ruhiger Musik und Niesel."""
+    def scene(events):
+        seconds = max(at + len(x) / RATE for at, x, _ in events) + 0.6
+        out = looped("music_calm", seconds) * gain(MUSIC_DB) + weather(seconds, DRIZZLE)
+        for at, x, db in events:
+            i = int(at * RATE)
+            out[i:i + len(x)] += x[:len(out) - i] * gain(db)
+        return out
+
+    def before(name):
+        return old(name, ALT_AUFNAHMEN)
+
+    def row(sounds, db, gap=0.7):
+        events, at = [], 0.6
+        for x in sounds:
+            events.append((at, x, db))
+            at += len(x) / RATE + gap
+        return scene(events)
+
+    save("V1_wachhund_alt_dann_vier_neue_fassungen", both(row([before("dog")] * 2, -6), row([new(f"dog_{i}") for i in range(4)], -6)))
+    save("V2_hund_in_der_ferne_alt_dann_neu", both(row([before("dog")] * 2, -26), row([new("dog_0"), new("dog_2")], -26)))
+    save("V3_tuer_alt_dann_drei_neue_fassungen", both(row([before("door_open")] * 3, -2), row([new(f"door_open_{i}") for i in range(3)], -2)))
+    save("V4_erschrecken_alt_dann_neu", both(row([before("gasp_0"), before("gasp_1")], -8, 1.0), row([new("gasp_0"), new("gasp_1")], -8, 1.0)))
+    save("V5_blaettern_im_kontobuch_alt_dann_neu", both(row([before("pages")] * 3, -3, 0.5), row([new(f"pages_{i}") for i in range(3)], -3, 0.5)))
+    save("V6_verband_und_ausruesten_alt_dann_neu", both(row([before("bandage"), before("shop_equip")], -10, 1.0), row([new("bandage"), new("shop_equip")], -10, 1.0)))
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
+    recordings()
     loud_one()
     music_round()
     verdict()

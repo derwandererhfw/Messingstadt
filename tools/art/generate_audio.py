@@ -85,8 +85,13 @@ def loopable(x, overlap=0.5):
 SUPERSEDED = {"hit", "fall", "shot_0", "shot_1", "shot_2"} | {f"step_{kind}_{i}" for kind in ("soft", "boot", "run") for i in range(4)}
 
 
+# Diese Klänge stammen aus freien Aufnahmen (tools/art/import_recordings.py, Herkunft in docs/ton-herkunft.md).
+# Der Generator schreibt sie nie, auch wenn die alten Funktionen sie noch berechnen.
+RECORDED = {"dog", "door_open", "pages", "gasp_0", "gasp_1", "bandage", "shop_equip"}
+
+
 def save(name, x, peak=0.9, replace=False):
-    if name in SUPERSEDED and not replace:
+    if name in RECORDED or (name in SUPERSEDED and not replace):
         return
     x = np.asarray(x, np.float64)
     top = np.abs(x).max()
@@ -983,6 +988,8 @@ def leveled(x, dba):
 
 
 def save_level(name, x, dba):
+    if name in RECORDED:
+        return
     data = (leveled(np.asarray(x, np.float64), dba) * 32767).astype("<i2")
     with wave.open(str(OUT / f"{name}.wav"), "wb") as f:
         f.setnchannels(1)
