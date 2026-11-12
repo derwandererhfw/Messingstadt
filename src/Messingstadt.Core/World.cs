@@ -301,7 +301,7 @@ namespace Messingstadt.Core
         {
             var u = new Unit
             {
-                Id = Units.Count, Name = d.Name, Sprite = d.Sprite, Faction = faction,
+                Id = Units.Count, Name = d.Name, Person = d.Person, Sprite = d.Sprite, Faction = faction,
                 X = ToUnits(d.X), Y = ToUnits(d.Y), Hp = hp, MaxHp = hp,
             };
             foreach (var p in d.Patrol)
@@ -495,6 +495,7 @@ namespace Messingstadt.Core
                 if (u.Faction == Faction.Guard)
                 {
                     ThinkGuard(u);
+                    Remember(u);
                 }
                 else if (u.IsPrisoner)
                 {
@@ -527,6 +528,7 @@ namespace Messingstadt.Core
                 X = _reinforcements.X, Y = _reinforcements.Y,
             }, Faction.Guard, 0);
             var g = Units[^1];
+            NameReinforcement(g);
             // Verstärkung sichert den Fluchtweg und verteilt sich über die Tiefe der Zone. Wer rennt, läuft in sie hinein.
             int zoneTiles = Math.Max(1, (_exit.Y1 - _exit.Y0) / TileUnits);
             g.LastKnownX = _exit.X0 + TileUnits / 2;
@@ -1336,6 +1338,7 @@ namespace Messingstadt.Core
                 target.Path.Clear();
                 target.Moving = false;
                 DropKeys(target);
+                Mourn(target);
                 if (target.CarriesItem)
                 {
                     target.CarriesItem = false;
