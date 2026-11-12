@@ -241,8 +241,27 @@ def music_round():
     save("T6_wechsel_ruhe_gefecht_ruhe_mit_einsaetzen", out)
 
 
+def loud_one():
+    """
+    Welches Geräusch im Einsatz war zu laut? Drei Kandidaten, je mit dem Pegel, mit dem sie im Kesselviertel an der Kamera ankamen.
+    Erst wie bisher, dann leiser. Darunter die ruhige Musik und Niesel.
+    """
+    def scene(sound, db, times, seconds=14):
+        out = looped("music_calm", seconds) * gain(MUSIC_DB) + weather(seconds, DRIZZLE)
+        for at in times:
+            i = int(at * RATE)
+            out[i:i + len(sound)] += sound[:len(out) - i] * gain(db)
+        return out
+
+    alt = "0c8087b"
+    save("U1_dampfstoss_der_kessel_bisher_dann_neu", both(scene(old("steam_burst", alt), -11.2, (1, 5.5, 10)), scene(new("steam_burst"), -11.2, (1, 5.5, 10))))
+    save("U2_schweissen_im_hallenfenster_bisher_dann_neu", both(scene(old("weld", alt), -19.6, (1, 7)), scene(new("weld"), -19.6, (1, 7))))
+    save("U3_tauben_fliegen_auf_bisher_dann_8dB_leiser", both(scene(new("pigeons"), -8.4, (1, 4, 7, 10)), scene(new("pigeons"), -16.4, (1, 4, 7, 10))))
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
+    loud_one()
     music_round()
     verdict()
     round_two()

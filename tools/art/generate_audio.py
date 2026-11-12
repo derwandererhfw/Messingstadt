@@ -1437,9 +1437,29 @@ def save_stinger(name, x):
         f.writeframes((x * 32767).astype("<i2").tobytes())
 
 
+def quieter_hiss():
+    """
+    Der Nutzer hörte im Einsatz ein zu lautes Geräusch und hielt es für das Schweißen. Gemessen lag der Dampfstoß der Kessel
+    11 dB über der Musik und war zur Hälfte heller als 4 kHz. Beide sind jetzt dunkler, setzen weich ein und liegen 9 und 8 dB tiefer.
+    """
+    rng = own_rng("quieter_hiss")
+    t = time(2.4)
+    hiss = band(noise(2.4, rng), 600, 3600) * np.minimum(t / 0.12, 1) * decay(t, 0.8)
+    rumble = band(noise(2.4, rng), 60, 220) * decay(t, 0.5)
+    save_level("steam_burst", fade(hiss / np.abs(hiss).max() + 0.5 * rumble / np.abs(rumble).max(), 0.02, 0.3), -30.8)
+    n = int(3.5 * RATE)
+    x = 0.15 * band(rng.standard_normal(n), 300, 2200)
+    d = time(0.02)
+    for _ in range(170):
+        crackle = fade(band(rng.standard_normal(len(d)), 500, 2800) * decay(d, 0.004), 0.0008, 0.004)
+        at = rng.integers(0, n - len(d))
+        x[at:at + len(d)] += crackle / np.abs(crackle).max() * rng.uniform(0.3, 1.6) * 0.25
+    save_level("weld", loopable(x, 0.2), -35.8)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld, dog, siren, factory_horn, train, radio, heartbeat, typewriter, fresh_random, dog_fight, boy_whistle, wind_gust, distant_shots, tram, foghorn, church_bell, shutter, gutter, piano, tram_hum, match, title_theme, menu_sounds, peil_ping, new_shots, new_steps, new_hits, reloads, field_kit, soft_signals, new_rain, rails, new_hums, new_signals, for_others, new_music):
+    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld, dog, siren, factory_horn, train, radio, heartbeat, typewriter, fresh_random, dog_fight, boy_whistle, wind_gust, distant_shots, tram, foghorn, church_bell, shutter, gutter, piano, tram_hum, match, title_theme, menu_sounds, peil_ping, new_shots, new_steps, new_hits, reloads, field_kit, soft_signals, new_rain, rails, new_hums, new_signals, for_others, new_music, quieter_hiss):
         make()
     files = list(OUT.glob("*.wav"))
     print(f"{len(files)} Geräusche, {sum(f.stat().st_size for f in files) // 1024} KiB")
