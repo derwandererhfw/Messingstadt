@@ -249,6 +249,7 @@ namespace Messingstadt.Core
             }
             if (knockOut)
             {
+                target.KnockedOut = true;
                 Hurt(target, target.Hp);
                 return;
             }
