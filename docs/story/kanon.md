@@ -29,6 +29,8 @@ Was in der Welt von Messingstadt gilt, mit Kennzeichen und Quelle. Kennzeichen s
 | Kassenhof, Bankstraße, Pförtnerhaus, Hotel Kontor, Uferpromenade, Kanalbrücke | Orte im Kontorviertel, Einsatz 4 | VORSCHLAG Story 2026-11-11 | `einsatz_04_kontorviertel.md` |
 | Färbergasse, Druckgasse, Kapelle, Fischhalle, Westtor, Papierhof | Orte in der Altstadt, Einsatz 5 und 6 | VORSCHLAG Story 2026-11-11 (Fischmarkt und Druckhaus sind KANON) | `einsatz_05_altstadt.md`, `einsatz_06_anzeiger.md` |
 | Lehrling des Druckers, ohne Namen | Ersatz für Weiß im Finale | VORSCHLAG Story 2026-11-11 | `einsatz_06_anzeiger.md` |
+| Namen der Wachen in Einsatz 1 und 2, Hunde Hasso und Greif, Bewohner des Nordwalls | Rufnamen im Spiel, Totenbuch | VORSCHLAG Story 2026-11-12 | `texte/wachen.md` |
+| Friedhof der Namenlosen, Beamtenhöfe, Exerzierplatz, Kasernenhof | Neue Orte im größeren Nordwall | Vom Nutzer gewählt über die Hauptsession 2026-11-12, Grundriss steht aus | `einsatz_02_nordwall.md` |
 | Messingstädter Anzeiger | Zeitung, druckt die Sicht der Wache | KANON | `src/Messingstadt.Core/Headlines.cs` |
 | Hotel Adler | Hotel an der Querstraße | IM SPIEL | `tools/art/generate_concept.py` (Dachschild) |
 | Kurt | Laufbursche der Wache, in einem Arbeiter-Satz | IM SPIEL | `game/Chatter.cs` |
@@ -69,11 +71,12 @@ Ergebnisse werden als HISTORISCH mit Quelle eingetragen.
 ## Kontinuitätsregeln
 
 - Kein Text setzt voraus, dass ein bestimmter Agent lebt oder dabei ist.
-- Der erste Fall heißt schwer verwundet, der zweite tot, auch bei einer Niederlage (Nutzer, 2026-11-06). Tote werden später nicht mehr genannt.
+- Der erste Fall heißt schwer verwundet, der zweite tot, auch bei einer Niederlage (Nutzer, 2026-11-06). Erzähltexte nennen eigene Tote später nicht mehr. Akte, Totenbuch und Zeitung nennen die Toten beider Seiten, Wachen sprechen über ihre eigenen (Hauptsession auf Grundlage des Leitbilds, 2026-11-12).
 - Keine Wendung hängt an einer einzelnen Figur, für jede gibt es einen Ersatzweg.
 - Kolb nennt in Telegrammen keine Namen.
 - Kolb erzählt die Sequenzen. Sie weiß mehr als der Trupp, sagt aber nichts über `wissen.md` hinaus und lügt nie.
 - Die Zeitung druckt, was die Wache sagt. Sie weiß nichts von Abteilung K.
-- Wachen sind arme Leute, keine Monster.
+- Wachen sind arme Leute, keine Monster. Jede hat einen Namen, den man hört (`texte/wachen.md`).
+- Der Totschläger schlägt bewusstlos. Niedergeschlagene stehen nicht im Totenbuch (Nutzer über die Hauptsession, 2026-11-12).
 - Brandt erscheint nie selbst im Einsatz, nur über Werkschutz, Luftschiff und Geld.
 - Die Kampagne läuft vom 22. November bis 5. Dezember 1927 in der Reihenfolge aus `../story.md`.
