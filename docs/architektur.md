@@ -59,6 +59,12 @@ Eingabe (Godot) -> Befehle -> World.Tick() -> Zustand -> Darstellung (Godot)
   Fensterlicht aus `rules_windows.json`, Kleinkram wirft dort keinen Schatten, der Mond zählt nicht. Neue Farben, Fenster
   oder gedämpftes Glühen ändern so nur das Bild. Wer das Schleichlicht bewusst ändern will, erneuert diese Dateien.
 
+- **Nacht und Lichtfarben:** Das Bild ist dunkler als das Schleichlicht annimmt: `SKY` und `MOON_COLOR` in `bake_light.py` gelten
+  nur fürs Bild, die Regeln rechnen mit `RULES_SKY` und der Laternenfarbe `LAMP_COLOR`. Je Karte steht in `MAP_LAMPS` die Farbe der
+  Laternen (Kesselviertel elektrisch warm, Nordwall Gas grünlich). Der Lichtbake trägt sie als `lampColor` und alle Quellen mit Ort,
+  Farbe, Art und Reichweite als `sources` ins Manifest ein. Dächer bekommen Nässeglanz vom Mond (`MOON_SPEC`) und ein Kantenlicht an
+  der oberen Umrisskante (`RIM_LIGHT`). `MS_SKY`, `MS_MOON` und weitere Umgebungswerte ändern einen Probelauf, ohne die Datei anzufassen.
+
 - **Stadtplan zur Einsatzwahl:** `tools/art/stadtplan.py` zeichnet `game/assets/stadtplan/plan.png` (1280 × 900) und
   je Viertel eine deckungsgleiche Maske `viertel_1.png` bis `viertel_5.png`, weiß mit Deckkraft, zum Einfärben im Code.
   `plan.json` nennt Kartenfeld, Ankerpunkte für Namen und Stempel und den Umriss jedes Viertels. Fluss, Bahn und eine

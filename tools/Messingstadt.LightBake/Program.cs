@@ -24,6 +24,8 @@ float ox = root.GetProperty("ox").GetSingle(), oy = root.GetProperty("oy").GetSi
 float zScale = root.GetProperty("zScale").GetSingle();
 int mapSize = root.GetProperty("mapSize").GetInt32();
 Vector3 skyColor = Vec(root.GetProperty("sky"));
+// Himmelslicht fürs Schleichen: bleibt beim alten Wert, auch wenn das Bild dunkler oder heller wird.
+Vector3 rulesSky = root.TryGetProperty("rulesSky", out var frozenSky) ? Vec(frozenSky) : skyColor;
 Vector3 groundAlbedo = Vec(root.GetProperty("groundAlbedo"));
 Vector3 lampColor = Vec(root.GetProperty("lampColor"));
 Vector3 fireColor = Vec(root.GetProperty("fireColor"));
@@ -37,6 +39,10 @@ Vector3 flashDir = Vector3.Normalize(Vec(root.GetProperty("flashDirection")));
 float flashAmbient = root.GetProperty("flashAmbient").GetSingle();
 Vector3 moonDir = Vector3.Normalize(Vec(root.GetProperty("moonDirection")));
 Vector3 moonColor = Vec(root.GetProperty("moonColor"));
+// Nasse Dächer spiegeln den Mond zur Kamera. Nur im Bild, das Lichtgitter der Regeln sieht davon nichts.
+float moonSpec = root.TryGetProperty("moonSpec", out var moonSpecElement) ? moonSpecElement.GetSingle() : 0f;
+// Farbe der Laternen im Bild. Die Spielregeln rechnen weiter mit lampColor, damit eine neue Lichtfarbe das Schleichen nicht ändert.
+Vector3 lampPicture = root.TryGetProperty("lampPicture", out var lampPictureElement) ? Vec(lampPictureElement) : Vec(root.GetProperty("lampColor"));
 float puddleSpec = root.GetProperty("puddleSpec").GetSingle();
 Vector3 viewDir = Vector3.Normalize(new Vector3(1f / 32f, 1f / 32f, 1f / zScale));
 
@@ -87,6 +93,7 @@ foreach (var l in root.GetProperty("lights").EnumerateArray())
 {
     lamps.Add(new Light(
         new Vector3(l.GetProperty("x").GetSingle(), l.GetProperty("y").GetSingle(), l.GetProperty("z").GetSingle() / zScale),
+        l.GetProperty("color").GetString() == "fire" ? fireColor : lampPicture,
         l.GetProperty("color").GetString() == "fire" ? fireColor : lampColor,
         l.GetProperty("power").GetSingle(),
         l.GetProperty("layer").GetInt32(),
@@ -285,7 +292,7 @@ Vector3 DirectForBounce(Vector3 p, Vector3 n, int ignore, ref uint rng)
     var sum = Vector3.Zero;
     foreach (var l in lightArray)
     {
-        sum += l.Color * LightAt(l, p, n, ignore, ref rng, out _);
+        sum += (rulesPass ? l.Rules : l.Color) * LightAt(l, p, n, ignore, ref rng, out _);
     }
     return sum;
 }
@@ -299,7 +306,7 @@ Vector3 Incoming(Vector3 from, Vector3 dir, int ignore, ref uint rng)
     {
         if (!Closest(from, dir, ignore, out var pos, out var n, out var albedo, out int hit))
         {
-            return total + throughput * (dir.Z > 0f ? skyColor : Vector3.Zero);
+            return total + throughput * (dir.Z > 0f ? (rulesPass ? rulesSky : skyColor) : Vector3.Zero);
         }
         throughput *= albedo;
         total += throughput * DirectForBounce(pos, n, hit, ref rng);
@@ -469,7 +476,20 @@ float[] Shade(Surface s, ref uint rng, float px, float py)
     direct += Windows(s.Pos, s.Normal, s.Box);
     if (!s.IsGround && (s.Normal == Vector3.UnitZ || s.Roof))
     {
-        direct += Moon(s.Pos, s.Normal, s.Box, ref rng);
+        var moon = Moon(s.Pos, s.Normal, s.Box, ref rng);
+        direct += moon;
+        if (moonSpec > 0f)
+        {
+            // Nässeglanz: Die Fläche spiegelt den Mond, wo ihre Neigung zwischen Mond und Kamera vermittelt. Kleine Unebenheiten
+            // der Deckung lassen den Glanz in Flecken aufbrechen statt als glatte Fläche zu stehen.
+            float cx = MathF.Floor(px / 3f), cy = MathF.Floor(py / 2f);
+            float h1 = MathF.Sin(cx * 12.9898f + cy * 78.233f) * 43758.5453f, h2 = MathF.Sin(cx * 39.346f + cy * 11.135f) * 24634.6345f;
+            h1 -= MathF.Floor(h1);
+            h2 -= MathF.Floor(h2);
+            var bumpy = Vector3.Normalize(s.Normal + new Vector3(h1 - 0.5f, h2 - 0.5f, 0f) * 0.22f);
+            var half = Vector3.Normalize(moonDir + viewDir);
+            direct += moon * (moonSpec * MathF.Pow(MathF.Max(Vector3.Dot(bumpy, half), 0f), 48f));
+        }
     }
     var indirect = Vector3.Zero;
     for (int i = 0; i < IndirectSamples; i++)
@@ -545,7 +565,7 @@ for (int pass = 0; pass < 2; pass++)
             {
                 foreach (var l in lightArray)
                 {
-                    sum += l.Color * LightAt(l, p, Vector3.Zero, -2, ref rng, out _);
+                    sum += (rulesPass ? l.Rules : l.Color) * LightAt(l, p, Vector3.Zero, -2, ref rng, out _);
                 }
                 sum += Incoming(p, RandomOnSphere(ref rng), -2, ref rng);
             }
@@ -581,7 +601,7 @@ static float Next(ref uint rng)
     return rng / 4294967296f;
 }
 
-internal readonly record struct Light(Vector3 Pos, Vector3 Color, float Power, int Layer, bool Hooded);
+internal readonly record struct Light(Vector3 Pos, Vector3 Color, Vector3 Rules, float Power, int Layer, bool Hooded);
 
 internal readonly record struct Sprite(int Box, int Left, int Top, int W, int H, int Offset);
 

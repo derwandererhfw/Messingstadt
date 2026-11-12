@@ -25,9 +25,18 @@ WORK = ROOT / "work" / "light"
 STRIDE = 2
 MAX_LIGHT = 4.0
 Z_SCALE = 39.2  # Bildpixel je Feld Höhe: Isometrie mit 30 Grad Blickwinkel
-SKY = (0.27, 0.29, 0.40)
-VOID_LIGHT = (0.34, 0.37, 0.55)  # außerhalb der Karte bleibt der gemalte Nachthimmel wie bisher
-LAMP_COLOR = (1.0, 0.74, 0.42)
+SKY = (0.135, 0.145, 0.20)  # halb so hell wie zuvor: Die Nacht ist dunkel, die Lichter tragen das Bild. Fürs Schleichen gilt RULES_SKY
+VOID_LIGHT = (0.17, 0.185, 0.275)  # außerhalb der Karte: der gemalte Nachthimmel, mit dem Himmelslicht abgedunkelt
+LAMP_COLOR = (1.0, 0.74, 0.42)  # elektrische Laternen des Kesselviertels. Fürs Schleichen gilt diese Farbe auf jeder Karte
+# Laternen je Karte, nur fürs Bild: Farbe, Art und Reichweite in Feldern. Steht im Manifest unter "sources" für Lichtkegel und Dunst.
+MAP_LAMPS = {
+    "": dict(color=LAMP_COLOR, kind="elektrisch", reach=4.5),
+    "nordwall": dict(color=(0.90, 0.95, 0.56), kind="gas", reach=4.0),  # Gasglühlicht: grünlich-gelb und etwas schwächer im Umkreis
+}
+FIRE_REACH = 3.0
+MOON_SPEC = 2.4  # Nässeglanz auf Dächern: Der Mond spiegelt sich in Flecken, wo die Fläche zur Kamera vermittelt
+RIM_LIGHT = 2.6  # Kantenlicht: Die obere Umrisskante von Häusern und Aufbauten fängt den Mond, so stark wie das Mondlicht mal diesem Wert
+RIM_KINDS = ("", "prop", "gate", "boiler")
 FIRE_COLOR = (1.0, 0.45, 0.15)
 LAMP_POWER = 4.2
 FIRE_POWER = 0.5  # gedämpft: Die Kessel sollen glimmen, nicht den Hof überstrahlen
@@ -55,7 +64,7 @@ FLASH_AMBIENT = 0.2
 VOID_FLASH = 0.3
 BACKDROP_FLASH = 1.3  # die Kulisse ist dunkler gemalt, beim Blitz soll die Kartengrenze trotzdem nicht auffallen
 MOON_DIRECTION = (-0.45, -0.25, 0.85)  # von hinten und oben: Nur Dächer und Oberseiten sehen ihn, nicht Fassaden und Straßen
-MOON_COLOR = (0.42, 0.47, 0.62)  # gut doppelt so hell wie zuerst: Die Dächer sollen nachts lesbar sein. Zählt nicht fürs Schleichen.
+MOON_COLOR = (0.252, 0.282, 0.372)  # auf 60 % gesenkt, als die Nacht dunkler wurde. Trifft nur Dächer und Oberseiten, zählt nicht fürs Schleichen.
 FOG_SIZE = 256
 EMISSIVE = ((255, 232, 160), (226, 170, 90))
 EMISSIVE_REACH = 45
@@ -67,6 +76,27 @@ BLUR_RADIUS = 2
 
 # Fensterlicht, wie es die Spielregeln kennen: aus work/light/windows.json eines Laufs übernommen, nur bei gewollter Änderung neu
 RULES_WINDOWS = Path(__file__).with_name("rules_windows.json")
+
+# Himmelslicht der Spielregeln. Das Bild darf dunkler werden (SKY, MOON_COLOR), das Schleichlicht rechnet weiter hiermit.
+RULES_SKY = (0.27, 0.29, 0.40)
+
+
+def trial(name, value):
+    """Probewerte für Vergleichsbilder: MS_<NAME> in der Umgebung skaliert oder ersetzt eine Konstante, ohne die Datei zu ändern."""
+    raw = os.environ.get("MS_" + name)
+    if raw is None:
+        return value
+    if "," in raw:
+        return tuple(float(v) for v in raw.split(","))
+    return tuple(v * float(raw) for v in value) if isinstance(value, tuple) else value * float(raw)
+
+
+SKY, VOID_LIGHT, MOON_COLOR = trial("SKY", SKY), trial("SKY", VOID_LIGHT), trial("MOON", MOON_COLOR)
+SPEC_STRENGTH, PUDDLE_SPEC = trial("SPEC", SPEC_STRENGTH), trial("SPEC", PUDDLE_SPEC)
+MOON_SPEC, RIM_LIGHT = trial("MOON_SPEC", MOON_SPEC), trial("RIM", RIM_LIGHT)
+for _t in WINDOW_TYPES.values():
+    _t["power"] = trial("WINDOW", _t["power"])
+
 
 
 def is_emissive(rgba):
@@ -128,10 +158,21 @@ def resize_float(values, size):
     return np.stack(channels, axis=-1)
 
 
-def write_maps(name, rgba, light, deltas, ids, pane_light, halo, box):
+def write_maps(name, rgba, light, deltas, ids, pane_light, halo, box, rim=False):
     """Schreibt Licht (_a), Anteile fürs Flackern (_b) und Fensterkennung (_w) in der Größe des angezeigten Bilds."""
     size = (rgba.shape[1], rgba.shape[0])
     a = np.array(Image.fromarray(encode(light)).resize(size, Image.BILINEAR))
+    if rim and RIM_LIGHT > 0:
+        # Kantenlicht in der Auflösung des angezeigten Bilds: ein Punkt breit voll, der darunter halb.
+        solid = rgba[..., 3] > 128
+        above = np.vstack([np.zeros((1, solid.shape[1]), bool), solid[:-1]])
+        edge = solid & ~above
+        second = solid & above & np.vstack([np.zeros((1, solid.shape[1]), bool), edge[:-1]])
+        level = (a.astype(np.float32) / 255) ** 2 * MAX_LIGHT
+        moon = np.array(MOON_COLOR, np.float32) * RIM_LIGHT
+        level[edge] = np.maximum(level[edge], moon)
+        level[second] = np.maximum(level[second], moon * 0.5)
+        a = encode(level)
     b = np.array(Image.fromarray(encode(deltas), "RGBA").resize(size, Image.BILINEAR))
     glow = (is_emissive(rgba) if box >= 0 else np.zeros(rgba.shape[:2], bool)) | (ids > 0)
     a[glow] = encode(np.array([EMISSIVE_LIGHT] * 3))
@@ -316,6 +357,13 @@ def main():
             sprite["w"], sprite["h"] = mask.shape[1], mask.shape[0]
             f.write(mask.tobytes())
 
+    lamp = dict(MAP_LAMPS.get(args.get("map", ""), MAP_LAMPS[""]))
+    lamp["color"] = trial("LAMP_COLOR", lamp["color"])
+    # Für Lichtkegel, Dunst und Flackern im Spiel: jede Quelle mit Ort, Höhe in Bildpunkten, Farbe, Art und Reichweite in Feldern.
+    manifest["lampColor"] = list(lamp["color"])
+    manifest["sources"] = [{"x": x, "y": y, "z": z, "kind": lamp["kind"], "color": list(lamp["color"]), "reach": lamp["reach"]} for x, y, z in manifest["lights"]]
+    manifest["sources"] += [{"x": x, "y": y, "z": z, "kind": "feuer", "color": list(FIRE_COLOR), "reach": FIRE_REACH} for x, y, z in manifest["fireLights"]]
+    (ASSETS / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     lights = []
     for x, y, z in manifest["lights"]:
         stutter = abs(x - STUTTER_LAMP[0]) < 0.01 and abs(y - STUTTER_LAMP[1]) < 0.01
@@ -325,8 +373,8 @@ def main():
 
     scene = {
         "ox": manifest["ox"], "oy": manifest["oy"], "zScale": Z_SCALE, "mapSize": 20, "stride": STRIDE,
-        "sky": SKY, "groundAlbedo": (groundless.mean(axis=0)[:3] / 255).tolist(),
-        "lampColor": LAMP_COLOR, "fireColor": FIRE_COLOR,
+        "sky": SKY, "rulesSky": RULES_SKY, "groundAlbedo": (groundless.mean(axis=0)[:3] / 255).tolist(),
+        "lampColor": LAMP_COLOR, "lampPicture": lamp["color"], "fireColor": FIRE_COLOR, "moonSpec": MOON_SPEC,
         "windowTypes": [{"color": t["color"], "power": t["power"]} for t in WINDOW_TYPES.values()],
         "specStrength": SPEC_STRENGTH, "puddleSpec": PUDDLE_SPEC,
         "flashDirection": FLASH_DIRECTION, "flashAmbient": FLASH_AMBIENT,
@@ -365,7 +413,7 @@ def main():
                 halo = blur(halo, everywhere)
         fine = fine_images.get(sprite["name"])
         if fine is None:
-            write_maps(sprite["name"], rgba, light, deltas, sprite["ids"], sprite["pane_light"], halo, sprite["box"])
+            write_maps(sprite["name"], rgba, light, deltas, sprite["ids"], sprite["pane_light"], halo, sprite["box"], sprite.get("kind") in RIM_KINDS)
             continue
         # Feines Bild: Licht weich hochgerechnet, Selbstleuchten und Fenster aber Bildpunkt für Bildpunkt aus dem feinen
         # Bild. Glas ist dort, wo die Fensterfläche hell ist, also auch neben den nun dünneren Sprossen.
@@ -375,7 +423,7 @@ def main():
         ids = np.where(bright, area, 0).astype(np.uint8)
         size = (fine.shape[1], fine.shape[0])
         write_maps(sprite["name"], fine, light, deltas, ids, upscale(sprite["area_light"], factor),
-                   None if halo is None else resize_float(halo, size), sprite["box"])
+                   None if halo is None else resize_float(halo, size), sprite["box"], sprite.get("kind") in RIM_KINDS)
 
     size = 20 * GRID_RES
     grid = np.fromfile(WORK / "grid.bin", dtype="<f4").reshape(size, size, 7)
