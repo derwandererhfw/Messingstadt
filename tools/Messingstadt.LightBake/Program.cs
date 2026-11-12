@@ -14,7 +14,7 @@ const float Eps = 0.004f;
 const float LampRadius = 0.09f;
 const float WindowRange = 7f;
 const float WindowCell = 0.75f;
-const int Channels = 10;
+const int BaseChannels = 10;
 
 string workDir = args[0];
 using var sceneDoc = JsonDocument.Parse(File.ReadAllText(Path.Combine(workDir, "scene.json")));
@@ -100,6 +100,28 @@ foreach (var l in root.GetProperty("lights").EnumerateArray())
         l.GetProperty("hooded").GetBoolean()));
 }
 var lightArray = lamps.ToArray();
+
+// Zusatzquellen, nur fürs Bild: Fenster, die einen Lichtteppich mit Fensterkreuz werfen, Leuchtschrift, Schweißlicht.
+// Gruppe -1 brennt immer und geht ins Licht ein. Jede andere Gruppe bekommt einen eigenen Kanal, aus dem bake_light.py
+// einen Lichtflicken macht, den das Spiel mit der Quelle ein- und ausblendet.
+var extras = new List<Extra>();
+int extraGroups = root.TryGetProperty("extraGroups", out var extraGroupsElement) ? extraGroupsElement.GetInt32() : 0;
+if (root.TryGetProperty("extras", out var extrasElement))
+{
+    foreach (var e in extrasElement.EnumerateArray())
+    {
+        bool window = e.GetProperty("type").GetString() == "window";
+        extras.Add(new Extra(
+            e.GetProperty("group").GetInt32(), window, Vec(e.GetProperty("pos")), Vec(e.GetProperty("color")),
+            e.GetProperty("power").GetSingle(), e.GetProperty("reach").GetSingle(),
+            window ? e.GetProperty("axis").GetInt32() : 0, window ? e.GetProperty("c").GetSingle() : 0f,
+            window ? e.GetProperty("a0").GetSingle() : 0f, window ? e.GetProperty("a1").GetSingle() : 0f,
+            window ? e.GetProperty("z0").GetSingle() : 0f, window ? e.GetProperty("z1").GetSingle() : 0f,
+            window ? e.GetProperty("bar").GetSingle() : 0f));
+    }
+}
+var extraArray = extras.ToArray();
+int Channels = BaseChannels + extraGroups;
 
 var puddles = new List<(Vector2 Pos, float R)>();
 foreach (var p in root.GetProperty("puddles").EnumerateArray())
@@ -295,6 +317,46 @@ float LightAt(Light l, Vector3 p, Vector3 n, int ignore, ref uint rng, out Vecto
         shape = lampScale * edge * edge;
     }
     return l.Power * shape * (l.Layer == 2 ? fireScale : 1f) * cos / MathF.Max(dist2, 0.15f);
+}
+
+// Licht einer Zusatzquelle an einem Punkt. Ein Fenster leuchtet nur durch seine Öffnung, das Kreuz wirft Schatten.
+float ExtraAt(Extra x, Vector3 p, Vector3 n, int ignore, ref uint rng)
+{
+    const int Samples = 4;
+    float sum = 0f;
+    for (int i = 0; i < Samples; i++)
+    {
+        var source = x.Pos + RandomOnSphere(ref rng) * (x.Window ? 0.07f : 0.12f);
+        var target = source;
+        if (x.Window)
+        {
+            float side = x.Axis == 0 ? p.X - x.C : p.Y - x.C;
+            float span = x.Axis == 0 ? p.X - source.X : p.Y - source.Y;
+            if (side <= 0.02f || span <= side)
+            {
+                continue;
+            }
+            var q = p + (source - p) * (side / span);
+            float along = x.Axis == 0 ? q.Y : q.X;
+            if (along < x.A0 || along > x.A1 || q.Z < x.Z0 || q.Z > x.Z1
+                || MathF.Abs(along - (x.A0 + x.A1) / 2f) < x.Bar || MathF.Abs(q.Z - (x.Z0 + x.Z1) / 2f) < x.Bar)
+            {
+                continue;
+            }
+            target = q + (x.Axis == 0 ? Vector3.UnitX : Vector3.UnitY) * 0.05f;
+        }
+        var d = source - p;
+        float dist2 = d.LengthSquared();
+        var dir = d / MathF.Sqrt(dist2);
+        float cos = n == Vector3.Zero ? 0.6f : Vector3.Dot(n, dir);
+        float edge = MathF.Max(0f, 1f - dist2 / (x.Reach * x.Reach));
+        if (cos <= 0f || edge <= 0f || Occluded(p, target, ignore))
+        {
+            continue;
+        }
+        sum += x.Power * edge * edge * cos / MathF.Max(dist2, 0.3f);
+    }
+    return sum / Samples;
 }
 
 Vector3 DirectForBounce(Vector3 p, Vector3 n, int ignore, ref uint rng)
@@ -508,7 +570,30 @@ float[] Shade(Surface s, ref uint rng, float px, float py)
         indirect += Incoming(s.Pos, dir, s.Box, ref rng);
     }
     indirect /= IndirectSamples;
-    return new[] { direct.X, direct.Y, direct.Z, indirect.X, indirect.Y, indirect.Z, stutter, fire, others, Flash(s.Pos, s.Normal, s.Box, ref rng) };
+    var shaded = new float[Channels];
+    foreach (var x in extraArray)
+    {
+        float e = ExtraAt(x, s.Pos, s.Normal, s.Box, ref rng);
+        if (x.Group < 0)
+        {
+            direct += x.Color * e;
+        }
+        else
+        {
+            shaded[BaseChannels + x.Group] += e;
+        }
+    }
+    shaded[0] = direct.X;
+    shaded[1] = direct.Y;
+    shaded[2] = direct.Z;
+    shaded[3] = indirect.X;
+    shaded[4] = indirect.Y;
+    shaded[5] = indirect.Z;
+    shaded[6] = stutter;
+    shaded[7] = fire;
+    shaded[8] = others;
+    shaded[9] = Flash(s.Pos, s.Normal, s.Box, ref rng);
+    return shaded;
 }
 
 var started = DateTime.Now;
@@ -611,6 +696,7 @@ static float Next(ref uint rng)
     return rng / 4294967296f;
 }
 
+internal readonly record struct Extra(int Group, bool Window, Vector3 Pos, Vector3 Color, float Power, float Reach, int Axis, float C, float A0, float A1, float Z0, float Z1, float Bar);
 internal readonly record struct Light(Vector3 Pos, Vector3 Color, Vector3 Rules, float Power, int Layer, bool Hooded);
 
 internal readonly record struct Sprite(int Box, int Left, int Top, int W, int H, int Offset);

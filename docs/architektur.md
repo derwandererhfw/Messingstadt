@@ -65,6 +65,13 @@ Eingabe (Godot) -> Befehle -> World.Tick() -> Zustand -> Darstellung (Godot)
   Farbe, Art und Reichweite als `sources` ins Manifest ein. Dächer bekommen Nässeglanz vom Mond (`MOON_SPEC`) und ein Kantenlicht an
   der oberen Umrisskante (`RIM_LIGHT`). `MS_SKY`, `MS_MOON` und weitere Umgebungswerte ändern einen Probelauf, ohne die Datei anzufassen.
 
+- **Schaltbare Lichtflicken:** Erleuchtete Fenster der unteren Geschosse werfen einen Lichtteppich mit Fensterkreuz aufs Pflaster
+  (`CARPET_*` in `bake_light.py`). Dauerhaft brennende gehen fest in die Lichtkarten ein. Schaltende Fenster, die Leuchtschrift und das
+  Schweißlicht bekommen je ein Bild `light/patch_<nr>.png`: das Licht dieser Quelle auf allem, was man sieht, schon mit der Farbe der
+  Fläche. Das Manifest nennt sie unter `patches` mit Lage (`px`, `py`), Art, Farbe und den Kennungen aus `panes.json`, mit denen sie
+  schalten. Das Spiel zeichnet sie additiv über die Stadt. Laternen haben im Bild einen helleren Kern und enden weich (`scale`, `cut`
+  in `MAP_LAMPS`), Schienenköpfe glänzen (`RAIL_GLOSS`). All das gilt nur fürs Bild, das Schleichlicht bleibt.
+
 - **Stadtplan zur Einsatzwahl:** `tools/art/stadtplan.py` zeichnet `game/assets/stadtplan/plan.png` (1280 × 900) und
   je Viertel eine deckungsgleiche Maske `viertel_1.png` bis `viertel_5.png`, weiß mit Deckkraft, zum Einfärben im Code.
   `plan.json` nennt Kartenfeld, Ankerpunkte für Namen und Stempel und den Umriss jedes Viertels. Fluss, Bahn und eine
