@@ -53,3 +53,99 @@ Alle acht Sätze aus der Vorlage stimmen weiter: Die Pforte liegt an der Gericht
 ## Was verdeckt bleibt
 
 43 freie Felder sind ganz verdeckt, alle am Rand: der Fuß des Walls westlich der Wachstube, der Westrand hinter dem Amtsgericht, der Postengang zwischen Wachstube und Kaserne nördlich von y 7 und der Streifen direkt vor den Beamtenhäusern und der Remise. Der Wallposten läuft im verdeckten Teil am Wall, sichtbar ist er nur am Ostende. Hof, Zellentüren, Pforte, Hoftor, Schreibstube, Gerichtsgasse ab y 4 und die Wallstraße sind frei.
+
+## Der lange Rückweg: 30 × 30
+
+Entscheidung des Nutzers: Level 2 wird größer und abwechslungsreicher. `python tools/level/grow_nordwall.py` baut den Grundriss aus dem Kern von 20 × 20, der Feld für Feld oben links bleibt. Noch gilt für das Spiel die alte Karte `data/map_02.json`, bis Mission und Messung nachgezogen sind.
+
+```
+# gesperrt, . frei und sichtbar, f Füße verdeckt, X Figur ganz verdeckt
+    012345678901234567890123456789
+  0 ##############################
+  1 ##############################
+  2 XXXXfXX#######XXXX............
+  3 X####XX#######X####...........
+  4 X####.X#######X####...........
+  5 X####.f#######X####...........
+  6 X####.f#....f#X####......#....
+  7 X####.ff....f#.####...........
+  8 .####.f##ffff#................
+  9 .......#######................
+ 10 ..............................
+ 11 ......ffff....ffff............
+ 12 fffff.fffff...fffff...fffff...
+ 13 ####f#ffXXXX..ffXXXX..fXXXXX..
+ 14 ##..f#ffX####.ffX####.fX#####.
+ 15 ##..f#.fX####..fX####.fX#####.
+ 16 ....f#..X####...X####..X#####.
+ 17 ....ff.f.####..f.####...#####.
+ 18 .#..f#.f#......f#..#f#........
+ 19 ....f#.f#.#....f#...f#........
+ 20 ....f#.ffff....fff..f#........
+ 21 ...#f#.f#fffffff#ffff#........
+ 22 ....f#.ff###########f#..#.....
+ 23 ..#.f#.ff####..ff###f#........
+ 24 fffff#..f####...f###f#........
+ 25 ##f###...####....###.#........
+ 26 ..............................
+ 27 ..............................
+ 28 ..............................
+ 29 ..............................
+44 freie Felder ganz verdeckt, 110 teilweise
+```
+
+Hohes steht am Nord- und Westrand (Wall 60, Amtsgericht 150, Kaserne 120, Wachstube 96). Im Süden sind die Vorderhäuser 84 hoch, Hinterhaus und Kneipe 48, Mauern 30 bis 34. In beiden Höfen und auf allen Türmarken sind höchstens die Füße verdeckt. Ganz verdeckt bleiben nur der Fuß des Walls, der Westrand hinter dem Amtsgericht, der Postengang nördlich von y 7 und das Feld Vorgarten direkt nördlich der Vorderhäuser und der Remise.
+
+### Orte
+
+| Ort | Felder | Art, Höhe | Charakter |
+|---|---|---|---|
+| Kern: Wall, Amtsgericht, Gerichtsgasse, Wachstube, Arresthof, Wachlokal, Kaserne, Wallstraße | x 0–19, y 0–12 | unverändert | wie gemessen |
+| Stadtwall | x 0–30, y 0–2 | 60 | jetzt über die ganze Breite |
+| Exerzierplatz | x 20–30, y 2–10 | Kies, vier Bogenlampen, Fahnenmast bei (25,5, 6,5) | weit, leer, grell |
+| Kasernentür | Ostseite der Kaserne bei (19,5, 5,5) | Wandlampe | hier kommt die Verstärkung heraus |
+| Telefon und Draht | Apparat (13,5, 9,5) in der Schreibstube, Draht über den Postengang zur Kaserne, Stelle zum Kappen (14,5, 8,5) | | Regel baut die Gegner-Session |
+| Wallstraße | x 0–30, y 10–12 | Laternen bei x 2,5, 10,5, 16,5, 22,5, 28,5 | hell, die Streifen |
+| Friedhof der Namenlosen | x 0–5, y 14–25, Mauer ringsum 30 | Erde, neun Kreuze mit Nummern, drei kahle Bäume, Hütte des Totengräbers (0–2, 14–16), kein Licht | flach, dunkel, lang |
+| Durchgang | x 6–9, y 13–18 | wie bisher zwischen Mauer und Beamtenhaus A | dunkel, hier wartet der Trupp auf das Fenster |
+| Friedhofsgang | x 6–8, y 18–26 | Gasse | schmal, zur Südgasse |
+| Beamtenhaus A | x 9–13, y 14–18 | 84 | die Witwe wohnt zum Hof |
+| Westhof | x 9–13, y 18–22 | Hof mit Pumpe | eng, nach Osten offen zur Mittelgasse |
+| Mittelgasse | x 13–17, y 13–22 | Gasse, im Süden zugemauert | von der Wallstraße in die Höfe |
+| Beamtenhaus B | x 17–21, y 14–18 | 84 | hier wohnen Wachleute |
+| Osthof | x 17–21, y 18–22 | Hof mit Fässern | Hinterhof der Kneipe |
+| Hinterhaus | x 9–13, y 22–26 | 48 | schließt den Westhof |
+| Holzplatz | x 13–17, y 23–26 | Sackgasse zur Südgasse | Versteck |
+| Kneipe „Zum Wallgraben“ | x 17–20, y 22–26 | 48, Laterne zur Südgasse | Kellerhals an der Ostseite (x 20, y 22–26) |
+| Ostgasse | x 22–24, y 13–26 | Gasse | von der Wallstraße zum Kohlenhof |
+| Remise | x 24–29, y 14–18 | 56, Gefangenenwagen | Öffnung nach Süden, Wandlampe |
+| Kohlenhof | x 24–30, y 18–26 | Hof, Kohlenhaufen bei (24,5, 22,5) | hier wartet der Wagen |
+| Südgasse | x 0–30, y 26–28 | eine Laterne bei (10,5, 27,5) | Wohnstraße, kaum Licht |
+| Böschung | x 0–30, y 28–30 | Erde | Start |
+
+### Türen
+
+| Tür | Feld | Marke | Helfer |
+|---|---|---|---|
+| Friedhofspforte | [4, 13] | (4,5, 12,5) an der Wallstraße, gegenüber der Gerichtsgasse | |
+| Pforte des Totengräbers | [5, 17] | (6,5, 17,5) im Durchgang | Totengräber |
+| Südpforte des Friedhofs | [2, 25] | (2,5, 26,5) | |
+| Hoftür der Witwe | [8, 20] | (7,5, 20,5) im Friedhofsgang | Witwe |
+| Hoftür am Osthof | [16, 20] | (15,5, 20,5) in der Mittelgasse | |
+| Kellerluke der Kneipe | [20, 22] | (20,5, 21,5) im Osthof | Wirtin, nur wenn Greta lebt oder in Einsatz 1 niemand getötet wurde |
+
+Helferfenster mit Kerze: Witwe (10,5, 18,0) zum Westhof, Totengräber (1,0, 16,0) an der Hütte, Wirtin (20,0, 24,0) an der Ostwand der Kneipe. Nie helfen: Gerichtsdiener (Portal des Amtsgerichts, 3,0, 9,5), die Frau eines Wachmanns (Beamtenhaus B zum Osthof, 19,0, 18,2), Kasernenkoch (Küchentür der Kaserne, 17,0, 8,3).
+
+### Start, Ziel, drei Rückwege
+
+Start auf der Böschung x 9–13, y 28–30. Wagen im Kohlenhof x 27–30, y 20–23. Hinein wie bisher: Friedhofsgang, Durchgang, Wallstraße queren, Gerichtsgasse, Pforte. Zweiter Anmarsch: Holzplatz ist Sackgasse, aber durch Kellerluke, Osthof und Mittelgasse kommt man von Süden an die Wallstraße.
+
+| Rückweg | Verlauf | Länge ab Pforte oder Hoftor | Türen |
+|---|---|---|---|
+| Friedhof | Gerichtsgasse, Wallstraße queren, Durchgang, Pforte des Totengräbers, über den Friedhof, Südpforte, Südgasse nach Osten, Kohlenhof | etwa 55 Felder | zwei |
+| Beamtenhöfe | Durchgang, Hoftür der Witwe, Westhof, Mittelgasse, Hoftür am Osthof, Osthof, Kellerluke, Kellerhals, Südgasse, Kohlenhof | etwa 45 Felder | drei |
+| Exerzierplatz | Hoftor, Postengang, Wallstraße nach Osten am Platz entlang, Ostgasse, Kohlenhof | etwa 26 Felder | keine |
+
+### Geändert gegenüber dem Stand von 20 × 20
+
+Beamtenhaus West weicht dem Friedhof, an seiner Stelle begrenzt die Friedhofsmauer den Durchgang. Die Remise wandert von (15–19, 13–17) nach Osten. Der Wagen steht nicht mehr in der Wallgasse, die es nicht mehr gibt. Die Verstärkung kommt aus der Kasernentür statt vom Ostrand der Wallstraße.

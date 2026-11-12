@@ -13,7 +13,7 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 | Berufe auf der Akte (`role`) | Für Einsatz 1 eingetragen, Commit e7e194c auf `claude/story-62427b` |
 | Arbeitsumgebung (Skill, dieser Ordner) | Angelegt am 2026-11-06 |
 | Stadtplan mit fünf Vierteln | Im Spiel, Texte aus `stadtplan.md` |
-| Einsatz 2 | Gebaut mit Platzhaltergrafik, in `main` (`data/mission_02.json`). Texte der Vorlage wörtlich übernommen, Zurufe der Befreiten werden noch nicht angezeigt |
+| Einsatz 2 | Wird auf 30 × 30 vergrößert („Der lange Rückweg“), Vorlage seit 2026-11-12 in Abschnitt 8 angeglichen, Namen und Rufe in `texte/wachen.md`. Der Kern ist gebaut, in `main` (`data/mission_02.json`). Texte der Vorlage wörtlich übernommen, Zurufe der Befreiten werden noch nicht angezeigt |
 | Einsatz 3 bis 6 | Bauvorlagen `einsatz_03_gleisviertel.md` bis `einsatz_06_anzeiger.md`, Stand 2026-11-11. Noch nicht gebaut |
 | Grafikthemen der Viertel | `grafikthemen.md`, Stand 2026-11-11 |
 
@@ -40,6 +40,10 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 | 2026-11-11 | Einsatz 4 wird Überzeugen (ein Prokurist schließt Valks Schließfach auf), Einsatz 5 wird Ausschalten (Führer des Werkschutzes, der die Altstadt abriegelt). „Der Anzeiger“ bleibt sechster Einsatz | Nutzer über die Hauptsession („Ja, beide ändern“) |
 | 2026-11-11 | Namen freigegeben: Kesselviertel, Nordwall, Gleisviertel, Kontorviertel, Altstadt, Fischmarkt, Prokurist Albert Dorn, Werkschutzführer Gustav Rademacher | Nutzer („Ja, freigeben“) |
 | 2026-11-11 | Auftrag: Story weiterschreiben. Zuerst Einsatz 2 als Bauvorlage, dann Grafikthema je Viertel, dann Einsatz 3 bis 5 und Finale | Nutzer über die Hauptsession |
+| 2026-11-12 | Leitbild: „Eine Stadt, die keinen Toten vergisst, weder deine noch ihre.“ Vier Mechaniken: Totenbuch, die Wache vergisst nicht, Türen der Stadt, Narben. Inhalt in `../alleinstellung.md` | Nutzer mit der Session Alleinstellung |
+| 2026-11-12 | Die Regel „Tote werden nicht mehr genannt“ gilt nur noch für Erzähltexte. Akte, Totenbuch und Zeitung nennen die Toten | Hauptsession auf Grundlage des gewählten Leitbilds, keine wörtliche Freigabe des Nutzers |
+| 2026-11-12 | Einsatz 2 wird größer, 30 × 30: „Der lange Rückweg“ mit Friedhof der Namenlosen, Beamtenhöfen und Exerzierplatz. Drei Helfer mit Kerze im Fenster. Der Totschläger schlägt bewusstlos | Nutzer über die Hauptsession |
+| 2026-11-12 | Bestechen kostet die Hälfte, wenn Greta in Rufweite ist | Gebaut laut Hauptsession |
 
 ## Offene Entscheidungen
 
@@ -47,7 +51,6 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 |---|---|---|
 | Stadtplan: Kann ein Viertel an Brandt zurückfallen? Wie sieht der Notstand auf dem Plan aus? | Nutzer mit Kampagne | Vorschläge in `stadtplan.md`, Abschnitt Offen |
 | Je Einsatz volle oder kleine Fassung der neuen Regel: Gefangene (2), Sabotageziele mit Zeitdruck (3), Zielperson überzeugen (4), Zielperson ausschalten (5), Entscheidung und Halten (6) | Nutzer mit Mechanik | Jeweils Abschnitt 4 der Bauvorlage. Die kleine Fassung kommt ohne neue Regel aus, macht den Einsatz aber dem ersten ähnlicher |
-| Halber Bestechungspreis, wenn Greta dabei ist? | Nutzer mit Mechanik | Gäbe Greta eine Rolle in Einsatz 2, 4 und 5 |
 | Neue Gegnerart Werkschutzführer (Rademacher) | Nutzer mit Gegner | `einsatz_05_altstadt.md`, Abschnitt 3 |
 | Texte, Namen und Orte der Bauvorlagen für Einsatz 2 bis 6 | Nutzer | Stehen als VORSCHLAG in den Bauvorlagen und werden am gebauten Einsatz abgenommen |
 | Schlusssequenz teils im Präsens | Nutzer mit Sequenzen | `einsatz_06_anzeiger.md`, Abschnitt 5 |
