@@ -90,6 +90,8 @@ Eingabe (Godot) -> Befehle -> World.Tick() -> Zustand -> Darstellung (Godot)
   Dächer steigen dort von Norden und Westen höchstens so steil wie die Blickrichtung, damit sie nicht mehr verdecken
   als die Quader des Grundrisses. `tools/art/check_cover.py <nr>` prüft das an den fertigen Bildern. Das Schleichlicht
   einer neuen Karte wird beim ersten Lichtbake festgehalten (`rules_albedo_<nr>.json`, `rules_windows_<nr>.json`).
+  Karten sind quadratisch und beliebig groß: Die Kantenlänge steht als `size` im Manifest, Lichtbake und Kulisse richten sich danach.
+  Ab 21 Feldern schrumpft der Rand der Zeichenfläche, damit das feine Bodenbild höchstens 4096 Punkte breit wird (30 Felder: genau 4096).
 
 ## Zeichenreihenfolge
 

@@ -683,7 +683,8 @@ def export(scene, theme, s, things, assets):
     inside = (fx >= 0) & (fx < size) & (fy >= 0) & (fy < size)
     s.img.putalpha(Image.fromarray((inside * 255).astype(np.uint8), "L"))
     s.img.save(assets / "ground.png")
-    backdrop = {"file": "backdrop.png", "px": s.ox - g.BACKDROP_W // 2, "py": s.oy + size * g.HH - g.BACKDROP_H // 2}
+    bw, bh = g.backdrop_size(size)
+    backdrop = {"file": "backdrop.png", "px": s.ox - bw // 2, "py": s.oy + size * g.HH - bh // 2}
     manifest, solids, exported = [], [], []
     for i, t in enumerate(things):
         s.img = Image.new("RGBA", (s.w, s.h), (0, 0, 0, 0))
@@ -699,11 +700,11 @@ def export(scene, theme, s, things, assets):
                          "panes": t.panes, **({"roof": [p.to_json() for p in t.prisms]} if t.prisms else {})})
         if t.solid:
             solids.append({"x0": t.x0, "y0": t.y0, "x1": t.x1, "y1": t.y1, "opaque": t.opaque})
-    (assets / "manifest.json").write_text(json.dumps({"map": scene["id"], "ox": s.ox, "oy": s.oy, "things": manifest, "backdrop": backdrop,
+    (assets / "manifest.json").write_text(json.dumps({"map": scene["id"], "size": size, "ox": s.ox, "oy": s.oy, "things": manifest, "backdrop": backdrop,
                                                       "perches": [list(p) for p in theme.get("perches", ())],
                                                       "hd": {"res": g.HD, "ground": "hd/ground.png", "things": [n for t, n, _ in exported if t.hd]},
                                                       **g.AMBIENT}), encoding="utf-8")
-    g.export_backdrop(assets, theme.get("backdrop_keep"))
+    g.export_backdrop(assets, theme.get("backdrop_keep"), size)
     g.DUAL = True
     g.export_hd(assets, s, exported)
     return solids

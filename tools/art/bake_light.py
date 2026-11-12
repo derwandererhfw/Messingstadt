@@ -291,6 +291,7 @@ def main():
         albedo_file = Path(__file__).with_name(f"rules_albedo_{args['nr']}.json")
         RULES_WINDOWS = Path(__file__).with_name(f"rules_windows_{args['nr']}.json")
     manifest = json.loads((ASSETS / "manifest.json").read_text(encoding="utf-8"))
+    tiles = manifest.get("size", 20)  # Felder je Kante, das Kesselviertel hat 20
     WORK.mkdir(parents=True, exist_ok=True)
     if OUT.exists():
         shutil.rmtree(OUT)
@@ -450,7 +451,7 @@ def main():
         lights.append({"x": x, "y": y, "z": z, "color": "fire", "power": FIRE_POWER, "layer": 2, "hooded": False})
 
     scene = {
-        "ox": manifest["ox"], "oy": manifest["oy"], "zScale": Z_SCALE, "mapSize": 20, "stride": STRIDE,
+        "ox": manifest["ox"], "oy": manifest["oy"], "zScale": Z_SCALE, "mapSize": tiles, "stride": STRIDE,
         "sky": SKY, "rulesSky": RULES_SKY, "groundAlbedo": (groundless.mean(axis=0)[:3] / 255).tolist(),
         "lampColor": LAMP_COLOR, "lampPicture": lamp["color"], "lampScale": trial("LAMP", lamp["scale"]), "lampReach": float(os.environ.get("MS_CUT", lamp["cut"])), "fireColor": FIRE_COLOR, "moonSpec": MOON_SPEC, "extras": extras, "extraGroups": len(groups),
         "windowTypes": [{"color": t["color"], "power": t["power"]} for t in WINDOW_TYPES.values()],
@@ -531,7 +532,7 @@ def main():
     (ASSETS / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     print(f"{len(extras)} Zusatzquellen, {len(listed)} Lichtflicken")
 
-    size = 20 * GRID_RES
+    size = tiles * GRID_RES
     grid = np.fromfile(WORK / "grid.bin", dtype="<f4").reshape(size, size, 7)
     inside = grid[..., 0] < 0
     grid[inside] = 0
