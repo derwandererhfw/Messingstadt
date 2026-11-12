@@ -271,6 +271,10 @@ Vector3 CosineDir(Vector3 n, ref uint rng) => Vector3.Normalize(n + RandomOnSphe
 
 // Stärke der Feuer in diesem Durchgang: 1 fürs Bild, ein eigener Wert für das Licht der Spielregeln.
 float fireScale = 1f;
+// Laternen im Bild: schwächer und mit weichem Ende bei lampReach Feldern, damit zwischen ihnen Dunkel bleibt. Die Regeln
+// rechnen mit voller Stärke und ohne Ende.
+float lampScale = root.TryGetProperty("lampScale", out var lampScaleElement) ? lampScaleElement.GetSingle() : 1f;
+float lampReach = root.TryGetProperty("lampReach", out var lampReachElement) ? lampReachElement.GetSingle() : 0f;
 
 float LightAt(Light l, Vector3 p, Vector3 n, int ignore, ref uint rng, out Vector3 toLight)
 {
@@ -284,7 +288,13 @@ float LightAt(Light l, Vector3 p, Vector3 n, int ignore, ref uint rng, out Vecto
     {
         return 0f;
     }
-    return l.Power * (l.Layer == 2 ? fireScale : 1f) * cos / MathF.Max(dist2, 0.15f);
+    float shape = 1f;
+    if (l.Layer != 2 && !rulesPass)
+    {
+        float edge = lampReach > 0f ? MathF.Max(0f, 1f - dist2 / (lampReach * lampReach)) : 1f;
+        shape = lampScale * edge * edge;
+    }
+    return l.Power * shape * (l.Layer == 2 ? fireScale : 1f) * cos / MathF.Max(dist2, 0.15f);
 }
 
 Vector3 DirectForBounce(Vector3 p, Vector3 n, int ignore, ref uint rng)

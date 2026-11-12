@@ -30,8 +30,9 @@ VOID_LIGHT = (0.17, 0.185, 0.275)  # außerhalb der Karte: der gemalte Nachthimm
 LAMP_COLOR = (1.0, 0.74, 0.42)  # elektrische Laternen des Kesselviertels. Fürs Schleichen gilt diese Farbe auf jeder Karte
 # Laternen je Karte, nur fürs Bild: Farbe, Art und Reichweite in Feldern. Steht im Manifest unter "sources" für Lichtkegel und Dunst.
 MAP_LAMPS = {
-    "": dict(color=LAMP_COLOR, kind="elektrisch", reach=4.5),
-    "nordwall": dict(color=(0.90, 0.95, 0.56), kind="gas", reach=4.0),  # Gasglühlicht: grünlich-gelb und etwas schwächer im Umkreis
+    # scale: Stärke im Bild gegenüber den Regeln. cut: Bei so vielen Feldern Abstand endet das Licht im Bild weich, 0 = nie.
+    "": dict(color=LAMP_COLOR, kind="elektrisch", reach=4.2, scale=1.6, cut=4.2),
+    "nordwall": dict(color=(0.90, 0.95, 0.56), kind="gas", reach=4.0, scale=1.0, cut=0.0),  # Gasglühlicht: grünlich-gelb und etwas schwächer im Umkreis
 }
 FIRE_REACH = 3.0
 MOON_SPEC = 2.4  # Nässeglanz auf Dächern: Der Mond spiegelt sich in Flecken, wo die Fläche zur Kamera vermittelt
@@ -374,7 +375,7 @@ def main():
     scene = {
         "ox": manifest["ox"], "oy": manifest["oy"], "zScale": Z_SCALE, "mapSize": 20, "stride": STRIDE,
         "sky": SKY, "rulesSky": RULES_SKY, "groundAlbedo": (groundless.mean(axis=0)[:3] / 255).tolist(),
-        "lampColor": LAMP_COLOR, "lampPicture": lamp["color"], "fireColor": FIRE_COLOR, "moonSpec": MOON_SPEC,
+        "lampColor": LAMP_COLOR, "lampPicture": lamp["color"], "lampScale": trial("LAMP", lamp["scale"]), "lampReach": float(os.environ.get("MS_CUT", lamp["cut"])), "fireColor": FIRE_COLOR, "moonSpec": MOON_SPEC,
         "windowTypes": [{"color": t["color"], "power": t["power"]} for t in WINDOW_TYPES.values()],
         "specStrength": SPEC_STRENGTH, "puddleSpec": PUDDLE_SPEC,
         "flashDirection": FLASH_DIRECTION, "flashAmbient": FLASH_AMBIENT,
