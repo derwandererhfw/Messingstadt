@@ -110,7 +110,26 @@ void fragment() {
         private const int MaxCuts = 6;
         private const float CutOpenPerSecond = 6f;
         private const float CutRise = 21f;
-        private static readonly Color LampColor = new(1f, 0.74f, 0.42f);
+        /// <summary>Farbe der Laternen der gespielten Karte, aus ihrem Manifest (lampColor). Fehlt der Eintrag, gilt das warme elektrische Licht.</summary>
+        private static Color LampColor
+        {
+            get
+            {
+                if (s_lampScene != s_scene)
+                {
+                    s_lampScene = s_scene;
+                    s_lampColor = new Color(1f, 0.74f, 0.42f);
+                    using var manifest = JsonDocument.Parse(File.ReadAllText(Globalize("res://assets/manifest.json")));
+                    if (manifest.RootElement.TryGetProperty("lampColor", out var c))
+                    {
+                        s_lampColor = new Color(c[0].GetSingle(), c[1].GetSingle(), c[2].GetSingle());
+                    }
+                }
+                return s_lampColor;
+            }
+        }
+        private static string? s_lampScene;
+        private static Color s_lampColor;
         private static readonly Color FireColor = new(1f, 0.45f, 0.15f);
 
         // Bewegte Figuren nehmen ihr Licht aus dem Lichtgitter. Damit sie lesbar bleiben, gibt es eine Mindesthelligkeit,
