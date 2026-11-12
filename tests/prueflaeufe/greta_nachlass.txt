@@ -1,0 +1,73 @@
+# Einsatz 2 leise mit Greta: Sie geht mit Otto und Emil durch die Gasse. Ist sie dabei, nehmen Hundeführer und Schließer
+# nur den halben Preis, 250 statt 500. Hanna bleibt am Start.
+# Aufruf mit --fresh --mission=mission_02. Die Takte stammen aus der Spur des Messwerkzeugs
+# (dotnet run --project tools/Messingstadt.Balance -- --mission=mission_02 --spur greta). Im Prüflauf ist die Spielzeit fest,
+# die Streifen stehen also jedes Mal an derselben Stelle.
+wait 40
+expect mission mission_02
+expect cash 600
+expect guards 10
+# Am Start steht Greta neben Emil: Der Nachlass gilt, der Text am Mauszeiger sagt es
+waitcontains prices Hundeführer: käuflich für 150, Greta ist dabei
+waitcontains prices Wachhabender: käuflich für 200, Greta ist dabei
+key Key1
+clickfield 6 16
+# In den Durchgang zwischen den Beamtenhäusern
+key Key2
+clickfield 7 15
+key Key3
+clickfield 6 15
+waittick 450
+# Fenster: beide Wallstreifen laufen auseinander. In der dunklen Gasse auf den Hundeführer warten, er kommt vom Wall zurück
+clickfield 6 7
+key Key2
+clickfield 6 8
+key Key1
+clickfield 5 8
+waittick 510
+key Key3
+rclickunit Hundeführer
+waitcontains bribed Hundeführer
+expect cash 450
+key Key2
+rclickdoor Pforte zur Gerichtsgasse
+waitcontains doors Pforte zur Gerichtsgasse
+key Key3
+rclickunit Schließer
+waitcontains bribed Schließer
+expect cash 350
+expect keys Emil:2, Türposten:1
+# Otto öffnet Zelle 1 als Schlosser, Emil Zelle 2 mit dem Schlüssel des Schließers
+key Key2
+rclickdoor Zelle 1
+key Key3
+rclickdoor Zelle 2
+waitcontains prisoners Anton Weiß:folgt Otto
+waitcontains prisoners Paul Roth:folgt Emil
+# Tief in der dunklen Gasse auf das Fenster warten
+key Key2
+clickfield 5 6
+key Key3
+clickfield 6 6
+waittick 1070
+expect rating Quiet
+clickfield 6 15
+key Key2
+clickfield 7 15
+# Greta ist schneller als die Befreiten und geht deshalb einen Augenblick später los, sonst stünde sie zu früh auf der Straße
+waittick 1090
+key Key1
+clickfield 6 16
+waittick 1160
+key Key2
+clickfield 1 18
+key Key3
+clickfield 0 18
+key Key1
+clickfield 1 19
+waitcontains telegram EINSTEIGEN
+waitfor state Won
+expect rating Quiet
+expect down 0
+expect guards 10
+print

@@ -166,6 +166,9 @@ namespace Messingstadt.Core
         public const int BribeRange = 2 * TileUnits;
         public const string SkillLocksmith = "schlosser";
         public const string SkillBookkeeper = "buchhalter";
+
+        /// <summary>Die Truppführerin kennt die Stadtwache: Ist sie dabei, nehmen Wachen weniger, siehe LeaderBacks.</summary>
+        public const string SkillLeader = "truppfuehrerin";
         public const int GuardConeRange = 5 * TileUnits;
 
         // Licht beim Schleichen: Im Dunkeln wird man später bemerkt, unter der Laterne schneller.
@@ -407,7 +410,7 @@ namespace Messingstadt.Core
             var u = Units[unitId];
             var g = Units[guardId];
             if (!u.Alive || u.Skill != SkillBookkeeper || !g.Alive || g.Faction != Faction.Guard || g.Bribed
-                || g.GuardState == GuardState.Combat || g.Type.BribeCost == 0 || Money < BribePrice(g) || State != MissionState.Running)
+                || g.GuardState == GuardState.Combat || g.Type.BribeCost == 0 || Money < BribePrice(g, u) || State != MissionState.Running)
             {
                 return false;
             }
@@ -557,14 +560,14 @@ namespace Messingstadt.Core
         private void WorkOnBribe(Unit a)
         {
             var g = Units[a.BribeTarget];
-            if (!g.Alive || g.Bribed || g.GuardState == GuardState.Combat || Money < BribePrice(g))
+            if (!g.Alive || g.Bribed || g.GuardState == GuardState.Combat || Money < BribePrice(g, a))
             {
                 a.BribeTarget = -1;
                 a.Path.Clear();
             }
             else if (CanSee(a, g, BribeRange))
             {
-                Money -= BribePrice(g);
+                Money -= PayBribe(g, a);
                 g.Bribed = true;
                 HandOverKeys(g, a);
                 foreach (var dog in Units)

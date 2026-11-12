@@ -681,6 +681,7 @@ void fragment() {
             ["menusounds"] = _sound.MenuPlayCount.ToString(),
             ["menusound"] = _sound.LastMenuSound,
             ["uisounds"] = _sound.UiPlayCount.ToString(),
+            ["prices"] = string.Join(" | ", World.Units.Where(u => u.Faction == Faction.Guard && u.Alive && !u.Bribed && u.Type.BribeCost > 0 && u.LeashedTo < 0).Select(u => $"{u.Name}: {BribeWord(u)}")),
             ["state"] = World.State.ToString(),
             ["item"] = World.ItemTaken.ToString(),
             ["fields"] = _paper.FieldTexts,
@@ -2144,6 +2145,25 @@ void fragment() {
         public Vector2 FigureScale => Vector2.One / _figureRes;
 
         /// <summary>Gegner unter dem Mauszeiger, den ein Agent gerade sieht. Für die Anzeige der Art.</summary>
+        /// <summary>
+        /// Was eine Wache jetzt kostet, für den Text am Mauszeiger. Steht die Truppführerin beim Buchhalter oder sieht sie die Wache,
+        /// gilt ihr Nachlass. Ist sie im Einsatz, aber zu weit weg, steht da, was mit ihr zu sparen wäre. Vorläufige Texte.
+        /// </summary>
+        public string BribeWord(Unit guard)
+        {
+            int full = guard.Type.BribeCost;
+            var payer = World.Units.Find(u => u.Alive && u.Faction == Faction.Agent && u.Skill == World.SkillBookkeeper);
+            var leader = World.Units.Find(u => u.Alive && u.Faction == Faction.Agent && u.Skill == World.SkillLeader);
+            if (payer == null || leader == null || World.LeaderDiscountPercent <= 0)
+            {
+                return $"käuflich für {full}";
+            }
+            int now = World.BribePrice(guard, payer);
+            int with = full * (100 - World.LeaderDiscountPercent) / 100;
+            return now < full ? $"käuflich für {now}, {leader.Name} ist dabei"
+                : World.LeaderBacksLater ? $"käuflich für {full}, mit {leader.Name} in der Nähe {with}" : $"käuflich für {full}";
+        }
+
         public Unit? HoveredGuard()
         {
             var guard = UnitUnderCursor(GetGlobalMousePosition(), Faction.Guard);
