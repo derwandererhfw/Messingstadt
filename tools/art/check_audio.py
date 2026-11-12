@@ -49,6 +49,8 @@ MAX_MENU_ABOVE_4K = 5.0
 MAX_MENU_BELOW_120 = 50.0
 MAX_PEIL_ABOVE_2K = 3.0
 STINGERS = ("music_in_fight", "music_to_calm")
+# Dampfstoß und Schweißen: nach dem Urteil des Nutzers gedeckelt, im Pegel und in den Höhen.
+HISSES = {"steam_burst": (-30.0, 12.0), "weld": (-35.0, 3.0)}
 MAX_STINGER_GAME_DBA = -38.0
 MAX_PEIL_DBA = -28.0
 MIN_PEIL_GAME_DBA = -50.0
@@ -161,6 +163,11 @@ def main():
             calm_power += 10 ** (level / 10)
     both = 10 * np.log10(calm_power)
     check(both <= MAX_MUSIC_GAME_DBA, f"Ruhe und Verdacht zusammen: {both:.1f} dB(A), Grenze {MAX_MUSIC_GAME_DBA}")
+
+    for name, (limit, bright) in HISSES.items():
+        x, rate = load(name)
+        check(dba(x, rate) <= limit, f"{name}: {dba(x, rate):.1f} dB(A) in der Datei, Grenze {limit}")
+        check(share(x, rate, 4000, 1e9) <= bright, f"{name}: über 4 kHz {share(x, rate, 4000, 1e9):.1f} %")
 
     for name in STINGERS:
         x, rate = load(name)

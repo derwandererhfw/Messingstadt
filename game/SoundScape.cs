@@ -117,6 +117,8 @@ namespace Messingstadt
         private float _nextRoomProbe;
         private string? _heldMusic;
         private bool _logAtExit;
+        // Nur mit --sound-log: je Klang der höchste Pegel an der Kamera und wie lange er zu hören war.
+        private readonly Dictionary<string, (float Peak, float Seconds, float Sum)> _heard = new();
         private World? _world;
         private int _lastShot;
         private int _lastStrike;
@@ -507,6 +509,35 @@ namespace Messingstadt
             if (_logAtExit)
             {
                 GD.Print("Geräusche abgespielt: " + string.Join(", ", PlayedByGroup.Select(g => $"{g.Key} {g.Value}")));
+                foreach (var (name, h) in _heard.OrderByDescending(h => h.Value.Peak))
+                {
+                    GD.Print($"GEHOERT {name} spitze {h.Peak:0.0} dB mittel {h.Sum / Mathf.Max(h.Seconds, 0.001f):0.0} dB dauer {h.Seconds:0.0} s");
+                }
+            }
+        }
+
+        /// <summary>Misst für das Protokoll, wie laut jeder Ortsklang gerade an der Kamera ankommt (Lautstärke mal Abstandsdämpfung).</summary>
+        private void LogHeard(float dt)
+        {
+            foreach (var child in GetChildren())
+            {
+                if (child is not AudioStreamPlayer2D { Playing: true } player || player.Stream == null)
+                {
+                    continue;
+                }
+                float distance = player.GlobalPosition.DistanceTo(Game.CameraCenter);
+                if (distance >= player.MaxDistance)
+                {
+                    continue;
+                }
+                float db = player.VolumeDb + Mathf.LinearToDb(Mathf.Pow(1f - distance / player.MaxDistance, player.Attenuation));
+                if (db < SilentDb)
+                {
+                    continue;
+                }
+                string name = _sounds.FirstOrDefault(pair => pair.Value == player.Stream).Key ?? "?";
+                var h = _heard.GetValueOrDefault(name, (SilentDb, 0f, 0f));
+                _heard[name] = (Mathf.Max(h.Item1, db), h.Item2 + dt, h.Item3 + db * dt);
             }
         }
 
@@ -555,6 +586,10 @@ namespace Messingstadt
             UpdateRoom(world, (float)delta);
             UpdateWeather();
             UpdateHush((float)delta);
+            if (_logAtExit)
+            {
+                LogHeard((float)delta);
+            }
         }
 
         private void ListenToUnit(World world, Unit u)
