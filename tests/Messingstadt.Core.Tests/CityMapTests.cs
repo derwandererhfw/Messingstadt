@@ -197,11 +197,11 @@ namespace Messingstadt.Core.Tests
         [Fact]
         public void BrokenDistrictValuesAreRepaired()
         {
-            var c = Campaign.Load("{\"Version\":4,\"Conquered\":[\"viertel_1\",\"\",\"viertel_1\",null],\"District\":null}", out var status);
+            var c = Campaign.Load("{\"Version\":5,\"Conquered\":[\"viertel_1\",\"\",\"viertel_1\",null],\"District\":null}", out var status);
             Assert.Equal(SaveStatus.Loaded, status);
             Assert.Equal(new[] { "viertel_1" }, c.Conquered);
             Assert.Equal("", c.District);
-            Assert.Empty(Campaign.Load("{\"Version\":4,\"Missions\":3,\"Conquered\":null}", out _).Conquered);
+            Assert.Empty(Campaign.Load("{\"Version\":5,\"Missions\":3,\"Conquered\":null}", out _).Conquered);
         }
 
         [Fact]

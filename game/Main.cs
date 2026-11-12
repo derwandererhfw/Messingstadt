@@ -1668,6 +1668,15 @@ void fragment() {
             {
                 _panelBody.AddChild(PanelLabel(CampaignTexts.Rescue(_campaign.LastPrisoners), 13));
             }
+            // Die Stadt vergisst keinen Toten: beide Seiten mit Namen, eine Zeile.
+            string deadLine = CampaignTexts.DeadLine(_campaign.DeadLastNight());
+            if (deadLine.Length > 0 && (World.State != MissionState.Running || Campaign.AbandonCostsSquad(World)))
+            {
+                var dead = PanelLabel(deadLine, 13);
+                dead.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+                dead.CustomMinimumSize = new Vector2(640, 0);
+                _panelBody.AddChild(dead);
+            }
             if (World.Units.Any(u => u.Faction == Faction.Agent && (!u.Alive || _abandoned)))
             {
                 _panelBody.AddChild(PanelLabel(CampaignTexts.RuleHint, 13));

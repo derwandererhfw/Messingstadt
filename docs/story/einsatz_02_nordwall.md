@@ -1,6 +1,6 @@
 # Einsatz 2: Die Wachstube (Nordwall, Befreien)
 
-Stand 2026-11-11. Bauvorlage der Story-Session für Level, Mechanik, Grafik, Ton und Sequenzen. Auftrag des Nutzers über die Hauptsession. Rahmen (Viertel, Auftragsart, wer befreit wird) ist KANON. Karte, Gegner, Regeln und Texte in dieser Datei sind VORSCHLAG der Story, bis der Nutzer sie am gebauten Einsatz abnimmt. Alle Koordinaten sind Felder auf einer Karte von 20 × 20 wie in `data/map_01.json`, Norden ist y = 0. Der gebaute Grundriss steht in `../einsatz_02_grundriss.md` und geht bei Abweichungen vor. Diese Vorlage ist am 2026-11-11 daran angeglichen: Die Wachstube steht am Wall, der Arresthof liegt südlich davor, weil die Schrägansicht sonst Hof und Zellen verdeckt hätte.
+Stand 2026-11-12. Bauvorlage der Story-Session für Level, Mechanik, Grafik, Ton und Sequenzen. Auftrag des Nutzers über die Hauptsession. Rahmen (Viertel, Auftragsart, wer befreit wird) ist KANON. Karte, Gegner, Regeln und Texte in dieser Datei sind VORSCHLAG der Story, bis der Nutzer sie am gebauten Einsatz abnimmt. Alle Koordinaten sind Felder, Norden ist y = 0. Die Karte ist seit dem 2026-11-12 auf 30 × 30 gewachsen („Der lange Rückweg“, Entscheidung des Nutzers). Der Kern von 20 × 20 liegt unverändert oben links. Was die größere Karte ändert, steht in Abschnitt 8 und geht den Abschnitten 2 bis 4 vor. Der gebaute Grundriss steht in `../einsatz_02_grundriss.md` und geht bei Abweichungen vor. Diese Vorlage ist am 2026-11-11 daran angeglichen: Die Wachstube steht am Wall, der Arresthof liegt südlich davor, weil die Schrägansicht sonst Hof und Zellen verdeckt hätte.
 
 ## 1. Geschichte
 
@@ -55,11 +55,10 @@ Der Nordwall ist das Viertel am alten Stadtwall. Zu sehen ist der Platz hinter d
 | Hofmauer West | x 7–8, y 6–9 | Niedrig. Die Pforte zur Gerichtsgasse ist eine Lücke in der Mauer mit einem Tor aus Eisenblech (so gebaut, Stand 2026-11-11) |
 | Hofmauer Ost | x 13–14, y 6–9 | Niedrig. Darin das Hoftor |
 | Kaserne der Wache | x 15–19, y 3–8 | Mannschaftshaus, einige Fenster hell |
-| Remise | x 15–19, y 13–17 | Offener Schuppen mit dem Gefangenenwagen, grau, vergittert. Requisit, fährt nicht |
-| Wallstraße | y 10–12, ganze Breite | Kopfsteinpflaster, drei Laternen, Straßenbahnschienen ohne Bahn in dieser Nacht |
-| Beamtenhaus West | x 2–6, y 14–18 | Zwei Geschosse, davor ein Feld Vorgarten |
-| Beamtenhaus Ost | x 9–13, y 14–18 | Ebenso. Dazwischen ein Durchgang, x 6–9 |
-| Wallgasse | x 0–2, y 13–20 | Sackgasse am Westrand. Hier wartet der Wagen der Wäscherei |
+| Remise | x 24–29, y 14–18 | Offener Schuppen mit dem Gefangenenwagen, grau, vergittert. Requisit, fährt nicht. Stand bis 2026-11-12 bei x 15–19, y 13–17 |
+| Wallstraße | y 10–12, ganze Breite | Kopfsteinpflaster, fünf Laternen, Straßenbahnschienen ohne Bahn in dieser Nacht |
+| Durchgang | x 6–9, y 13–18 | Dunkel, zwischen Friedhofsmauer und Beamtenhaus A. Hier wartet der Trupp auf das Fenster |
+| Alles südlich und östlich davon | | Siehe Abschnitt 8. Beamtenhaus West und Wallgasse gibt es nicht mehr |
 
 Laternen: (2,5, 10,5), (10,5, 10,5), (16,5, 10,5) auf der Wallstraße, (11,5, 10,1) über der Haupttür des Wachlokals, (10,5, 6,2) über den Zellentüren im Arresthof. Die Gerichtsgasse, der Fuß des Walls und der Durchgang zwischen den Beamtenhäusern sind dunkel. Die westliche Laterne stand in der ersten Vorlage bei x 4,5. Die Level-Session hat sie nach der Messung versetzt, damit die Querung zur Gerichtsgasse im Dunkeln liegt.
 
@@ -77,9 +76,10 @@ Alle fünf sind verschlossen. Regeln wie in `../konzept.md`: Schlosser 2 s, mit 
 
 ### Start und Ziel
 
-- Start: Durchgang zwischen den Beamtenhäusern, vier Agenten bei x 6,5 bis 8,5 und y 18,5 bis 19,5, im Dunkeln.
-- Ziel: Wagen in der Wallgasse, Zone x 0–2, y 17–20.
-- Verstärkung: Werkschutz vom Ostende der Wallstraße, (19,5, 11,5). Erste Welle 8 s nach dem ersten Schuss oder einer Meldung, dann alle 5 s, 3 Mann. Das ist der Transport, der früher kommt als geplant.
+- Start: Böschung an der Südgasse, x 9–13, y 28–30.
+- Ziel: Wagen der Wäscherei im Kohlenhof, Zone x 27–30, y 20–23.
+- Verstärkung: aus der Kasernentür (19,5, 5,5) auf den Exerzierplatz, gerufen über das Telefon in der Schreibstube. Wer den Draht kappt, hat keine Verstärkung. Die Regel baut die Gegner-Session.
+- Bis 2026-11-12: Start im Durchgang, Wagen in der Wallgasse, Werkschutz vom Ostende der Wallstraße.
 
 ## 3. Gegner
 
@@ -109,9 +109,9 @@ Die Wallstreifen liefen in der ersten Vorlage von x 3 bis 17. Die Level-Session 
 2. Durch die Pforte in den Arresthof.
 3. Beide Zellen öffnen.
 4. Beide Gefangenen aus dem Hof bringen.
-5. Zurück über die Wallstraße zum Wagen in der Wallgasse.
+5. Zum Wagen im Kohlenhof, auf einem von drei Wegen (Abschnitt 8).
 
-Der Rückweg ist der schwere Teil: Die Gefangenen sind langsam, und die Wallstraße liegt im Licht.
+Der Rückweg ist der schwere Teil: Die Gefangenen sind langsam, und der Wagen steht am anderen Ende des Viertels.
 
 ### Leise
 
@@ -123,7 +123,7 @@ Der Rückweg ist der schwere Teil: Die Gefangenen sind langsam, und die Wallstra
 ### Laut
 
 - Durch das Hoftor: von der Wallstraße in den Gang zwischen Wachlokal und Kaserne, am Wachhabenden vorbei. Rauchtopf in den Postengang gegen den Wallposten, dann der Mann vom Werk aus der Nähe, am besten mit der Schrotflinte. Der Totschläger hilft gegen ihn nicht.
-- Nach dem ersten Schuss kommt der Werkschutz vom Ostende der Wallstraße. Der Rückweg zur Wallgasse führt dann durch die Gerichtsgasse und quer über die Straße, mit den Gefangenen im Schlepp.
+- Nach dem ersten Schuss telefoniert die Schreibstube, und die Kaserne schickt Leute auf den Exerzierplatz. Der kurze Rückweg führt genau dort vorbei.
 - Ein Rauchtopf auf der Wallstraße deckt die Querung.
 
 ### Was jeder beiträgt
@@ -166,7 +166,7 @@ Empfohlen ist die volle Fassung. Die kleine Fassung kommt ohne neue Regel aus un
 | `title` | Die Wachstube |
 | `place` | Nordwall, hinter dem Amtsgericht |
 | `time` | Donnerstag, 24. November 1927, 4:10 Uhr |
-| `briefing` | In der Wachstube Nord sitzen zwei von uns: Paul Roth und der Drucker Anton Weiß. Um sechs holt sie der Werkschutz ab, und was der mit Gefangenen macht, steht in keiner Akte. Holt beide vorher raus und bringt sie zum Wagen in der Wallgasse. Die Wache dort ist arm und müde. Redet, bevor ihr schießt. K. |
+| `briefing` | In der Wachstube Nord sitzen zwei von uns: Paul Roth und der Drucker Anton Weiß. Um sechs holt sie der Werkschutz ab, und was der mit Gefangenen macht, steht in keiner Akte. Holt beide vorher raus und bringt sie zum Wagen im Kohlenhof hinter der Remise. Die Wache dort ist arm und müde. Redet, bevor ihr schießt. K. |
 | `loot.name` | Bußgeldkasse |
 
 Der kurze Auftrag auf dem Stadtplan steht schon in `data/stadtplan.json`.
@@ -175,14 +175,14 @@ Der kurze Auftrag auf dem Stadtplan steht schon in `data/stadtplan.json`.
 
 | Zustand | Text |
 |---|---|
-| Beginn | `GEFANGENE IM ARRESTHOF STOP PFORTE AN DER GERICHTSGASSE STOP DANN ZUM WAGEN IN DER WALLGASSE STOP` |
+| Beginn | `GEFANGENE IM ARRESTHOF STOP PFORTE AN DER GERICHTSGASSE STOP DANN ZUM WAGEN IM KOHLENHOF STOP` |
 | Zelle wird geöffnet | `ZELLE WIRD GEÖFFNET STOP STEHEN BLEIBEN STOP` |
 | Einer frei | `{NAME} FREI STOP DER ZWEITE FEHLT NOCH STOP` |
-| Beide frei | `BEIDE FREI STOP ZUM WAGEN IN DER WALLGASSE STOP SIE SIND LANGSAM STOP` |
+| Beide frei | `BEIDE FREI STOP ZUM WAGEN IM KOHLENHOF STOP SIE SIND LANGSAM STOP` |
 | Einer tot | `{NAME} TOT STOP DEN ANDEREN RAUSBRINGEN STOP` |
 | Am Wagen | `EINSTEIGEN STOP STEHEN BLEIBEN STOP` |
 | Kleine Fassung, beim Aufnehmen | `GEFANGENE WERDEN GEHOLT STOP STEHEN BLEIBEN STOP` |
-| Kleine Fassung, danach | `GEFANGENE FREI STOP ZUM WAGEN IN DER WALLGASSE STOP` |
+| Kleine Fassung, danach | `GEFANGENE FREI STOP ZUM WAGEN IM KOHLENHOF STOP` |
 
 `{NAME}` ist WEISS oder ROTH.
 
@@ -203,7 +203,7 @@ Ohne Spielhinweis:
 
 Mit Spielhinweis, geprüft gegen die Karte oben. Wer die Karte ändert, prüft sie mit:
 
-- „Um sechs kommt der Werkschutz und holt die zwei.“ (Verstärkung ist Werkschutz)
+- „Um sechs kommt der Werkschutz und holt die zwei.“ (stimmt als Geschichte. Die Verstärkung kommt seit 2026-11-12 aus der Kaserne)
 - „Der Schließer nimmt Geld. Hat er immer.“ (käuflich für 200)
 - „Am Hoftor steht schon einer vom Werk. Mit dem redet keiner.“ (Werkschutz, nicht käuflich)
 - „Die Pforte zur Gerichtsgasse ist zu. Aber da schaut nie einer nach.“ (verschlossen, kein Posten)
@@ -302,4 +302,132 @@ Nach der Zeitung, nur beim Sieg:
 | Zeit | 24. November 1927 ist ein Donnerstag. Zwei Tage nach Einsatz 1 |
 | Spiel | Alle Gegner aus dem Bestand, Preise aus `../konzept.md`. Neue Regel nur für Gefangene |
 | Welt | Die Wache ist müde und käuflich, der Werkschutz nicht. Brandt tritt nicht auf |
+| Leitbild | Jede Wache hat einen Namen. Helfer zeigen sich mit einer Kerze, nicht mit Text. Niedergeschlagene stehen nicht im Totenbuch |
 | Offen gelassen | Ob ein Viertel zurückfallen kann und wie der Notstand auf dem Plan aussieht, berührt dieser Einsatz nicht |
+
+## 8. Der lange Rückweg: 30 × 30
+
+Stand 2026-11-12. Der Nutzer hat entschieden, dass Einsatz 2 größer wird. Der Grundriss steht in `../einsatz_02_grundriss.md`, Abschnitt „Der lange Rückweg“, und geht bei Abweichungen vor. Orte, Türen und Posten sind dort festgelegt. Hier steht, was sie für die Geschichte bedeuten, und die Texte dazu. Alle Texte sind VORSCHLAG.
+
+### Das Viertel
+
+Der Nordwall ist das Viertel der Wache. Hier wohnen Wachleute, Gerichtsdiener und ihre Familien. Niemand hilft dem Trupp aus Überzeugung für den Hammer. Wer hilft, tut es aus Groll gegen Pieper und das Werk.
+
+| Ort | Was er erzählt |
+|---|---|
+| Friedhof der Namenlosen, x 0–5, y 14–25 | Neun Kreuze mit Nummern statt Namen. Hier begräbt die Stadt, wen das Werk bringt. Das Gegenbild zum Totenbuch: So sieht es aus, wenn eine Stadt vergisst. Kein Licht |
+| Beamtenhaus A und B, Westhof, Osthof | Hier schlafen die Familien der Wachen. Wer hier schießt, schießt vor ihrer Haustür |
+| Kneipe „Zum Wallgraben“ | Die Kneipe der Wachleute. Nur von außen zu sehen, der Keller ist ein Weg |
+| Exerzierplatz | Weit, leer, grell. Vier Bogenlampen und ein Fahnenmast. Der Ort, an dem man gesehen wird |
+| Kohlenhof | Hinter der Remise. Hier wartet der Wagen der Wäscherei, zwischen Kohlenhaufen |
+| Südgasse | Wohnstraße, eine Laterne. Von hier kommt der Trupp |
+
+### Drei Rückwege
+
+| Weg | Länge, Türen | Was er kostet | Wer dort ist |
+|---|---|---|---|
+| Friedhof | etwa 55 Felder, zwei Türen | Zeit. Dunkel und lang, mit den Gefangenen im Schritt | Buchholz als Streife, oder Thiele, wenn er Einsatz 1 überlebt hat. Der Totengräber |
+| Beamtenhöfe | etwa 45 Felder, drei Türen | Enge. Fenster, Türen, Bewohner | Fenske als Nachtwächter in der Mittelgasse. Die Witwe, die Wirtin, die Frau des Wachmanns |
+| Exerzierplatz | etwa 26 Felder, keine Tür | Licht. An der Kasernentür vorbei | Lindner am Fahnenmast, Roloff an der Remise, die Verstärkung |
+
+Auf der Südgasse läuft Zander Streife. Er kreuzt den Friedhofsweg und den Weg durch die Höfe am Ende.
+
+### Helfer
+
+Das Zeichen ist eine Kerze im Fenster, kein Text. Brennt sie, ist die Tür offen. Nach Blut in Einsatz 1 brennt keine.
+
+| Wer | Tür | Bedingung | Satz, wenn der Trupp durchgeht |
+|---|---|---|---|
+| Matthes Kroll, Totengräber | Pforte des Totengräbers [5, 17] | Kein Toter in Einsatz 1 | „Geht nur. Die hier verraten keinen.“ |
+| Agnes Töpfer, Witwe eines Wachmanns | Hoftür [8, 20] | Kein Toter in Einsatz 1 | „Geht durch. Ich hab nichts gehört.“ |
+| Else Radtke, Wirtin | Kellerluke [20, 22] | Greta lebt, oder kein Toter in Einsatz 1 | Mit Greta im Trupp: „Durch den Keller, Lenz. Wie früher.“ Sonst: „Durch den Keller. Schnell.“ |
+
+Ist die Tür zu und ein Agent steht davor, höchstens ein Satz hinter der Tür:
+
+- Kroll: „Ich begrabe genug. Geht woanders lang.“
+- Töpfer: „Ich mach nicht auf. Nicht für euch.“
+- Radtke: „Geschlossen.“
+
+Warum die Wirtin auch nach Blut öffnet, wenn Greta lebt: Greta hat hier zehn Jahre ihren Feierabend verbracht. Das ist ABLEITUNG aus ihrer Zeit als Wachtmeisterin.
+
+### Die nie helfen
+
+Sie rufen einmal, dann kommt die nächste Wache nachsehen.
+
+| Wer | Wo | Ruf |
+|---|---|---|
+| Hugo Pfeil, Gerichtsdiener | Portal des Amtsgerichts | „Wache! Am Gericht sind Leute!“ |
+| Frau eines Wachmanns | Beamtenhaus B, Fenster zum Osthof | „Erich! Im Hof ist wer!“ |
+| Kasernenkoch | Küchentür der Kaserne | „He! Wer schleicht da am Hof?“ |
+
+Die Frau im Beamtenhaus B ist Fenskes Frau, er dreht in der Mittelgasse seine Runde. Steht Fenske im Totenbuch dieses Einsatzes, ruft sie nur: „Wache! Im Hof ist wer!“
+
+### Neue Posten
+
+Namen und Hintergrund in `texte/wachen.md`. Die Posten hat die Hauptsession festgelegt.
+
+| Name | Posten | Für die Geschichte |
+|---|---|---|
+| Eduard Buchholz | Streife auf dem Friedhof | Der Älteste der Wache, kennt den Totengräber, schaut gern weg |
+| August Thiele | ersetzt Buchholz, wenn er Einsatz 1 überlebt hat | Kennt den Trupp von der Querstraße |
+| Oskar Lindner | Fahnenmast auf dem Exerzierplatz | Neu, ehrgeizig, nimmt kein Geld |
+| Bernhard Roloff | Remise | Vom Werk mitbezahlt, nimmt kein Geld |
+| Erich Fenske | Nachtwächter in der Mittelgasse | Wohnt dort, seine Frau steht am Fenster |
+| Alfred Zander | Streife auf der Südgasse | Wohnt im Beamtenhof, kommt auf jeder Runde an seiner Haustür vorbei |
+| Fritz Bartels | Wallstreife 2, wenn er Einsatz 1 überlebt hat | Kennt den Trupp von der Querstraße |
+
+### Hinweise der Wachen auf die neuen Orte
+
+Mit Spielhinweis. Jeder Satz muss nach dem Bau gegen Karte und Messung geprüft werden.
+
+- „Auf dem Platz brennen alle vier Lampen. Lindner sieht vom Mast aus jede Maus.“ (Exerzierplatz ist hell, Lindner steht am Fahnenmast)
+- „Wenn es knallt, hängt Seidel am Telefon, und die Kaserne ist wach.“ (Telefon in der Schreibstube ruft die Verstärkung)
+- „Ohne den Draht hört die Kaserne gar nichts.“ (der Draht lässt sich kappen)
+- „Buchholz geht wieder über den Friedhof. Der will da nichts sehen.“ (Streife auf dem Friedhof, nur wenn Buchholz dort Dienst hat)
+- „Bei der Töpfer brennt noch eine Kerze. Um die Zeit.“ (Helferfenster, nur wenn die Kerze brennt)
+- „Fenske dreht in der Mittelgasse seine Runde. Der wohnt ja da.“ (Nachtwächter)
+- „Zander läuft die Südgasse ab, bis er zu Hause vorbeikommt.“ (Streife)
+- „Roloff lässt keinen an den Wagen in der Remise.“ (Posten, nicht käuflich)
+- „Im Kohlenhof steht ein Wagen von der Wäscherei. Um die Zeit?“ (Ziel)
+
+Ohne Spielhinweis:
+
+- „Auf dem Friedhof stehen nur Nummern. Die Namen kennt das Werk.“
+- „Beim Wallgraben ist noch Licht. Die Radtke schmeißt keinen raus.“
+- „Meine schlafen da drüben. Zweiter Stock, das dunkle Fenster.“
+
+### Was bleibt
+
+Auftrag (bis auf den Ort des Wagens), Zurufe der Befreiten, Schlagzeilen, Telegramme und Kolbs Kästen stimmen weiter. Geändert sind in Abschnitt 5 nur drei Zeilen des Telegrammstreifens und ein Halbsatz im Auftrag: „Wallgasse“ heißt jetzt „Kohlenhof“. `data/mission_02.json` und `data/stadtplan.json` tragen noch den alten Ort, das Nachziehen liegt bei der Level-Session.
+
+Vorschlag, falls der Spieler die Kerze nicht von selbst versteht: ein Satz am Ende des Auftrags, „Wo eine Kerze im Fenster steht, ist die Tür offen.“ Der Nutzer wollte das Zeichen ohne Text, darum steht der Satz nicht im Auftrag.
+
+### Zeitung mit Namen
+
+Vorbereitet für das Totenbuch. Die Felder liefert die Kampagne, der Einbau in `Headlines.cs` ist noch nicht gemacht. Gebraucht werden je Totem: Name, Anrede (Wachmann, Oberwachtmeister, Wachtmeister, Werkschutzmann, Laufbursche) und bei Jungen das Alter.
+
+| Fall | `{dead}` |
+|---|---|
+| Ein Wachmann | „ Wachmann Wilhelm Jahnke kam dabei ums Leben.“ |
+| Zwei | „ Die Wachleute Wilhelm Jahnke und Hans Olbrich kamen dabei ums Leben.“ |
+| Drei | „ Die Wachleute Wilhelm Jahnke, Hans Olbrich und Friedrich Kempe kamen dabei ums Leben.“ |
+| Mehr als drei | „ Die Wachleute Wilhelm Jahnke, Hans Olbrich, Friedrich Kempe und zwei weitere kamen dabei ums Leben.“ |
+| Mit Rang | „ Wachtmeister Arthur Seidel kam dabei ums Leben.“ Der Ranghöchste steht vorn |
+| Werkschutz | „ Vom Werkschutz starb Viktor Grabow.“ Eigener Satz nach den Wachleuten |
+| Junge | „ Auch der Bote Jakob Pagel, dreizehn Jahre alt, ist tot.“ Immer als letzter Satz |
+
+Für die eigenen Toten, `{fallen}`: „ Einer der Täter blieb tot zurück. Es ist der Schlosser Otto Brenner.“ Bei zweien: „ Zwei der Täter blieben tot zurück, der Schlosser Otto Brenner und die Kurierin Hanna Roth.“ Die Zeitung nennt Beruf und Namen, nie Abteilung K.
+
+Niedergeschlagene nennt die Zeitung nicht.
+
+### Später
+
+Vom Nutzer für jetzt zurückgestellt (2026-11-12), als Ideen aufgehoben:
+
+- Leichenhalle am Gericht: Dort liegt, wer in Einsatz 1 gefallen ist, mit Namen am Zettel.
+- Kneipe als begehbarer Ort: dienstfreie Wachen mit Namen, die bei Alarm herauskommen.
+- Dritter Gefangener, den niemand angekündigt hat. Wer ihn mitnimmt, ist langsamer und gewinnt Rückhalt.
+- Verlegungsliste in der Schreibstube: wen der Werkschutz schon geholt hat.
+- Asservatenkammer: Weiß’ Setzkasten und Pauls Schuhe. Mit Schuhen geht Paul so schnell wie der Trupp.
+- Gretas Personalakte mit Piepers Unterschrift.
+- Innenräume und Wachablösung.

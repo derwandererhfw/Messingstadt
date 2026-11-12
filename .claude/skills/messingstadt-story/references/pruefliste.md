@@ -13,7 +13,7 @@ Vor jedem neuen Einsatz und vor jeder Übernahme von Texten ins Spiel durchgehen
 - Passt das Verhalten zu Herkunft und Antrieb in `docs/story.md`?
 - Setzt der Text voraus, dass ein bestimmter Agent lebt oder dabei ist? Das ist nicht erlaubt.
 - Stimmen Beruf und Fähigkeit mit den Missionsdaten überein (`role`, `skill`)?
-- Erster Fall schwer verwundet, zweiter Fall tot. Nennt ein Text einen Toten? Hat jede Wendung einen Ersatzweg?
+- Erster Fall schwer verwundet, zweiter Fall tot. Nennt ein Erzähltext einen eigenen Toten? Akte, Totenbuch und Zeitung dürfen das. Hat jede Wendung einen Ersatzweg?
 
 ## Zeit
 
