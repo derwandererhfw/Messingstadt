@@ -83,10 +83,10 @@ Die Kampagne gibt dem nächsten Einsatz in `MissionData.Memory` mit, wie die Sta
 |---|---|---|
 | Die Wache wurde früher gekauft | 25 % Nachlass, bemerkt 50 % langsamer. Mit Gretas Nachlass gilt der größere, nicht beide | keine |
 | Die Wache hat überlebt, und die Stadt steht gegen den Trupp | nimmt kein Geld, bemerkt 25 % schneller | höchstens 2 Wachen |
-| Die Stadt steht gegen den Trupp | Wachen mit `afterBlood` gehen mit, als zweiter Mann einer Streife | höchstens 2 |
+| Die Stadt steht gegen den Trupp | Wachen mit `afterBlood` gehen mit, als zweiter Mann einer Streife | höchstens 1 |
 | Die Stadt hilft dem Trupp | Wachen mit `atEase` bemerken 50 % langsamer | höchstens 2 |
 
-Mehr als die Decke kostet die Blutschuld im nächsten Einsatz nie, egal wie viele gefallen sind. Ohne `Memory` gilt nichts davon.
+Mehr als die Decke kostet die Blutschuld im nächsten Einsatz nie, egal wie viele gefallen sind. Gemessen im Nordwall (20 × 20, Groll auf Schließer und Hundeführer): Mit zwei zusätzlichen Streifen fiel „Erst kämpfen, dann befreien“ von 46 % auf 1 %, mit einer auf 15 %, mit Maschinenpistolen von 98 % auf 77 %. Der leise Weg ohne Geld blieb bei 100 %. Darum eine. Ohne `Memory` gilt nichts davon.
 
 Unabhängig vom letzten Einsatz kann die Mission eine Wache mit `noBribe` unbestechlich machen und mit `noticeScale` wachsamer oder nachlässiger (150 heißt 50 % langsamer). `returning` nennt eine Wache aus einem früheren Einsatz, die den Posten übernimmt, wenn sie noch lebt. Wer im Totenbuch steht, rückt auch nicht mehr als Verstärkung an, der Nächste auf der Liste kommt. Die Kampagne füllt `Memory` vor jedem Einsatz aus dem Totenbuch (`GuardMemoryData.From`).
 

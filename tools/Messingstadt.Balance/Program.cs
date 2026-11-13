@@ -60,11 +60,11 @@ while (args.Length > 1 && (args[0] == "--wert" || args[0] == "--startgeld"))
 }
 
 // Erinnerung und Telefon für Einsatz 2 ausprobieren, ohne die Datei zu ändern. Gilt für alle Messreihen danach:
-// --erinnerung=blut      Blutbad im letzten Einsatz, Groll trifft Schließer und Hundeführer, zwei Streifen gehen zu zweit
+// --erinnerung=blut      die Stadt steht gegen den Trupp, Groll trifft Schließer und Hundeführer, Streifen gehen zu zweit, soweit die Decke es zulässt
 // --erinnerung=streifen  dasselbe, aber der Groll trifft die beiden Wallstreifen
 // --erinnerung=frieden   niemand starb, der Hundeführer wurde gekauft, Türposten und eine Streife schauen weg
 // --telefon=an           Telefonist vor dem Wachlokal, Kaserne mit drei Betten
-// --telefon=stumm        dasselbe, aber der Telefonist kann nicht anrufen
+// --telefon=stumm        dasselbe, aber der Draht ist gekappt: Die Verstärkung kommt spät und dünn
 Action<MissionData>? remembered = null;
 bool phoneSilent = false;
 while (args.Length > 0 && (args[0].StartsWith("--erinnerung=") || args[0].StartsWith("--telefon=")))
@@ -78,8 +78,17 @@ while (args.Length > 0 && (args[0].StartsWith("--erinnerung=") || args[0].Starts
         {
             before?.Invoke(m);
             m.Guards.Add(new UnitData { Name = "Telefonist", Person = "Lemke", Sprite = "Laufbursche", Type = "telefonist", X = 12.5, Y = 10.5, Facing = new[] { 0.0, 1.0 } });
-            m.Reinforcements!.Phone = "Telefonist";
-            m.Reinforcements.Beds = 3;
+            m.Reinforcements!.Beds = 3;
+            if (phoneSilent)
+            {
+                // Kein Anruf: Die Kaserne kommt so spät und so dünn, wie es der Kern ohne Telefon rechnet.
+                m.Reinforcements.FirstDelay *= 2;
+                m.Reinforcements.Count = Math.Max(1, m.Reinforcements.Count / 2);
+            }
+            else
+            {
+                m.Reinforcements.Phone = "Telefonist";
+            }
         };
     }
     else
@@ -126,10 +135,6 @@ World NewWorld(int seed)
     var mission = LitMission();
     mission.Seed = seed;
     var world = new World(Loader.ParseMap(mapJson), mission);
-    if (phoneSilent)
-    {
-        world.Units.First(u => u.Type.Phones).Hp = 0;
-    }
     tune?.Invoke(world);
     return world;
 }

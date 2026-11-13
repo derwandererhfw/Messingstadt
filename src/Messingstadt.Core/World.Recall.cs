@@ -66,7 +66,7 @@ namespace Messingstadt.Core
     public sealed partial class World
     {
         // Die Decke: Mehr als das kostet die Blutschuld im nächsten Einsatz nie, egal wie viele gefallen sind.
-        public const int MaxBloodPartners = 2;
+        public const int MaxBloodPartners = 1;
         public const int MaxGrudges = 2;
         public const int MaxAtEase = 2;
         public const int GrudgeNoticeScale = 75;
