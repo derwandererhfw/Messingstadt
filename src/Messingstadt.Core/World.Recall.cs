@@ -13,19 +13,18 @@ namespace Messingstadt.Core
     /// <summary>Was die Wachen dieses Einsatzes vom letzten wissen. Kommt von der Kampagne, ohne Angabe weiß niemand etwas.</summary>
     public sealed class GuardMemoryData
     {
-        /// <summary>Tote Wachen im letzten Einsatz. Niedergeschlagene zählen nicht.</summary>
-        public int Dead { get; set; }
+        /// <summary>Wie die Stadt nach der Blutschuld zum Trupp steht. Die eine Größe, an der die Erinnerung der Wachen hängt.</summary>
+        public CityStance Stance { get; set; } = CityStance.Silent;
 
         /// <summary>Wachen aus früheren Einsätzen, die hier wieder Dienst haben können, mit ihrem Schicksal dort.</summary>
         public List<KnownGuardData> Known { get; set; } = new();
 
         /// <summary>
-        /// Was die Wachen nach dem bisherigen Verlauf der Kampagne wissen: die toten Wachen der letzten Nacht und jede Wache, der der Trupp begegnet ist.
-        /// Dead ist die eine Zahl, an der die Erinnerung hängt. Kommt später eine Blutschuld der Stadt, wird nur diese Zeile getauscht.
+        /// Was die Wachen nach dem bisherigen Verlauf der Kampagne wissen: die Haltung der Stadt aus der Blutschuld und jede Wache, der der Trupp begegnet ist.
         /// </summary>
         public static GuardMemoryData From(Campaign campaign)
         {
-            var memory = new GuardMemoryData { Dead = campaign.DeadLastNight().FindAll(e => e.Side == LedgerSide.Guard).Count };
+            var memory = new GuardMemoryData { Stance = campaign.Stance };
             foreach (var g in campaign.Guards)
             {
                 memory.Known.RemoveAll(k => k.Person == g.Name);
@@ -43,10 +42,10 @@ namespace Messingstadt.Core
         /// <summary>Wurde schon einmal gekauft: nimmt weniger und schaut weg.</summary>
         OldDeal,
 
-        /// <summary>Hat ein Blutbad überlebt: nimmt kein Geld und bemerkt schneller.</summary>
+        /// <summary>Hat überlebt, und die Stadt steht gegen den Trupp: nimmt kein Geld und bemerkt schneller.</summary>
         Grudge,
 
-        /// <summary>Im letzten Einsatz starb niemand: steht allein und schaut weg.</summary>
+        /// <summary>Die Stadt hilft dem Trupp: steht allein und schaut weg.</summary>
         AtEase,
     }
 
@@ -66,10 +65,7 @@ namespace Messingstadt.Core
 
     public sealed partial class World
     {
-        /// <summary>Ab so vielen Toten im letzten Einsatz gilt er den Wachen als Blutbad.</summary>
-        public const int BloodbathDead = 3;
-
-        // Die Decke: Mehr als das kostet Blut im nächsten Einsatz nie, egal wie viele gefallen sind.
+        // Die Decke: Mehr als das kostet die Blutschuld im nächsten Einsatz nie, egal wie viele gefallen sind.
         public const int MaxBloodPartners = 2;
         public const int MaxGrudges = 2;
         public const int MaxAtEase = 2;
@@ -78,7 +74,7 @@ namespace Messingstadt.Core
         public const int OldDealDiscount = 25;
 
         /// <summary>
-        /// Wachen mit AfterBlood gehen nur mit, wenn im letzten Einsatz jemand starb, und davon höchstens MaxBloodPartners.
+        /// Wachen mit AfterBlood gehen nur mit, wenn die Stadt gegen den Trupp steht, und davon höchstens MaxBloodPartners.
         /// Liefert die Mission unverändert, wenn sie keine solchen Wachen kennt.
         /// </summary>
         public static MissionData Recalled(MissionData mission)
@@ -87,7 +83,7 @@ namespace Messingstadt.Core
             {
                 return mission;
             }
-            bool blood = mission.Memory is { Dead: > 0 };
+            bool blood = mission.Memory is { Stance: CityStance.Against };
             int partners = 0;
             var guards = new List<UnitData>();
             foreach (var g in mission.Guards)
@@ -132,14 +128,14 @@ namespace Messingstadt.Core
                     g.MemoryDiscount = OldDealDiscount;
                     g.NoticeScale = Math.Max(g.NoticeScale, AtEaseNoticeScale);
                 }
-                else if (known != null && known.Fate != GuardFate.Dead && human && memory.Dead >= BloodbathDead && grudges < MaxGrudges)
+                else if (known != null && known.Fate != GuardFate.Dead && human && memory.Stance == CityStance.Against && grudges < MaxGrudges)
                 {
                     grudges++;
                     g.Recall = GuardRecall.Grudge;
                     g.Unbribable = true;
                     g.NoticeScale = GrudgeNoticeScale;
                 }
-                else if (mission.Guards[i].AtEase && memory.Dead == 0 && human && atEase < MaxAtEase)
+                else if (mission.Guards[i].AtEase && memory.Stance == CityStance.Helps && human && atEase < MaxAtEase)
                 {
                     atEase++;
                     g.Recall = GuardRecall.AtEase;

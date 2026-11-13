@@ -29,6 +29,9 @@ namespace Messingstadt.Core
         /// <summary>Beruf eines Neuen für die Akte. Leer bei den Agenten der Mission.</summary>
         public string Job { get; set; } = "";
 
+        /// <summary>Beruf für das Totenbuch, bei allen gesetzt: der aus der Mission oder der des Neuen.</summary>
+        public string Role { get; set; } = "";
+
         /// <summary>Was der Agent trägt, nach Kennung aus data/waffen.json, höchstens Campaign.ItemSlots Stück.</summary>
         public List<string> Items { get; set; } = new(ItemCatalog.StarterKit);
 
@@ -105,7 +108,7 @@ namespace Messingstadt.Core
     /// <summary>Was zwischen den Einsätzen bleibt: Geld, Fahndung, Rückhalt, die Agenten und was in jedem Einsatz geschah.</summary>
     public sealed partial class Campaign
     {
-        public const int CurrentVersion = 5;
+        public const int CurrentVersion = 6;
         public const int StartMoney = 600;
 
         /// <summary>Das Viertel des ersten Einsatzes. Alte Stände mit einem Sieg bekommen es als erobert.</summary>
@@ -261,6 +264,10 @@ namespace Messingstadt.Core
                 foreach (var record in Agents.Where(x => x.Slot == a.Name && x.Skill == "" && (a.Skill != World.SkillLeader || x.Name == a.Name)))
                 {
                     record.Skill = a.Skill;
+                }
+                foreach (var record in Agents.Where(x => x.Slot == a.Name && x.Role == ""))
+                {
+                    record.Role = record.Job.Length > 0 ? record.Job : a.RoleName();
                 }
             }
             LastFirstFalls.Clear();
@@ -427,7 +434,8 @@ namespace Messingstadt.Core
             }
 
             Remember(GuardReport.From(world), Agents.Where(a => LastDeaths.Contains(a.Name)), districtId);
-            int deadGuards = world.Units.Count(u => u.Faction == Faction.Guard && !u.Alive);
+            // Niedergeschlagene liegen am Boden, sind aber nicht tot. Hunde zählen für Fahndung und Zeitung wie bisher mit.
+            int deadGuards = world.GuardOutcomes().Count(o => o.Fate == GuardFate.Dead);
             int bribed = world.Units.Count(u => u.Faction == Faction.Guard && u.Bribed);
             var rating = world.Rating;
             int heat = rating switch
@@ -674,6 +682,8 @@ namespace Messingstadt.Core
                 a.Dead = a.Dead || a.Falls >= 2;
                 a.Rest = a.Dead ? 0 : Math.Clamp(a.Rest, 0, 9);
                 a.Infirmary &= a.Rest > 0;
+                a.Role ??= "";
+                a.Role = a.Role.Length > 0 ? a.Role : a.Job ?? "";
                 // Vor der Waffenkammer trug jeder Lebende eine Pistole.
                 a.Items = (a.Items ?? new()).Where(i => !string.IsNullOrEmpty(i)).Take(ItemSlots).ToList();
                 if (version < 3 && a.Items.Count == 0 && !a.Dead)

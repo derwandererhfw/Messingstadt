@@ -47,10 +47,10 @@ namespace Messingstadt.Core
         /// <summary>Name des Menschen hinter dem Posten, etwa "Krüger". Name bleibt der Posten, an dem Schlüssel und Hundeführer hängen.</summary>
         public string Person { get; set; } = "";
 
-        /// <summary>Geht nur mit, wenn im letzten Einsatz Wachen starben: der zweite Mann einer Streife. Höchstens World.MaxBloodPartners.</summary>
+        /// <summary>Geht nur mit, wenn die Stadt gegen den Trupp steht: der zweite Mann einer Streife. Höchstens World.MaxBloodPartners.</summary>
         public bool AfterBlood { get; set; }
 
-        /// <summary>Schaut weg, wenn im letzten Einsatz niemand starb. Höchstens World.MaxAtEase.</summary>
+        /// <summary>Schaut weg, solange die Stadt dem Trupp hilft. Höchstens World.MaxAtEase.</summary>
         public bool AtEase { get; set; }
 
         /// <summary>Nimmt kein Geld, obwohl seine Art käuflich ist.</summary>
@@ -61,6 +61,12 @@ namespace Messingstadt.Core
 
         /// <summary>Name einer Wache aus einem früheren Einsatz, die diesen Posten übernimmt, wenn sie noch lebt. Sonst bleibt es bei Person.</summary>
         public string Returning { get; set; } = "";
+
+        /// <summary>Eigene Anrede in Zeitung und Totenbuch, etwa "Oberwachtmeister" oder "Bote". Ohne Angabe gilt die der Art.</summary>
+        public string Rank { get; set; } = "";
+
+        /// <summary>Alter, nur bei Jungen angeben. Zeitung und Totenbuch nennen es dann.</summary>
+        public int Age { get; set; }
 
         /// <summary>Namen der Türen, zu denen diese Wache den Schlüssel trägt. Wer sie besticht, bekommt ihn, wer sie niederschlägt, hebt ihn auf.</summary>
         public List<string> Keys { get; set; } = new();

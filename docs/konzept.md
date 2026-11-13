@@ -77,16 +77,16 @@ Wachen rufen Namen, ohne dass sich am Ablauf etwas ändert: Begegnen sich zwei a
 
 Am Ende sagt `World.GuardOutcomes()` für jede Wache, was aus ihr wurde: ahnungslos, aufgeschreckt, gekauft, niedergeschlagen oder tot. Niedergeschlagene sind nicht tot.
 
-Die Kampagne gibt dem nächsten Einsatz in `MissionData.Memory` mit, wie viele Wachen im letzten starben und welche Wachen der Trupp schon kennt. Daraus folgt:
+Die Kampagne gibt dem nächsten Einsatz in `MissionData.Memory` mit, wie die Stadt nach der Blutschuld zum Trupp steht (hilft, schweigt, gegen den Trupp) und welche Wachen der Trupp schon kennt. Daraus folgt:
 
 | Fall | Wirkung | Decke |
 |---|---|---|
 | Die Wache wurde früher gekauft | 25 % Nachlass, bemerkt 50 % langsamer. Mit Gretas Nachlass gilt der größere, nicht beide | keine |
-| Die Wache hat ein Blutbad überlebt (ab 3 Toten) | nimmt kein Geld, bemerkt 25 % schneller | höchstens 2 Wachen |
-| Im letzten Einsatz starb jemand | Wachen mit `afterBlood` gehen mit, als zweiter Mann einer Streife | höchstens 2 |
-| Im letzten Einsatz starb niemand | Wachen mit `atEase` bemerken 50 % langsamer | höchstens 2 |
+| Die Wache hat überlebt, und die Stadt steht gegen den Trupp | nimmt kein Geld, bemerkt 25 % schneller | höchstens 2 Wachen |
+| Die Stadt steht gegen den Trupp | Wachen mit `afterBlood` gehen mit, als zweiter Mann einer Streife | höchstens 2 |
+| Die Stadt hilft dem Trupp | Wachen mit `atEase` bemerken 50 % langsamer | höchstens 2 |
 
-Mehr als die Decke kostet Blut im nächsten Einsatz nie, egal wie viele gefallen sind. Ohne `Memory` gilt nichts davon.
+Mehr als die Decke kostet die Blutschuld im nächsten Einsatz nie, egal wie viele gefallen sind. Ohne `Memory` gilt nichts davon.
 
 Unabhängig vom letzten Einsatz kann die Mission eine Wache mit `noBribe` unbestechlich machen und mit `noticeScale` wachsamer oder nachlässiger (150 heißt 50 % langsamer). `returning` nennt eine Wache aus einem früheren Einsatz, die den Posten übernimmt, wenn sie noch lebt. Wer im Totenbuch steht, rückt auch nicht mehr als Verstärkung an, der Nächste auf der Liste kommt. Die Kampagne füllt `Memory` vor jedem Einsatz aus dem Totenbuch (`GuardMemoryData.From`).
 
@@ -297,11 +297,13 @@ Die Logik steht in `src/Messingstadt.Core/Campaign.cs`. Sie liest am Ende eines 
 | Rückhalt 0 bis 5 | Sieg +1, Niederlage −1. Nach jedem zählenden Einsatz 50 Beitrag je Stufe, auch nach einer Niederlage |
 | Merker | Je Einsatz Versuche und für den Sieg Wertung, tote und bestochene Wachen, tote Agenten und Beute. Für die Story |
 | Totenbuch | Jeder zählende Einsatz trägt die toten Wachen und die toten Agenten mit Name, Einsatz, Viertel und Nacht ein. Niedergeschlagene, Verwundete und Hunde stehen nicht darin. Tot bleibt tot: Wer einen Einsatz wiederholt, trägt denselben Namen nicht zweimal ein. Dazu merkt sich die Kampagne den letzten Stand jeder Wache (tot, gekauft, niedergeschlagen, ahnungslos, überlebt) und die toten Wachen der letzten Nacht je Viertel. Abfragen in `Campaign.Ledger.cs` |
+| Blutschuld 0 bis 6 | Gilt für die ganze Stadt. Eine Nacht mit mehreren toten Wachen erhöht sie um deren Zahl, höchstens um 3. Ein einzelner Toter lässt sie stehen. Eine Nacht ohne tote Wache tilgt 2. Bei 0 bis 1 hilft die Stadt, bei 2 bis 3 schweigt sie, ab 4 stellt sie sich gegen den Trupp (`Campaign.BloodDebt`, `Campaign.Stance`). Niedergeschlagene und Gekaufte zählen nicht. Einmal laut mit 5 Toten, dann leise: 3, 1, 0. Immer laut: 3, 6, 6. Jede Nacht ein Toter: bleibt bei 0 |
+| Helfende Häuser | Jedes Haus hilft, solange die Stadt hilft. Die Wirtin hilft auch, wenn die Stadt schweigt, solange Greta lebt (`Campaign.HouseHelps`) |
 | Stadtviertel | Fünf Viertel aus `data/stadtplan.json`, am Anfang gehören alle den Brandt-Werken. Ein Sieg im gewählten Viertel gibt es dem Roten Hammer. Wählbar ist ein Viertel, wenn es einen Einsatz hat und seine Voraussetzungen erobert sind. Bisher hat nur das erste einen Einsatz, die anderen sind sichtbar, aber gesperrt. Eroberte Viertel bleiben spielbar |
 
 Ein Abbruch vor dem ersten Schuss zählt nicht: Nur das Geld für Bestechungen bleibt ausgegeben.
 
-Der Stand wird im Benutzerordner des Spiels gespeichert, je Akte eine Datei (`kampagne.json`, `kampagne_2.json`, `kampagne_3.json`, Version 5). Ältere Stände werden übernommen: Kasse, Einsätze und Stufen bleiben. Stände ohne Versionsnummer bekommen gesunde Agenten, Stände vor der Waffenkammer eine Pistole je Agent, und wer vor dem Stadtplan schon einen Einsatz gewonnen hat, hält das erste Viertel. Stände vor dem Totenbuch haben ein leeres Buch, nur die eigenen Toten stehen ohne Einsatz darin. Unlesbare oder neuere Stände werden verworfen und je Akte als `kampagne*.alt.json` beiseitegelegt. Es gibt bisher nur eine Mission, „Nächster Einsatz“ spielt sie erneut.
+Der Stand wird im Benutzerordner des Spiels gespeichert, je Akte eine Datei (`kampagne.json`, `kampagne_2.json`, `kampagne_3.json`, Version 6). Ältere Stände werden übernommen: Kasse, Einsätze und Stufen bleiben. Stände ohne Versionsnummer bekommen gesunde Agenten, Stände vor der Waffenkammer eine Pistole je Agent, und wer vor dem Stadtplan schon einen Einsatz gewonnen hat, hält das erste Viertel. Stände vor dem Totenbuch haben ein leeres Buch, nur die eigenen Toten stehen ohne Einsatz darin. Unlesbare oder neuere Stände werden verworfen und je Akte als `kampagne*.alt.json` beiseitegelegt. Es gibt bisher nur eine Mission, „Nächster Einsatz“ spielt sie erneut.
 
 Der Stadtplan ist das Modell für die Einsatzwahl (`CityMap.cs`, Abfragen in `Campaign`: `Owner`, `State`, `CanSelect`, `TrySelect`, `Selected`). Der Bildschirm dazu fehlt noch, bis dahin wählt das Spiel das erste offene Viertel selbst. Namen und Texte in `data/stadtplan.json` stammen wörtlich aus `docs/story/stadtplan-vorlage.json`: Kesselviertel, Nordwall, Gleisviertel, Kontorviertel, Altstadt. Jedes Viertel sperrt das nächste und bringt im Feld `locked` seinen Satz für „gesperrt“ mit. Ein sechster Einsatz nach allen fünf Vierteln ist vorgesehen, aber nicht gebaut: Er passt als weiterer Eintrag mit mehreren Voraussetzungen ins Modell. Ein höherer Beitrag je erobertem Viertel ist nur ein Vorschlag und nicht gebaut.
 

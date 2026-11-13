@@ -21,9 +21,9 @@ namespace Messingstadt.Core.Tests
             Agents = new(agents), Guards = new(guards),
         };
 
-        private static GuardMemoryData Memory(int dead, params (string Person, GuardFate Fate)[] known) => new()
+        private static GuardMemoryData Memory(CityStance stance, params (string Person, GuardFate Fate)[] known) => new()
         {
-            Dead = dead, Known = known.Select(k => new KnownGuardData { Person = k.Person, Fate = k.Fate }).ToList(),
+            Stance = stance, Known = known.Select(k => new KnownGuardData { Person = k.Person, Fate = k.Fate }).ToList(),
         };
 
         private static World NewWorld(MissionData m, params SolidData[] solids) =>
@@ -70,7 +70,7 @@ namespace Messingstadt.Core.Tests
         {
             var plain = Mission(new[] { Agent(6.5, skill: World.SkillBookkeeper) }, Guard("Posten", "Krüger", 2.5));
             var met = Mission(new[] { Agent(6.5, skill: World.SkillBookkeeper) }, Guard("Posten", "Krüger", 2.5));
-            met.Memory = Memory(0, ("Krüger", GuardFate.Bribed));
+            met.Memory = Memory(CityStance.Helps, ("Krüger", GuardFate.Bribed));
             var w = NewWorld(met);
             Assert.Equal(GuardRecall.OldDeal, w.Units[1].Recall);
             Assert.Equal(GuardType.Wachmann.BribeCost * 75 / 100, w.BribePrice(w.Units[1], w.Units[0]));
@@ -84,7 +84,7 @@ namespace Messingstadt.Core.Tests
         public void DiscountsDoNotStackTheLargerOneCounts()
         {
             var m = Mission(new[] { Agent(6.5, skill: World.SkillBookkeeper), Agent(7.5, skill: World.SkillLeader, name: "Greta") }, Guard("Posten", "Krüger", 2.5));
-            m.Memory = Memory(0, ("Krüger", GuardFate.Bribed));
+            m.Memory = Memory(CityStance.Helps, ("Krüger", GuardFate.Bribed));
             var w = NewWorld(m);
             Assert.Equal(50, w.LeaderDiscountPercent);
             Assert.Equal(GuardType.Wachmann.BribeCost / 2, w.BribePrice(w.Units[2], w.Units[0]));
@@ -98,7 +98,7 @@ namespace Messingstadt.Core.Tests
         {
             var plain = Mission(new[] { Agent(6.5, skill: World.SkillBookkeeper) }, Guard("Posten", "Krüger", 2.5));
             var met = Mission(new[] { Agent(6.5, skill: World.SkillBookkeeper) }, Guard("Posten", "Krüger", 2.5));
-            met.Memory = Memory(World.BloodbathDead, ("Krüger", GuardFate.Alerted));
+            met.Memory = Memory(CityStance.Against, ("Krüger", GuardFate.Alerted));
             var w = NewWorld(met);
             Assert.Equal(GuardRecall.Grudge, w.Units[1].Recall);
             Assert.False(w.IsBribable(w.Units[1]));
@@ -107,10 +107,10 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
-        public void BelowABloodbathASurvivorHoldsNoGrudge()
+        public void WhileTheCityOnlyKeepsSilentASurvivorHoldsNoGrudge()
         {
             var m = Mission(new[] { Agent(6.5) }, Guard("Posten", "Krüger", 2.5));
-            m.Memory = Memory(World.BloodbathDead - 1, ("Krüger", GuardFate.Alerted));
+            m.Memory = Memory(CityStance.Silent, ("Krüger", GuardFate.Alerted));
             Assert.Equal(GuardRecall.None, NewWorld(m).Units[1].Recall);
         }
 
@@ -131,7 +131,7 @@ namespace Messingstadt.Core.Tests
                 guards.Add(partner);
             }
             var m = Mission(new[] { Agent(2.5) }, guards.ToArray());
-            m.Memory = Memory(40, known.ToArray());
+            m.Memory = Memory(CityStance.Against, known.ToArray());
             var w = NewWorld(m);
             Assert.Equal(World.MaxGrudges, w.Units.Count(u => u.Recall == GuardRecall.Grudge));
             Assert.Equal(6 + World.MaxBloodPartners, w.Units.Count(u => u.Faction == Faction.Guard));
@@ -148,10 +148,10 @@ namespace Messingstadt.Core.Tests
                 return g;
             }
             var peace = Mission(new[] { Agent(2.5) }, Guard("Streife", "Krüger", 20.5, 30.5), Partner());
-            peace.Memory = Memory(0);
+            peace.Memory = Memory(CityStance.Helps);
             var none = Mission(new[] { Agent(2.5) }, Guard("Streife", "Krüger", 20.5, 30.5), Partner());
             var blood = Mission(new[] { Agent(2.5) }, Guard("Streife", "Krüger", 20.5, 30.5), Partner());
-            blood.Memory = Memory(1);
+            blood.Memory = Memory(CityStance.Against);
             Assert.Equal(1, NewWorld(peace).Units.Count(u => u.Faction == Faction.Guard));
             Assert.Equal(1, NewWorld(none).Units.Count(u => u.Faction == Faction.Guard));
             Assert.Equal(2, NewWorld(blood).Units.Count(u => u.Faction == Faction.Guard));
@@ -179,9 +179,9 @@ namespace Messingstadt.Core.Tests
                 m.Memory = memory;
                 return m;
             }
-            Assert.Equal(GuardRecall.AtEase, NewWorld(M(Memory(0))).Units[1].Recall);
-            Assert.True(NoticeTicks(M(Memory(0))) > NoticeTicks(M(null)));
-            Assert.Equal(NoticeTicks(M(null)), NoticeTicks(M(Memory(1))));
+            Assert.Equal(GuardRecall.AtEase, NewWorld(M(Memory(CityStance.Helps))).Units[1].Recall);
+            Assert.True(NoticeTicks(M(Memory(CityStance.Helps))) > NoticeTicks(M(null)));
+            Assert.Equal(NoticeTicks(M(null)), NoticeTicks(M(Memory(CityStance.Silent))));
         }
 
         [Fact]
@@ -204,7 +204,7 @@ namespace Messingstadt.Core.Tests
             {
                 var m = Mission(new[] { Agent(30.5) }, Guard("Wallstreife 2", "Olbrich", 2.5));
                 m.Guards[0].Returning = "Bartels";
-                m.Memory = Memory(0, ("Bartels", fate));
+                m.Memory = Memory(CityStance.Helps, ("Bartels", fate));
                 return m;
             }
             Assert.Equal("Bartels", NewWorld(M(GuardFate.Unaware)).Units[1].Person);
@@ -219,7 +219,7 @@ namespace Messingstadt.Core.Tests
         {
             var m = Mission(new[] { Agent(8.5) }, Guard("Posten", "Krüger", 2.5));
             m.Reinforcements = new ReinforcementData { X = 30.5, Y = 30.5, Sprite = "W", FirstDelay = 1, Interval = 1, Count = 2, Persons = new() { "Kasten", "Dreyer", "Hinz" } };
-            m.Memory = Memory(1, ("Kasten", GuardFate.Dead));
+            m.Memory = Memory(CityStance.Silent, ("Kasten", GuardFate.Dead));
             var w = NewWorld(m);
             w.OrderAttack(0, 1);
             w.Units[0].Hp = 100000;
@@ -235,7 +235,7 @@ namespace Messingstadt.Core.Tests
             c.Guards.Add(new GuardMemory { Name = "Krüger", Mission = "mission_01", Fate = GuardFate.Dead, Night = 1 });
             c.Ledger.Add(new LedgerEntry { Name = "Krüger", Side = LedgerSide.Guard, Mission = "mission_01", Night = 1 });
             var memory = GuardMemoryData.From(c);
-            Assert.Equal(1, memory.Dead);
+            Assert.Equal(c.Stance, memory.Stance);
             Assert.Equal(GuardFate.Bribed, memory.Known.Single(k => k.Person == "Wiese").Fate);
             var m = Mission(new[] { Agent(6.5, skill: World.SkillBookkeeper) }, Guard("Hundeführer", "Wiese", 2.5, type: "hundefuehrer"));
             c.Prepare(m, "mission_02");

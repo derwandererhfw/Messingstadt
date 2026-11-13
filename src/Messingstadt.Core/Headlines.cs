@@ -53,8 +53,9 @@ namespace Messingstadt.Core
         private static string Fill(World world, string text)
         {
             // Hunde zählen nicht als Wachleute, Laufburschen werden eigens genannt.
-            int deadGuards = world.Units.Count(u => u.Faction == Faction.Guard && !u.Type.Bites && !u.Type.Reports && !u.Alive);
-            int deadBoys = world.Units.Count(u => u.Faction == Faction.Guard && u.Type.Reports && !u.Alive);
+            // Niedergeschlagene liegen am Boden, sind aber nicht tot.
+            int deadGuards = world.Units.Count(u => u.Faction == Faction.Guard && !u.Type.Bites && !u.Type.Reports && World.FateOf(u) == GuardFate.Dead);
+            int deadBoys = world.Units.Count(u => u.Faction == Faction.Guard && u.Type.Reports && World.FateOf(u) == GuardFate.Dead);
             int fallen = world.Units.Count(u => u.Faction == Faction.Agent && !u.Alive);
             bool paid = world.Units.Any(u => u.Faction == Faction.Guard && u.Bribed);
             string loot = world.LootTaken ? " " + (world.Press?.Loot ?? "Gestohlen wurde außerdem: {lootName}.").Replace("{lootName}", world.LootName) : "";
