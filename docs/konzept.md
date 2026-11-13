@@ -338,11 +338,13 @@ Warum die früheren Zahlen bei 0 % lagen: Die Pläne im Messwerkzeug passten nic
 
 Die Verstärkung trifft nur, wer im Offenen steht. In den zwei engen Gängen kommen die Wachen einzeln, dort ändert die Zahl der Betten fast nichts. Die Daten bleiben darum bei drei Mann. Wer die engen Gänge schwerer haben will, braucht eine andere Schraube als die Kaserne, etwa einen zweiten Ankunftsort im Süden.
 
+Das Schleichlicht `data/light_02.json` ist am 13.11.2026 neu gebacken (`python tools/art/bake_light.py --map=nordwall --nr=02`) und folgt jetzt dem Grundriss: Die Laterne im Südwesten steht bei (8,5, 26,6), der Bretterzaun am Kohlenhof wirft Schatten. Sturmlaterne am Wagen und Kohlenkorb sind reine Bildlichter, am Wagen bleibt es bei 14 bis 18 Punkten. Die Tabelle ist mit diesem Licht gemessen. Gegenüber dem alten Licht änderten sich nur die zwei späten Zeilen mit Geld (1,5 s: 67 auf 45, 2 s: 39 auf 27), alles andere blieb gleich.
+
 | Leise, Rückweg über den Friedhof | Sieg | davon leise |
 |---|---|---|
 | Otto und Emil mit Geld, bis 1 s spät | 100 | 100 |
-| dasselbe, 1,5 s spät | 67 | 67 |
-| dasselbe, 2 s spät | 39 | 39 |
+| dasselbe, 1,5 s spät | 45 | 45 |
+| dasselbe, 2 s spät | 27 | 27 |
 | Otto allein mit Dietrich, bis 0,5 s spät | 100 | 100 |
 | Totschläger ohne Dietrich, Klick genau | 100 | 100 |
 | dasselbe, bis 0,5 s spät | 8 | 8 |
