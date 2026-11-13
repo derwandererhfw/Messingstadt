@@ -10,6 +10,23 @@ namespace Messingstadt.Core
         Guard,
     }
 
+    /// <summary>Wie die Stadt zum Trupp steht, aus der Blutschuld. Die Kulisse, die Türen und die Wachen hängen an dieser Stufe.</summary>
+    public enum CityStance
+    {
+        Helps,
+        Silent,
+        Against,
+    }
+
+    public sealed partial class Unit
+    {
+        /// <summary>Anrede in Zeitung und Totenbuch, wenn sie von der Art abweicht, etwa "Oberwachtmeister". Sonst leer.</summary>
+        public string Rank = "";
+
+        /// <summary>Alter, nur bei Jungen gesetzt. 0 heißt: wird nicht genannt.</summary>
+        public int Age;
+    }
+
     /// <summary>Eine Wache am Ende eines Einsatzes, so wie die Spiellogik sie meldet.</summary>
     public sealed class GuardReport
     {
@@ -19,19 +36,38 @@ namespace Messingstadt.Core
         public string Kind { get; set; } = "";
         public GuardFate Fate { get; set; }
 
+        /// <summary>Eigene Anrede aus der Mission, sonst leer.</summary>
+        public string Rank { get; set; } = "";
+
+        /// <summary>Alter, nur bei Jungen gesetzt, sonst 0.</summary>
+        public int Age { get; set; }
+
+        /// <summary>Anrede für Zeitung und Totenbuch: die eigene oder die der Art.</summary>
+        public string Title => LedgerEntry.TitleFor(LedgerSide.Guard, Kind, Rank);
+
         /// <summary>
-        /// Liest die Wachen eines beendeten Einsatzes, ohne Hunde. Die einzige Stelle, die weiß, woran die Spiellogik tot, niedergeschlagen,
-        /// gekauft und ahnungslos erkennt.
+        /// Liest die Wachen eines beendeten Einsatzes, ohne Hunde. Was aus ihnen wurde, entscheidet World.FateOf.
+        /// Der Name ist der des Menschen, wenn die Mission einen nennt, sonst der Posten. Gleiche Namen werden durchgezählt,
+        /// damit zwei namenlose Mann Verstärkung zwei Einträge sind.
         /// </summary>
-        public static List<GuardReport> From(World world) => world.GuardOutcomes()
-            .Where(o => o.Type != GuardType.Hund.Id)
-            .Select(o => new GuardReport
+        public static List<GuardReport> From(World world)
+        {
+            var list = new List<GuardReport>();
+            foreach (var u in world.Units.Where(u => u.Faction == Faction.Guard && u.Type != GuardType.Hund))
             {
-                Name = o.Person.Length > 0 ? o.Person : o.Role,
-                Kind = o.Type,
-                Fate = o.Fate,
-            })
-            .ToList();
+                string name = u.Person.Length > 0 ? u.Person : u.Name;
+                int same = list.Count(r => r.Name == name || r.Name.StartsWith(name + " ("));
+                list.Add(new GuardReport
+                {
+                    Name = same == 0 ? name : $"{name} ({same + 1})",
+                    Kind = u.Type.Id,
+                    Fate = World.FateOf(u),
+                    Rank = u.Rank,
+                    Age = u.Age,
+                });
+            }
+            return list;
+        }
     }
 
     /// <summary>Ein Toter im Totenbuch, von beiden Seiten.</summary>
@@ -49,6 +85,27 @@ namespace Messingstadt.Core
 
         /// <summary>Der wievielte zählende Einsatz der Kampagne es war, ab 1. 0 bei Toten aus Ständen vor dem Totenbuch.</summary>
         public int Night { get; set; }
+
+        /// <summary>Eigene Anrede einer Wache aus der Mission, etwa "Oberwachtmeister". Leer, wenn die Art genügt.</summary>
+        public string Rank { get; set; } = "";
+
+        /// <summary>Alter, nur bei Jungen gesetzt, sonst 0.</summary>
+        public int Age { get; set; }
+
+        /// <summary>Anrede für Zeitung und Totenbuch: bei Wachen die eigene oder die der Art, beim Trupp der Beruf.</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        public string Title => TitleFor(Side, Kind, Rank);
+
+        public static string TitleFor(LedgerSide side, string kind, string rank) =>
+            rank.Length > 0 ? rank
+            : side == LedgerSide.Squad ? kind
+            : kind switch
+            {
+                "offizier" => "Wachtmeister",
+                "werkschutz" => "Werkschutzmann",
+                "laufbursche" => "Laufbursche",
+                _ => "Wachmann",
+            };
     }
 
     /// <summary>Was die Kampagne über eine Wache weiß, die sie getroffen hat. Je Mission und Name ein Eintrag, der letzte Stand zählt, tot bleibt tot.</summary>
@@ -71,7 +128,36 @@ namespace Messingstadt.Core
         public const string HelperWidow = "witwe";
         public const string HelperGravedigger = "totengraeber";
         public const string HelperLandlady = "wirtin";
-        private const string FirstMission = "mission_01";
+        public const int MaxBloodDebt = 6;
+
+        /// <summary>Mehr als so viel zählt eine Nacht nicht, auch wenn mehr Wachen sterben.</summary>
+        public const int BloodPerNight = 3;
+
+        /// <summary>So viel tilgt eine Nacht ohne tote Wache.</summary>
+        public const int BloodForgiven = 2;
+
+        /// <summary>Ab dieser Schuld schweigt die Stadt, ab der zweiten stellt sie sich gegen den Trupp.</summary>
+        public const int SilentFrom = 2;
+        public const int AgainstFrom = 4;
+
+        /// <summary>
+        /// Die Blutschuld des Trupps bei der ganzen Stadt, 0 bis 6. Eine Nacht mit mehreren toten Wachen erhöht sie um deren Zahl,
+        /// höchstens um 3. Ein einzelner Toter lässt sie stehen. Eine Nacht ohne tote Wache tilgt 2. Das Totenbuch selbst vergisst nichts.
+        /// </summary>
+        public int BloodDebt { get; set; }
+
+        /// <summary>Wie die Stadt im nächsten Einsatz zum Trupp steht.</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        public CityStance Stance => StanceFor(BloodDebt);
+
+        public static CityStance StanceFor(int bloodDebt) =>
+            bloodDebt >= AgainstFrom ? CityStance.Against : bloodDebt >= SilentFrom ? CityStance.Silent : CityStance.Helps;
+
+        /// <summary>Die Schuld nach einer Nacht mit so vielen toten Wachen.</summary>
+        public static int DebtAfter(int bloodDebt, int deadGuards) =>
+            deadGuards == 0 ? Math.Max(0, bloodDebt - BloodForgiven)
+            : deadGuards == 1 ? bloodDebt
+            : Math.Min(MaxBloodDebt, bloodDebt + Math.Min(deadGuards, BloodPerNight));
 
         /// <summary>Das Totenbuch in der Reihenfolge der Tode. Niedergeschlagene und Verwundete stehen nicht darin.</summary>
         public List<LedgerEntry> Ledger { get; set; } = new();
@@ -123,15 +209,11 @@ namespace Messingstadt.Core
 
         /// <summary>
         /// Hilft dieses Haus dem Trupp, etwa mit einer Kerze im Fenster oder einer offenen Hoftür?
-        /// Witwe und Totengräber helfen, solange im ersten Einsatz keine Wache starb. Die Wirtin hilft, wenn Greta lebt
-        /// oder der erste Einsatz ganz ohne Tote blieb. Jedes andere Haus hilft, wenn im Viertel zuletzt kein Blut floss.
+        /// Jedes Haus hilft, solange die Stadt hilft. Die Wirtin kennt Greta: Lebt sie, hilft die Wirtin auch dann noch, wenn die Stadt schweigt.
+        /// Das Viertel spielt dabei keine Rolle mehr, die Blutschuld gilt für die ganze Stadt.
         /// </summary>
-        public bool HouseHelps(string helper, string districtId = "") => helper switch
-        {
-            HelperWidow or HelperGravedigger => BloodIn(FirstMission) == 0,
-            HelperLandlady => !IsDead("Greta") || !Ledger.Exists(e => e.Mission == FirstMission),
-            _ => BloodLast(districtId) == 0,
-        };
+        public bool HouseHelps(string helper, string districtId = "") =>
+            Stance == CityStance.Helps || (helper == HelperLandlady && Stance == CityStance.Silent && !IsDead("Greta"));
 
         // ---- Schreiben ----
 
@@ -158,14 +240,16 @@ namespace Messingstadt.Core
                 memory.Night = Nights;
                 if (g.Fate == GuardFate.Dead)
                 {
-                    Ledger.Add(new LedgerEntry { Name = g.Name, Side = LedgerSide.Guard, Kind = g.Kind, Mission = Current, District = districtId, Night = Nights });
+                    Ledger.Add(new LedgerEntry { Name = g.Name, Side = LedgerSide.Guard, Kind = g.Kind, Mission = Current, District = districtId, Night = Nights, Rank = g.Rank, Age = g.Age });
                 }
             }
             foreach (var a in fallen.Where(a => !Ledger.Exists(e => e.Side == LedgerSide.Squad && e.Name == a.Name)))
             {
-                Ledger.Add(new LedgerEntry { Name = a.Name, Side = LedgerSide.Squad, Kind = a.Job, Mission = Current, District = districtId, Night = Nights });
+                Ledger.Add(new LedgerEntry { Name = a.Name, Side = LedgerSide.Squad, Kind = a.Role, Mission = Current, District = districtId, Night = Nights });
             }
-            LastBlood[districtId] = guards.Count(g => g.Fate == GuardFate.Dead);
+            int dead = guards.Count(g => g.Fate == GuardFate.Dead);
+            LastBlood[districtId] = dead;
+            BloodDebt = DebtAfter(BloodDebt, dead);
         }
 
         /// <summary>Alte Stände haben ein leeres Buch. Nur die eigenen Toten sind bekannt und kommen ohne Einsatz hinein.</summary>
@@ -180,6 +264,8 @@ namespace Messingstadt.Core
                 e.Kind ??= "";
                 e.Mission ??= "";
                 e.District ??= "";
+                e.Rank ??= "";
+                e.Age = Math.Max(0, e.Age);
             }
             foreach (var g in Guards)
             {
@@ -191,9 +277,19 @@ namespace Messingstadt.Core
             {
                 foreach (var a in Agents.Where(a => a.Dead && !Ledger.Exists(e => e.Side == LedgerSide.Squad && e.Name == a.Name)))
                 {
-                    Ledger.Add(new LedgerEntry { Name = a.Name, Side = LedgerSide.Squad, Kind = a.Job });
+                    Ledger.Add(new LedgerEntry { Name = a.Name, Side = LedgerSide.Squad, Kind = a.Role });
                 }
             }
+            // Vor der Blutschuld: aus den Nächten des Totenbuchs nachrechnen.
+            if (version < 6)
+            {
+                BloodDebt = 0;
+                for (int night = 1; night <= Nights; night++)
+                {
+                    BloodDebt = DebtAfter(BloodDebt, Ledger.Count(e => e.Side == LedgerSide.Guard && e.Night == night));
+                }
+            }
+            BloodDebt = Math.Clamp(BloodDebt, 0, MaxBloodDebt);
         }
     }
 }
