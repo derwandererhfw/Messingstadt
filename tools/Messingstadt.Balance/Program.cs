@@ -107,6 +107,7 @@ void Report(string name, Func<Action<World>> make)
         ticks += w.Tick;
         loud += w.Rating == MissionRating.Loud ? 1 : 0;
         down += w.Units.Count(u => u.Faction == Faction.Guard && !u.Alive);
+        // Niedergeschlagene zählen hier mit: Die Spalte heißt "Wachen nieder", nicht "tot".
         knocked += w.Strikes.Count(k => k.KnockOut);
         quiet += w.State == MissionState.Won && w.Rating != MissionRating.Loud ? 1 : 0;
     }
@@ -794,7 +795,7 @@ string homeRoute = args.FirstOrDefault(x => x.StartsWith("--weg="))?["--weg=".Le
 if (args.FirstOrDefault(x => x.StartsWith("--rueckhalt=")) is { } supportArg)
 {
     int support = int.Parse(supportArg["--rueckhalt=".Length..]);
-    variant = m => m.Support = support;
+    variant = m => { m.Support = support; m.Helpers = support > 0 ? m.Doors.Select(d => d.Helper).Where(h => h.Length > 0).ToList() : new List<string>(); };
 }
 args = args.Where(x => !x.StartsWith("--weg=") && !x.StartsWith("--rueckhalt=")).ToArray();
 Func<Action<World, Unit, List<Unit>>> HomeRun = () =>
@@ -1244,7 +1245,7 @@ if (args.Length > 0 && args[0] == "--wege")
     var p0 = new[] { "pistole" };
     foreach (int support in new[] { 0, 5 })
     {
-        variant = m => m.Support = support;
+        variant = m => { m.Support = support; m.Helpers = support > 0 ? m.Doors.Select(d => d.Helper).Where(h => h.Length > 0).ToList() : new List<string>(); };
         quietWatch = null;
         Console.WriteLine($"== Rückhalt {support} ({missionId}, je {Runs} Läufe, Kasse 600)");
         foreach (string route in new[] { "gang", "friedhof", "hoefe" })

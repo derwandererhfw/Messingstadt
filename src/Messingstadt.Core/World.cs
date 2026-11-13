@@ -253,8 +253,8 @@ namespace Messingstadt.Core
             foreach (var d in mission.Doors)
             {
                 var door = new Door { Name = d.Name, Helper = d.Helper };
-                // Türen der Stadt: Bei genug Rückhalt lässt ein Bewohner sie offen, sonst braucht sie Schlosser, Dietrich oder Schlüssel.
-                door.LeftOpen = d.OpenAtSupport > 0 && mission.Support >= d.OpenAtSupport && !mission.Refusing.Contains(d.Helper);
+                // Türen der Stadt: Hilft der Bewohner, lässt er sie offen. Sonst braucht sie Schlosser, Dietrich oder Schlüssel.
+                door.LeftOpen = d.Helper.Length > 0 && mission.Helpers.Contains(d.Helper) && mission.Support >= d.OpenAtSupport;
                 door.Open = door.LeftOpen;
                 foreach (var t in d.Tiles)
                 {
@@ -484,7 +484,7 @@ namespace Messingstadt.Core
         {
             var u = Units[unitId];
             var target = Units[targetId];
-            if (!u.Alive || !target.Alive || target.Bribed || !Hostile(u, target) || State != MissionState.Running)
+            if (!u.Alive || !Attackable(target) || target.Bribed || !Hostile(u, target) || State != MissionState.Running)
             {
                 return false;
             }
@@ -635,7 +635,7 @@ namespace Messingstadt.Core
                 (a.AnchorX, a.AnchorY) = a.Path[^1];
             }
             Unit? target = a.TargetId >= 0 ? Units[a.TargetId] : null;
-            if (target != null && !target.Alive)
+            if (target != null && !Attackable(target))
             {
                 a.TargetId = -1;
                 a.Path.Clear();
@@ -1263,7 +1263,7 @@ namespace Messingstadt.Core
                 return;
             }
             Unit? target = u.TargetId >= 0 ? Units[u.TargetId] : null;
-            if (target != null && !target.Alive)
+            if (target != null && !Attackable(target))
             {
                 u.TargetId = -1;
                 target = null;
@@ -1350,8 +1350,21 @@ namespace Messingstadt.Core
             }
         }
 
+        /// <summary>Ein befohlenes Ziel bleibt gültig, solange es lebt oder niedergeschlagen am Boden liegt: Auch auf den kann man schießen.</summary>
+        private static bool Attackable(Unit target) => target.Alive || target.KnockedOut;
+
         private void Hurt(Unit target, int damage)
         {
+            if (!target.Alive && target.KnockedOut)
+            {
+                // Ein Treffer auf einen Niedergeschlagenen tötet ihn. Jetzt ist er ein Toter wie jeder andere.
+                if (damage > 0)
+                {
+                    target.KnockedOut = false;
+                    Mourn(target);
+                }
+                return;
+            }
             target.Hp = Math.Max(0, target.Hp - damage);
             if (!target.Alive)
             {

@@ -250,6 +250,8 @@ namespace Messingstadt.Core
             Current = missionId;
             mission.Money = Money;
             mission.Support = Support;
+            // Türen der Stadt: Wer in diesem Einsatz hilft, entscheidet das Gedächtnis der Stadt.
+            mission.Helpers = mission.Doors.Select(d => d.Helper).Where(h => h.Length > 0).Distinct().Where(h => HouseHelps(h, missionId)).ToList();
             foreach (var a in mission.Agents)
             {
                 if (!Agents.Exists(r => r.Slot == a.Name))
@@ -426,7 +428,7 @@ namespace Messingstadt.Core
             }
 
             Remember(GuardReport.From(world), Agents.Where(a => LastDeaths.Contains(a.Name)), districtId);
-            int deadGuards = world.Units.Count(u => u.Faction == Faction.Guard && !u.Alive);
+            int deadGuards = world.Units.Count(u => u.Faction == Faction.Guard && u.Dead);
             int bribed = world.Units.Count(u => u.Faction == Faction.Guard && u.Bribed);
             var rating = world.Rating;
             int heat = rating switch

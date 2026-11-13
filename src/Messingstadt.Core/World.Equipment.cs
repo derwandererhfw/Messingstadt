@@ -251,6 +251,8 @@ namespace Messingstadt.Core
             {
                 target.KnockedOut = true;
                 Hurt(target, target.Hp);
+                // Er liegt. Weiterschlagen tötet nicht und hat keinen Zweck.
+                u.TargetId = -1;
                 return;
             }
             Provoke(u, target);

@@ -113,11 +113,14 @@ namespace Messingstadt.Core
         /// <summary>Wo die Tür im Bild zu sehen ist, in Feldern. Ohne Angabe das erste Feld.</summary>
         public double[]? Mark { get; set; }
 
-        /// <summary>Tür der Stadt: Ab diesem Rückhalt lässt ein Bewohner sie offen. 0 heißt, sie ist immer zu.</summary>
-        public int OpenAtSupport { get; set; }
-
-        /// <summary>Wer sie offen lässt, etwa "witwe". Steht der Name in MissionData.Refusing, bleibt sie trotz Rückhalt zu.</summary>
+        /// <summary>
+        /// Tür der Stadt: Wer sie offen lässt, etwa "witwe". Sie steht offen, wenn der Name in MissionData.Helpers steht.
+        /// Ob jemand hilft, entscheidet die Kampagne (Campaign.HouseHelps). Leer heißt, es ist eine gewöhnliche Tür.
+        /// </summary>
         public string Helper { get; set; } = "";
+
+        /// <summary>Zusätzlich nötiger Rückhalt, damit der Helfer die Tür offen lässt. 0 heißt, der Rückhalt spielt keine Rolle.</summary>
+        public int OpenAtSupport { get; set; }
     }
 
     /// <summary>Ein Gefangener in einem Einsatz der Art Befreien.</summary>
@@ -269,8 +272,8 @@ namespace Messingstadt.Core
         /// <summary>Rückhalt in der Stadt, 0 bis 5. Die Kampagne trägt ihn vor dem Einsatz ein, er öffnet die Türen der Stadt.</summary>
         public int Support { get; set; }
 
-        /// <summary>Helfer, die diesmal nicht helfen, gleich wie hoch der Rückhalt ist. Die Bedingungen kennt die Kampagne.</summary>
-        public List<string> Refusing { get; set; } = new();
+        /// <summary>Bewohner, die diesmal helfen und ihre Tür offen lassen. Die Kampagne trägt sie vor dem Einsatz ein.</summary>
+        public List<string> Helpers { get; set; } = new();
 
         /// <summary>Standorte der Straßenlaternen in Feldern. Nur für die Darstellung.</summary>
         public List<double[]> Lamps { get; set; } = new();

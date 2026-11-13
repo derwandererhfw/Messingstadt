@@ -1,6 +1,6 @@
 {
   "title": "Die Wachstube",
-  "briefing": "In der Wachstube Nord sitzen zwei von uns: Paul Roth und der Drucker Anton Weiß. Um sechs holt sie der Werkschutz ab, und was der mit Gefangenen macht, steht in keiner Akte. Holt beide vorher raus und bringt sie zum Wagen in der Wallgasse. Die Wache dort ist arm und müde. Redet, bevor ihr schießt. K.",
+  "briefing": "In der Wachstube Nord sitzen zwei von uns: Paul Roth und der Drucker Anton Weiß. Um sechs holt sie der Werkschutz ab, und was der mit Gefangenen macht, steht in keiner Akte. Holt beide vorher raus und bringt sie zum Wagen im Kohlenhof hinter der Remise. Die Wache dort ist arm und müde. Redet, bevor ihr schießt. K.",
   "place": "Nordwall, hinter dem Amtsgericht",
   "time": "Donnerstag, 24. November 1927, 4:10 Uhr",
   "seed": 1927,
@@ -18,11 +18,11 @@
     { "name": "Zelle 2", "tiles": [[11, 5], [11, 4]], "mark": [11.5, 6.5] },
     { "name": "Schreibstube", "tiles": [[13, 9]], "mark": [13.5, 10.5] },
     { "name": "Friedhofspforte", "tiles": [[4, 13]], "mark": [4.5, 12.5] },
-    { "name": "Pforte des Totengräbers", "tiles": [[5, 17]], "mark": [6.5, 17.5], "helper": "totengraeber", "openAtSupport": 2 },
+    { "name": "Pforte des Totengräbers", "tiles": [[5, 17]], "mark": [6.5, 17.5], "helper": "totengraeber" },
     { "name": "Südpforte des Friedhofs", "tiles": [[2, 25]], "mark": [2.5, 26.5] },
-    { "name": "Hoftür der Witwe", "tiles": [[8, 20]], "mark": [7.5, 20.5], "helper": "witwe", "openAtSupport": 3 },
+    { "name": "Hoftür der Witwe", "tiles": [[8, 20]], "mark": [7.5, 20.5], "helper": "witwe" },
     { "name": "Hoftür am Osthof", "tiles": [[16, 20]], "mark": [15.5, 20.5] },
-    { "name": "Kellerluke der Kneipe", "tiles": [[20, 22]], "mark": [20.5, 21.5], "helper": "wirtin", "openAtSupport": 4 }
+    { "name": "Kellerluke der Kneipe", "tiles": [[20, 22]], "mark": [20.5, 21.5], "helper": "wirtin" }
   ],
   "loot": { "name": "Bußgeldkasse", "x": 13.5, "y": 9.5, "value": 300 },
   "prisoners": [
@@ -45,10 +45,10 @@
       } }
   ],
   "rescueTexts": {
-    "start": "GEFANGENE IM ARRESTHOF STOP PFORTE AN DER GERICHTSGASSE STOP DANN ZUM WAGEN IN DER WALLGASSE STOP",
+    "start": "GEFANGENE IM ARRESTHOF STOP PFORTE AN DER GERICHTSGASSE STOP DANN ZUM WAGEN IM KOHLENHOF STOP",
     "opening": "ZELLE WIRD GEÖFFNET STOP STEHEN BLEIBEN STOP",
     "oneFree": "{NAME} FREI STOP DER ZWEITE FEHLT NOCH STOP",
-    "allFree": "BEIDE FREI STOP ZUM WAGEN IN DER WALLGASSE STOP SIE SIND LANGSAM STOP",
+    "allFree": "BEIDE FREI STOP ZUM WAGEN IM KOHLENHOF STOP SIE SIND LANGSAM STOP",
     "oneDead": "{NAME} TOT STOP DEN ANDEREN RAUSBRINGEN STOP",
     "boarding": "EINSTEIGEN STOP STEHEN BLEIBEN STOP"
   },
@@ -80,6 +80,13 @@
       "Der Schließer nimmt Geld. Hat er immer.",
       "Am Hoftor steht schon einer vom Werk. Mit dem redet keiner.",
       "Die Pforte zur Gerichtsgasse ist zu. Aber da schaut nie einer nach.",
+      "Fenske dreht in der Mittelgasse seine Runde. Der wohnt ja da.",
+      "Zander läuft die Südgasse ab, bis er zu Hause vorbeikommt.",
+      "Roloff lässt keinen an den Wagen in der Remise.",
+      "Im Kohlenhof steht ein Wagen von der Wäscherei. Um die Zeit?",
+      "Auf dem Friedhof stehen nur Nummern. Die Namen kennt das Werk.",
+      "Beim Wallgraben ist noch Licht. Die Radtke schmeißt keinen raus.",
+      "Meine schlafen da drüben. Zweiter Stock, das dunkle Fenster.",
       "Der mit dem Hund geht die Gasse rauf und runter.",
       "Am Wall steht einer mit Gewehr und friert.",
       "Der Junge trägt Zettel zwischen Wache und Gericht.",
@@ -102,20 +109,20 @@
     { "name": "Hanna", "role": "Kurierin", "sprite": "Agent", "x": 12.5, "y": 29.5, "legs": 3, "heart": 1 }
   ],
   "guards": [
-    { "name": "Wallstreife 1", "sprite": "Wachmann", "x": 0.5, "y": 11.5, "patrol": [[13, 11], [0, 11]] },
-    { "name": "Wallstreife 2", "sprite": "Wachmann", "x": 13.5, "y": 12.5, "patrol": [[0, 12], [13, 12]] },
-    { "name": "Türposten", "sprite": "Wachmann", "x": 11.5, "y": 10.5, "facing": [0, 1], "keys": ["Pforte zur Gerichtsgasse"] },
-    { "name": "Wachhabender", "sprite": "Offizier", "type": "offizier", "x": 14.5, "y": 9.5, "facing": [0, 1] },
-    { "name": "Schließer", "sprite": "Wachmann", "x": 8.5, "y": 7.5, "patrol": [[12, 7], [8, 7]], "keys": ["Zelle 1", "Zelle 2"] },
-    { "name": "Hundeführer", "sprite": "Hundefuehrer", "type": "hundefuehrer", "x": 5.5, "y": 9.5, "patrol": [[5, 2], [1, 2], [6, 2], [6, 9], [5, 9]] },
-    { "name": "Hund", "sprite": "Hund", "type": "hund", "handler": "Hundeführer", "x": 5.5, "y": 8.5 },
-    { "name": "Wallposten", "sprite": "Schuetze", "type": "schuetze", "x": 14.5, "y": 2.5, "patrol": [[19, 2], [14, 2]] },
-    { "name": "Bote", "sprite": "Laufbursche", "type": "laufbursche", "x": 16.5, "y": 12.5, "patrol": [[6, 12], [16, 12]] },
-    { "name": "Mann vom Werk", "sprite": "Werkschutz", "type": "werkschutz", "x": 14.5, "y": 7.5, "facing": [0, 1] },
-    { "name": "Friedhofsstreife", "sprite": "Wachmann", "x": 3.5, "y": 14.5, "facing": [0, -1] },
-    { "name": "Posten am Fahnenmast", "sprite": "Wachmann", "x": 24.5, "y": 6.5, "facing": [0, 1], "noBribe": true },
-    { "name": "Posten an der Remise", "sprite": "Wachmann", "x": 26.5, "y": 18.5, "facing": [0, 1], "noBribe": true },
-    { "name": "Nachtwächter", "sprite": "Wachmann", "x": 14.5, "y": 14.5, "patrol": [[14, 17], [14, 13], [20, 13], [14, 13]] },
-    { "name": "Südstreife", "sprite": "Wachmann", "x": 23.5, "y": 26.5, "patrol": [[3, 26], [23, 26]] }
+    { "name": "Wallstreife 1", "person": "Jahnke", "sprite": "Wachmann", "x": 0.5, "y": 11.5, "patrol": [[13, 11], [0, 11]] },
+    { "name": "Wallstreife 2", "person": "Olbrich", "sprite": "Wachmann", "x": 13.5, "y": 12.5, "patrol": [[0, 12], [13, 12]] },
+    { "name": "Türposten", "person": "Kempe", "sprite": "Wachmann", "x": 11.5, "y": 10.5, "facing": [0, 1], "keys": ["Pforte zur Gerichtsgasse"] },
+    { "name": "Wachhabender", "person": "Seidel", "sprite": "Offizier", "type": "offizier", "x": 14.5, "y": 9.5, "facing": [0, 1] },
+    { "name": "Schließer", "person": "Nowak", "sprite": "Wachmann", "x": 8.5, "y": 7.5, "patrol": [[12, 7], [8, 7]], "keys": ["Zelle 1", "Zelle 2"] },
+    { "name": "Hundeführer", "person": "Rieck", "sprite": "Hundefuehrer", "type": "hundefuehrer", "x": 5.5, "y": 9.5, "patrol": [[5, 2], [1, 2], [6, 2], [6, 9], [5, 9]] },
+    { "name": "Hund", "person": "Greif", "sprite": "Hund", "type": "hund", "handler": "Hundeführer", "x": 5.5, "y": 8.5 },
+    { "name": "Wallposten", "person": "Engel", "sprite": "Schuetze", "type": "schuetze", "x": 14.5, "y": 2.5, "patrol": [[19, 2], [14, 2]] },
+    { "name": "Bote", "person": "Jakob", "sprite": "Laufbursche", "type": "laufbursche", "x": 16.5, "y": 12.5, "patrol": [[6, 12], [16, 12]] },
+    { "name": "Mann vom Werk", "person": "Grabow", "sprite": "Werkschutz", "type": "werkschutz", "x": 14.5, "y": 7.5, "facing": [0, 1] },
+    { "name": "Friedhofsstreife", "person": "Buchholz", "sprite": "Wachmann", "x": 3.5, "y": 14.5, "facing": [0, -1] },
+    { "name": "Posten am Fahnenmast", "person": "Lindner", "sprite": "Wachmann", "x": 24.5, "y": 6.5, "facing": [0, 1], "noBribe": true },
+    { "name": "Posten an der Remise", "person": "Roloff", "sprite": "Wachmann", "x": 26.5, "y": 18.5, "facing": [0, 1], "noBribe": true },
+    { "name": "Nachtwächter", "person": "Fenske", "sprite": "Wachmann", "x": 14.5, "y": 14.5, "patrol": [[14, 17], [14, 13], [20, 13], [14, 13]] },
+    { "name": "Südstreife", "person": "Zander", "sprite": "Wachmann", "x": 23.5, "y": 26.5, "patrol": [[3, 26], [23, 26]] }
   ]
 }

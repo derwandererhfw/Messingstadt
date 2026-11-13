@@ -247,27 +247,52 @@ namespace Messingstadt.Core.Tests
         [Fact]
         public void ADoorOfTheCityStandsOpenWhenSupportIsHighEnough()
         {
-            MissionData WithSupport(int support, params string[] refusing)
+            MissionData With(int support, params string[] helpers)
             {
                 var m = Mission(new() { Agent(13.5, 5.5) }, new());
-                m.Doors[0].OpenAtSupport = 3;
                 m.Doors[0].Helper = "witwe";
+                m.Doors[0].OpenAtSupport = 3;
                 m.Support = support;
-                m.Refusing = refusing.ToList();
+                m.Helpers = helpers.ToList();
                 return m;
             }
-            var low = new World(Map(), WithSupport(2));
-            Assert.False(low.Doors[0].Open);
-            Assert.Null(low.Map.FindPath(13, 5, 16, 5));
+            var nobody = new World(Map(), With(5));
+            Assert.False(nobody.Doors[0].Open);
+            Assert.Null(nobody.Map.FindPath(13, 5, 16, 5));
 
-            var high = new World(Map(), WithSupport(3));
-            Assert.True(high.Doors[0].Open && high.Doors[0].LeftOpen);
-            Assert.NotNull(high.Map.FindPath(13, 5, 16, 5));
+            var helps = new World(Map(), With(3, "witwe"));
+            Assert.True(helps.Doors[0].Open && helps.Doors[0].LeftOpen);
+            Assert.NotNull(helps.Map.FindPath(13, 5, 16, 5));
             // Die andere Tür hat keinen Helfer und bleibt zu.
-            Assert.False(high.Doors[1].Open);
+            Assert.False(helps.Doors[1].Open);
 
-            var refused = new World(Map(), WithSupport(5, "witwe"));
-            Assert.False(refused.Doors[0].Open);
+            // Sie würde helfen, aber der Rückhalt reicht für diese Tür nicht.
+            Assert.False(new World(Map(), With(2, "witwe")).Doors[0].Open);
+        }
+
+        [Fact]
+        public void TheCampaignOpensTheHelpersDoorsOnlyWithoutBlood()
+        {
+            MissionData Two()
+            {
+                var m = Mission(new() { Agent(13.5, 5.5) }, new());
+                m.Doors[0].Helper = Campaign.HelperWidow;
+                m.Doors[1].Helper = Campaign.HelperLandlady;
+                return m;
+            }
+            var clean = new Campaign();
+            var first = Two();
+            clean.Prepare(first, "mission_02");
+            Assert.Contains(Campaign.HelperWidow, first.Helpers);
+            Assert.True(new World(Map(), first).Doors[0].Open);
+
+            var bloody = new Campaign();
+            bloody.Prepare(Two(), "mission_01");
+            bloody.RememberNight(new[] { new GuardReport { Name = "Krüger", Fate = GuardFate.Dead } }, "mission_01");
+            var second = Two();
+            bloody.Prepare(second, "mission_02");
+            Assert.DoesNotContain(Campaign.HelperWidow, second.Helpers);
+            Assert.False(new World(Map(), second).Doors[0].Open);
         }
 
         [Fact]
