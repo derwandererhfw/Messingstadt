@@ -245,6 +245,68 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void ADoorOfTheCityStandsOpenWhenSupportIsHighEnough()
+        {
+            MissionData With(int support, params string[] helpers)
+            {
+                var m = Mission(new() { Agent(13.5, 5.5) }, new());
+                m.Doors[0].Helper = "witwe";
+                m.Doors[0].OpenAtSupport = 3;
+                m.Support = support;
+                m.Helpers = helpers.ToList();
+                return m;
+            }
+            var nobody = new World(Map(), With(5));
+            Assert.False(nobody.Doors[0].Open);
+            Assert.Null(nobody.Map.FindPath(13, 5, 16, 5));
+
+            var helps = new World(Map(), With(3, "witwe"));
+            Assert.True(helps.Doors[0].Open && helps.Doors[0].LeftOpen);
+            Assert.NotNull(helps.Map.FindPath(13, 5, 16, 5));
+            // Die andere Tür hat keinen Helfer und bleibt zu.
+            Assert.False(helps.Doors[1].Open);
+
+            // Sie würde helfen, aber der Rückhalt reicht für diese Tür nicht.
+            Assert.False(new World(Map(), With(2, "witwe")).Doors[0].Open);
+        }
+
+        [Fact]
+        public void TheCampaignOpensTheHelpersDoorsOnlyWithoutBlood()
+        {
+            MissionData Two()
+            {
+                var m = Mission(new() { Agent(13.5, 5.5) }, new());
+                m.Doors[0].Helper = Campaign.HelperWidow;
+                m.Doors[1].Helper = Campaign.HelperLandlady;
+                return m;
+            }
+            var clean = new Campaign();
+            var first = Two();
+            clean.Prepare(first, "mission_02");
+            Assert.Contains(Campaign.HelperWidow, first.Helpers);
+            Assert.True(new World(Map(), first).Doors[0].Open);
+
+            var bloody = new Campaign();
+            bloody.Prepare(Two(), "mission_01");
+            // Blutschuld: Der erste Tote einer Nacht ist frei, erst mehrere lassen die Stadt schweigen.
+            bloody.RememberNight(new[] { "Krüger", "Bartels", "Henke" }.Select(n => new GuardReport { Name = n, Fate = GuardFate.Dead }).ToArray(), "mission_01");
+            Assert.Equal(CityStance.Silent, bloody.Stance);
+            var second = Two();
+            bloody.Prepare(second, "mission_02");
+            Assert.DoesNotContain(Campaign.HelperWidow, second.Helpers);
+            Assert.False(new World(Map(), second).Doors[0].Open);
+        }
+
+        [Fact]
+        public void TheCampaignHandsItsSupportToTheMission()
+        {
+            var campaign = new Campaign { Support = 4 };
+            var m = Mission(new() { Agent(13.5, 5.5) }, new());
+            campaign.Prepare(m);
+            Assert.Equal(4, m.Support);
+        }
+
+        [Fact]
         public void APrisonerStillInHisCellBlocksTheWin()
         {
             var w = FreedWeiss();

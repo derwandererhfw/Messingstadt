@@ -191,7 +191,7 @@ def mat_tower(f):
 
 
 # ---------- Fassaden des Nordwalls ----------
-def office_front(w, h, lit_rate, barred=False, name=None, floors=None, door_at=None, force=()):
+def office_front(w, h, lit_rate, barred=False, name=None, floors=None, door_at=None, force=(), helper=None):
     """Amtsfassade aus Klinker: Granitsockel, Gesimse, Rundbogenfenster. Erleuchtete Stuben haben schlichte Rechteckfenster."""
     img, d = g.wall(w, h, ("brick",))
     g.plinth(d, w, h, 11)
@@ -202,6 +202,9 @@ def office_front(w, h, lit_rate, barred=False, name=None, floors=None, door_at=N
     else:
         g.cornice(d, w)
     floors = floors or max(1, (h - top - 14) // 42)
+    # helper: (Name, Stelle auf der Wand in Bildpunkten). Das nächste Fenster im Erdgeschoss ist seins: Dort steht die Kerze.
+    columns = [u for u in range(9, w - 18, 24) if door_at is None or abs(u + 6 - door_at) >= 20]
+    signal = min(columns, key=lambda u: abs(u + 6 - helper[1])) if helper and columns else None
     step = (h - top - 12) / floors
     for f in range(floors):
         base = int(h - 11 - f * step)
@@ -211,7 +214,11 @@ def office_front(w, h, lit_rate, barred=False, name=None, floors=None, door_at=N
             y = base - int(step) + 14
             if f == 0 and door_at is not None and abs(u + 6 - door_at) < 20:
                 continue
-            if (g.RNG.random() < lit_rate) | ((f, col) in force):  # force: (Geschoss, Spalte) brennt immer
+            if f == 0 and u == signal:
+                g.RNG.random()
+                g.window(d, u, y, 11, 17, lit=True)
+                img.info.setdefault("panes", []).append((u, y, 11, 18, "kerze:" + helper[0]))
+            elif (g.RNG.random() < lit_rate) | ((f, col) in force):  # force: (Geschoss, Spalte) brennt immer
                 g.window(d, u, y, 11, 17, lit=True)
                 img.info.setdefault("panes", []).append((u, y, 11, 18))
                 if barred:
@@ -289,6 +296,7 @@ def prop_item(add):
 
 
 GATES = []  # Tore des Grundrisses, damit die Mauer daneben ihre Pfosten bekommt
+HELPERS = {}  # Helferfenster des Grundrisses: Name -> (x, y)
 
 
 def mat_post(f):
@@ -365,7 +373,10 @@ def nordwall_building(b, s, things):
     elif kind == "kaserne":
         left, d = office_front(wl, h, lit, door_at=wl // 2)
         g.door(d, wl // 2 - 8, h - 1, 16, 30, "wood_d", True)
-        right, dr = office_front(wr, h, lit)
+        east = [door for door in b.get("doors", ()) if door["side"] == "ost"]
+        right, dr = office_front(wr, h, lit, door_at=int((depth - east[0]["at"]) * HW) if east else None)
+        if east:
+            g.door(dr, int((depth - east[0]["at"]) * HW) - 8, h - 1, 16, 30, "wood_d", True)
         g.downpipe(dr, wr - 8, 2, h - 4)
         g.quoins(d, wl, 10, h - 12)
         g.name_plate(left, d, wl // 2, 8, "KASERNE", 6)
@@ -390,12 +401,15 @@ def nordwall_building(b, s, things):
             dr.fine_line((u, 0, u, h), fill=g.C["wood_d"])
         dr.rectangle((0, 0, wr, 3), fill=g.C["soot"])
         roof = roof_flat(sheet=True)
-    elif kind == "hofmauer":
-        left, d = g.wall(wl, h, ("brick",))
-        d.rectangle((0, 0, wl, 3), fill=g.C["stone"])
-        right, dr = g.wall(wr, h, ("brick",))
-        dr.rectangle((0, 0, wr, 3), fill=g.C["stone"])
-        dr.shade((0, 4, wr, 5), 0.62)
+    elif kind in ("hofmauer", "friedhofsmauer"):
+        stone = kind == "friedhofsmauer"  # Bruchstein mit Ziegelkrone und Moos statt Klinker
+        left, d = g.wall(wl, h, ("stone",) if stone else ("brick",))
+        right, dr = g.wall(wr, h, ("stone",) if stone else ("brick",))
+        for face, width in ((d, wl), (dr, wr)):
+            face.rectangle((0, 0, width, 3), fill=g.C["brick_d" if stone else "stone"])
+            face.shade((0, 4, width, 5), 0.62)
+            if stone:
+                face.shade((0, h - 9, width, h), 0.75, g.C["moss"], 0.4)
         for door in b.get("doors", ()):
             if door["side"] == "ost":  # nur die Ostseite zeigt zur Kamera
                 u = int((depth - door["at"]) * HW) - 11
@@ -406,27 +420,78 @@ def nordwall_building(b, s, things):
                 dr.fine_line((u, 16, u + 22, 16), fill=g.C["iron"])
                 dr.fine_line((u, h - 6, u + 22, h - 6), fill=g.C["iron"])
         roof = roof_flat(2)
-        posts = []
+        posts = []  # Granitpfosten an jedem Mauerende, an das ein Tor stößt: (x0, y0, x1, y1)
         for gate in GATES:
-            if gate["x0"] == b["x0"] and gate["y0"] == b["y1"]:  # Tor südlich dieses Mauerstücks
+            if gate["x0"] == b["x0"] and gate["y0"] == b["y1"]:  # Tor südlich
                 dr.rectangle((0, 0, 9, h), fill=g.C["stone_l"])
-                dr.shade((9, 0, 10, h), 0.6)
-                posts.append((b["y1"] - 0.3, b["y1"]))
-            if gate["x0"] == b["x0"] and gate["y1"] == b["y0"]:
+                posts.append((b["x0"], b["y1"] - 0.3, b["x1"], b["y1"]))
+            if gate["x0"] == b["x0"] and gate["y1"] == b["y0"]:  # Tor nördlich
                 dr.rectangle((wr - 10, 0, wr - 1, h), fill=g.C["stone_l"])
-                posts.append((b["y0"], b["y0"] + 0.3))
+                posts.append((b["x0"], b["y0"], b["x1"], b["y0"] + 0.3))
+            if gate["y0"] == b["y0"] and gate["x0"] == b["x1"]:  # Tor östlich
+                d.rectangle((wl - 10, 0, wl - 1, h), fill=g.C["stone_l"])
+                dr.rectangle((0, 0, wr - 1, h), fill=g.C["stone_l"])
+                posts.append((b["x1"] - 0.3, b["y0"], b["x1"], b["y1"]))
+            if gate["y0"] == b["y0"] and gate["x1"] == b["x0"]:  # Tor westlich
+                d.rectangle((0, 0, 9, h), fill=g.C["stone_l"])
+                posts.append((b["x0"], b["y0"], b["x0"] + 0.3, b["y1"]))
         if posts:
             plain = roof
-            roof = lambda x0, y0, x1, y1, hh: plain(x0, y0, x1, y1, hh) + [R.block(x0, a, x1, e, hh, hh + 7, mat_post, "post") for a, e in posts]  # noqa: E731
+            roof = lambda x0, y0, x1, y1, hh: plain(x0, y0, x1, y1, hh) + [R.block(*q, hh, hh + 7, mat_post, "post") for q in posts]  # noqa: E731
+    elif kind == "huette":
+        # Hütte des Totengräbers: Bretter, Teerpappe, ein kleines Fenster nach Süden, in dem die Kerze stehen kann
+        left, right = planks(wl, h), planks(wr, h)
+        d = g.draw_on(left)
+        g.window(d, wl // 2 - 5, 12, 10, 12, lit=True, frame="wood_d")
+        left.info.setdefault("panes", []).append((wl // 2 - 5, 12, 10, 13, "kerze:" + b.get("helper", "totengraeber")))
+        d.rectangle((6, h - 26, 17, h - 1), fill=g.C["wood_d"])
+        d.fine_line((11, h - 26, 11, h - 1), fill=g.C["black"])
+        dr = g.draw_on(right)
+        for u in (10, 20):  # Schaufel und Spaten lehnen an der Wand
+            dr.fine_line((u, h - 22, u, h - 2), fill=g.C["wood"])
+            dr.rectangle((u - 1, h - 6, u + 1, h - 2), fill=g.C["steel"])
+        roof = roof_flat(sheet=True)
+    elif kind == "hinterhaus":
+        # Hinterhaus: niedrig, verputzt und fleckig, Pappdach. Hier wohnt, wer vorn die Miete nicht zahlen kann
+        left, d = office_front(wl, h, lit, floors=1, door_at=wl // 2)
+        g.door(d, wl // 2 - 7, h - 1, 14, 26, "wood_d", False)
+        g.plaster(left, g.C["plaster"], 31, 0.35)
+        right, dr = office_front(wr, h, lit, floors=1)
+        g.plaster(right, g.C["plaster"], 32, 0.4)
+        g.downpipe(dr, 6, 2, h - 4)
+        roof = roof_flat(sheet=True)
+        items = [g.chimney(0.7, 0.3, 12, False)]
+    elif kind == "kneipe":
+        door = (b.get("doors") or [{"at": w / 2}])[0]
+        at = int(door["at"] * HW)
+        left, d = g.wall(wl, h, ("brick",))
+        g.plinth(d, wl, h, 6)
+        d.rectangle((0, 0, wl, 3), fill=g.C["stone"])
+        for u in (8, wl - 26):
+            butzen(left, d, u, 16, 18, 16)
+        g.door(d, at - 8, h - 1, 16, 26, "wood", True)
+        if b.get("name"):
+            g.name_plate(left, d, wl // 2, 5, b["name"], 5)
+        right, dr = g.wall(wr, h, ("brick",))
+        g.plinth(dr, wr, h, 6)
+        dr.rectangle((0, 0, wr, 3), fill=g.C["stone"])
+        spot = int((b["y1"] - HELPERS.get("wirtin", (0, b["y1"] - 2))[1]) * HW)
+        columns = list(range(10, wr - 24, 30))
+        own = min(columns, key=lambda u: abs(u + 9 - spot)) if "wirtin" in HELPERS else None  # das nächste Fenster ist das der Wirtin
+        for u in columns:
+            mine = u == own
+            butzen(right, dr, u, 16, 18, 16, "kerze:wirtin" if mine else None)
+        roof = roof_low(14, 22, tint=(1.1, 0.96, 0.9))
+        items = [g.chimney(0.3, 0.5, 14, False)]
     else:  # Mietshaus der Beamten und alles Unbekannte: Klinker mit Granitbändern, schlicht
         # Restlicht für den Start im Durchgang: Im Westhaus brennt das Eckfenster zur Gasse, im Osthaus das zur Straße.
         # Fensterlicht zählt nur fürs Bild, das Schleichlicht kennt die Fenster aus rules_windows_<nr>.json.
-        west = b["id"].endswith("west")
-        left, d = office_front(wl, h, lit, floors=2, door_at=wl // 2, force=() if west else ((0, 0), (1, 0)))
+        spot = next((n, int((x - b["x0"]) * HW)) for n, (x, y) in list(HELPERS.items()) + [(None, (0, 0))] if n is None or (abs(y - b["y1"]) < 0.3 and b["x0"] <= x <= b["x1"]))
+        left, d = office_front(wl, h, lit, floors=2, door_at=wl // 2, helper=spot if spot[0] else None)
         g.door(d, wl // 2 - 8, h - 1, 16, 30, "wood", True)
         g.quoins(d, wl, 10, h - 12)
         g.downpipe(d, 8, 2, h - 4)
-        right, dr = office_front(wr, h, lit, floors=2, force=((0, 0), (1, 1)) if west else ())
+        right, dr = office_front(wr, h, lit, floors=2)
         g.quoins(dr, wr, 10, h - 12)
         roof = roof_low(20, 26)
         items = [g.chimney(0.72, 0.66, 14, False)]
@@ -434,35 +499,236 @@ def nordwall_building(b, s, things):
     things[-1].opaque = b.get("opaque", True)
 
 
-def sheet_gate(gate, s, things):
-    """Tor aus genietetem Eisenblech in einer Mauerlücke: ein dünnes Blatt, niedriger als die Mauer, blickdicht.
+def planks(w, h, base="wood", dark="wood_d"):
+    tex = g.canvas(max(1, w), h, g.C[base])
+    d = g.draw_on(tex)
+    for u in range(0, w, 5):
+        d.fine_line((u, 0, u, h), fill=g.C[dark])
+    d.rectangle((0, 0, w, 2), fill=g.C[dark])
+    d.shade((0, h - 5, w, h), 0.7)
+    return tex
 
-    Es sperrt kein Feld, das tut die Tür der Mission. Das Blatt steht leicht hinter der Mauerflucht, so liest man die Lücke.
-    """
-    h, depth = gate["height"], gate["y1"] - gate["y0"]
-    wr = int(depth * HW)
+
+def butzen(img, d, x, y, w, h, fixed=None):
+    """Kneipenfenster aus Butzenscheiben: kleine runde Gläser in Blei, dahinter warmes Licht."""
+    d.rectangle((x - 2, y - 2, x + w + 1, y + h + 1), fill=g.C["wood_d"])
+    d.rectangle((x, y, x + w - 1, y + h - 1), fill=g.C["gas_d"])
+    for u in range(x, x + w, 3):
+        d.fine_line((u, y, u, y + h - 1), fill=g.C["black"])
+    for v in range(y, y + h, 3):
+        d.fine_line((x, v, x + w - 1, v), fill=g.C["black"])
+    img.info.setdefault("panes", []).append((x, y, w, h, fixed) if fixed else (x, y, w, h))
+
+
+def gate_leaf(kind, w, h):
+    """Blatt eines Tors nach seiner Art. Gitter sind durchbrochen, Blech und Holz blickdicht."""
+    if kind == "gittertor":
+        tex = g.canvas(w, h, (0, 0, 0, 0))
+        d = g.draw_on(tex)
+        for u in range(0, w, 3):
+            d.fine_line((u, 2, u, h), fill=g.C["black"])
+            d.fine_line((u, 0, u, 1), fill=g.C["steel"])  # Spitzen
+        for v in (4, h - 6):
+            d.rectangle((0, v, w - 1, v), fill=g.C["iron"])
+        d.rectangle((w // 2 - 1, h // 2 - 1, w // 2 + 1, h // 2 + 2), fill=g.C["iron"])
+        return tex
+    if kind in ("holzpforte", "holztor", "kellerluke"):
+        tex = planks(w, h, "wood" if kind != "kellerluke" else "wood_d", "wood_d" if kind != "kellerluke" else "black")
+        d = g.draw_on(tex)
+        for v in (5, h - 9):
+            d.rectangle((0, v, w - 1, v + 1), fill=g.C["iron"])
+        d.fine_line((w // 2, 0, w // 2, h), fill=g.C["black"])
+        d.rectangle((w // 2 + 2, h // 2, w // 2 + 3, h // 2 + 2), fill=g.C["brass"])
+        d.rectangle((0, 0, w - 1, 0), fill=g.C["paper"] if kind == "holzpforte" else g.C["wood"])
+        return tex
     sheet = g.blend(g.C["steel"], 1.12)
-    left = g.canvas(4, h, sheet)
-    right = g.canvas(wr, h, sheet)
-    d = g.draw_on(right)
-    d.rectangle((0, 0, wr - 1, 1), fill=g.C["ash"])  # blanke Oberkante
-    d.rectangle((0, h - 4, wr - 1, h - 1), fill=g.C["wood_d"])
-    for u in (0, wr // 2, wr - 1):  # Rahmen und Stoß der beiden Flügel
+    tex = g.canvas(w, h, sheet)
+    d = g.draw_on(tex)
+    d.rectangle((0, 0, w - 1, 1), fill=g.C["ash"])  # blanke Oberkante
+    d.rectangle((0, h - 4, w - 1, h - 1), fill=g.C["wood_d"])
+    for u in (0, w // 2, w - 1):  # Rahmen und Stoß der beiden Flügel
         d.fine_line((u, 0, u, h), fill=g.C["black"])
     for v in (5, h - 10):  # Bänder mit blanken Nietköpfen
-        d.rectangle((1, v, wr - 2, v + 2), fill=g.C["iron"])
-        for u in range(3, wr - 2, 4):
+        d.rectangle((1, v, w - 2, v + 2), fill=g.C["iron"])
+        for u in range(3, w - 2, 4):
             d.rectangle((u, v + 1, u, v + 1), fill=g.C["paper"])
-    d.rectangle((wr // 2 - 7, 11, wr // 2 + 7, 16), fill=g.C["paper"])  # Emailleschild: weiß mit schwarzem Rand
-    d.fine_line((wr // 2 - 7, 11, wr // 2 + 7, 11), fill=g.C["black"])
-    d.fine_line((wr // 2 - 7, 16, wr // 2 + 7, 16), fill=g.C["black"])
-    for u in range(wr // 2 - 5, wr // 2 + 5, 2):
-        d.fine_line((u, 13, u, 14), fill=g.C["black"])
-    d.rectangle((wr // 2 + 2, h // 2 + 3, wr // 2 + 4, h // 2 + 6), fill=g.C["black"])  # Schlosskasten
-    d.rectangle((wr // 2 + 3, h // 2 + 4, wr // 2 + 3, h // 2 + 4), fill=g.C["brass_l"])
-    g.building(gate["x0"] + 0.36, gate["y0"], 0.12, depth, h, left, right, s, things)
+    d.rectangle((w // 2 - 7, 11, w // 2 + 7, 16), fill=g.C["paper"])  # Emailleschild
+    d.rectangle((w // 2 + 2, h // 2 + 3, w // 2 + 4, h // 2 + 6), fill=g.C["black"])  # Schlosskasten
+    return tex
+
+
+def sheet_gate(gate, s, things, scene=None):
+    """Tor in einer Mauerlücke: ein dünnes Blatt, niedriger als die Mauer, leicht hinter der Mauerflucht.
+
+    Es sperrt kein Feld, das tut die Tür der Mission. Im Manifest trägt es den Namen seiner Tür (door), damit das Spiel
+    das Blatt ausblenden kann, wenn die Tür offen steht.
+    """
+    h, kind = gate["height"], gate["kind"]
+    blocks = (scene["buildings"] + scene["walls"]) if scene else []
+    along_x = any(b["y0"] <= gate["y0"] < b["y1"] and (b["x1"] == gate["x0"] or b["x0"] == gate["x1"]) for b in blocks)
+    opaque = kind != "gittertor"
+    if along_x:  # die Mauer läuft von West nach Ost, das Blatt zeigt nach Süden
+        w = gate["x1"] - gate["x0"]
+        y = gate["y0"] + 0.36
+        if opaque:
+            g.building(gate["x0"], y, w, 0.12, h, gate_leaf(kind, int(w * HW), h), g.canvas(4, h, g.C["iron"]), s, things)
+        else:
+            g.flat_prop(gate["x0"], y + 0.06, gate_leaf(kind, int(w * HW), h), s, things)
+    else:
+        depth = gate["y1"] - gate["y0"]
+        x = gate["x0"] + 0.36
+        if opaque:
+            g.building(x, gate["y0"], 0.12, depth, h, g.canvas(4, h, g.C["iron"]), gate_leaf(kind, int(depth * HW), h), s, things)
+        else:
+            g.flat_prop(x + 0.06, gate["y0"], gate_leaf(kind, int(depth * HW), h), s, things, along="y")
     things[-1].solid = False
-    things[-1].kind = "gate"
+    things[-1].kind = "gate" if opaque else "open"
+    things[-1].door = gate.get("door", "")
+
+
+# ---------- Kleines für Friedhof, Höfe und Exerzierplatz ----------
+def post_thing(x, y, height, s, things, paint, solid=True, kind="open"):
+    """Schmales Ding auf einem Feld: Sperrt es, dann wie im Grundriss die Mitte des Felds (0,3 bis 0,7)."""
+    tx, ty = int(x), int(y)
+
+    def draw():
+        px, py = s.to_screen(tx + 0.5 if solid else x, ty + 0.5 if solid else y, 0)
+        paint(ImageDraw.Draw(s.img), int(px), int(py), s.res)
+    if solid:
+        things.append(g.Thing(tx + 0.3, ty + 0.3, tx + 0.7, ty + 0.7, 0, height, draw, solid=True, opaque=False))
+    else:
+        things.append(g.Thing(x - 0.08, y - 0.08, x + 0.08, y + 0.08, 0, height, draw))
+    things[-1].kind = kind
+
+
+def paint_tree(seed):
+    """Kahler Baum: Stamm, der sich dreimal gabelt. Durchbrochen, verdeckt also kaum etwas."""
+    def paint(dr, px, py, k):
+        rnd = __import__("random").Random(seed)
+
+        def branch(x, y, angle, length, width):
+            x1, y1 = x + math.cos(angle) * length * k, y - math.sin(angle) * length * k
+            dr.line((x, y, x1, y1), fill=g.C["wood_d" if width > 1 else "black"] + (255,), width=max(1, int(width * k)))
+            if length > 5:
+                for turn in (-0.5, 0.45):
+                    branch(x1, y1, angle + turn + rnd.uniform(-0.2, 0.2), length * rnd.uniform(0.62, 0.75), width * 0.6)
+        branch(px, py, math.pi / 2 + rnd.uniform(-0.08, 0.08), 22, 3.2)
+    return paint
+
+
+def paint_cross(number):
+    """Holzkreuz mit Blechtafel: eine Nummer statt eines Namens."""
+    def paint(dr, px, py, k):
+        dr.rectangle((px - k // 2, py - 16 * k, px + k - k // 2 - 1, py), fill=g.C["wood"] + (255,))
+        dr.rectangle((px - 4 * k, py - 12 * k, px + 4 * k - 1, py - 11 * k), fill=g.C["wood"] + (255,))
+        dr.rectangle((px - 2 * k, py - 10 * k, px + 2 * k - 1, py - 7 * k), fill=g.C["paper"] + (255,))
+        for i in range(number % 3 + 1):  # die Nummer als Striche, lesbar ist sie in dieser Größe nicht
+            dr.rectangle((px - 2 * k + (1 + i) * k, py - 9 * k, px - 2 * k + (1 + i) * k + max(0, k - 2), py - 8 * k), fill=g.C["black"] + (255,))
+    return paint
+
+
+def paint_mast(dr, px, py, k):
+    dr.rectangle((px - 2 * k, py - 3 * k, px + 2 * k - 1, py), fill=g.C["stone"] + (255,))
+    dr.rectangle((px - k // 2, py - 96 * k, px + k - k // 2 - 1, py - 3 * k), fill=g.C["paper"] + (255,))
+    dr.rectangle((px - k, py - 98 * k, px + k - 1, py - 96 * k), fill=g.C["brass"] + (255,))
+    for i in range(10 * k):  # die Fahne hängt nass am Mast
+        wide = int((12 - 6 * i / (10 * k)) * k)
+        for j in range(wide):
+            col = (g.C["navy_d"], g.C["paper"], g.C["navy_d"])[(j * 3) // max(1, wide)]
+            dr.point((px + k + j, py - 94 * k + i + j // 3), fill=tuple(int(c * (0.78 if (i // k + j // k) % 3 == 0 else 0.96)) for c in col) + (255,))
+
+
+def paint_pump(dr, px, py, k):
+    dr.rectangle((px - 6 * k, py - 4 * k, px + 6 * k - 1, py), fill=g.C["stone"] + (255,))  # Trog
+    dr.rectangle((px - 5 * k, py - 4 * k, px + 5 * k - 1, py - 3 * k), fill=g.C["puddle"] + (255,))
+    dr.rectangle((px - k, py - 22 * k, px + k - 1, py - 4 * k), fill=g.C["iron"] + (255,))
+    dr.rectangle((px - 2 * k, py - 24 * k, px + 2 * k - 1, py - 22 * k), fill=g.C["black"] + (255,))
+    dr.line((px + k, py - 20 * k, px + 7 * k, py - 14 * k), fill=g.C["iron"] + (255,), width=max(1, k))  # Schwengel
+    dr.rectangle((px - 4 * k, py - 15 * k, px - k, py - 14 * k), fill=g.C["iron"] + (255,))  # Auslauf
+
+
+def paint_coal(dr, px, py, k):
+    for i, (dx, r) in enumerate(((-5, 5), (2, 7), (7, 4))):
+        dr.ellipse((px + (dx - r) * k, py - r * k - 2 * k, px + (dx + r) * k, py + 2 * k), fill=(g.C["black"], g.C["soot"], g.C["black"])[i] + (255,))
+    for dx, dy in ((-3, -5), (2, -8), (6, -3), (0, -2)):
+        dr.rectangle((px + dx * k, py + dy * k, px + dx * k + k - 1, py + dy * k + k - 1), fill=g.C["grey_d"] + (255,))
+
+
+def paint_barrels(dr, px, py, k):
+    for dx in (-5, 4):
+        dr.rectangle((px + (dx - 4) * k, py - 14 * k, px + (dx + 4) * k - 1, py), fill=g.C["wood"] + (255,))
+        for v in (-12, -3):
+            dr.rectangle((px + (dx - 4) * k, py + v * k, px + (dx + 4) * k - 1, py + v * k + k - 1), fill=g.C["iron"] + (255,))
+        dr.ellipse((px + (dx - 4) * k, py - 16 * k, px + (dx + 4) * k - 1, py - 12 * k), fill=g.C["wood_d"] + (255,))
+
+
+def arc_lamp(x, y, s, things, glows):
+    """Bogenlampe des Exerzierplatzes: hoher Gittermast mit Ausleger, darunter die weiße Glocke. Elektrisch und grell."""
+    glows.append((x, y))
+    g.AMBIENT["lights"].append([x, y, 86])
+    LAMP_KINDS[(x, y)] = "bogen"
+
+    def draw():
+        k = s.res
+        px, py = s.to_screen(x, y, 0)
+        px, py = int(px), int(py)
+        dr = ImageDraw.Draw(s.img)
+        dr.rectangle((px - 3 * k, py - 4 * k, px + 3 * k - 1, py), fill=g.C["stone_d"] + (255,))
+        dr.rectangle((px - k, py - 96 * k, px + k - 1, py - 4 * k), fill=g.C["iron"] + (255,))
+        for v in range(10, 92, 8):  # Gitterstreben
+            dr.line((px - k, py - v * k, px + k - 1, py - (v + 6) * k), fill=g.C["black"] + (255,))
+        dr.line((px, py - 96 * k, px + 9 * k, py - 100 * k), fill=g.C["iron"] + (255,), width=max(1, k))
+        dr.rectangle((px + 8 * k, py - 100 * k, px + 9 * k, py - 93 * k), fill=g.C["iron"] + (255,))
+        dr.ellipse((px + 5 * k, py - 93 * k, px + 12 * k, py - 85 * k), fill=(255, 236, 180, 255))
+        dr.rectangle((px + 6 * k, py - 95 * k, px + 11 * k, py - 93 * k), fill=g.C["black"] + (255,))
+    things.append(g.Thing(x - 0.05, y - 0.05, x + 0.05, y + 0.05, 0, 100, draw))
+    things[-1].kind = "lamp"
+
+
+LAMP_KINDS = {}  # (x, y) -> Art der Laterne, wenn sie nicht die übliche der Karte ist
+
+
+def yard_things(yard, scene, s, things):
+    """Was in einem Hinterhof herumsteht, ohne ein Feld zu sperren: Kohlenkasten und Abort an der Hauswand, eine Wäscheleine."""
+    x0, y0, x1, y1 = yard["x0"], yard["y0"], yard["x1"], yard["y1"]
+    if not any(b["y1"] == y0 and b["x0"] <= x0 and b["x1"] >= x1 for b in scene["buildings"]):
+        return
+    made = {}
+
+    def box_of(name, bx, w, h, base):
+        def draw():
+            if name not in made:
+                made[name] = (planks(int(w * HW), h, base), planks(8, h, base))
+            g.box(s, bx, y0, bx + w, y0 + 0.25, 0, h, made[name][0], made[name][1], lambda a, b, w2, d2: g.C["wood_d"])
+        things.append(g.Thing(bx, y0, bx + w, y0 + 0.25, 0, h, draw))
+        things[-1].kind = "prop"
+    box_of("kasten", x0 + 0.2, 0.7, 11, "wood_d")  # Kohlenkasten
+    box_of("abort", x1 - 0.75, 0.55, 36, "wood")  # Abort mit Herz in der Tür
+    line = g.canvas(int((x1 - x0 - 0.8) * HW), 34, (0, 0, 0, 0))
+    d = g.draw_on(line)
+    for u in (0, line.width - 2):
+        d.rectangle((u, 4, u + 1, 33), fill=g.C["wood_d"])
+    d.fine_line((0, 6, line.width - 1, 6), fill=g.C["black"])
+    for u, w, c in ((10, 9, "paper"), (26, 6, "cream"), (line.width - 30, 11, "paper")):
+        d.rectangle((u, 7, u + w, 7 + 8 + w // 3), fill=g.C[c])
+        d.shade((u, 12, u + w, 7 + 8 + w // 3), 0.82)
+    g.flat_prop(x0 + 0.4, y1 - 0.9, line, s, things, kind="open")
+
+
+def wire(points, s, things):
+    """Telefondraht: von Stütze zu Stütze, hängt leicht durch."""
+    def draw():
+        dr = ImageDraw.Draw(s.img)
+        for (ax, ay), (bx, by) in zip(points, points[1:]):
+            pts = []
+            for i in range(9):
+                t = i / 8
+                sx, sy = s.to_screen(ax + (bx - ax) * t, ay + (by - ay) * t, 46 + 30 * (points.index((ax, ay)) + t) / len(points) - 3 * math.sin(math.pi * t))
+                pts.append((sx, sy))
+            dr.line(pts, fill=g.C["black"] + (255,), width=1)
+    mx, my = points[len(points) // 2]
+    things.append(g.Thing(mx - 0.02, my - 0.02, mx + 0.02, my + 0.02, 40, 80, draw))
+    things[-1].kind = "open"
 
 
 def laundry_van(x, y, s, things):
@@ -566,6 +832,8 @@ def ground_from(scene):
     """Bodenfunktion für g.paint_ground: Farbe je Feldkoordinate aus den Straßen und Höfen des Grundrisses."""
     solids = [(b["x0"], b["y0"], b["x1"], b["y1"]) for b in scene["buildings"] + scene["walls"]]
     gardens = [(b["x0"], b["y0"] - 1, b["x1"], b["y0"]) for b in scene["buildings"] if b["kind"] == "mietshaus"]
+    graves = [(p["x"], p["y"]) for p in scene["props"] if p["kind"] == "grabkreuz"]
+    open_graves = [(p["x"], p["y"]) for p in scene["props"] if p["kind"] == "offenes_grab"]
     size = scene["width"]
 
     def ground(fx, fy, _solids=()):
@@ -608,6 +876,32 @@ def ground_from(scene):
                 out = np.where(m[..., None], sett, out)
             elif st["kind"] == "gasse":
                 out = np.where(m[..., None], small, out)
+            elif st["kind"] == "kies":  # Exerzierplatz: gestampfter heller Kies, vom Drill in Bahnen getreten
+                grain = col("gravel")[None, :] * (0.92 + 0.5 * R.hash01(np.floor(fx * 16), np.floor(fy * 16), 71))[..., None]
+                lane = (np.abs((fy * 1.0) % 2.0 - 1.0) < 0.18)
+                grain = np.where(lane[..., None], grain * 0.86, grain)
+                grain = np.where((R.noise(fx * 2.2, fy * 2.2, 72) > 0.7)[..., None], grain * 0.8 + col("puddle") * 0.2, grain)
+                out = np.where(m[..., None], grain * 1.12, out)
+            elif st["kind"] == "erde":  # Friedhof und Böschung: nasse Erde, Grasbüschel, auf dem Friedhof die Grabhügel
+                earth = col("dirt")[None, :] * (0.8 + 0.6 * R.noise(fx * 7, fy * 7, 73))[..., None]
+                earth = np.where((R.noise(fx * 3.1, fy * 3.1, 74) > 0.52)[..., None], earth * 0.5 + col("moss") * 0.6, earth)
+                earth = np.where((R.hash01(np.floor(fx * 24), np.floor(fy * 24), 75) > 0.93)[..., None], col("moss") * 1.25, earth)
+                for gx, gy in graves:
+                    mound = ((fx - gx) / 0.3) ** 2 + ((fy - gy - 0.42) / 0.4) ** 2
+                    earth = np.where((mound < 1)[..., None], col("dirt") * 1.5 * (1.1 - 0.35 * mound)[..., None], earth)
+                for gx, gy in open_graves:
+                    pit = (np.abs(fx - gx) < 0.28) & (np.abs(fy - gy) < 0.42)
+                    heap = ((fx - gx - 0.55) / 0.22) ** 2 + ((fy - gy) / 0.4) ** 2 < 1
+                    earth = np.where(heap[..., None], col("dirt") * 1.7, earth)
+                    earth = np.where(pit[..., None], col("black") * 0.5, earth)
+                out = np.where(m[..., None], earth, out)
+            elif st["kind"] == "hof" and st["id"] != "arresthof":  # Hinterhof: Lehm, ein Weg aus Platten zur Hoftür
+                clay = (col("dirt") * 0.5 + col("plaster") * 0.5)[None, :] * (0.55 + 0.35 * R.noise(fx * 5, fy * 5, 76))[..., None]
+                clay = np.where((R.noise(fx * 2.4, fy * 2.4, 77) > 0.66)[..., None], clay * 0.55 + col("puddle") * 0.45, clay)
+                way = (np.abs(fy - (st["y0"] + st["y1"]) / 2 - 0.5) < 0.32) & (((fx * 1.6) % 1) > 0.12)
+                slab2 = col("stone")[None, :] * (0.7 + 0.2 * R.hash01(np.floor(fx * 1.6), 1, 78))[..., None]
+                clay = np.where(way[..., None], slab2, clay)
+                out = np.where(m[..., None], clay, out)
             elif st["kind"] == "hof":
                 yard = col("stone_d")[None, :] * (0.7 + 0.25 * R.hash01(np.floor(fx * 3), np.floor(fy * 3), 9))[..., None]
                 yard = np.where((((fx * 3) % 1 < 0.07) | ((fy * 3) % 1 < 0.07))[..., None], col("soot") * 0.7, yard)
@@ -644,23 +938,50 @@ def build(scene, theme):
     s = g.Scene(scene["width"])
     things, glows = [], []
     GATES[:] = scene.get("gates", [])
+    HELPERS.clear()
+    HELPERS.update({m["helper"]: (m["x"], m["y"]) for m in scene.get("marks", ()) if m["kind"] == "helferfenster"})
+    LAMP_KINDS.clear()
     for b in scene["buildings"] + scene["walls"]:
         nordwall_building(b, s, things)
     for gate in scene.get("gates", ()):
-        sheet_gate(gate, s, things)
+        sheet_gate(gate, s, things, scene)
+    seen = set()
     for lamp in scene["lamps"]:
+        if (lamp["x"], lamp["y"]) in seen:  # doppelt eingetragene Lampen zählen einmal
+            continue
+        seen.add((lamp["x"], lamp["y"]))
         if lamp.get("kind") == "wandlampe":
-            wall_lamp(lamp["x"], lamp["y"], 30 if lamp["group"] == "wachstube" else 44, s, things)
+            wall_lamp(lamp["x"], lamp["y"], {"wachstube": 30, "kneipe": 36, "remise": 40}.get(lamp["group"], 44), s, things)
+        elif lamp.get("kind") == "bogenlampe":
+            arc_lamp(lamp["x"], lamp["y"], s, things, glows)
         else:
             g.lamp(lamp["x"], lamp["y"], s, things, glows)
-    for prop in scene["props"]:
-        x, y = int(prop["x"]), int(prop["y"])
-        if prop["kind"] == "kiste":
-            g.crate(x + 0.3, y + 0.3, s, things)
-        elif prop["kind"] == "fluchtwagen":
+    for i, prop in enumerate(scene["props"]):
+        x, y, kind = int(prop["x"]), int(prop["y"]), prop["kind"]
+        if kind == "fluchtwagen":
             laundry_van(prop["x"] - 0.4, prop["y"] - 0.7, s, things)
-        if prop["kind"] in ("kiste", "fluchtwagen"):
             things[-1].solid, things[-1].opaque = prop["solid"], prop["opaque"]
+        elif kind == "kiste" and "kohlenhaufen" in prop["id"]:
+            post_thing(prop["x"], prop["y"], 12, s, things, paint_coal, kind="prop")
+        elif kind == "kiste" and "faesser" in prop["id"]:
+            post_thing(prop["x"], prop["y"], 16, s, things, paint_barrels, kind="prop")
+        elif kind == "kiste":
+            g.crate(x + 0.3, y + 0.3, s, things)
+            things[-1].solid, things[-1].opaque = prop["solid"], prop["opaque"]
+        elif kind == "baum":
+            post_thing(prop["x"], prop["y"], 60, s, things, paint_tree(i))
+        elif kind == "grabkreuz":
+            post_thing(prop["x"], prop["y"] - 0.1, 16, s, things, paint_cross(i), solid=False)
+        elif kind == "mast":
+            post_thing(prop["x"], prop["y"], 98, s, things, paint_mast)
+        elif kind == "brunnen":
+            post_thing(prop["x"], prop["y"], 24, s, things, paint_pump)
+    for st in scene["streets"]:
+        if st["kind"] == "hof" and st["id"] in ("westhof", "osthof"):
+            yard_things(st, scene, s, things)
+    for mark in scene.get("marks", ()):
+        if mark["kind"] == "draht":
+            wire([tuple(q) for q in mark["points"]], s, things)
     for b in scene["buildings"]:
         if b["kind"] == "mietshaus":  # Zaun vor dem Vorgarten, mit Lücke am Weg
             half = int((b["x1"] - b["x0"]) * HW / 2) - 12
@@ -683,7 +1004,8 @@ def export(scene, theme, s, things, assets):
     inside = (fx >= 0) & (fx < size) & (fy >= 0) & (fy < size)
     s.img.putalpha(Image.fromarray((inside * 255).astype(np.uint8), "L"))
     s.img.save(assets / "ground.png")
-    backdrop = {"file": "backdrop.png", "px": s.ox - g.BACKDROP_W // 2, "py": s.oy + size * g.HH - g.BACKDROP_H // 2}
+    bw, bh = g.backdrop_size(size)
+    backdrop = {"file": "backdrop.png", "px": s.ox - bw // 2, "py": s.oy + size * g.HH - bh // 2}
     manifest, solids, exported = [], [], []
     for i, t in enumerate(things):
         s.img = Image.new("RGBA", (s.w, s.h), (0, 0, 0, 0))
@@ -695,15 +1017,16 @@ def export(scene, theme, s, things, assets):
         name = f"{i:03d}.png"
         s.img.crop(bbox).save(assets / "things" / name)
         exported.append((t, name, bbox))
-        manifest.append({"file": name, "px": bbox[0], "py": bbox[1], "x0": t.x0, "y0": t.y0, "x1": t.x1, "y1": t.y1, "z0": t.z0, "z1": t.z1, "kind": t.kind,
+        manifest.append({"file": name, "px": bbox[0], "py": bbox[1], "x0": t.x0, "y0": t.y0, "x1": t.x1, "y1": t.y1, "z0": t.z0, "z1": t.z1, "kind": t.kind, **({"door": t.door} if getattr(t, "door", "") else {}),
                          "panes": t.panes, **({"roof": [p.to_json() for p in t.prisms]} if t.prisms else {})})
         if t.solid:
             solids.append({"x0": t.x0, "y0": t.y0, "x1": t.x1, "y1": t.y1, "opaque": t.opaque})
-    (assets / "manifest.json").write_text(json.dumps({"map": scene["id"], "ox": s.ox, "oy": s.oy, "things": manifest, "backdrop": backdrop,
+    (assets / "manifest.json").write_text(json.dumps({"map": scene["id"], "size": size, "ox": s.ox, "oy": s.oy, "things": manifest, "backdrop": backdrop,
                                                       "perches": [list(p) for p in theme.get("perches", ())],
+                                                      "lightKinds": [LAMP_KINDS.get((x, y), "") for x, y, _ in g.AMBIENT["lights"]],
                                                       "hd": {"res": g.HD, "ground": "hd/ground.png", "things": [n for t, n, _ in exported if t.hd]},
                                                       **g.AMBIENT}), encoding="utf-8")
-    g.export_backdrop(assets, theme.get("backdrop_keep"))
+    g.export_backdrop(assets, theme.get("backdrop_keep"), size)
     g.DUAL = True
     g.export_hd(assets, s, exported)
     return solids

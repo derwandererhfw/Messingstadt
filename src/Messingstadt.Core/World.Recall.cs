@@ -58,9 +58,6 @@ namespace Messingstadt.Core
 
         /// <summary>Nachlass in Prozent, weil die Wache den Trupp schon als Zahler kennt.</summary>
         public int MemoryDiscount;
-
-        /// <summary>Nimmt in diesem Einsatz kein Geld, auch wenn ihre Art käuflich ist.</summary>
-        public bool Unbribable;
     }
 
     public sealed partial class World
@@ -103,7 +100,6 @@ namespace Messingstadt.Core
             for (int i = 0; i < mission.Guards.Count; i++)
             {
                 var g = Units[mission.Agents.Count + i];
-                g.Unbribable = mission.Guards[i].NoBribe;
                 g.NoticeScale = Math.Max(1, mission.Guards[i].NoticeScale);
             }
             if (mission.Memory is not { } memory)
@@ -132,7 +128,7 @@ namespace Messingstadt.Core
                 {
                     grudges++;
                     g.Recall = GuardRecall.Grudge;
-                    g.Unbribable = true;
+                    g.NoBribe = true;
                     g.NoticeScale = GrudgeNoticeScale;
                 }
                 else if (mission.Guards[i].AtEase && memory.Stance == CityStance.Helps && human && atEase < MaxAtEase)
@@ -143,9 +139,6 @@ namespace Messingstadt.Core
                 }
             }
         }
-
-        /// <summary>Nimmt diese Wache in diesem Einsatz überhaupt Geld?</summary>
-        public bool IsBribable(Unit guard) => guard.Type.BribeCost > 0 && !guard.Unbribable;
 
         /// <summary>Der größere Nachlass gilt, sie addieren sich nicht: der der Truppführerin oder der aus dem alten Handel.</summary>
         private int BribePriceWith(Unit guard, int leaderPercent) =>

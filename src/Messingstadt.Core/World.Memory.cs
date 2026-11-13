@@ -44,8 +44,15 @@ namespace Messingstadt.Core
         /// <summary>So rufen ihn die Kollegen, und so steht er beim Überfahren: der eigene Rufname, sonst der Nachname.</summary>
         public string CallName => Call.Length > 0 ? Call : Person[(Person.LastIndexOf(' ') + 1)..];
 
-        /// <summary>Im Nahkampf niedergeschlagen: liegt am Boden, lebt aber und steht nicht im Totenbuch.</summary>
+        /// <summary>
+        /// Im Nahkampf niedergeschlagen: liegt am Boden, lebt aber und steht nicht im Totenbuch. Er steht in diesem Einsatz nicht
+        /// wieder auf, sieht, hört und meldet nichts. Für die Regeln ist er wie ein Gefallener aus dem Spiel (Alive ist false),
+        /// gezählt wird er nicht als Toter: siehe Dead. Wer auf ihn schießt und trifft, tötet ihn.
+        /// </summary>
         public bool KnockedOut;
+
+        /// <summary>Wirklich tot. Niedergeschlagene sind es nicht.</summary>
+        public bool Dead => !Alive && !KnockedOut;
 
         /// <summary>Hat den Rundgang im Einsatz mindestens einmal verlassen.</summary>
         public bool Roused;

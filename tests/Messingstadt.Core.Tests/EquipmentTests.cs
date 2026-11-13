@@ -324,6 +324,41 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void AKnockedOutGuardLivesAndIsNotCountedAsDead()
+        {
+            var w = NewWorld(new() { Agent(5.5, 5.5, "totschlaeger") }, new() { Guard(6.5, 5.5), Guard(15.5, 5.5) });
+            Assert.True(w.OrderAttack(0, 1));
+            Run(w, 40);
+            var down = w.Units[1];
+            Assert.True(down.KnockedOut);
+            Assert.False(down.Alive);
+            Assert.False(down.Dead);
+            Assert.Equal(GuardFate.KnockedOut, World.FateOf(down));
+            // Er steht nicht wieder auf, und der Agent schlägt nicht weiter auf ihn ein.
+            Assert.Single(w.Strikes);
+            Assert.Equal(-1, w.Units[0].TargetId);
+            Assert.Equal(MissionRating.Unseen, w.Rating);
+            Assert.Equal(0, w.Units.Count(u => u.Faction == Faction.Guard && u.Dead));
+        }
+
+        [Fact]
+        public void ShootingAKnockedOutGuardKillsHim()
+        {
+            var w = NewWorld(new() { Agent(5.5, 5.5, "totschlaeger", "pistole") }, new() { Guard(6.5, 5.5), Guard(25.5, 5.5) });
+            Assert.True(w.OrderAttack(0, 1));
+            Run(w, 10);
+            Assert.True(w.Units[1].KnockedOut);
+            w.SelectWeapon(0, 1);
+            Assert.True(w.OrderAttack(0, 1));
+            Run(w, 200);
+            Assert.NotEmpty(w.Shots);
+            Assert.True(w.Units[1].Dead);
+            Assert.False(w.Units[1].KnockedOut);
+            Assert.Equal(GuardFate.Dead, World.FateOf(w.Units[1]));
+            Assert.Equal(MissionRating.Loud, w.Rating);
+        }
+
+        [Fact]
         public void BlackjackKnocksOutAnUnawareGuardWithoutNoise()
         {
             var w = NewWorld(new() { Agent(5.5, 5.5, "totschlaeger") }, new() { Guard(6.5, 5.5), Guard(9.5, 5.5) });

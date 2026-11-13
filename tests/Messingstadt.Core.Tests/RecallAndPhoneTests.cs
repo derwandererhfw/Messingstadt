@@ -62,7 +62,7 @@ namespace Messingstadt.Core.Tests
             var w = NewWorld(Mission(new[] { Agent(6.5, skill: World.SkillBookkeeper) }, Guard("Posten", "Krüger", 2.5)));
             Assert.Equal(GuardRecall.None, w.Units[1].Recall);
             Assert.Equal(GuardType.Wachmann.BribeCost, w.BribePrice(w.Units[1], w.Units[0]));
-            Assert.True(w.IsBribable(w.Units[1]));
+            Assert.True(w.Bribable(w.Units[1]));
         }
 
         [Fact]
@@ -101,7 +101,7 @@ namespace Messingstadt.Core.Tests
             met.Memory = Memory(CityStance.Against, ("Krüger", GuardFate.Alerted));
             var w = NewWorld(met);
             Assert.Equal(GuardRecall.Grudge, w.Units[1].Recall);
-            Assert.False(w.IsBribable(w.Units[1]));
+            Assert.False(w.Bribable(w.Units[1]));
             Assert.False(w.OrderBribe(0, 1));
             Assert.True(NoticeTicks(met) < NoticeTicks(plain));
         }
@@ -192,7 +192,7 @@ namespace Messingstadt.Core.Tests
             marked.Guards[0].NoBribe = true;
             marked.Guards[0].NoticeScale = 150;
             var w = NewWorld(marked);
-            Assert.False(w.IsBribable(w.Units[1]));
+            Assert.False(w.Bribable(w.Units[1]));
             Assert.False(w.OrderBribe(0, 1));
             Assert.True(NoticeTicks(marked) > NoticeTicks(plain));
         }

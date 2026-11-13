@@ -96,9 +96,12 @@ class Scene:
     def __init__(self, tiles, res=1):
         self.tiles = tiles
         self.res = res
-        self.w = ((tiles * 2) * HW + 200) * res
+        # Rand links und rechts zusammen 200 Punkte. Größere Karten bekommen weniger Rand, damit das feine Bodenbild höchstens
+        # 4096 Punkte breit wird: Mehr nimmt nicht jede Grafikkarte. Bei 30 Feldern sind es genau 4096.
+        margin = 200 if tiles <= 20 else max(128, min(200, 4096 // HD - tiles * 2 * HW))
+        self.w = ((tiles * 2) * HW + margin) * res
         self.h = ((tiles * 2) * HH + 320) * res
-        self.ox, self.oy = ((tiles * 2) * HW + 200) // 2, 260
+        self.ox, self.oy = ((tiles * 2) * HW + margin) // 2, 260
         self.img = Image.new("RGBA", (self.w, self.h), C["sky"] + (255,))
         self.px = self.img.load()
 
@@ -2545,7 +2548,7 @@ def paint_ground(s, solids, dirt, cut_out):
     a = ((xs + 0.5) / s.res - s.ox) / HW
     b = ((ys + 0.5) / s.res - s.oy) / HH
     fx, fy = (a + b) / 2, (b - a) / 2
-    inside = (fx >= 0) & (fx < 20) & (fy >= 0) & (fy < 20)
+    inside = (fx >= 0) & (fx < s.tiles) & (fy >= 0) & (fy < s.tiles)
     rgb = np.empty((s.h, s.w, 3), np.uint8)
     rgb[...] = C["sky"]
     rgb[inside] = ground_np(fx[inside], fy[inside], solids)
@@ -2843,22 +2846,38 @@ def export_hd(assets, s, exported):
     s.use(1)
 
 
-def export_backdrop(assets, keep=None):
+def backdrop_size(tiles=20):
+    """Größe der Kulisse: Sie wächst mit der Karte, damit ringsum gleich viel Stadt zu sehen bleibt."""
+    return BACKDROP_W + (tiles - 20) * 2 * HW, BACKDROP_H + (tiles - 20) * 2 * HH
+
+
+def backdrop_rows(values, tiles):
+    """Lage der Häuserblocks entlang einer Kartenkante. Was jenseits der Karte lag, rückt mit ihr hinaus, die Lücke füllen neue Blocks."""
+    near = [v for v in values if v < 10]
+    far = [v + tiles - 20 for v in values if v >= 10]
+    fill, v = [], near[-1] + 7.5
+    while tiles > 20 and v < far[0] - 6.5:
+        fill.append(v)
+        v += 7.5
+    return near + fill + far
+
+
+def export_backdrop(assets, keep=None, tiles=20):
     """Die Stadt jenseits der Karte: Die Straßen laufen weiter und verlieren sich zwischen Häuserblocks im Dunst.
 
     Reine Kulisse ohne Lichtberechnung und ohne Einfluss aufs Spiel. Läuft zuletzt, weil sie den Zufall der Fassaden mitbenutzt.
     """
     global DUAL
     DUAL = False  # die Kulisse bleibt in einfacher Auflösung
-    s = Scene(20)
-    s.w, s.h = BACKDROP_W, BACKDROP_H
-    s.ox, s.oy = BACKDROP_W // 2, BACKDROP_H // 2 - 20 * HH
+    s = Scene(tiles)
+    s.w, s.h = backdrop_size(tiles)
+    s.ox, s.oy = s.w // 2, s.h // 2 - tiles * HH
     s.img = Image.new("RGBA", (s.w, s.h), C["sky"] + (255,))
     s.px = s.img.load()
     ys, xs = np.mgrid[0:s.h, 0:s.w]
     a, b = (xs + 0.5 - s.ox) / HW, (ys + 0.5 - s.oy) / HH
     fx, fy = (a + b) / 2, (b - a) / 2
-    dist = np.maximum.reduce([-fx, fx - 20, -fy, fy - 20])
+    dist = np.maximum.reduce([-fx, fx - tiles, -fy, fy - tiles])
     street = (dist >= 0) & (dist < BACKDROP_STREETS)
     paving = np.floor(ground_np(fx[street], fy[street]) * BACKDROP_DARK)
     haze = ((dist[street] / BACKDROP_STREETS) ** 0.7)[:, None]
@@ -2869,9 +2888,10 @@ def export_backdrop(assets, keep=None):
     canvas = s.img
     things = []
     # Vor der Karte (x oder y über 20) bleiben die Blocks weit genug weg und flach, damit sie nichts verdecken.
-    blocks = [(x, y, 6, 6, 170 if ring else 128) for ring, x in ((0, -7), (1, -15)) for y in (-15, -7, 0, 14.5, 21, 28)]
-    blocks += [(x, y, 5.5 if x == 0 else 6, 6, 170 if ring else 128) for ring, y in ((0, -7), (1, -15)) for x in (0, 12.5, 19, 26)]
-    blocks += [(24, y, 6, 6, 86) for y in (-7, 0, 14.5, 21, 28)] + [(x, 24, 5.5 if x == 0 else 6, 6, 86) for x in (-7, 0, 12.5, 19)]
+    front = tiles + 4
+    blocks = [(x, y, 6, 6, 170 if ring else 128) for ring, x in ((0, -7), (1, -15)) for y in backdrop_rows((-15, -7, 0, 14.5, 21, 28), tiles)]
+    blocks += [(x, y, 5.5 if x == 0 else 6, 6, 170 if ring else 128) for ring, y in ((0, -7), (1, -15)) for x in backdrop_rows((0, 12.5, 19, 26), tiles)]
+    blocks += [(front, y, 6, 6, 86) for y in backdrop_rows((-7, 0, 14.5, 21, 28), tiles)] + [(x, front, 5.5 if x == 0 else 6, 6, 86) for x in backdrop_rows((-7, 0, 12.5, 19), tiles)]
     if keep:  # andere Karten lassen Blocks weg, etwa jenseits eines Stadtwalls (siehe build_map.py)
         blocks = [b for b in blocks if keep(*b[:4])]
     for x, y, w, d, h in blocks:
@@ -2888,7 +2908,7 @@ def export_backdrop(assets, keep=None):
         if not bbox:
             continue
         part = s.img.crop(bbox)
-        away = max(-t.x1, t.x0 - 20, -t.y1, t.y0 - 20)
+        away = max(-t.x1, t.x0 - tiles, -t.y1, t.y0 - tiles)
         haze = min(0.85, 0.3 + away / 22)
         dimmed = Image.blend(part, Image.new("RGBA", part.size, (0, 0, 0, 255)), 0.28)
         fogged = Image.blend(dimmed, Image.new("RGBA", part.size, C["sky"] + (255,)), haze)

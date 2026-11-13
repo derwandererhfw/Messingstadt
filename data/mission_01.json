@@ -29,15 +29,15 @@
     { "name": "Hanna", "role": "Kurierin", "sprite": "Agent", "x": 11.5, "y": 18.5, "legs": 3, "heart": 1 }
   ],
   "guards": [
-    { "name": "Wache 1", "sprite": "Wachmann", "x": 12.5, "y": 9.5, "patrol": [[14, 9], [9, 9]] },
-    { "name": "Wache 2", "sprite": "Wachmann", "x": 0.5, "y": 9.5, "patrol": [[0, 9], [3, 9], [3, 11], [0, 11]] },
-    { "name": "Schütze", "sprite": "Schuetze", "type": "schuetze", "x": 9.5, "y": 0.5, "patrol": [[9, 0], [11, 0], [11, 1], [9, 1]] },
-    { "name": "Wache 4", "sprite": "Wachmann", "x": 10.5, "y": 5.5, "patrol": [[10, 6], [11, 2], [10, 1]] },
-    { "name": "Wache 5", "sprite": "Wachmann", "x": 11.5, "y": 8.5, "patrol": [[11, 8], [11, 10], [16, 10], [16, 11]] },
-    { "name": "Offizier", "sprite": "Offizier", "type": "offizier", "x": 7.5, "y": 0.5, "facing": [0, 1] },
-    { "name": "Werkschutz", "sprite": "Werkschutz", "type": "werkschutz", "x": 18.5, "y": 7.5, "facing": [0, 1] },
-    { "name": "Hundeführer", "sprite": "Hundefuehrer", "type": "hundefuehrer", "x": 18.5, "y": 1.5, "patrol": [[18, 0], [19, 0], [19, 3], [18, 3]] },
-    { "name": "Hund", "sprite": "Hund", "type": "hund", "handler": "Hundeführer", "x": 18.5, "y": 2.5 },
-    { "name": "Laufbursche", "sprite": "Laufbursche", "type": "laufbursche", "x": 0.5, "y": 14.5, "patrol": [[0, 14], [0, 18], [3, 18], [0, 18]] }
+    { "name": "Wache 1", "person": "Krüger", "sprite": "Wachmann", "x": 12.5, "y": 9.5, "patrol": [[14, 9], [9, 9]] },
+    { "name": "Wache 2", "person": "Bartels", "sprite": "Wachmann", "x": 0.5, "y": 9.5, "patrol": [[0, 9], [3, 9], [3, 11], [0, 11]] },
+    { "name": "Schütze", "person": "Henke", "sprite": "Schuetze", "type": "schuetze", "x": 9.5, "y": 0.5, "patrol": [[9, 0], [11, 0], [11, 1], [9, 1]] },
+    { "name": "Wache 4", "person": "Thiele", "sprite": "Wachmann", "x": 10.5, "y": 5.5, "patrol": [[10, 6], [11, 2], [10, 1]] },
+    { "name": "Wache 5", "person": "Mertens", "sprite": "Wachmann", "x": 11.5, "y": 8.5, "patrol": [[11, 8], [11, 10], [16, 10], [16, 11]] },
+    { "name": "Offizier", "person": "Vogt", "sprite": "Offizier", "type": "offizier", "x": 7.5, "y": 0.5, "facing": [0, 1] },
+    { "name": "Werkschutz", "person": "Stahnke", "sprite": "Werkschutz", "type": "werkschutz", "x": 18.5, "y": 7.5, "facing": [0, 1] },
+    { "name": "Hundeführer", "person": "Wiese", "sprite": "Hundefuehrer", "type": "hundefuehrer", "x": 18.5, "y": 1.5, "patrol": [[18, 0], [19, 0], [19, 3], [18, 3]] },
+    { "name": "Hund", "person": "Hasso", "sprite": "Hund", "type": "hund", "handler": "Hundeführer", "x": 18.5, "y": 2.5 },
+    { "name": "Laufbursche", "person": "Kurt", "sprite": "Laufbursche", "type": "laufbursche", "x": 0.5, "y": 14.5, "patrol": [[0, 14], [0, 18], [3, 18], [0, 18]] }
   ]
 }

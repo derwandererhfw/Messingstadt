@@ -35,6 +35,8 @@ MAP_LAMPS = {
     "nordwall": dict(color=(0.90, 0.95, 0.56), kind="gas", reach=5.0, scale=1.3, cut=5.0),  # Gasglühlicht: grünlich-gelb und etwas schwächer im Umkreis
 }
 FIRE_REACH = 3.0
+# Laternen, die von der üblichen ihrer Karte abweichen (lightKinds im Manifest). Fürs Schleichen zählen sie wie alle anderen.
+LAMP_KINDS = {"bogen": dict(color=(0.80, 0.90, 1.0), kind="bogen", reach=7.5, scale=2.6, cut=7.5)}
 MOON_SPEC = 6.0  # Nässeglanz auf Dächern: Der Mond spiegelt sich in Flecken, wo die Fläche zur Kamera vermittelt
 RIM_LIGHT = 2.6  # Kantenlicht: Die obere Umrisskante von Häusern und Aufbauten fängt den Mond, so stark wie das Mondlicht mal diesem Wert
 # Lichtteppiche: Hinter jedem erleuchteten Fenster der unteren Geschosse hängt eine Lampe, ihr Licht fällt durch die Öffnung
@@ -46,7 +48,8 @@ CARPET_MAX_SILL = 70  # Fenster, deren Unterkante höher liegt, werfen ihr Licht
 CARPET_DEPTH = 0.55  # so viele Felder hinter der Wand hängt die Lampe
 NEON_COLOR, NEON_POWER, NEON_REACH = (1.0, 0.16, 0.12), 2.6, 6.5
 WELD_COLOR, WELD_POWER, WELD_REACH = (0.62, 0.8, 1.0), 5.0, 5.5
-RAIL_GLOSS = 2.4  # Schienenköpfe sind blank: Sie werfen das Licht, das sie trifft, um diesen Faktor stärker zurück
+RAIL_GLOSS = 1.5  # Schienenköpfe sind blank: Sie werfen das Licht, das sie trifft, um diesen Faktor stärker zurück
+RAIL_GLOSS_CAP = 0.85  # aber nie über diesen Lichtwert hinaus: Eine Schiene leuchtet nicht heller als das Pflaster unter der Laterne
 MAP_RAILS = {"": ("x", (8.42, 8.58, 9.42, 9.58)), "nordwall": ("y", (10.8, 11.2))}
 RIM_KINDS = ("", "prop", "gate", "boiler")
 FIRE_COLOR = (1.0, 0.45, 0.15)
@@ -185,7 +188,7 @@ def write_maps(name, rgba, light, deltas, ids, pane_light, halo, box, rim=False,
         for line in lines:
             head |= np.abs(across - line) < 0.02
         level = (a.astype(np.float32) / 255) ** 2 * MAX_LIGHT
-        level[head] *= RAIL_GLOSS
+        level[head] = np.maximum(level[head], np.minimum(level[head] * RAIL_GLOSS, RAIL_GLOSS_CAP))
         a = encode(level)
     if rim and RIM_LIGHT > 0:
         # Kantenlicht in der Auflösung des angezeigten Bilds: ein Punkt breit voll, der darunter halb.
@@ -290,6 +293,7 @@ def main():
         albedo_file = Path(__file__).with_name(f"rules_albedo_{args['nr']}.json")
         RULES_WINDOWS = Path(__file__).with_name(f"rules_windows_{args['nr']}.json")
     manifest = json.loads((ASSETS / "manifest.json").read_text(encoding="utf-8"))
+    tiles = manifest.get("size", 20)  # Felder je Kante, das Kesselviertel hat 20
     WORK.mkdir(parents=True, exist_ok=True)
     if OUT.exists():
         shutil.rmtree(OUT)
@@ -360,15 +364,18 @@ def main():
         pixels = pane_pixels(pane, sprite["left"], sprite["top"], sprite_rgba[id(sprite)])
         kind = pane["kind"]
         switching = False
+        helper = ""
         if kind == "window":
-            type_name = "bildfunk" if pane_id in screens else pane["type"] or picker.choices(type_names, weights)[0]
-            if pane["type"] and picker.random() < DARK_HALL_SHARE:
+            fixed, _, helper = pane["type"].partition(":")  # "kerze:witwe": Fenster eines Helfers, in dem die Kerze stehen kann
+            hall = fixed == "halle"
+            type_name = "bildfunk" if pane_id in screens else fixed or picker.choices(type_names, weights)[0]
+            if hall and picker.random() < DARK_HALL_SHARE:
                 type_name = "dunkel"
             kind = "tv" if pane_id in screens else {"kerze": "candle", "dunkel": "dark"}.get(type_name, "window")
-            switching = kind == "window" and not pane["type"] and picker.random() < SWITCHING_SHARE
+            switching = kind == "window" and not fixed and picker.random() < SWITCHING_SHARE
             if switching:
                 kind = "toggle"
-            if pane["type"] and type_name != "dunkel" and not welding_placed:
+            if hall and type_name != "dunkel" and not welding_placed:
                 kind = "weld"
                 welding_placed = True
         source = (picker.uniform(0.25, 0.75), picker.uniform(0.1, 0.55))
@@ -388,7 +395,7 @@ def main():
                 u = (x + sprite["left"] - pane["x"] - pane["u"]) / pane["w"]
                 v = (y + sprite["top"] - pane["y"] - pane["v"] - (int(pane["u"] * pane["slope"]) if pane["slope"] > 0 else -int(pane["u"] * -pane["slope"]))) / pane["h"]
                 sprite["pane_light"][y, x] = np.array(WINDOW_TYPES[type_name]["pane"]) * room_light(u, v, source)
-                if WINDOW_TYPES[type_name]["power"] > 0 and not switching:
+                if WINDOW_TYPES[type_name]["power"] > 0 and not switching and not helper:  # die Kerze eines Helfers schaltet das Spiel
                     sprite["lit"][y, x] = type_names.index(type_name) + 1
                     sprite["halo"][y, x] = WINDOW_TYPES[type_name]["color"]
                     sprite["halo"][y, x] *= WINDOW_TYPES[type_name]["pane"][1]
@@ -396,21 +403,25 @@ def main():
         thing = sprite["thing"]
         if pane["kind"] == "sign":
             signs.setdefault(id(thing), (thing, []))[1].append(pane_id)
-        elif pane["kind"] == "window" and kind in ("window", "toggle", "weld") and pane_id not in screens:
+        elif pane["kind"] == "window" and kind in ("window", "toggle", "weld", "candle") and pane_id not in screens:
             source = carpet_source(pane, thing, manifest["ox"], manifest["oy"])
             strength = WINDOW_TYPES[type_name]["power"] / 0.014
-            if source and (kind != "window" or strength > 0):
+            if source and (kind != "window" or strength > 0) and (kind != "candle" or helper):
                 source.update(group=-1, color=WINDOW_TYPES[type_name]["color"], power=CARPET_POWER * strength, reach=CARPET_REACH)
                 if kind == "toggle":
                     source.update(group=len(groups), color=WINDOW_TYPES["gluehlampe"]["color"], power=CARPET_POWER)
                     groups.append({"kind": "fenster", "panes": [pane_id], "color": source["color"]})
+                elif kind == "candle":
+                    source.update(group=len(groups), color=WINDOW_TYPES["kerze"]["color"], power=CARPET_POWER * 0.45)
+                    groups.append({"kind": "kerze", "panes": [pane_id], "color": source["color"], "helper": helper})
                 elif kind == "weld":
                     source.update(group=len(groups), color=WELD_COLOR, power=WELD_POWER, reach=WELD_REACH)
                     groups.append({"kind": "schweiss", "panes": [pane_id], "color": WELD_COLOR})
                 extras.append(source)
         if pixels:
             ys, xs = zip(*pixels)
-            panes_out.append({"id": pane_id, "kind": kind, "x": sprite["left"] + sum(xs) / len(xs), "y": sprite["top"] + sum(ys) / len(ys)})
+            panes_out.append({"id": pane_id, "kind": kind, "x": sprite["left"] + sum(xs) / len(xs), "y": sprite["top"] + sum(ys) / len(ys),
+                              **({"helper": helper} if pane["kind"] == "window" and helper else {})})
     (ASSETS / "panes.json").write_text(json.dumps(panes_out), encoding="utf-8")
 
     with open(WORK / "scene.bin", "wb") as f:
@@ -438,18 +449,20 @@ def main():
     lamp["color"] = trial("LAMP_COLOR", lamp["color"])
     # Für Lichtkegel, Dunst und Flackern im Spiel: jede Quelle mit Ort, Höhe in Bildpunkten, Farbe, Art und Reichweite in Feldern.
     manifest["lampColor"] = list(lamp["color"])
-    manifest["sources"] = [{"x": x, "y": y, "z": z, "kind": lamp["kind"], "color": list(lamp["color"]), "reach": lamp["reach"]} for x, y, z in manifest["lights"]]
+    lamp_of = [LAMP_KINDS.get(k, lamp) for k in manifest.get("lightKinds", [])] or [lamp] * len(manifest["lights"])
+    manifest["sources"] = [{"x": x, "y": y, "z": z, "kind": l["kind"], "color": list(l["color"]), "reach": l["reach"]} for (x, y, z), l in zip(manifest["lights"], lamp_of)]
     manifest["sources"] += [{"x": x, "y": y, "z": z, "kind": "feuer", "color": list(FIRE_COLOR), "reach": FIRE_REACH} for x, y, z in manifest["fireLights"]]
     (ASSETS / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     lights = []
-    for x, y, z in manifest["lights"]:
+    for (x, y, z), own in zip(manifest["lights"], lamp_of):
         stutter = abs(x - STUTTER_LAMP[0]) < 0.01 and abs(y - STUTTER_LAMP[1]) < 0.01
-        lights.append({"x": x, "y": y, "z": z, "color": "lamp", "power": LAMP_POWER, "layer": 1 if stutter else 0, "hooded": True})
+        lights.append({"x": x, "y": y, "z": z, "color": "lamp", "power": LAMP_POWER, "layer": 1 if stutter else 0, "hooded": True,
+                       "rgb": list(own["color"]), "scale": trial("LAMP", own["scale"]), "cut": float(os.environ.get("MS_CUT", own["cut"]))})
     for x, y, z in manifest["fireLights"]:
         lights.append({"x": x, "y": y, "z": z, "color": "fire", "power": FIRE_POWER, "layer": 2, "hooded": False})
 
     scene = {
-        "ox": manifest["ox"], "oy": manifest["oy"], "zScale": Z_SCALE, "mapSize": 20, "stride": STRIDE,
+        "ox": manifest["ox"], "oy": manifest["oy"], "zScale": Z_SCALE, "mapSize": tiles, "stride": STRIDE,
         "sky": SKY, "rulesSky": RULES_SKY, "groundAlbedo": (groundless.mean(axis=0)[:3] / 255).tolist(),
         "lampColor": LAMP_COLOR, "lampPicture": lamp["color"], "lampScale": trial("LAMP", lamp["scale"]), "lampReach": float(os.environ.get("MS_CUT", lamp["cut"])), "fireColor": FIRE_COLOR, "moonSpec": MOON_SPEC, "extras": extras, "extraGroups": len(groups),
         "windowTypes": [{"color": t["color"], "power": t["power"]} for t in WINDOW_TYPES.values()],
@@ -530,7 +543,7 @@ def main():
     (ASSETS / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     print(f"{len(extras)} Zusatzquellen, {len(listed)} Lichtflicken")
 
-    size = 20 * GRID_RES
+    size = tiles * GRID_RES
     grid = np.fromfile(WORK / "grid.bin", dtype="<f4").reshape(size, size, 7)
     inside = grid[..., 0] < 0
     grid[inside] = 0

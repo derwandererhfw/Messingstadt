@@ -11,7 +11,6 @@ namespace Messingstadt
         private const float LabelWidth = 11f;
         private const float LabelHeight = 14f;
         private const float DogHeadDrop = 22f;
-        private const int CallTicks = 50;
         private static readonly Vector2 LeashHand = new(0f, -20f);
         private static readonly Vector2 LeashCollar = new(0f, -13f);
         private static readonly Color LeashColor = new(0.2f, 0.13f, 0.08f);
@@ -140,7 +139,6 @@ namespace Messingstadt
                 }
             }
             DrawHoveredGuard();
-            DrawCalls(world);
             foreach (var s in world.Shots)
             {
                 int age = world.Tick - s.Tick;
@@ -154,47 +152,13 @@ namespace Messingstadt
         }
 
         /// <summary>Unter dem Mauszeiger steht, was das für ein Gegner ist.</summary>
-        /// <summary>Wachen rufen einander beim Namen: bei einer Begegnung leise, wenn einer fällt laut.</summary>
-        private void DrawCalls(World world)
-        {
-            foreach (var call in world.Calls)
-            {
-                var speaker = world.Units[call.SpeakerId];
-                int age = world.Tick - call.Tick;
-                if (age > CallTicks || !speaker.Alive || !world.IsSpottedByAgents(speaker) || Game.IsHiddenByThing(speaker))
-                {
-                    continue;
-                }
-                string name = world.Units[call.SubjectId].CallName;
-                bool fallen = call.Kind == CallKind.Fallen;
-                string text = fallen ? name + "!" : "Abend, " + name + ".";
-                var font = PaperUi.Typewriter;
-                int size = fallen ? 10 : 8;
-                float width = font.GetStringSize(text, HorizontalAlignment.Left, -1, size).X;
-                float fade = Mathf.Clamp((CallTicks - age) / 10f, 0f, 1f);
-                var at = Game.UnitPos(speaker) + new Vector2(-width / 2f, -62f);
-                DrawStringOutline(font, at, text, HorizontalAlignment.Left, -1, size, 3, new Color(0f, 0f, 0f, 0.85f * fade));
-                DrawString(font, at, text, HorizontalAlignment.Left, -1, size, fallen ? new Color(1f, 0.82f, 0.6f, fade) : new Color(0.82f, 0.86f, 0.9f, fade));
-            }
-        }
-
         private void DrawHoveredGuard()
         {
             if (Game.HoveredGuard() is not { } guard)
             {
                 return;
             }
-            var type = guard.Type;
-            string text = (guard.Person.Length > 0 ? guard.CallName + ", " : "") + type.Title + (guard.Bribed ? ", bestochen" : guard.Recall == GuardRecall.Grudge ? ", nimmt von euch nichts" : type.BribeCost == 0 ? ", nicht käuflich" : ", " + Game.BribeWord(guard))
-                + (guard.Recall == GuardRecall.OldDeal && !guard.Bribed ? ", kennt euch" : "");
-            if (Game.World.Units.Exists(o => o.LeashedTo == guard.Id))
-            {
-                text += " samt Hund";
-            }
-            if (type.OrderOnly)
-            {
-                text += ", Feuer nur auf Befehl";
-            }
+            string text = Game.GuardLine(guard);
             var font = PaperUi.Typewriter;
             float width = font.GetStringSize(text, HorizontalAlignment.Left, -1, 9).X;
             var at = Game.UnitPos(guard) + new Vector2(-width / 2f, 14f);
