@@ -1,0 +1,22 @@
+# Tote Leitung, Einsatz 2: Otto kappt den Telefondraht, dann geht der Alarm los und niemand erreicht die Kaserne.
+# Aufruf mit --fresh --mission=mission_02 --sound-log --look=14,9 (Kamera am Apparat). Am Ende steht, was wie laut zu hören war.
+# Die Wachen sind gekauft (calm), damit Otto ungesehen an den Draht kommt. Den Alarm löst danach der Prüfbefehl alarm aus.
+wait 40
+expect mission mission_02
+expect phone Idle
+calm
+key Key2
+rclickdoor Telefondraht
+waitcontains phone gekappt
+# Das Telegramm meldet den Schnitt, die Zeile darunter behält ihn
+waitcontains telegram DRAHT GEKAPPT STOP KASERNE HOERT NICHTS STOP
+wait 60
+expect phone Idle gekappt
+alarm
+waitfor phone Silent gekappt
+# Der Mann am Apparat drückt vergeblich die Gabel: phone_dead genau einmal, kein Wählen, kein Anruf
+waitcontains played phone 1,
+wait 240
+waitcontains played phone 1,
+expect phone Silent gekappt
+print

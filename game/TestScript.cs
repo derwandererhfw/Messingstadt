@@ -257,6 +257,10 @@ namespace Messingstadt
                     (_waitName, _waitValue, _waitLeft, _waitPart) = ("tickreached", "True", MaxWaitFrames, false);
                     _waitTick = int.Parse(arg);
                     break;
+                case "alarm":
+                    // Alarm an die Kaserne, auch wenn die Wachen mit calm gekauft sind: So lässt sich das Telefon ohne Gefecht prüfen.
+                    Game.World.SoundAlarm();
+                    break;
                 case "calm":
                     // Alle Wachen sind gekauft und beachten den Trupp nicht: So lässt sich ein Ablauf prüfen, ohne ihn zu erschleichen.
                     foreach (var g in Game.World.Units.Where(u => u.Faction == Faction.Guard))

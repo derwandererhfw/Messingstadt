@@ -740,6 +740,7 @@ void fragment() {
             ["sounds"] = _sound.PlayCount.ToString(),
             ["menusounds"] = _sound.MenuPlayCount.ToString(),
             ["menusound"] = _sound.LastMenuSound,
+            ["played"] = string.Join(", ", _sound.PlayedByGroup.Select(g => $"{g.Key} {g.Value}")) + ",",
             ["ledger"] = _menus.LedgerProbe,
             ["guardline"] = World.Units.Find(u => u.Faction == Faction.Guard && u.Alive && u.Type != GuardType.Hund) is { } first ? GuardLine(first) : "",
             ["trait"] = _paper.Trait,

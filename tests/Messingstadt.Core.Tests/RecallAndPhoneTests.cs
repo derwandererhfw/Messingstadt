@@ -299,6 +299,25 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void SoundAlarmStartsTheCallWithoutAShot()
+        {
+            var w = NewWorld(Station());
+            w.SoundAlarm();
+            Assert.Empty(w.Shots);
+            Assert.NotEqual(PhoneState.Idle, w.Phone);
+            RunUntil(w, () => w.Phone == PhoneState.Called);
+        }
+
+        [Fact]
+        public void SoundAlarmWithoutAManAtThePhoneLeavesTheLineSilent()
+        {
+            var w = NewWorld(Station());
+            w.Units[2].Hp = 0;
+            w.SoundAlarm();
+            Assert.Equal(PhoneState.Silent, w.Phone);
+        }
+
+        [Fact]
         public void LateValuesCanBeSetInTheMission()
         {
             var m = Station();
