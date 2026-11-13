@@ -61,6 +61,70 @@ while (args.Length > 1 && (args[0] == "--wert" || args[0] == "--startgeld"))
     args = args[2..];
 }
 
+// Erinnerung und Telefon für Einsatz 2 ausprobieren, ohne die Datei zu ändern. Gilt für alle Messreihen danach:
+// --erinnerung=blut      die Stadt steht gegen den Trupp, Groll trifft Schließer und Hundeführer, Streifen gehen zu zweit, soweit die Decke es zulässt
+// --erinnerung=streifen  dasselbe, aber der Groll trifft die beiden Wallstreifen
+// --erinnerung=frieden   niemand starb, der Hundeführer wurde gekauft, Türposten und eine Streife schauen weg
+// --telefon=an           der Wachhabende ruft vom Apparat an seinem Posten an, Kaserne mit drei Betten, es kommt Stadtwache
+// --telefon=stumm        dasselbe, aber der Draht ist gekappt: Die Verstärkung kommt spät und dünn
+// --telefon=stadtwache   kein Telefon, nur die Art der Verstärkung geleert: Stadtwache statt Werkschutz
+Action<MissionData>? remembered = null;
+bool phoneSilent = false;
+while (args.Length > 0 && (args[0].StartsWith("--erinnerung=") || args[0].StartsWith("--telefon=")))
+{
+    string value = args[0].Split('=')[1];
+    var before = remembered;
+    if (args[0].StartsWith("--telefon="))
+    {
+        phoneSilent = value == "stumm";
+        remembered = m =>
+        {
+            before?.Invoke(m);
+            m.Reinforcements!.Type = "";
+            m.Reinforcements.Sprite = "Wachmann";
+            if (value == "stadtwache")
+            {
+                return;
+            }
+            m.Reinforcements.Beds = 3;
+            if (phoneSilent)
+            {
+                // Kein Anruf: Die Kaserne kommt so spät und so dünn, wie es der Kern ohne Telefon rechnet.
+                m.Reinforcements.FirstDelay *= 2;
+                m.Reinforcements.Count = Math.Max(1, m.Reinforcements.Count / 2);
+            }
+            else
+            {
+                m.Reinforcements.Phone = "Wachhabender";
+                m.Reinforcements.PhoneAt = new[] { 14.5, 9.5 };
+            }
+        };
+    }
+    else
+    {
+        remembered = m =>
+        {
+            before?.Invoke(m);
+            string[] persons = { "Krüger", "Behrens", "Tietz", "Pieper", "Wolff", "Adam" };
+            for (int i = 0; i < persons.Length; i++)
+            {
+                m.Guards[i].Person = persons[i];
+            }
+            if (value == "frieden")
+            {
+                m.Guards[2].AtEase = m.Guards[1].AtEase = true;
+                m.Memory = new GuardMemoryData { Stance = CityStance.Helps, Known = { new KnownGuardData { Person = "Adam", Fate = GuardFate.Bribed } } };
+                return;
+            }
+            string[] grudge = value == "streifen" ? new[] { "Krüger", "Behrens" } : new[] { "Wolff", "Adam" };
+            m.Memory = new GuardMemoryData { Stance = CityStance.Against, Known = grudge.Select(p => new KnownGuardData { Person = p, Fate = GuardFate.Alerted }).ToList() };
+            m.Guards.Add(new UnitData { Name = "Wallstreife 1b", Person = "Noack", Sprite = "Wachmann", AfterBlood = true, X = 1.5, Y = 11.5, Patrol = { new double[] { 13, 11 }, new double[] { 0, 11 } } });
+            m.Guards.Add(new UnitData { Name = "Wallstreife 2b", Person = "Hartung", Sprite = "Wachmann", AfterBlood = true, X = 12.5, Y = 12.5, Patrol = { new double[] { 0, 12 }, new double[] { 13, 12 } } });
+        };
+    }
+    args = args[1..];
+}
+
 MissionData LitMission()
 {
     var mission = Loader.ParseMission(missionJson);
@@ -70,6 +134,7 @@ MissionData LitMission()
     {
         mission.Agents[i].Items = loadout[Math.Min(i, loadout.Length - 1)].ToList();
     }
+    remembered?.Invoke(mission);
     variant?.Invoke(mission);
     return mission;
 }

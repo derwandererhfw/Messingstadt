@@ -67,6 +67,19 @@ namespace Messingstadt.Core.Tests
             Assert.Equal(new[] { "Behrens", "Tietz", "" }, came.Select(u => u.Person));
         }
 
+        [Fact]
+        public void TheCallNameIsTheSurnameUnlessTheMissionSaysOtherwise()
+        {
+            var boy = Guard("Laufbursche", "Kurt Lüders", 6.5, type: "laufbursche");
+            boy.Call = "Kurt";
+            var w = NewWorld(Mission(new[] { Agent(35.5, 35.5) }, Guard("Posten", "Hermann Krüger", 5.5), boy, Guard("Namenlos", "", 7.5), Guard("Kurz", "Vogt", 8.5)));
+            Assert.Equal("Hermann Krüger", w.Units[1].Person);
+            Assert.Equal("Krüger", w.Units[1].CallName);
+            Assert.Equal("Kurt", w.Units[2].CallName);
+            Assert.Equal("", w.Units[3].CallName);
+            Assert.Equal("Vogt", w.Units[4].CallName);
+        }
+
         // ---------- Rufe ----------
 
         [Fact]

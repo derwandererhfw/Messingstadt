@@ -30,6 +30,9 @@ namespace Messingstadt.Core
         public bool Open;
         public int Progress;
 
+        /// <summary>Der Telefondraht: Öffnen heißt kappen, die Felder bleiben gesperrt.</summary>
+        public bool Wire;
+
         /// <summary>Wer diese Tür offen lassen kann, leer bei gewöhnlichen Türen.</summary>
         public string Helper = "";
 
@@ -241,6 +244,7 @@ namespace Messingstadt.Core
 
         public World(MapData mapData, MissionData mission)
         {
+            mission = Recalled(mission);
             Map = mapData.Build();
             _hasAgents = mission.Agents.Count > 0;
             _light = mission.Light;
@@ -257,7 +261,7 @@ namespace Messingstadt.Core
             }
             foreach (var d in mission.Doors)
             {
-                var door = new Door { Name = d.Name, Helper = d.Helper };
+                var door = new Door { Name = d.Name, Helper = d.Helper, Wire = d.Wire };
                 // Türen der Stadt: Hilft der Bewohner, lässt er sie offen. Sonst braucht sie Schlosser, Dietrich oder Schlüssel.
                 door.LeftOpen = d.Helper.Length > 0 && mission.Helpers.Contains(d.Helper) && mission.Support >= d.OpenAtSupport;
                 door.Open = door.LeftOpen;
@@ -317,6 +321,8 @@ namespace Messingstadt.Core
             IsRescue = mission.Prisoners.Count > 0;
             GiveKeys(mission);
             AddPrisoners(mission);
+            ApplyMemory(mission);
+            SetUpPhone();
         }
 
         private static int ToUnits(double tiles) => (int)Math.Round(tiles * TileUnits);
@@ -325,7 +331,7 @@ namespace Messingstadt.Core
         {
             var u = new Unit
             {
-                Id = Units.Count, Name = d.Name, Person = d.Person, Rank = d.Rank, Age = d.Age, Sprite = d.Sprite, Faction = faction,
+                Id = Units.Count, Name = d.Name, Person = d.Person, Call = d.Call, Rank = d.Rank, Age = d.Age, Sprite = d.Sprite, Faction = faction,
                 X = ToUnits(d.X), Y = ToUnits(d.Y), Hp = hp, MaxHp = hp,
             };
             foreach (var p in d.Patrol)
@@ -395,7 +401,7 @@ namespace Messingstadt.Core
         {
             var u = Units[unitId];
             var door = Doors[doorId];
-            if (!u.Alive || !(CanPickLocks(u) || HasKey(u, doorId)) || door.Open || State != MissionState.Running)
+            if (!u.Alive || !(CanPickLocks(u) || HasKey(u, doorId) || door.Wire) || door.Open || State != MissionState.Running)
             {
                 return false;
             }
@@ -536,6 +542,7 @@ namespace Messingstadt.Core
             }
             Smokes.RemoveAll(s => s.UntilTick <= Tick);
             PickUpKeys();
+            Telephone();
             SpawnReinforcement();
             if (_residents.Count > 0)
             {
@@ -563,7 +570,7 @@ namespace Messingstadt.Core
             g.LastKnownX = _exit.X0 + TileUnits / 2;
             g.LastKnownY = _exit.Y0 + TileUnits / 2 + (_reinforcedCount % zoneTiles) * TileUnits;
             StartInvestigating(g);
-            _reinforceTick = _reinforcedCount < _reinforcements.Count ? Tick + _reinforcements.Interval * TickRate : 0;
+            _reinforceTick = _reinforcedCount < _reinforceLimit ? Tick + _reinforcements.Interval * TickRate : 0;
         }
 
         private void WorkOnDoor(Unit a)
@@ -579,9 +586,13 @@ namespace Messingstadt.Core
                 if (door.Progress >= DoorTicks)
                 {
                     door.Open = true;
+                    WireCut |= door.Wire;
                     foreach (var (x, y) in door.Tiles)
                     {
-                        Map.Unblock(x, y);
+                        if (!door.Wire)
+                        {
+                            Map.Unblock(x, y);
+                        }
                     }
                     a.DoorTarget = -1;
                 }
@@ -761,7 +772,7 @@ namespace Messingstadt.Core
                     if (seen != null)
                     {
                         int ticks = NoticeBase + NoticePerTile * Distance(g, seen) / TileUnits;
-                        StartNoticing(g, seen, Math.Max(1, ticks * NoticePercentAt(seen.X, seen.Y) * g.Type.NoticePercent / 10000));
+                        StartNoticing(g, seen, Math.Max(1, ticks * NoticePercentAt(seen.X, seen.Y) * g.Type.NoticePercent / 10000 * g.NoticeScale / 100));
                     }
                     else
                     {
@@ -817,7 +828,7 @@ namespace Messingstadt.Core
         private void HearAlarm(Unit g, Unit? seen)
         {
             // Der Laufbursche läuft nicht zum Lärm hin.
-            if (g.GuardState == GuardState.Combat || g.Type.Reports)
+            if (g.GuardState == GuardState.Combat || g.Type.Reports || g.Type.Phones)
             {
                 return;
             }
@@ -938,6 +949,10 @@ namespace Messingstadt.Core
 
         private void ThinkReport(Unit g)
         {
+            if (g.Type.Phones)
+            {
+                return;
+            }
             Unit? listener = null;
             foreach (var o in Units)
             {
@@ -973,14 +988,6 @@ namespace Messingstadt.Core
             }
         }
 
-        private void CallReinforcements()
-        {
-            if (_reinforcements != null && _reinforceTick == 0 && _reinforcedCount == 0)
-            {
-                _reinforceTick = Tick + _reinforcements.FirstDelay * TickRate;
-            }
-        }
-
         private void WalkTo(Unit g, int tileX, int tileY)
         {
             g.Path.Clear();
@@ -1003,11 +1010,17 @@ namespace Messingstadt.Core
 
         private void StartCombat(Unit g)
         {
-            if (g.Type.Reports)
+            if (g.Type.Reports || g.Type.Phones)
             {
                 g.GuardState = GuardState.Report;
                 g.Alerted = true;
                 g.RepathTick = 0;
+                if (g.Type.Phones)
+                {
+                    // Der Telefonist läuft nicht los, er greift zum Hörer.
+                    g.Path.Clear();
+                    CallReinforcements();
+                }
                 return;
             }
             g.GuardState = GuardState.Combat;

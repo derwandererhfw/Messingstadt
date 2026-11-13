@@ -69,6 +69,43 @@ Fällt der Führer, läuft der Hund auf den nächsten Agenten los. Sobald einer 
 
 Der Laufbursche ist schneller als ein gehender Agent und langsamer als ein rennender. Ein Treffer stoppt ihn. Emil rennt ihm von selbst nach, wenn er ihn bestechen soll, die Puste reicht aber nur für ein kurzes Stück. Kommt die Meldung an, geht die Wache zum gemeldeten Ort, alle Wachen im Umkreis werden alarmiert und die Verstärkung rückt an. Die Wertung bleibt ohne Schuss leise.
 
+### Namen, Schicksal und Erinnerung
+
+Jede Wache kann in der Mission unter `person` ihren vollen Namen tragen, etwa „Hermann Krüger“. Gerufen und beim Überfahren gezeigt wird der Rufname `Unit.CallName`: der Nachname, oder was die Mission unter `call` nennt, etwa „Kurt“ für den Laufburschen. Totenbuch und Zeitung nehmen den vollen Namen. `name` bleibt der Posten, an dem Schlüssel und Hundeführer hängen. Verstärkung bekommt ihre Namen aus `reinforcements.persons`. Der Name steht beim Überfahren vor der Art.
+
+Wachen rufen Namen, ohne dass sich am Ablauf etwas ändert: Begegnen sich zwei auf dem Rundgang auf 1,5 Felder, nennt eine die andere, höchstens alle 30 s je Wache. Fällt eine Wache mit Namen, ruft ihn der nächste Kollege, der sie auf bis zu 8 Felder sieht, einmal. Niedergeschlagene lösen keinen Ruf aus. Die Rufe stehen in `World.Calls`.
+
+Am Ende sagt `World.GuardOutcomes()` für jede Wache, was aus ihr wurde: ahnungslos, aufgeschreckt, gekauft, niedergeschlagen oder tot. Niedergeschlagene sind nicht tot.
+
+Die Kampagne gibt dem nächsten Einsatz in `MissionData.Memory` mit, wie die Stadt nach der Blutschuld zum Trupp steht (hilft, schweigt, gegen den Trupp) und welche Wachen der Trupp schon kennt. Daraus folgt:
+
+| Fall | Wirkung | Decke |
+|---|---|---|
+| Die Wache wurde früher gekauft | 25 % Nachlass, bemerkt 50 % langsamer. Mit Gretas Nachlass gilt der größere, nicht beide | keine |
+| Die Wache hat überlebt, und die Stadt steht gegen den Trupp | nimmt kein Geld, bemerkt 25 % schneller | höchstens 2 Wachen |
+| Die Stadt steht gegen den Trupp | Wachen mit `afterBlood` gehen mit, als zweiter Mann einer Streife | höchstens 1 |
+| Die Stadt hilft dem Trupp | Wachen mit `atEase` bemerken 50 % langsamer | höchstens 2 |
+
+Mehr als die Decke kostet die Blutschuld im nächsten Einsatz nie, egal wie viele gefallen sind. Gemessen im Nordwall (20 × 20, Groll auf Schließer und Hundeführer): Mit zwei zusätzlichen Streifen fiel „Erst kämpfen, dann befreien“ von 46 % auf 1 %, mit einer auf 15 %, mit Maschinenpistolen von 98 % auf 77 %. Der leise Weg ohne Geld blieb bei 100 %. Darum eine. Ohne `Memory` gilt nichts davon.
+
+Unabhängig vom letzten Einsatz kann die Mission eine Wache mit `noBribe` unbestechlich machen und mit `noticeScale` wachsamer oder nachlässiger (150 heißt 50 % langsamer). `returning` nennt eine Wache aus einem früheren Einsatz, die den Posten übernimmt, wenn sie noch lebt. Wer im Totenbuch steht, rückt auch nicht mehr als Verstärkung an, der Nächste auf der Liste kommt. Die Kampagne füllt `Memory` vor jedem Einsatz aus dem Totenbuch (`GuardMemoryData.From`).
+
+### Telefonist und Kaserne
+
+Nennt `reinforcements.phone` den Posten eines Telefonisten, hängt die Verstärkung am Telefon. Der Telefonist ist unbewaffnet, hat 40 Lebenspunkte und ist für 100 käuflich. Bemerkt er jemanden oder läuft der Alarm, wählt er 3 s lang und bleibt dabei am Apparat.
+
+Am Telefon kann auch ein anderer Posten stehen, etwa der Wachhabende. Mit `phoneAt` steht der Apparat auf einem eigenen, begehbaren Feld: Bei Alarm lässt der Posten alles stehen, geht dorthin und wählt erst dort. Wer ihn auf dem Weg aufhält, hat denselben Vorteil wie mit gekapptem Draht. Führt kein Weg zum Apparat, ruft er von seinem Platz aus an.
+
+| Fall | Erster Mann | Anzahl |
+|---|---|---|
+| Anruf kommt durch | `phoneDelay` nach dem Anruf, sonst 1 s | alle |
+| Kein Anruf: Draht gekappt, Telefonist gekauft, niedergeschlagen oder tot, auch noch während er wählt | `lateDelay` nach dem Alarm, sonst doppelt so spät wie `firstDelay` | `lateCount`, sonst die Hälfte, mindestens einer |
+| Kein Telefon in der Mission | `firstDelay` nach dem Alarm | alle |
+
+Der Draht ist eine Tür mit `wire`: Jeder kann ihn kappen, nach den Zeiten für Türen, das Feld bleibt gesperrt. `beds` begrenzt die Kaserne: Mehr rücken nie an, auch nicht mit Fahndung. Schuss, Bote und Telefonist lösen denselben Alarm aus, er läuft nur einmal.
+
+Für Anzeige und Ton: `World.Phone` nennt den Stand (`Idle`, `Fetching` auf dem Weg zum Apparat, `Dialing`, `Called`, `Silent`), `World.PhoneSince` den Takt des letzten Wechsels, `World.TicksUntilCall` die Zeit bis zum fertigen Anruf, `World.PhoneSpot` den Platz des Apparats, `World.PhoneOperatorId` den Mann am Telefon, `World.WireCut` den gekappten Draht und `World.ReinforcementLimit`, wie viele höchstens anrücken.
+
 ### Verhalten der Wachen
 
 Eine Wache ist immer in einem von fünf Zuständen. Sichtbare Wachen tragen im Spiel eine farbige Marke.

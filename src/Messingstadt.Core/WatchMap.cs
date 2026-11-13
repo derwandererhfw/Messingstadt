@@ -98,7 +98,7 @@ namespace Messingstadt.Core
         {
             var world = new World(mapData, new MissionData
             {
-                Seed = mission.Seed, Guards = mission.Guards, Doors = mission.Doors, Item = mission.Item, Exit = mission.Exit, Light = mission.Light,
+                Seed = mission.Seed, Guards = mission.Guards, Doors = mission.Doors, Item = mission.Item, Exit = mission.Exit, Light = mission.Light, Memory = mission.Memory,
             });
             int width = world.Map.Width, height = world.Map.Height, samples = ProbeSeconds * World.TickRate / SampleTicks;
             var map = new WatchMap(width, height, samples);

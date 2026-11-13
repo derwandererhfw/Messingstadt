@@ -252,6 +252,8 @@ namespace Messingstadt.Core
         {
             Current = missionId;
             mission.Money = Money;
+            // Vor der ersten zählenden Nacht weiß keine Wache etwas vom Trupp.
+            mission.Memory ??= Nights > 0 ? GuardMemoryData.From(this) : null;
             mission.Support = Support;
             // Türen der Stadt: Wer in diesem Einsatz hilft, entscheidet das Gedächtnis der Stadt.
             mission.Stance = Stance;

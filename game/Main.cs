@@ -440,7 +440,8 @@ void fragment() {
             var type = guard.Type;
             string name = GuardName(guard);
             string who = name.Length == 0 ? type.Title : $"{name}, {type.Title}";
-            string text = who + (guard.Bribed ? ", bestochen" : type.BribeCost == 0 ? ", nicht käuflich" : ", " + BribeWord(guard));
+            string text = who + (guard.Bribed ? ", bestochen" : guard.Recall == GuardRecall.Grudge ? ", nimmt von euch nichts" : !World.Bribable(guard) ? ", nicht käuflich" : ", " + BribeWord(guard))
+                + (guard.Recall == GuardRecall.OldDeal && !guard.Bribed ? ", kennt euch" : "");
             if (World.Units.Exists(o => o.LeashedTo == guard.Id))
             {
                 text += " samt Hund";
@@ -2220,7 +2221,7 @@ void fragment() {
         /// </summary>
         public string BribeWord(Unit guard)
         {
-            int full = guard.Type.BribeCost;
+            int full = World.BribePrice(guard);
             var payer = World.Units.Find(u => u.Alive && u.Faction == Faction.Agent && u.Skill == World.SkillBookkeeper);
             var leader = World.Units.Find(u => u.Alive && u.Faction == Faction.Agent && u.Skill == World.SkillLeader);
             if (payer == null || leader == null || World.LeaderDiscountPercent <= 0)
@@ -2228,7 +2229,7 @@ void fragment() {
                 return $"käuflich für {full}";
             }
             int now = World.BribePrice(guard, payer);
-            int with = full * (100 - World.LeaderDiscountPercent) / 100;
+            int with = World.BribePriceWithLeader(guard);
             return now < full ? $"käuflich für {now}, {leader.Name} ist dabei"
                 : World.LeaderBacksLater ? $"käuflich für {full}, mit {leader.Name} {with}" : $"käuflich für {full}";
         }
