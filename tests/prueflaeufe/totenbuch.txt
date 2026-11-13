@@ -18,8 +18,7 @@ key Key2
 wait 3
 expect trait
 # Am Mauszeiger steht der Name der Wache vorn
-# (trägt die Mission den Personennamen im Feld person, steht er davor)
-expect guardline Wachmann, käuflich für 100, Greta ist dabei
+expect guardline Krüger, Wachmann, käuflich für 100, Greta ist dabei
 # Vor dem ersten Toten ist das Buch leer
 key Escape
 expect screen Pausenmappe
@@ -60,19 +59,19 @@ place exit
 waitfor state Won
 wait 20
 expect panel True
-seetext Tote der Wache: Wache 1.
+seetext Tote der Wache: Krüger.
 key Escape
 click Totenbuch
-expect ledger trupp  | wache Wache 1 | seite 1/1
+expect ledger trupp  | wache Krüger | seite 1/1
 seetext DER TRUPP   0
 seetext Niemand.
 seetext DIE WACHE   1
-seetext Wache 1
+seetext Krüger
 seetext Kesselviertel
 seetext GEFALLEN
-# Zurück auf den Plan: Nach dem Toten brennen nur noch wenige Fenster
+# Zurück auf den Plan: Der erste Tote einer Nacht erhöht die Blutschuld nicht, die Fenster brennen weiter
 key Escape
 key Escape
 click Nächster Einsatz
 wait 5
-expect citysign 9/34
+expect citysign 34/34

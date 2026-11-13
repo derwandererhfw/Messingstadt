@@ -234,7 +234,11 @@ void fragment() {
         private bool _briefingFromResult;
         // Ein neues Spiel aus dem Menü: Nach dem Prolog kommen erst Stadtplan und Waffenkammer.
         private bool _briefFirst;
+        private const string PlanWayFirst = "Zum Buch führt der Weg über die Straße in die Gasse am Mietshaus, zum Wagen hinten um das Lager.";
         private float _hudShift;
+
+        /// <summary>Breite der Spalte links in Bildpunkten der Oberfläche, 0 wenn sie nicht zu sehen ist. Was in der Welt beschriftet, bleibt rechts davon.</summary>
+        public float HudColumn => _paper != null && _paper.Visible ? Hud.ColumnWidth : 0f;
         private float _peilSeconds = Hud.PeilSeconds;
         private const float HudShiftPerSecond = 240f;
         // Agent, dessen Rauchtopf auf den nächsten Linksklick in die Welt wartet. -1: keiner.
@@ -686,6 +690,8 @@ void fragment() {
             ["finished"] = _finished.ToString(),
             ["panel"] = _panel.Visible.ToString(),
             ["hud"] = _paper.Visible.ToString(),
+            ["phone"] = $"{World.Phone}{(World.WireCut ? " gekappt" : "")}",
+            ["speechleft"] = _chatter.LeftmostSpeech > 1e6f ? "" : Mathf.RoundToInt(_chatter.LeftmostSpeech).ToString(),
             ["help"] = _help.Visible.ToString(),
             ["helpline"] = _helpPlain,
             ["helprows"] = string.Join(" / ", _help.Text.Split('\n').Select(row => row.Replace(' ', ' ').Trim())),
@@ -1505,7 +1511,7 @@ void fragment() {
             layer.AddChild(_planBand);
             _planLegend = PaperUi.Text(
                 "LAGEPLAN  Grün: nie bewacht. Gelb bis Rot: immer öfter im Blick. Punkte: Wege der Wachen. Klick: losgehen, sobald frei.\n"
-                + "Zum Buch führt der Weg über die Straße in die Gasse am Mietshaus, zum Wagen hinten um das Lager.",
+                + PlanWayFirst,
                 13, PaperUi.Ink, PaperUi.Typewriter);
             _planLegend.Position = new Vector2(Hud.ColumnWidth + 18f, 65);
             _planLegend.AnchorRight = 1f;
@@ -1958,6 +1964,8 @@ void fragment() {
         {
             bool held = PlanHeld && !_finished;
             _planLegend.Visible = held;
+            // Der Weghinweis in der zweiten Zeile gilt nur für den ersten Einsatz.
+            _planLegend.MaxLinesVisible = MissionId == "mission_01" ? -1 : 1;
             _planBand.Visible = held;
             PreviewPath.Clear();
             PreviewRisk = -1;
@@ -2418,6 +2426,31 @@ void fragment() {
             return _things.Count;
         }
 
+        // So lange steht eine Meldung zum Telefon im Telegramm, in Takten der Spielwelt.
+        private const int PhoneNoteTicks = 6 * World.TickRate;
+        public const string PhoneCalledText = "ANRUF IST DURCH STOP KASERNE RUECKT AN STOP";
+        public const string PhoneCutText = "DRAHT GEKAPPT STOP KASERNE HOERT NICHTS STOP";
+        private int _wireCutTick = -1;
+        private World? _wireWorld;
+
+        /// <summary>Kurze Meldung im Telegramm, wenn der Anruf durch ist oder der Draht gekappt wurde. Sonst null.</summary>
+        private string? PhoneNote()
+        {
+            if (_wireWorld != World)
+            {
+                (_wireWorld, _wireCutTick) = (World, -1);
+            }
+            if (World.WireCut && _wireCutTick < 0)
+            {
+                _wireCutTick = World.Tick;
+            }
+            if (World.Phone == PhoneState.Called && World.Tick - World.PhoneSince < PhoneNoteTicks)
+            {
+                return PhoneCalledText;
+            }
+            return _wireCutTick >= 0 && World.Tick - _wireCutTick < PhoneNoteTicks ? PhoneCutText : null;
+        }
+
         private void UpdateUi()
         {
             string name = World.ItemName.ToUpperInvariant();
@@ -2425,11 +2458,16 @@ void fragment() {
                 ? (World.EscapeProgress > 0 ? "EINSTEIGEN STOP STEHEN BLEIBEN STOP" : $"{name} GESICHERT STOP ZUM FLUCHTWAGEN IM OSTEN STOP")
                 : World.ItemProgress > 0 ? $"{name} WIRD GESICHERT STOP STEHEN BLEIBEN STOP"
                 : $"{name} AM MIETSHAUS HOLEN STOP GASSE NUTZEN STOP DANN ZUM FLUCHTWAGEN IM OSTEN STOP";
+            telegram = PhoneNote() ?? telegram;
             int guards = World.Units.Count(u => u.Faction == Faction.Guard && u.Alive);
             string info = $"WACHEN {guards}   ZEIT {World.Tick / World.TickRate} S   KASSE {World.Money}";
             if (World.TicksUntilReinforcement >= 0 && !_finished)
             {
                 info += $"   ALARM: VERSTÄRKUNG IN {World.TicksUntilReinforcement / World.TickRate + 1} S";
+            }
+            if (World.WireCut)
+            {
+                info += "   DRAHT GEKAPPT";
             }
             _paper.Refresh(World, Selected, telegram, info);
             _banner.Text = _paused && !ControlsLocked ? "PAUSE" : "";
