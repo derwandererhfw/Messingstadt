@@ -1,0 +1,69 @@
+# Totenbuch nach einem Einsatz ohne Tote und nach einem mit einem toten Wachmann. Dazu Name am Mauszeiger und Gretas Zeile.
+# Aufruf mit --menu --fresh. Prüfläufe schreiben nichts.
+wait 20
+click Neues Spiel
+wait 10
+click Einsatz annehmen
+click Zum Einsatz
+wait 20
+expect hud True
+# Greta gewählt: Ihr Blatt in der Spalte sagt, was sie kann, und die Hilfezeile nennt den Nachlass beim Bestechen
+key Key1
+wait 3
+expect trait In Rufweite: Bestechen halber Preis
+expect helpline Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen (mit Greta halber Preis), Otto: Tür   Q halten: Lageplan   1-4 Leertaste   WASD F P M   Esc: Menü
+key Key2
+wait 3
+expect trait
+# Am Mauszeiger steht der Name der Wache vorn
+expect guardline Wache 1, Wachmann, käuflich für 100, Greta ist dabei
+# Vor dem ersten Toten ist das Buch leer
+key Escape
+expect screen Pausenmappe
+click Totenbuch
+expect screen Totenbuch
+expect ledger trupp  | wache  | seite 1/1
+seetext Noch steht kein Name im Buch.
+key Escape
+expect screen Pausenmappe
+key Escape
+# Einsatz ohne Tote gewonnen: Das Ergebnis nennt niemanden, das Buch bleibt leer
+# Die übrigen Wachen sind gekauft, damit der Trupp am Ziel niemanden erschießt
+calm
+place item
+waitfor item True
+place exit
+waitfor state Won
+wait 20
+expect panel True
+key Escape
+click Totenbuch
+expect ledger trupp  | wache  | seite 1/1
+key Escape
+key Escape
+# Zweiter Einsatz im selben Viertel: Eine Wache stirbt
+click Nächster Einsatz
+wait 5
+click Einsatz annehmen
+click Zum Einsatz
+wait 20
+fellguard 1
+wait 5
+# Die übrigen Wachen sind gekauft, damit der Trupp am Ziel niemanden erschießt
+calm
+place item
+waitfor item True
+place exit
+waitfor state Won
+wait 20
+expect panel True
+seetext Tote der Wache: Wache 1.
+key Escape
+click Totenbuch
+expect ledger trupp  | wache Wache 1 | seite 1/1
+seetext DER TRUPP   0
+seetext Niemand.
+seetext DIE WACHE   1
+seetext Wache 1
+seetext Kesselviertel
+seetext GEFALLEN

@@ -176,6 +176,15 @@ namespace Messingstadt
                         fallen.Hp = 0;
                     }
                     break;
+                case "fellguard":
+                    // So viele Wachen sterben sofort, damit das Totenbuch ohne Gefecht prüfbar ist. Hunde zählen nicht.
+                    var doomed = Game.World.Units.Where(u => u.Faction == Faction.Guard && u.Alive && u.Type != GuardType.Hund).Take(int.Parse(arg)).ToList();
+                    Check(line, doomed.Count == int.Parse(arg), string.Join(", ", doomed.Select(u => u.Name)));
+                    foreach (var guard1 in doomed)
+                    {
+                        guard1.Hp = 0;
+                    }
+                    break;
                 case "pointat":
                     var spot = arg.Split(' ');
                     var who = Game.World.Units.First(u => u.Faction == Faction.Agent && u.Name == spot[0]);
