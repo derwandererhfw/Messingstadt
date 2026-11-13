@@ -250,6 +250,7 @@ namespace Messingstadt.Core
             _reinforcements = mission.Reinforcements;
             Money = mission.Money;
             Press = mission.Headlines;
+            _residents.AddRange(mission.Residents.FindAll(r => !mission.Helpers.Contains(r.Id)));
             foreach (var d in mission.Doors)
             {
                 var door = new Door { Name = d.Name, Helper = d.Helper };
@@ -532,6 +533,10 @@ namespace Messingstadt.Core
             Smokes.RemoveAll(s => s.UntilTick <= Tick);
             PickUpKeys();
             SpawnReinforcement();
+            if (_residents.Count > 0)
+            {
+                ResidentsWatch();
+            }
             CheckMission();
         }
 

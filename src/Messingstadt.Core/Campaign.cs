@@ -254,7 +254,8 @@ namespace Messingstadt.Core
             mission.Money = Money;
             mission.Support = Support;
             // Türen der Stadt: Wer in diesem Einsatz hilft, entscheidet das Gedächtnis der Stadt.
-            mission.Helpers = mission.Doors.Select(d => d.Helper).Where(h => h.Length > 0).Distinct().Where(h => HouseHelps(h, missionId)).ToList();
+            mission.Helpers = mission.Doors.Select(d => d.Helper).Concat(mission.Residents.Select(r => r.Id))
+                .Where(h => h.Length > 0).Distinct().Where(h => HouseHelps(h, missionId)).ToList();
             foreach (var a in mission.Agents)
             {
                 if (!Agents.Exists(r => r.Slot == a.Name))

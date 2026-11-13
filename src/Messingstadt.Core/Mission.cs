@@ -129,6 +129,18 @@ namespace Messingstadt.Core
         public int OpenAtSupport { get; set; }
     }
 
+    /// <summary>
+    /// Ein Bewohner an Fenster oder Tür, der dem Trupp nicht hilft. Sieht er jemanden vom Trupp nah bei sich, ruft er einmal,
+    /// und die nächste Wache in Hörweite geht nachsehen. Steht seine Kennung in MissionData.Helpers, schweigt er.
+    /// </summary>
+    public sealed class ResidentData
+    {
+        /// <summary>Kennung, etwa "gerichtsdiener". Die Kampagne entscheidet darüber mit Campaign.HouseHelps.</summary>
+        public string Id { get; set; } = "";
+        public double X { get; set; }
+        public double Y { get; set; }
+    }
+
     /// <summary>Ein Gefangener in einem Einsatz der Art Befreien.</summary>
     public sealed class PrisonerData
     {
@@ -278,8 +290,11 @@ namespace Messingstadt.Core
         /// <summary>Rückhalt in der Stadt, 0 bis 5. Die Kampagne trägt ihn vor dem Einsatz ein, er öffnet die Türen der Stadt.</summary>
         public int Support { get; set; }
 
-        /// <summary>Bewohner, die diesmal helfen und ihre Tür offen lassen. Die Kampagne trägt sie vor dem Einsatz ein.</summary>
+        /// <summary>Bewohner, die diesmal helfen: Sie lassen ihre Tür offen oder schweigen. Die Kampagne trägt sie vor dem Einsatz ein.</summary>
         public List<string> Helpers { get; set; } = new();
+
+        /// <summary>Bewohner, die rufen, wenn sie den Trupp sehen, außer sie stehen in Helpers.</summary>
+        public List<ResidentData> Residents { get; set; } = new();
 
         /// <summary>Standorte der Straßenlaternen in Feldern. Nur für die Darstellung.</summary>
         public List<double[]> Lamps { get; set; } = new();

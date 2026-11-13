@@ -52,6 +52,53 @@ namespace Messingstadt.Core
 
         public List<DroppedKeys> KeysOnGround { get; } = new();
 
+        /// <summary>So nah muss jemand vom Trupp einem Bewohner kommen, damit er ruft, mit freier Sicht.</summary>
+        public const int ResidentSeesRange = 5 * TileUnits / 2;
+
+        /// <summary>So weit hört eine Wache den Ruf eines Bewohners.</summary>
+        public const int ResidentHeardRange = 9 * TileUnits;
+
+        /// <summary>Rufe der Bewohner: wann, wer und welche Wache nachsehen geht (-1, wenn keine in Hörweite war). Für Darstellung und Ton.</summary>
+        public List<(int Tick, string Resident, int GuardId)> ResidentCalls { get; } = new();
+
+        private readonly List<ResidentData> _residents = new();
+
+        /// <summary>
+        /// Ein Bewohner, der nicht hilft, ruft einmal, wenn ein Agent oder Befreiter nah an ihm vorbeikommt.
+        /// Die nächste ahnungslose Wache in Hörweite geht an die Stelle und sieht nach. Der Einsatz gilt damit als bemerkt, nicht als laut.
+        /// </summary>
+        private void ResidentsWatch()
+        {
+            for (int i = _residents.Count - 1; i >= 0; i--)
+            {
+                var r = _residents[i];
+                int rx = ToUnits(r.X), ry = ToUnits(r.Y);
+                var seen = Units.Find(u => u.Alive && (u.Faction == Faction.Agent || (u.IsPrisoner && !u.Captive))
+                    && DistanceTo(u, rx, ry) <= ResidentSeesRange && HasSight(rx / TileUnits, ry / TileUnits, u.TileX, u.TileY));
+                if (seen == null)
+                {
+                    continue;
+                }
+                _residents.RemoveAt(i);
+                Unit? nearest = null;
+                foreach (var g in Units)
+                {
+                    if (g.Alive && g.Faction == Faction.Guard && !g.Bribed && !g.Type.Bites && g.GuardState == GuardState.Patrol
+                        && DistanceTo(g, rx, ry) <= ResidentHeardRange && (nearest == null || DistanceTo(g, rx, ry) < DistanceTo(nearest, rx, ry)))
+                    {
+                        nearest = g;
+                    }
+                }
+                ResidentCalls.Add((Tick, r.Id, nearest?.Id ?? -1));
+                if (nearest != null)
+                {
+                    nearest.LastKnownX = seen.X;
+                    nearest.LastKnownY = seen.Y;
+                    StartInvestigating(nearest);
+                }
+            }
+        }
+
         /// <summary>
         /// Sitzt er noch im Gebäude? Die Zelle liegt hinter der Fassade: Solange die Tür zu ist und solange er auf einem Feld der
         /// Zelle steht, zeigt das Spiel ihn nicht, sonst klebte er außen an der Wand. Er erscheint, wenn er vor die Tür tritt.
