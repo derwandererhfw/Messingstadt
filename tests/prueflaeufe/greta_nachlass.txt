@@ -19,11 +19,13 @@ key Key3
 clickfield 6 15
 waittick 450
 # Fenster: beide Wallstreifen laufen auseinander. In der dunklen Gasse auf den Hundeführer warten, er kommt vom Wall zurück
+# Greta zuerst, sie steht am weitesten hinten und hat das Fenster am knappsten
+key Key1
+clickfield 5 8
+key Key3
 clickfield 6 7
 key Key2
 clickfield 6 8
-key Key1
-clickfield 5 8
 waittick 510
 key Key3
 rclickunit Hundeführer

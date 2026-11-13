@@ -444,7 +444,8 @@ void fragment() {
             var type = guard.Type;
             string name = GuardName(guard);
             string who = name.Length == 0 ? type.Title : $"{name}, {type.Title}";
-            string text = who + (guard.Bribed ? ", bestochen" : type.BribeCost == 0 ? ", nicht käuflich" : ", " + BribeWord(guard));
+            string text = who + (guard.Bribed ? ", bestochen" : guard.Recall == GuardRecall.Grudge ? ", nimmt von euch nichts" : !World.Bribable(guard) ? ", nicht käuflich" : ", " + BribeWord(guard))
+                + (guard.Recall == GuardRecall.OldDeal && !guard.Bribed ? ", kennt euch" : "");
             if (World.Units.Exists(o => o.LeashedTo == guard.Id))
             {
                 text += " samt Hund";
@@ -742,6 +743,7 @@ void fragment() {
             ["guardline"] = World.Units.Find(u => u.Faction == Faction.Guard && u.Alive && u.Type != GuardType.Hund) is { } first ? GuardLine(first) : "",
             ["trait"] = _paper.Trait,
             ["uisounds"] = _sound.UiPlayCount.ToString(),
+            ["alarm"] = string.Join(", ", World.Units.Where(u => u.Faction == Faction.Guard && u.Alive && !u.Bribed && (u.Roused || u.GuardState != GuardState.Patrol)).Select(u => $"{u.Name} {u.GuardState} {u.TileX},{u.TileY}")),
             ["prices"] = string.Join(" | ", World.Units.Where(u => u.Faction == Faction.Guard && u.Alive && !u.Bribed && World.Bribable(u) && u.LeashedTo < 0).Select(u => $"{u.Name}: {BribeWord(u)}")),
             ["state"] = World.State.ToString(),
             ["item"] = World.ItemTaken.ToString(),
@@ -2226,7 +2228,7 @@ void fragment() {
         /// </summary>
         public string BribeWord(Unit guard)
         {
-            int full = guard.Type.BribeCost;
+            int full = World.BribePrice(guard);
             var payer = World.Units.Find(u => u.Alive && u.Faction == Faction.Agent && u.Skill == World.SkillBookkeeper);
             var leader = World.Units.Find(u => u.Alive && u.Faction == Faction.Agent && u.Skill == World.SkillLeader);
             if (payer == null || leader == null || World.LeaderDiscountPercent <= 0)
@@ -2234,7 +2236,7 @@ void fragment() {
                 return $"käuflich für {full}";
             }
             int now = World.BribePrice(guard, payer);
-            int with = full * (100 - World.LeaderDiscountPercent) / 100;
+            int with = World.BribePriceWithLeader(guard);
             return now < full ? $"käuflich für {now}, {leader.Name} ist dabei"
                 : World.LeaderBacksLater ? $"käuflich für {full}, mit {leader.Name} {with}" : $"käuflich für {full}";
         }
@@ -2668,7 +2670,8 @@ void fragment() {
             float bestD = 18f;
             foreach (var u in World.Units)
             {
-                if (u.Faction != faction || !u.Alive || World.HiddenInCell(u)) continue;
+                // Auch ein Niedergeschlagener lässt sich anklicken: Wer auf ihn schießt, tötet ihn.
+                if (u.Faction != faction || (!u.Alive && !u.KnockedOut) || World.HiddenInCell(u)) continue;
                 var center = ToScreen(u.X, u.Y) + new Vector2(0, -20);
                 float d = Math.Max(Math.Abs(center.X - p.X), Math.Abs(center.Y - p.Y) * 0.6f);
                 if (d < bestD)

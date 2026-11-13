@@ -340,7 +340,7 @@ namespace Messingstadt
                 {
                     continue;
                 }
-                string name = subject.Person;
+                string name = subject.CallName;
                 string line;
                 if (call.Kind == CallKind.Greeting)
                 {

@@ -44,8 +44,23 @@ namespace Messingstadt.Core
         /// <summary>Art des Gegners, siehe GuardType. Ohne Angabe ein Wachmann.</summary>
         public string Type { get; set; } = "";
 
-        /// <summary>Name des Menschen hinter dem Posten, etwa "Krüger". Name bleibt der Posten, an dem Schlüssel und Hundeführer hängen.</summary>
+        /// <summary>Voller Name des Menschen hinter dem Posten, etwa "Hermann Krüger". Name bleibt der Posten, an dem Schlüssel und Hundeführer hängen.</summary>
         public string Person { get; set; } = "";
+
+        /// <summary>Rufname, wenn er nicht der Nachname sein soll, etwa "Kurt" für den Laufburschen Kurt Lüders.</summary>
+        public string Call { get; set; } = "";
+
+        /// <summary>Geht nur mit, wenn die Stadt gegen den Trupp steht: der zweite Mann einer Streife. Höchstens World.MaxBloodPartners.</summary>
+        public bool AfterBlood { get; set; }
+
+        /// <summary>Schaut weg, solange die Stadt dem Trupp hilft. Höchstens World.MaxAtEase.</summary>
+        public bool AtEase { get; set; }
+
+        /// <summary>Zeit bis zum Bemerken in Prozent, unabhängig vom letzten Einsatz. Über 100 schaut er gern weg.</summary>
+        public int NoticeScale { get; set; } = 100;
+
+        /// <summary>Name einer Wache aus einem früheren Einsatz, die diesen Posten übernimmt, wenn sie noch lebt. Sonst bleibt es bei Person.</summary>
+        public string Returning { get; set; } = "";
 
         /// <summary>Eigene Anrede in Zeitung und Totenbuch, etwa "Oberwachtmeister" oder "Bote". Ohne Angabe gilt die der Art.</summary>
         public string Rank { get; set; } = "";
@@ -106,6 +121,25 @@ namespace Messingstadt.Core
         public int Interval { get; set; }
         public int Count { get; set; }
 
+        /// <summary>Posten des Telefonisten. Ohne Angabe gibt es kein Telefon, die Verstärkung kommt nach FirstDelay in voller Zahl.</summary>
+        public string Phone { get; set; } = "";
+
+        /// <summary>Wo der Apparat steht, in Feldern, auf einem begehbaren Feld. Der Posten am Telefon geht bei Alarm dorthin und wählt erst dort.
+        /// Ohne Angabe ruft er von seinem Platz aus an.</summary>
+        public double[]? PhoneAt { get; set; }
+
+        /// <summary>Sekunden vom fertigen Anruf bis zum ersten Mann.</summary>
+        public int PhoneDelay { get; set; } = 1;
+
+        /// <summary>Sekunden vom Alarm bis zum ersten Mann, wenn niemand anrufen kann. 0 heißt doppelt so lange wie FirstDelay.</summary>
+        public int LateDelay { get; set; }
+
+        /// <summary>So viele kommen ohne Anruf. 0 heißt die Hälfte, mindestens einer.</summary>
+        public int LateCount { get; set; }
+
+        /// <summary>Betten in der Kaserne: Mehr rücken nie an, auch nicht mit Fahndung. 0 heißt keine Grenze.</summary>
+        public int Beds { get; set; }
+
         /// <summary>Namen der Leute, die als Verstärkung kommen, in dieser Reihenfolge. Fehlen welche, bleiben sie namenlos.</summary>
         public List<string> Persons { get; set; } = new();
     }
@@ -119,6 +153,9 @@ namespace Messingstadt.Core
         /// <summary>Wo die Tür im Bild zu sehen ist, in Feldern. Ohne Angabe das erste Feld.</summary>
         public double[]? Mark { get; set; }
 
+        /// <summary>Keine Tür, sondern der Telefondraht an der Wand: Wer ihn "öffnet", kappt ihn. Das Feld bleibt gesperrt.</summary>
+        public bool Wire { get; set; }
+
         /// <summary>
         /// Tür der Stadt: Wer sie offen lässt, etwa "witwe". Sie steht offen, wenn der Name in MissionData.Helpers steht.
         /// Ob jemand hilft, entscheidet die Kampagne (Campaign.HouseHelps). Leer heißt, es ist eine gewöhnliche Tür.
@@ -127,6 +164,19 @@ namespace Messingstadt.Core
 
         /// <summary>Zusätzlich nötiger Rückhalt, damit der Helfer die Tür offen lässt. 0 heißt, der Rückhalt spielt keine Rolle.</summary>
         public int OpenAtSupport { get; set; }
+    }
+
+    /// <summary>
+    /// Ein Bewohner an Fenster oder Tür, der dem Trupp nicht hilft. Ob er ruft, hängt an der Haltung der Stadt (MissionData.Stance):
+    /// Hilft die Stadt, schaut auch er weg. Schweigt sie, ruft er einmal, wenn er jemanden vom Trupp nah bei sich sieht, und die
+    /// nächste Wache in Hörweite geht nachsehen. Steht die Stadt gegen den Trupp, gehen die zwei nächsten.
+    /// </summary>
+    public sealed class ResidentData
+    {
+        /// <summary>Kennung, etwa "gerichtsdiener". Für Darstellung und Ton.</summary>
+        public string Id { get; set; } = "";
+        public double X { get; set; }
+        public double Y { get; set; }
     }
 
     /// <summary>Ein Gefangener in einem Einsatz der Art Befreien.</summary>
@@ -245,6 +295,17 @@ namespace Messingstadt.Core
         public int Seed { get; set; }
         public List<UnitData> Agents { get; set; } = new();
         public List<UnitData> Guards { get; set; } = new();
+
+        /// <summary>Was die Wachen vom letzten Einsatz wissen, siehe World.Recall.cs. Kommt von der Kampagne.</summary>
+        public GuardMemoryData? Memory { get; set; }
+
+        /// <summary>Dieselbe Mission mit anderer Wachenliste, ohne das Original zu ändern.</summary>
+        public MissionData WithGuards(List<UnitData> guards)
+        {
+            var copy = (MissionData)MemberwiseClone();
+            copy.Guards = guards;
+            return copy;
+        }
         public double[] Item { get; set; } = new double[2];
         public string ItemName { get; set; } = "";
         public ZoneData Exit { get; set; } = new();
@@ -278,8 +339,14 @@ namespace Messingstadt.Core
         /// <summary>Rückhalt in der Stadt, 0 bis 5. Die Kampagne trägt ihn vor dem Einsatz ein, er öffnet die Türen der Stadt.</summary>
         public int Support { get; set; }
 
-        /// <summary>Bewohner, die diesmal helfen und ihre Tür offen lassen. Die Kampagne trägt sie vor dem Einsatz ein.</summary>
+        /// <summary>Haltung der Stadt aus der Blutschuld (Campaign.Stance). Die Kampagne trägt sie vor dem Einsatz ein, ohne Kampagne hilft die Stadt.</summary>
+        public CityStance Stance { get; set; } = CityStance.Helps;
+
+        /// <summary>Bewohner, die diesmal helfen: Sie lassen ihre Tür offen. Die Kampagne trägt sie vor dem Einsatz ein.</summary>
         public List<string> Helpers { get; set; } = new();
+
+        /// <summary>Bewohner, die rufen, wenn sie den Trupp sehen, sobald die Stadt nicht mehr hilft (Stance).</summary>
+        public List<ResidentData> Residents { get; set; } = new();
 
         /// <summary>Standorte der Straßenlaternen in Feldern. Nur für die Darstellung.</summary>
         public List<double[]> Lamps { get; set; } = new();

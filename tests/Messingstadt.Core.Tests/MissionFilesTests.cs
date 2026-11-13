@@ -26,6 +26,29 @@ namespace Messingstadt.Core.Tests
         private static (MapData Map, MissionData Mission) Load(string id) =>
             Loader.LoadMission(DataDir(), id, Loader.ParseCatalog(File.ReadAllText(Path.Combine(DataDir(), "waffen.json"))));
 
+        /// <summary>Jeder Bewohner des Nordwalls steht so, dass er jemanden auf dem Feld vor sich sieht und dann ruft.</summary>
+        [Fact]
+        public void EveryResidentOfNordwallCanSeeTheStreetInFrontOfHim()
+        {
+            var ids = Load("mission_02").Mission.Residents.Select(r => r.Id).ToList();
+            Assert.Equal(new[] { "gerichtsdiener", "frau_des_wachmanns", "kasernenkoch" }, ids);
+            foreach (var id in ids)
+            {
+                var (map, mission) = Load("mission_02");
+                var r = mission.Residents.First(x => x.Id == id);
+                var grid = new World(map, Load("mission_02").Mission).Map;
+                var spot = (from dx in new[] { 0, -1, 1 } from dy in new[] { 0, 1, -1 }
+                            let x = (int)r.X + dx let y = (int)r.Y + dy
+                            where !grid.IsBlocked(x, y) select (x, y)).First();
+                mission.Stance = CityStance.Silent;
+                mission.Agents[0].X = spot.x + 0.5;
+                mission.Agents[0].Y = spot.y + 0.5;
+                var w = new World(map, mission);
+                w.Step();
+                Assert.Contains(w.ResidentCalls, c => c.Resident == id);
+            }
+        }
+
         [Fact]
         public void TheCityPlanNamesBothMissions()
         {

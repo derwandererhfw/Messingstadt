@@ -69,6 +69,43 @@ Fällt der Führer, läuft der Hund auf den nächsten Agenten los. Sobald einer 
 
 Der Laufbursche ist schneller als ein gehender Agent und langsamer als ein rennender. Ein Treffer stoppt ihn. Emil rennt ihm von selbst nach, wenn er ihn bestechen soll, die Puste reicht aber nur für ein kurzes Stück. Kommt die Meldung an, geht die Wache zum gemeldeten Ort, alle Wachen im Umkreis werden alarmiert und die Verstärkung rückt an. Die Wertung bleibt ohne Schuss leise.
 
+### Namen, Schicksal und Erinnerung
+
+Jede Wache kann in der Mission unter `person` ihren vollen Namen tragen, etwa „Hermann Krüger“. Gerufen und beim Überfahren gezeigt wird der Rufname `Unit.CallName`: der Nachname, oder was die Mission unter `call` nennt, etwa „Kurt“ für den Laufburschen. Totenbuch und Zeitung nehmen den vollen Namen. `name` bleibt der Posten, an dem Schlüssel und Hundeführer hängen. Verstärkung bekommt ihre Namen aus `reinforcements.persons`. Der Name steht beim Überfahren vor der Art.
+
+Wachen rufen Namen, ohne dass sich am Ablauf etwas ändert: Begegnen sich zwei auf dem Rundgang auf 1,5 Felder, nennt eine die andere, höchstens alle 30 s je Wache. Fällt eine Wache mit Namen, ruft ihn der nächste Kollege, der sie auf bis zu 8 Felder sieht, einmal. Niedergeschlagene lösen keinen Ruf aus. Die Rufe stehen in `World.Calls`.
+
+Am Ende sagt `World.GuardOutcomes()` für jede Wache, was aus ihr wurde: ahnungslos, aufgeschreckt, gekauft, niedergeschlagen oder tot. Niedergeschlagene sind nicht tot.
+
+Die Kampagne gibt dem nächsten Einsatz in `MissionData.Memory` mit, wie die Stadt nach der Blutschuld zum Trupp steht (hilft, schweigt, gegen den Trupp) und welche Wachen der Trupp schon kennt. Daraus folgt:
+
+| Fall | Wirkung | Decke |
+|---|---|---|
+| Die Wache wurde früher gekauft | 25 % Nachlass, bemerkt 50 % langsamer. Mit Gretas Nachlass gilt der größere, nicht beide | keine |
+| Die Wache hat überlebt, und die Stadt steht gegen den Trupp | nimmt kein Geld, bemerkt 25 % schneller | höchstens 2 Wachen |
+| Die Stadt steht gegen den Trupp | Wachen mit `afterBlood` gehen mit, als zweiter Mann einer Streife | höchstens 1 |
+| Die Stadt hilft dem Trupp | Wachen mit `atEase` bemerken 50 % langsamer | höchstens 2 |
+
+Mehr als die Decke kostet die Blutschuld im nächsten Einsatz nie, egal wie viele gefallen sind. Gemessen im Nordwall (20 × 20, Groll auf Schließer und Hundeführer): Mit zwei zusätzlichen Streifen fiel „Erst kämpfen, dann befreien“ von 46 % auf 1 %, mit einer auf 15 %, mit Maschinenpistolen von 98 % auf 77 %. Der leise Weg ohne Geld blieb bei 100 %. Darum eine. Ohne `Memory` gilt nichts davon.
+
+Unabhängig vom letzten Einsatz kann die Mission eine Wache mit `noBribe` unbestechlich machen und mit `noticeScale` wachsamer oder nachlässiger (150 heißt 50 % langsamer). `returning` nennt eine Wache aus einem früheren Einsatz, die den Posten übernimmt, wenn sie noch lebt. Wer im Totenbuch steht, rückt auch nicht mehr als Verstärkung an, der Nächste auf der Liste kommt. Die Kampagne füllt `Memory` vor jedem Einsatz aus dem Totenbuch (`GuardMemoryData.From`).
+
+### Telefonist und Kaserne
+
+Nennt `reinforcements.phone` den Posten eines Telefonisten, hängt die Verstärkung am Telefon. Der Telefonist ist unbewaffnet, hat 40 Lebenspunkte und ist für 100 käuflich. Bemerkt er jemanden oder läuft der Alarm, wählt er 3 s lang und bleibt dabei am Apparat.
+
+Am Telefon kann auch ein anderer Posten stehen, etwa der Wachhabende. Mit `phoneAt` steht der Apparat auf einem eigenen, begehbaren Feld: Bei Alarm lässt der Posten alles stehen, geht dorthin und wählt erst dort. Wer ihn auf dem Weg aufhält, hat denselben Vorteil wie mit gekapptem Draht. Führt kein Weg zum Apparat, ruft er von seinem Platz aus an.
+
+| Fall | Erster Mann | Anzahl |
+|---|---|---|
+| Anruf kommt durch | `phoneDelay` nach dem Anruf, sonst 1 s | alle |
+| Kein Anruf: Draht gekappt, Telefonist gekauft, niedergeschlagen oder tot, auch noch während er wählt | `lateDelay` nach dem Alarm, sonst doppelt so spät wie `firstDelay` | `lateCount`, sonst die Hälfte, mindestens einer |
+| Kein Telefon in der Mission | `firstDelay` nach dem Alarm | alle |
+
+Der Draht ist eine Tür mit `wire`: Jeder kann ihn kappen, nach den Zeiten für Türen, das Feld bleibt gesperrt. `beds` begrenzt die Kaserne: Mehr rücken nie an, auch nicht mit Fahndung. Schuss, Bote und Telefonist lösen denselben Alarm aus, er läuft nur einmal.
+
+Für Anzeige und Ton: `World.Phone` nennt den Stand (`Idle`, `Fetching` auf dem Weg zum Apparat, `Dialing`, `Called`, `Silent`), `World.PhoneSince` den Takt des letzten Wechsels, `World.TicksUntilCall` die Zeit bis zum fertigen Anruf, `World.PhoneSpot` den Platz des Apparats, `World.PhoneOperatorId` den Mann am Telefon, `World.WireCut` den gekappten Draht und `World.ReinforcementLimit`, wie viele höchstens anrücken.
+
 ### Verhalten der Wachen
 
 Eine Wache ist immer in einem von fünf Zuständen. Sichtbare Wachen tragen im Spiel eine farbige Marke.
@@ -235,6 +272,46 @@ Stellschrauben für den leisen Weg, gemessen mit `--schrauben` vor der Änderung
 A und C machen den Weg teurer, aber nicht riskanter: Das Wagnis liegt in den zwei Querungen der Wallstraße, nicht im Hof. B macht ihn mit den gemessenen Spielweisen unmöglich. Eine Uhr („Um sechs kommt der Werkschutz“) bräuchte eine neue Regel und ist nicht gemessen.
 
 Die Zellen liegen im Gebäude. Wer auf einem Feld seiner Zelle steht, wird nicht gezeichnet (`World.HiddenInCell`), sonst klebte er außen an der Fassade. Solange die Tür zu ist, steht sein kurzer Name neben dem Schloss. Ein Befreiter bleibt nie in der Zelle stehen, auch wenn sein Führer direkt vor der Tür wartet, sondern tritt auf das nächste freie Feld davor.
+
+#### Niedergeschlagen ist nicht tot
+
+Der Totschläger schlägt eine ahnungslose Wache nieder. Sie liegt, lebt und steht in diesem Einsatz nicht wieder auf, sieht, hört und meldet nichts und verliert ihre Schlüssel. Im Kern ist sie aus dem Spiel (`Alive` ist false) und trägt `Unit.KnockedOut`. Wirklich tot ist nur, für wen `Unit.Dead` gilt. Schlagzeile, Fahndung und Totenbuch zählen nur Tote, die Wertung bleibt leise. Wer auf einen Niedergeschlagenen schießt und trifft, tötet ihn: Er ist dann ein Toter wie jeder andere, und der Schuss macht den Einsatz laut. Mit dem Totschläger weiterschlagen tötet nicht. Findet eine andere Wache einen Niedergeschlagenen, geschieht in den Regeln nichts, wie bei einem Toten auch: Wachen bemerken bisher keine Liegenden. Der Ruf „Wach auf!“ wäre eine neue Regel und ist nicht gebaut.
+
+#### Türen der Stadt
+
+Eine Tür mit `helper` in der Mission steht zu Beginn offen, wenn der Bewohner hilft. Ob er hilft, entscheidet `Campaign.HouseHelps(helper, mission)`, `Campaign.Prepare` trägt die Helfer in `MissionData.Helpers` ein. `openAtSupport` verlangt zusätzlich einen Rückhalt und ist bisher überall 0. Sonst braucht die Tür Schlosser, Dietrich oder Schlüssel wie jede andere. In Einsatz 2: Pforte des Totengräbers, Hoftür der Witwe, Kellerluke der Kneipe.
+
+Bewohner, die nicht helfen, stehen als `residents` in der Mission (Kennung und Feld). Ob sie rufen, hängt an der Haltung der Stadt, `Campaign.Prepare` trägt `Campaign.Stance` als `MissionData.Stance` ein:
+
+| Haltung | Blutschuld | Bewohner |
+|---|---|---|
+| Stadt hilft | 0 bis 1 | Niemand ruft, auch wer nicht hilft, schaut weg. |
+| Stadt schweigt | 2 bis 3 | Wer jemanden vom Trupp oder einen Befreiten auf 2,5 Felder mit freier Sicht sieht, ruft einmal. Die nächste ahnungslose Wache in 9 Feldern Hörweite geht an die Stelle und sieht nach. |
+| Stadt gegen den Trupp | 4 bis 6 | Wie zuvor, aber die zwei nächsten Wachen gehen. |
+
+Jeder Bewohner ruft höchstens einmal je Einsatz. Ein Ruf macht den Einsatz bemerkt, nicht laut. Gekaufte Wachen, Hunde und Wachen, die schon suchen oder kämpfen, gehen nicht. Ist keine Wache in Hörweite, verhallt der Ruf. Für Bild und Ton steht jeder Ruf in `World.ResidentCalls` (Takt, Kennung, Wache oder -1). In Einsatz 2: Gerichtsdiener am Portal des Amtsgerichts, Frau des Wachmanns am Osthof, Kasernenkoch an der Küchentür. Ohne Kampagne, also auch im Messwerkzeug, hilft die Stadt. Die Rückwege sind mit rufenden Bewohnern noch nicht gemessen.
+
+#### Der lange Rückweg, Messung auf 30 × 30
+
+Gemessen mit `--mission=mission_02 --wege`, je 300 Läufe, Kasse 600. 15 Gegner statt 10, der Wagen steht im Kohlenhof. Die Wegsuche bricht Gleichstände nach Feldnummern, die an der Kartenbreite hängen: Der Kern ist Feld für Feld gleich, die Figuren nehmen aber zwischen gleich langen Wegen andere Felder, deshalb ist alles neu gemessen.
+
+| Rückweg | Spielweise | Türen zu (kein Helfer) | Helfertüren offen |
+|---|---|---|---|
+| Friedhof und Böschung | Otto und Emil mit Geld (500) | 100 % leise, 108 s | 100 % leise, 90 s |
+| | Otto allein mit Dietrich | 100 % leise, 158 s | 100 % leise, 158 s |
+| Beamtenhöfe | Otto und Emil mit Geld | 100 % leise, 175 s | genau 100 % leise, 124 s. Bis 0,5 s spät 14 % Siege, bis 1 s 37 % |
+| | Otto allein mit Dietrich | 100 % leise, 220 s | 100 % leise, 185 s |
+| Friedhofsgang ohne Tür | Otto und Emil mit Geld | 39 % Siege, immer laut | ebenso |
+| | Otto allein mit Dietrich | 99 % Siege, immer laut | ebenso |
+| Laut, Trupp zusammen | Pistolen, eine MP, Schrot, vier MP | 0 % Siege, der Trupp fällt in 22 bis 33 s | |
+
+Was die Zahlen sagen, und was sie nicht sagen:
+
+- Die leisen Wege tragen. Friedhof ist der sichere, lange Weg. Die Höfe sind kürzer, sobald die Helfer öffnen, aber empfindlich: Die Tür zum Osthof liegt in der Mittelgasse des Nachtwächters.
+- Der Friedhofsgang ohne Tür ist die Falle: An seinem Ausgang steht eine Laterne, und die Südstreife läuft daran vorbei.
+- Der laute Weg ist kaputt. Wer am Start schießt, hat binnen Sekunden Südstreife, Nachtwächter, Türposten, Wachhabenden, beide neuen Posten und die Verstärkung auf sich. Ziel war 40 bis 50 % mit Grundausstattung. Das ist offen und hängt an der Regel für Telefon und Verstärkung, die die Gegner-Session baut.
+- Die Zeiten der leisen Wege sind lang, weil die Mess-Spielweise vor jedem Wegstück wartet, bis der Lageplan es ganz frei zeigt, höchstens 40 s. Ein Spieler geht früher.
+- Im Spiel nachgestellt ist bisher nur der Hinweg bis zur Befreiung (`einsatz2_leise.txt`, `greta_nachlass.txt`) und der ganze Ablauf mit ruhiggestellten Wachen (`einsatz2_befreien.txt`). Der Heimweg mit echten Wachen wurde im Spiel auf beiden Wegen am Ende bemerkt.
 
 ### Mehrere Einsätze
 

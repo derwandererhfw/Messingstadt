@@ -7,7 +7,7 @@ namespace Messingstadt.Core
     public sealed record GuardType(
         string Id, string Title, int Hp, int PatrolSpeed, int AlertSpeed, int Damage, int Cooldown,
         int WeaponRange, int SightRange, int BribeCost, int NoticePercent, bool CallsAlarm, bool Bites, int HearRange,
-        bool OrderOnly = false, bool Reports = false)
+        bool OrderOnly = false, bool Reports = false, bool Phones = false)
     {
         private const int Tile = World.TileUnits;
 
@@ -39,10 +39,14 @@ namespace Messingstadt.Core
         public static readonly GuardType Laufbursche = new(
             "laufbursche", "Laufbursche", 15, 70, 125, 0, 0, 0, 6 * Tile, World.BribeCost / 4, 100, false, false, 0, OrderOnly: true, Reports: true);
 
+        /// <summary>Unbewaffnet, sitzt am Apparat. Bemerkt er jemanden oder fällt ein Schuss, ruft er die Kaserne an und bleibt, wo er ist.</summary>
+        public static readonly GuardType Telefonist = new(
+            "telefonist", "Telefonist", 40, 80, 80, 0, 0, 0, 6 * Tile, World.BribeCost / 2, 100, false, false, 0, OrderOnly: true, Phones: true);
+
         private static readonly Dictionary<string, GuardType> Table = new(StringComparer.OrdinalIgnoreCase)
         {
             [Wachmann.Id] = Wachmann, [Offizier.Id] = Offizier, [Werkschutz.Id] = Werkschutz, [Schuetze.Id] = Schuetze, [Hund.Id] = Hund,
-            [Hundefuehrer.Id] = Hundefuehrer, [Laufbursche.Id] = Laufbursche,
+            [Hundefuehrer.Id] = Hundefuehrer, [Laufbursche.Id] = Laufbursche, [Telefonist.Id] = Telefonist,
         };
 
         /// <summary>Art zu einer Kennung aus den Missionsdaten. Ohne Angabe ein Wachmann.</summary>

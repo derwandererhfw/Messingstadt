@@ -146,6 +146,20 @@ Start auf der Böschung x 9–13, y 28–30. Wagen im Kohlenhof x 27–30, y 20�
 | Beamtenhöfe | Durchgang, Hoftür der Witwe, Westhof, Mittelgasse, Hoftür am Osthof, Osthof, Kellerluke, Kellerhals, Südgasse, Kohlenhof | etwa 45 Felder | drei |
 | Exerzierplatz | Hoftor, Postengang, Wallstraße nach Osten am Platz entlang, Ostgasse, Kohlenhof | etwa 26 Felder | keine |
 
+### Posten der neuen Teile
+
+Namen stehen in der Mission im Feld `person`, der Posten bleibt in `name`.
+
+| Posten (`name`) | Person | Wo | Verhalten |
+|---|---|---|---|
+| Friedhofsstreife | Buchholz | (3,5, 14,5) an der Friedhofspforte | Steht und schaut reihum, nimmt Geld. Als Streife über den Friedhof ließ er auf fünf Feldern Breite keinen Weg frei |
+| Posten am Fahnenmast | Lindner | (24,5, 6,5), Blick Süd | Steht, nimmt kein Geld (`noBribe`) |
+| Posten an der Remise | Roloff | (26,5, 18,5), Blick Süd | Steht, nimmt kein Geld. Ein Bretterzaun bei y 20 trennt ihn vom Wagen |
+| Nachtwächter | Fenske | Mittelgasse | Rundgang (14, 17) – (14, 13) – (23, 13) – (14, 13), 16 s |
+| Südstreife | Zander | Südgasse | Rundgang (3, 26) – (23, 26), 25 s |
+
+Nachträglich geändert: Start auf der Böschung in der Reihe y 29, zwei Felder von der Südgasse, damit die Südstreife ihn nicht sofort sieht. Wagen x 27–30, y 22–25 hinter dem Bretterzaun (x 24–30, y 20). Laterne der Südgasse bei (8,5, 26,6) am Ausgang des Friedhofsgangs statt bei (10,5, 27,5).
+
 ### Geändert gegenüber dem Stand von 20 × 20
 
 Beamtenhaus West weicht dem Friedhof, an seiner Stelle begrenzt die Friedhofsmauer den Durchgang. Die Remise wandert von (15–19, 13–17) nach Osten. Der Wagen steht nicht mehr in der Wallgasse, die es nicht mehr gibt. Die Verstärkung kommt aus der Kasernentür statt vom Ostrand der Wallstraße.

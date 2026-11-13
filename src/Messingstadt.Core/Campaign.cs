@@ -252,9 +252,13 @@ namespace Messingstadt.Core
         {
             Current = missionId;
             mission.Money = Money;
+            // Vor der ersten zählenden Nacht weiß keine Wache etwas vom Trupp.
+            mission.Memory ??= Nights > 0 ? GuardMemoryData.From(this) : null;
             mission.Support = Support;
             // Türen der Stadt: Wer in diesem Einsatz hilft, entscheidet das Gedächtnis der Stadt.
-            mission.Helpers = mission.Doors.Select(d => d.Helper).Where(h => h.Length > 0).Distinct().Where(h => HouseHelps(h, missionId)).ToList();
+            mission.Stance = Stance;
+            mission.Helpers = mission.Doors.Select(d => d.Helper)
+                .Where(h => h.Length > 0).Distinct().Where(h => HouseHelps(h, missionId)).ToList();
             foreach (var a in mission.Agents)
             {
                 if (!Agents.Exists(r => r.Slot == a.Name))
