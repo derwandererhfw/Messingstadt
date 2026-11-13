@@ -38,7 +38,7 @@ Martha Kolb schreibt die Aufträge und Telegramme, unterschrieben mit „K.“. 
 
 Wer zum ersten Mal fällt, ist schwer verwundet. Die anderen schaffen ihn raus, er liegt in der Krankenstube im Keller einer Wäscherei und kommt geschwächt zurück. Deshalb sinken Beine und Herz auf Stufe 1. Wer ein zweites Mal fällt, ist tot. Das gilt auch bei einer Niederlage: Wer noch nie gefallen war, kommt in die Krankenstube. So erklärt es auch die Ärztin der Krankenstube: Einmal flickt sie jemanden zusammen, ein zweites Mal hält der Körper nicht durch.
 
-Fehlen Leute, schickt der Hammer Neue nach. Sie übernehmen einen freien Beruf und fangen von vorn an. Die Toten bleiben tot und werden in späteren Texten nicht mehr genannt, außer in Kolbs Nachruf-Telegramm.
+Fehlen Leute, schickt der Hammer Neue nach. Sie übernehmen einen freien Beruf und fangen von vorn an. Die Toten bleiben tot. Erzähltexte, also Aufträge, Telegramme, Sequenzen und Gespräche des Trupps, nennen sie später nicht mehr, außer in Kolbs Nachruf-Telegramm. Akte, Totenbuch und Zeitung nennen die Toten beider Seiten mit Namen, und die Wachen sprechen über ihre eigenen (Leitbild vom 2026-11-12, `alleinstellung.md`).
 
 Deshalb darf keine Wendung an einer einzelnen Figur hängen. Wo der Verlauf eine Figur nennt, gibt es einen Ersatzweg: Ist Emil tot, liest der Buchhalter des Trupps oder Kolb selbst das Zweitbuch. Ist Hanna tot, wird Paul Roth trotzdem befreit, nur ohne Schwester, die auf ihn wartet. Ist Greta tot, kennt niemand mehr die Dienstpläne der Wache, und der Auftrag sagt das.
 

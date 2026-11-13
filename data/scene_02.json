@@ -1,16 +1,16 @@
 {
  "id": "nordwall",
  "mission": "mission_02",
- "width": 20,
- "height": 20,
- "note": "Grundriss von Einsatz 2. Vorlage: docs/story/einsatz_02_nordwall.md, Abweichungen in docs/einsatz_02_grundriss.md. Felder wie in map_01.json, Norden ist y = 0. Rechtecke gelten von x0,y0 bis ausschließlich x1,y1. Höhen in Pixeln wie in generate_concept.py. Regel für alle Karten: Zielorte, Türen mit Spielbedeutung und Hauptwege liegen nie hinter hohen Gebäuden.",
+ "width": 30,
+ "height": 30,
+ "note": "Grundriss von Einsatz 2, „Der lange Rückweg“, 30 × 30 Felder. Der Kern von 20 × 20 (Wall, Wachstube, Arresthof, Wachlokal, Amtsgericht, Kaserne, Gerichtsgasse, Wallstraße, Pforte, Hoftor, Zellen, Beamtenhaus Ost mit dem Durchgang) liegt unverändert oben links. Neu: Friedhof der Namenlosen im Westen, Beamtenviertel mit zwei Hinterhöfen im Süden, Exerzierplatz und Remise im Osten. Felder wie in map_01.json, Norden ist y = 0. Rechtecke gelten von x0,y0 bis ausschließlich x1,y1. Höhen in Pixeln wie in generate_concept.py. Regel für alle Karten: Zielorte, Türen mit Spielbedeutung und Hauptwege liegen nie hinter hohen Gebäuden. Erzeugt von tools/level/grow_nordwall.py, Abweichungen und Orte in docs/einsatz_02_grundriss.md.",
  "buildings": [
   {
    "id": "stadtwall",
    "kind": "stadtwall",
    "x0": 0,
    "y0": 0,
-   "x1": 20,
+   "x1": 30,
    "y1": 2,
    "height": 60,
    "roof": "wehrgang",
@@ -102,35 +102,19 @@
    "height": 120,
    "roof": "sattel",
    "name": "",
-   "text": "Mannschaftshaus der Stadtwache, einige Fenster hell",
-   "lit": 0.35
+   "text": "Mannschaftshaus der Stadtwache, einige Fenster hell. Die Kasernentür geht nach Osten auf den Exerzierplatz, von dort kommt die Verstärkung",
+   "lit": 0.35,
+   "doors": [
+    {
+     "side": "ost",
+     "at": 2.5,
+     "kind": "kasernentuer",
+     "door": ""
+    }
+   ]
   },
   {
-   "id": "remise",
-   "kind": "remise",
-   "x0": 15,
-   "y0": 13,
-   "x1": 19,
-   "y1": 17,
-   "height": 56,
-   "roof": "pult",
-   "text": "Offener Schuppen, darin der graue, vergitterte Gefangenenwagen als Requisit",
-   "lit": 0.0
-  },
-  {
-   "id": "beamtenhaus_west",
-   "kind": "mietshaus",
-   "x0": 2,
-   "y0": 14,
-   "x1": 6,
-   "y1": 18,
-   "height": 84,
-   "roof": "mansarde",
-   "text": "Zweigeschossiges Mietshaus der Beamten mit Vorgarten. Davor ein Feld Vorgarten mit niedrigem Zaun, begehbar",
-   "lit": 0.25
-  },
-  {
-   "id": "beamtenhaus_ost",
+   "id": "beamtenhaus_a",
    "kind": "mietshaus",
    "x0": 9,
    "y0": 14,
@@ -138,8 +122,93 @@
    "y1": 18,
    "height": 84,
    "roof": "mansarde",
-   "text": "Wie das Westhaus. Dazwischen der dunkle Durchgang x 6 bis 9. Davor ein Feld Vorgarten mit niedrigem Zaun, begehbar",
-   "lit": 0.25
+   "text": "Zweigeschossiges Mietshaus der Beamten, davor ein Feld Vorgarten. Westlich der dunkle Durchgang zur Wallstraße, nach Süden der Hinterhof. Im Erdgeschoss zum Hof wohnt die Witwe eines Wachmanns, ihr Fenster mit Kerze",
+   "lit": 0.25,
+   "doors": [
+    {
+     "side": "sued",
+     "at": 2.0,
+     "kind": "hoftuer_haus",
+     "door": ""
+    }
+   ]
+  },
+  {
+   "id": "beamtenhaus_b",
+   "kind": "mietshaus",
+   "x0": 17,
+   "y0": 14,
+   "x1": 21,
+   "y1": 18,
+   "height": 84,
+   "roof": "mansarde",
+   "lit": 0.3,
+   "text": "Zweites Mietshaus, hier wohnen Wachleute. Zum Hof hin die Wohnung der Frau eines Wachmanns",
+   "doors": [
+    {
+     "side": "sued",
+     "at": 2.0,
+     "kind": "hoftuer_haus",
+     "door": ""
+    }
+   ]
+  },
+  {
+   "id": "hinterhaus",
+   "kind": "hinterhaus",
+   "x0": 9,
+   "y0": 22,
+   "x1": 13,
+   "y1": 26,
+   "height": 48,
+   "roof": "pult",
+   "lit": 0.15,
+   "text": "Niedriges Hinterhaus mit Waschküche und Remisen, schließt den Westhof nach Süden. Haustür zur Südgasse"
+  },
+  {
+   "id": "kneipe",
+   "kind": "kneipe",
+   "x0": 17,
+   "y0": 22,
+   "x1": 20,
+   "y1": 26,
+   "height": 48,
+   "roof": "sattel",
+   "lit": 0.5,
+   "name": "ZUM WALLGRABEN",
+   "text": "Eckkneipe der Wachleute und Beamten, Tür und Laterne zur Südgasse. An der Ostseite der Kellerhals mit der Luke zum Osthof",
+   "doors": [
+    {
+     "side": "sued",
+     "at": 1.5,
+     "kind": "haupttuer",
+     "door": ""
+    }
+   ]
+  },
+  {
+   "id": "remise",
+   "kind": "remise",
+   "x0": 24,
+   "y0": 14,
+   "x1": 29,
+   "y1": 18,
+   "height": 56,
+   "roof": "pult",
+   "lit": 0.0,
+   "text": "Offener Schuppen der Wache am Rand des Kohlenhofs, darin der graue, vergitterte Gefangenenwagen als Requisit. Öffnung nach Süden"
+  },
+  {
+   "id": "totengraeberhuette",
+   "kind": "huette",
+   "x0": 0,
+   "y0": 14,
+   "x1": 2,
+   "y1": 16,
+   "height": 40,
+   "roof": "pult",
+   "lit": 0.0,
+   "text": "Bretterhütte des Totengräbers in der Nordwestecke des Friedhofs, ein kleines Fenster nach Süden"
   }
  ],
  "walls": [
@@ -180,6 +249,126 @@
      "door": "Hoftor"
     }
    ]
+  },
+  {
+   "id": "friedhofsmauer_nord_1",
+   "kind": "friedhofsmauer",
+   "x0": 0,
+   "y0": 13,
+   "x1": 4,
+   "y1": 14,
+   "height": 30,
+   "opaque": true
+  },
+  {
+   "id": "friedhofsmauer_nord_2",
+   "kind": "friedhofsmauer",
+   "x0": 5,
+   "y0": 13,
+   "x1": 6,
+   "y1": 14,
+   "height": 30,
+   "opaque": true
+  },
+  {
+   "id": "friedhofsmauer_ost_1",
+   "kind": "friedhofsmauer",
+   "x0": 5,
+   "y0": 14,
+   "x1": 6,
+   "y1": 17,
+   "height": 30,
+   "opaque": true
+  },
+  {
+   "id": "friedhofsmauer_ost_2",
+   "kind": "friedhofsmauer",
+   "x0": 5,
+   "y0": 18,
+   "x1": 6,
+   "y1": 25,
+   "height": 30,
+   "opaque": true
+  },
+  {
+   "id": "friedhofsmauer_sued_1",
+   "kind": "friedhofsmauer",
+   "x0": 0,
+   "y0": 25,
+   "x1": 2,
+   "y1": 26,
+   "height": 30,
+   "opaque": true
+  },
+  {
+   "id": "friedhofsmauer_sued_2",
+   "kind": "friedhofsmauer",
+   "x0": 3,
+   "y0": 25,
+   "x1": 6,
+   "y1": 26,
+   "height": 30,
+   "opaque": true
+  },
+  {
+   "id": "hofmauer_westhof_1",
+   "kind": "hofmauer",
+   "x0": 8,
+   "y0": 18,
+   "x1": 9,
+   "y1": 20,
+   "height": 34,
+   "opaque": true
+  },
+  {
+   "id": "hofmauer_westhof_2",
+   "kind": "hofmauer",
+   "x0": 8,
+   "y0": 21,
+   "x1": 9,
+   "y1": 22,
+   "height": 34,
+   "opaque": true
+  },
+  {
+   "id": "hofmauer_mittelgasse_1",
+   "kind": "hofmauer",
+   "x0": 13,
+   "y0": 22,
+   "x1": 17,
+   "y1": 23,
+   "height": 34,
+   "opaque": true
+  },
+  {
+   "id": "hofmauer_osthof_1",
+   "kind": "hofmauer",
+   "x0": 16,
+   "y0": 18,
+   "x1": 17,
+   "y1": 20,
+   "height": 34,
+   "opaque": true
+  },
+  {
+   "id": "hofmauer_osthof_2",
+   "kind": "hofmauer",
+   "x0": 16,
+   "y0": 21,
+   "x1": 17,
+   "y1": 22,
+   "height": 34,
+   "opaque": true
+  },
+  {
+   "id": "hofmauer_ost_aussen_1",
+   "kind": "hofmauer",
+   "x0": 21,
+   "y0": 18,
+   "x1": 22,
+   "y1": 26,
+   "height": 34,
+   "opaque": true
   }
  ],
  "props": [
@@ -195,8 +384,8 @@
   {
    "id": "gefangenenwagen",
    "kind": "gefangenenwagen",
-   "x": 17,
-   "y": 15,
+   "x": 26.5,
+   "y": 16,
    "solid": false,
    "opaque": false,
    "note": "steht in der Remise, nur Bild"
@@ -204,11 +393,162 @@
   {
    "id": "waeschereiwagen",
    "kind": "fluchtwagen",
-   "x": 1,
-   "y": 18.5,
+   "x": 28,
+   "y": 21.5,
    "solid": false,
    "opaque": false,
-   "note": "Wagen der Wäscherei, Ziel"
+   "note": "Wagen der Wäscherei im Kohlenhof, Ziel"
+  },
+  {
+   "id": "telefon",
+   "kind": "telefon",
+   "x": 13.5,
+   "y": 9.3,
+   "solid": false,
+   "opaque": false,
+   "note": "Apparat in der Schreibstube, an der Wand zur Kaserne"
+  },
+  {
+   "id": "brunnen",
+   "kind": "brunnen",
+   "x": 10.5,
+   "y": 19.5,
+   "solid": true,
+   "opaque": false,
+   "note": "Pumpe im Westhof, Deckung"
+  },
+  {
+   "id": "faesser",
+   "kind": "kiste",
+   "x": 19.5,
+   "y": 18.5,
+   "solid": true,
+   "opaque": false,
+   "note": "Bierfässer im Osthof, Deckung"
+  },
+  {
+   "id": "kohlenhaufen",
+   "kind": "kiste",
+   "x": 24.5,
+   "y": 22.5,
+   "solid": true,
+   "opaque": false,
+   "note": "Kohlenhaufen im Kohlenhof, Deckung vor dem Wagen"
+  },
+  {
+   "id": "fahnenmast",
+   "kind": "mast",
+   "x": 25.5,
+   "y": 6.5,
+   "solid": true,
+   "opaque": false,
+   "note": "Mitte des Exerzierplatzes"
+  },
+  {
+   "id": "baum_1",
+   "kind": "baum",
+   "x": 1.5,
+   "y": 18.5,
+   "solid": true,
+   "opaque": false,
+   "note": "kahle Linde auf dem Friedhof"
+  },
+  {
+   "id": "baum_2",
+   "kind": "baum",
+   "x": 3.5,
+   "y": 21.5,
+   "solid": true,
+   "opaque": false
+  },
+  {
+   "id": "baum_3",
+   "kind": "baum",
+   "x": 2.5,
+   "y": 23.5,
+   "solid": true,
+   "opaque": false
+  },
+  {
+   "id": "grabkreuz_1",
+   "kind": "grabkreuz",
+   "x": 0.5,
+   "y": 17.5,
+   "solid": false,
+   "opaque": false,
+   "note": "Holzkreuz ohne Namen, nur eine Nummer"
+  },
+  {
+   "id": "grabkreuz_2",
+   "kind": "grabkreuz",
+   "x": 2.5,
+   "y": 17.5,
+   "solid": false,
+   "opaque": false,
+   "note": ""
+  },
+  {
+   "id": "grabkreuz_3",
+   "kind": "grabkreuz",
+   "x": 3.5,
+   "y": 15.5,
+   "solid": false,
+   "opaque": false,
+   "note": ""
+  },
+  {
+   "id": "grabkreuz_4",
+   "kind": "grabkreuz",
+   "x": 0.5,
+   "y": 20.5,
+   "solid": false,
+   "opaque": false,
+   "note": ""
+  },
+  {
+   "id": "grabkreuz_5",
+   "kind": "grabkreuz",
+   "x": 2.5,
+   "y": 20.5,
+   "solid": false,
+   "opaque": false,
+   "note": ""
+  },
+  {
+   "id": "grabkreuz_6",
+   "kind": "grabkreuz",
+   "x": 4.5,
+   "y": 19.5,
+   "solid": false,
+   "opaque": false,
+   "note": ""
+  },
+  {
+   "id": "grabkreuz_7",
+   "kind": "grabkreuz",
+   "x": 1.5,
+   "y": 22.5,
+   "solid": false,
+   "opaque": false,
+   "note": ""
+  },
+  {
+   "id": "grabkreuz_8",
+   "kind": "grabkreuz",
+   "x": 4.5,
+   "y": 23.5,
+   "solid": false,
+   "opaque": false,
+   "note": ""
+  },
+  {
+   "id": "grabkreuz_9",
+   "kind": "grabkreuz",
+   "x": 0.5,
+   "y": 24.5,
+   "solid": false,
+   "opaque": false,
+   "note": ""
   }
  ],
  "doors": [
@@ -284,6 +624,93 @@
     13.5,
     10.5
    ]
+  },
+  {
+   "name": "Friedhofspforte",
+   "tiles": [
+    [
+     4,
+     13
+    ]
+   ],
+   "mark": [
+    4.5,
+    12.5
+   ],
+   "note": "gegenüber der Gerichtsgasse, an der Wallstraße"
+  },
+  {
+   "name": "Pforte des Totengräbers",
+   "tiles": [
+    [
+     5,
+     17
+    ]
+   ],
+   "mark": [
+    6.5,
+    17.5
+   ],
+   "helper": "totengraeber",
+   "note": "vom dunklen Durchgang auf den Friedhof. Steht offen, wenn der Totengräber hilft"
+  },
+  {
+   "name": "Südpforte des Friedhofs",
+   "tiles": [
+    [
+     2,
+     25
+    ]
+   ],
+   "mark": [
+    2.5,
+    26.5
+   ],
+   "note": "hinaus auf die Südgasse"
+  },
+  {
+   "name": "Hoftür der Witwe",
+   "tiles": [
+    [
+     8,
+     20
+    ]
+   ],
+   "mark": [
+    7.5,
+    20.5
+   ],
+   "helper": "witwe",
+   "note": "vom Durchgang in den Westhof. Steht offen, wenn die Witwe hilft"
+  },
+  {
+   "name": "Hoftür am Osthof",
+   "tiles": [
+    [
+     16,
+     20
+    ]
+   ],
+   "mark": [
+    15.5,
+    20.5
+   ],
+   "note": "von der Mittelgasse in den Osthof"
+  },
+  {
+   "name": "Kellerluke der Kneipe",
+   "tiles": [
+    [
+     20,
+     22
+    ]
+   ],
+   "mark": [
+    20.5,
+    21.5
+   ],
+   "helper": "wirtin",
+   "note": "vom Osthof durch den Kellerhals zur Südgasse. Steht offen, wenn die Wirtin hilft: nur wenn Greta lebt oder in Einsatz 1 niemand getötet wurde"
   }
  ],
  "lamps": [
@@ -313,6 +740,69 @@
    "y": 6.2,
    "group": "arresthof",
    "kind": "wandlampe"
+  },
+  {
+   "x": 19.3,
+   "y": 5.5,
+   "group": "kaserne",
+   "kind": "wandlampe"
+  },
+  {
+   "x": 22.5,
+   "y": 10.5,
+   "group": "wallstrasse"
+  },
+  {
+   "x": 28.5,
+   "y": 10.5,
+   "group": "wallstrasse"
+  },
+  {
+   "x": 21.5,
+   "y": 3.5,
+   "group": "exerzierplatz",
+   "kind": "bogenlampe"
+  },
+  {
+   "x": 28.5,
+   "y": 3.5,
+   "group": "exerzierplatz",
+   "kind": "bogenlampe"
+  },
+  {
+   "x": 21.5,
+   "y": 8.5,
+   "group": "exerzierplatz",
+   "kind": "bogenlampe"
+  },
+  {
+   "x": 28.5,
+   "y": 8.5,
+   "group": "exerzierplatz",
+   "kind": "bogenlampe"
+  },
+  {
+   "x": 19.3,
+   "y": 5.5,
+   "group": "kaserne",
+   "kind": "wandlampe"
+  },
+  {
+   "x": 18.5,
+   "y": 26.3,
+   "group": "kneipe",
+   "kind": "wandlampe"
+  },
+  {
+   "x": 26.5,
+   "y": 18.3,
+   "group": "remise",
+   "kind": "wandlampe"
+  },
+  {
+   "x": 10.5,
+   "y": 27.5,
+   "group": "suedgasse"
   }
  ],
  "streets": [
@@ -320,7 +810,7 @@
    "id": "wallstrasse",
    "x0": 0,
    "y0": 10,
-   "x1": 20,
+   "x1": 30,
    "y1": 12,
    "kind": "kopfsteinpflaster",
    "rails": true,
@@ -343,22 +833,6 @@
    "kind": "hof"
   },
   {
-   "id": "wallgasse",
-   "x0": 0,
-   "y0": 13,
-   "x1": 2,
-   "y1": 20,
-   "kind": "gasse"
-  },
-  {
-   "id": "durchgang",
-   "x0": 6,
-   "y0": 13,
-   "x1": 9,
-   "y1": 20,
-   "kind": "gasse"
-  },
-  {
    "id": "postengang",
    "x0": 14,
    "y0": 2,
@@ -366,28 +840,126 @@
    "y1": 10,
    "kind": "gasse",
    "note": "zwischen Wachstube und Kaserne, vom Wall bis zur Wallstraße"
+  },
+  {
+   "id": "durchgang",
+   "x0": 6,
+   "y0": 13,
+   "x1": 9,
+   "y1": 18,
+   "kind": "gasse",
+   "note": "dunkler Durchgang zwischen Friedhofsmauer und Beamtenhaus, wie bisher"
+  },
+  {
+   "id": "friedhofsgang",
+   "x0": 6,
+   "y0": 18,
+   "x1": 8,
+   "y1": 26,
+   "kind": "gasse",
+   "note": "schmal, an der Friedhofsmauer entlang zur Südgasse"
+  },
+  {
+   "id": "friedhof",
+   "x0": 0,
+   "y0": 14,
+   "x1": 5,
+   "y1": 25,
+   "kind": "erde",
+   "note": "Friedhof der Namenlosen: flach, kein Licht, Kreuze mit Nummern, drei kahle Bäume"
+  },
+  {
+   "id": "mittelgasse",
+   "x0": 13,
+   "y0": 13,
+   "x1": 17,
+   "y1": 22,
+   "kind": "gasse",
+   "note": "zwischen den Beamtenhäusern, im Süden zugemauert, nach Westen offen zum Westhof"
+  },
+  {
+   "id": "westhof",
+   "x0": 9,
+   "y0": 18,
+   "x1": 13,
+   "y1": 22,
+   "kind": "hof",
+   "note": "Hinterhof mit Pumpe und Wäscheleinen"
+  },
+  {
+   "id": "osthof",
+   "x0": 17,
+   "y0": 18,
+   "x1": 21,
+   "y1": 22,
+   "kind": "hof",
+   "note": "Hinterhof der Kneipe mit Fässern"
+  },
+  {
+   "id": "kellerhals",
+   "x0": 20,
+   "y0": 22,
+   "x1": 21,
+   "y1": 26,
+   "kind": "gasse",
+   "note": "ein Feld breit, zwischen Kneipe und Außenmauer"
+  },
+  {
+   "id": "holzplatz",
+   "x0": 13,
+   "y0": 23,
+   "x1": 17,
+   "y1": 26,
+   "kind": "hof",
+   "note": "Sackgasse zur Südgasse, Versteck"
+  },
+  {
+   "id": "suedgasse",
+   "x0": 0,
+   "y0": 26,
+   "x1": 30,
+   "y1": 28,
+   "kind": "kopfsteinpflaster",
+   "note": "Wohnstraße, kaum Licht"
+  },
+  {
+   "id": "boeschung",
+   "x0": 0,
+   "y0": 28,
+   "x1": 30,
+   "y1": 30,
+   "kind": "erde",
+   "note": "Böschung zum alten Wallgraben, begehbar, dunkel"
+  },
+  {
+   "id": "ostgasse",
+   "x0": 22,
+   "y0": 13,
+   "x1": 24,
+   "y1": 26,
+   "kind": "gasse",
+   "note": "von der Wallstraße zum Kohlenhof"
+  },
+  {
+   "id": "kohlenhof",
+   "x0": 24,
+   "y0": 18,
+   "x1": 30,
+   "y1": 26,
+   "kind": "hof",
+   "note": "offener Hof hinter der Remise, hier wartet der Wagen"
+  },
+  {
+   "id": "exerzierplatz",
+   "x0": 20,
+   "y0": 2,
+   "x1": 30,
+   "y1": 10,
+   "kind": "kies",
+   "note": "weit, leer, von vier Bogenlampen grell beleuchtet"
   }
  ],
  "marks": [
-  {
-   "kind": "start",
-   "x0": 6,
-   "y0": 18,
-   "x1": 9,
-   "y1": 20
-  },
-  {
-   "kind": "ziel",
-   "x0": 0,
-   "y0": 17,
-   "x1": 2,
-   "y1": 20
-  },
-  {
-   "kind": "verstaerkung",
-   "x": 19.5,
-   "y": 11.5
-  },
   {
    "kind": "gefangener",
    "name": "Anton Weiß",
@@ -405,6 +977,99 @@
    "name": "Bußgeldkasse",
    "x": 13.5,
    "y": 9.5
+  },
+  {
+   "kind": "start",
+   "x0": 9,
+   "y0": 28,
+   "x1": 13,
+   "y1": 30
+  },
+  {
+   "kind": "ziel",
+   "x0": 27,
+   "y0": 20,
+   "x1": 30,
+   "y1": 23
+  },
+  {
+   "kind": "verstaerkung",
+   "x": 19.5,
+   "y": 5.5,
+   "note": "Kasernentür. Kommt nur, wenn das Telefon in der Schreibstube durchkommt"
+  },
+  {
+   "kind": "telefon",
+   "x": 13.5,
+   "y": 9.5,
+   "note": "Apparat in der Schreibstube"
+  },
+  {
+   "kind": "draht",
+   "points": [
+    [
+     13.9,
+     9.4
+    ],
+    [
+     14.5,
+     9.0
+    ],
+    [
+     14.5,
+     8.3
+    ],
+    [
+     15.0,
+     7.8
+    ]
+   ],
+   "note": "Telefondraht von der Schreibstube über den Postengang zur Kaserne, auf Kopfhöhe an Haken. Stelle zum Kappen bei (14,5, 8,5)"
+  },
+  {
+   "kind": "helferfenster",
+   "helper": "witwe",
+   "x": 10.5,
+   "y": 18.0,
+   "note": "Erdgeschoss Beamtenhaus A zum Westhof, Kerze im Fenster"
+  },
+  {
+   "kind": "helferfenster",
+   "helper": "totengraeber",
+   "x": 1.0,
+   "y": 16.0,
+   "note": "Hütte des Totengräbers, Kerze im Fenster"
+  },
+  {
+   "kind": "helferfenster",
+   "helper": "wirtin",
+   "x": 20.0,
+   "y": 24.0,
+   "note": "Ostwand der Kneipe über dem Kellerhals, Kerze im Fenster"
+  },
+  {
+   "kind": "bewohner",
+   "who": "gerichtsdiener",
+   "x": 3.0,
+   "y": 9.5,
+   "helps": "nie",
+   "note": "wohnt im Amtsgericht, Portal"
+  },
+  {
+   "kind": "bewohner",
+   "who": "frau_des_wachmanns",
+   "x": 19.0,
+   "y": 18.2,
+   "helps": "nie",
+   "note": "Beamtenhaus B zum Osthof, die Frau eines Wachmanns aus dem Totenbuch"
+  },
+  {
+   "kind": "bewohner",
+   "who": "kasernenkoch",
+   "x": 17.0,
+   "y": 8.3,
+   "helps": "nie",
+   "note": "Küchentür der Kaserne nach Süden"
   }
  ],
  "gates": [
@@ -418,6 +1083,72 @@
    "y1": 8,
    "height": 28,
    "text": "Lücke in der Hofmauer mit einem Tor aus genietetem Eisenblech, etwas niedriger als die Mauer, damit man sie von oben als Lücke erkennt. Blickdicht. Die Regeln sperren das Feld über die Tür der Mission, nicht über die Karte."
+  },
+  {
+   "id": "tor_friedhofspforte",
+   "door": "Friedhofspforte",
+   "kind": "gittertor",
+   "x0": 4,
+   "y0": 13,
+   "x1": 5,
+   "y1": 14,
+   "height": 24,
+   "text": "Lücke in der Mauer mit niedrigem Tor, von oben als Lücke zu erkennen. Blickdicht für die Regeln, gesperrt über die Tür der Mission."
+  },
+  {
+   "id": "tor_pforte_des_totengraebers",
+   "door": "Pforte des Totengräbers",
+   "kind": "holzpforte",
+   "x0": 5,
+   "y0": 17,
+   "x1": 6,
+   "y1": 18,
+   "height": 24,
+   "text": "Lücke in der Mauer mit niedrigem Tor, von oben als Lücke zu erkennen. Blickdicht für die Regeln, gesperrt über die Tür der Mission."
+  },
+  {
+   "id": "tor_suedpforte_des_friedhofs",
+   "door": "Südpforte des Friedhofs",
+   "kind": "gittertor",
+   "x0": 2,
+   "y0": 25,
+   "x1": 3,
+   "y1": 26,
+   "height": 24,
+   "text": "Lücke in der Mauer mit niedrigem Tor, von oben als Lücke zu erkennen. Blickdicht für die Regeln, gesperrt über die Tür der Mission."
+  },
+  {
+   "id": "tor_hoftuer_der_witwe",
+   "door": "Hoftür der Witwe",
+   "kind": "holztor",
+   "x0": 8,
+   "y0": 20,
+   "x1": 9,
+   "y1": 21,
+   "height": 24,
+   "text": "Lücke in der Mauer mit niedrigem Tor, von oben als Lücke zu erkennen. Blickdicht für die Regeln, gesperrt über die Tür der Mission."
+  },
+  {
+   "id": "tor_hoftuer_am_osthof",
+   "door": "Hoftür am Osthof",
+   "kind": "holztor",
+   "x0": 16,
+   "y0": 20,
+   "x1": 17,
+   "y1": 21,
+   "height": 24,
+   "text": "Lücke in der Mauer mit niedrigem Tor, von oben als Lücke zu erkennen. Blickdicht für die Regeln, gesperrt über die Tür der Mission."
+  },
+  {
+   "id": "tor_kellerluke_der_kneipe",
+   "door": "Kellerluke der Kneipe",
+   "kind": "kellerluke",
+   "x0": 20,
+   "y0": 22,
+   "x1": 21,
+   "y1": 23,
+   "height": 24,
+   "text": "Lücke in der Mauer mit niedrigem Tor, von oben als Lücke zu erkennen. Blickdicht für die Regeln, gesperrt über die Tür der Mission."
   }
  ]
 }

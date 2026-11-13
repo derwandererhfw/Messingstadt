@@ -40,7 +40,7 @@ Ersetzt den heutigen Satz „Verwundete kommen aus der Krankenstube zurück, abe
 
 ## Telegramme
 
-Kolb nennt keine Namen. Die Akte zeigt, wen es getroffen hat.
+Kolb nennt keine Namen. Die Akte zeigt, wen es getroffen hat. Sie bleibt mit Stempel im Schrank, und der Name steht im Totenbuch (Leitbild vom 2026-11-12). Erzähltexte nennen den Toten weiterhin nicht.
 
 Nach einem Einsatz mit einem Toten:
 
