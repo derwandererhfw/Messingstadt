@@ -1,0 +1,13 @@
+# Ton am Telefon, Einsatz 2: Otto kappt den Telefondraht.
+# Aufruf mit --fresh --mission=mission_02 --sound-log --look=14,9 (Kamera am Apparat). Am Ende steht, was wie laut zu hören war.
+# Die Wachen sind hier gekauft (calm), sonst wird Otto auf dem Weg zum Draht gesehen und der Anruf geht vorher durch.
+# Die tote Leitung prüft dieser Lauf nicht: Gekaufte Wachen lösen keinen Alarm aus, und ohne Alarm greift niemand zum Hörer.
+wait 40
+expect mission mission_02
+calm
+key Key2
+rclickdoor Telefondraht
+waitcontains phone gekappt
+wait 60
+expect phone Idle gekappt
+print

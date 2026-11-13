@@ -1,0 +1,9 @@
+# Ton am Telefon, Einsatz 2: Das Gefecht löst den Alarm aus, der Wachhabende geht zum Apparat, kurbelt und ruft die Kaserne.
+# Aufruf mit --fresh --mission=mission_02 --sound-log --look=14,9 (Kamera am Apparat). Am Ende steht, was wie laut zu hören war.
+wait 40
+expect mission mission_02
+expect phone Idle
+fight 400
+waitcontains phone Called
+wait 90
+print
