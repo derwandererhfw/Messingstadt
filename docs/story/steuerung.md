@@ -44,6 +44,9 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 | 2026-11-12 | Die Regel „Tote werden nicht mehr genannt“ gilt nur noch für Erzähltexte. Akte, Totenbuch und Zeitung nennen die Toten | Hauptsession auf Grundlage des gewählten Leitbilds, keine wörtliche Freigabe des Nutzers |
 | 2026-11-12 | Einsatz 2 wird größer, 30 × 30: „Der lange Rückweg“ mit Friedhof der Namenlosen, Beamtenhöfen und Exerzierplatz. Drei Helfer mit Kerze im Fenster. Der Totschläger schlägt bewusstlos | Nutzer über die Hauptsession |
 | 2026-11-12 | Bestechen kostet die Hälfte, wenn Greta in Rufweite ist | Gebaut laut Hauptsession |
+| 2026-11-13 | Blutschuld 0 bis 6 für die ganze Stadt, Stufen hilft, schweigt, gegen den Trupp. Helfer hängen an „hilft“, die Wirtin mit lebender Greta auch an „schweigt“. Regel in `kanon.md` | Nutzer über die Hauptsession („Ja, so bauen“) |
+| 2026-11-13 | Verstärkung in Einsatz 2 sind Wachleute aus der Kaserne, der Werkschutz tritt dort nicht auf. Der Satz zur Kerze bleibt in Reserve | Hauptsession |
+| 2026-11-13 | Zeitung mit Namen: Die Story baut sie in `Headlines.cs`, sobald die Kampagne die Abfrage auf das Totenbuch meldet. Felder `person`, `rank`, `age` trägt Level ein | Hauptsession |
 
 ## Offene Entscheidungen
 
