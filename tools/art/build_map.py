@@ -476,8 +476,10 @@ def nordwall_building(b, s, things):
         g.plinth(dr, wr, h, 6)
         dr.rectangle((0, 0, wr, 3), fill=g.C["stone"])
         spot = int((b["y1"] - HELPERS.get("wirtin", (0, b["y1"] - 2))[1]) * HW)
-        for u in range(10, wr - 24, 30):
-            mine = abs(u + 9 - spot) < 15
+        columns = list(range(10, wr - 24, 30))
+        own = min(columns, key=lambda u: abs(u + 9 - spot)) if "wirtin" in HELPERS else None  # das nächste Fenster ist das der Wirtin
+        for u in columns:
+            mine = u == own
             butzen(right, dr, u, 16, 18, 16, "kerze:wirtin" if mine else None)
         roof = roof_low(14, 22, tint=(1.1, 0.96, 0.9))
         items = [g.chimney(0.3, 0.5, 14, False)]
