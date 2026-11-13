@@ -163,7 +163,7 @@ namespace Messingstadt
                 case "bribe":
                     // Emil zur nächsten käuflichen Wache, ohne dass der Prüflauf sie im Bild treffen muss.
                     var emil = Game.World.Units.First(u => u.Faction == Faction.Agent && u.Skill == World.SkillBookkeeper);
-                    var target = Game.World.Units.Where(u => u.Faction == Faction.Guard && u.Alive && u.Type.BribeCost > 0)
+                    var target = Game.World.Units.Where(u => u.Faction == Faction.Guard && u.Alive && Game.World.Bribable(u))
                         .OrderBy(u => Math.Abs(u.X - emil.X) + Math.Abs(u.Y - emil.Y)).First();
                     Check(line, Game.World.OrderBribe(emil.Id, target.Id), target.Type.Title);
                     break;

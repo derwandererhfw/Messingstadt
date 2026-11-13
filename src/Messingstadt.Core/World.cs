@@ -90,6 +90,9 @@ namespace Messingstadt.Core
         public int Stamina;
         public bool Sprinting;
         public string Skill = "";
+
+        /// <summary>Diese Wache nimmt kein Geld, gleich welcher Art sie ist.</summary>
+        public bool NoBribe;
         public int DoorTarget = -1;
         public int BribeTarget = -1;
         public bool Bribed;
@@ -339,6 +342,7 @@ namespace Messingstadt.Core
                 Equip(u, d.Items ?? new List<string>(ItemCatalog.StarterKit));
             }
             u.Skill = d.Skill;
+            u.NoBribe = d.NoBribe;
             u.Legs = Math.Clamp(d.Legs, 1, 3);
             u.Heart = Math.Clamp(d.Heart, 1, 3);
             u.Stamina = MaxStamina(u);
@@ -426,7 +430,7 @@ namespace Messingstadt.Core
             var u = Units[unitId];
             var g = Units[guardId];
             if (!u.Alive || u.Skill != SkillBookkeeper || !g.Alive || g.Faction != Faction.Guard || g.Bribed
-                || g.GuardState == GuardState.Combat || g.Type.BribeCost == 0 || Money < BribePrice(g, u) || State != MissionState.Running)
+                || g.GuardState == GuardState.Combat || !Bribable(g) || Money < BribePrice(g, u) || State != MissionState.Running)
             {
                 return false;
             }

@@ -159,7 +159,7 @@ namespace Messingstadt
                 return;
             }
             var type = guard.Type;
-            string text = type.Title + (guard.Bribed ? ", bestochen" : type.BribeCost == 0 ? ", nicht käuflich" : ", " + Game.BribeWord(guard));
+            string text = type.Title + (guard.Bribed ? ", bestochen" : !Game.World.Bribable(guard) ? ", nicht käuflich" : ", " + Game.BribeWord(guard));
             if (Game.World.Units.Exists(o => o.LeashedTo == guard.Id))
             {
                 text += " samt Hund";

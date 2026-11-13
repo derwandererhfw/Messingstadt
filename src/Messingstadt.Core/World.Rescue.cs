@@ -178,6 +178,9 @@ namespace Messingstadt.Core
         /// <summary>Was das Bestechen dieser Wache kostet. Hier säße ein Nachlass, etwa wenn eine bestimmte Agentin dabei ist.</summary>
         public int BribePrice(Unit guard) => guard.Type.BribeCost;
 
+        /// <summary>Nimmt diese Wache überhaupt Geld? Manche Arten nie, und einzelne Leute auch nicht.</summary>
+        public bool Bribable(Unit guard) => guard.Type.BribeCost > 0 && !guard.NoBribe;
+
         /// <summary>Rufweite der Truppführerin: So nah am Bestechenden gilt sie als dabei.</summary>
         public const int LeaderRange = 5 * TileUnits;
 

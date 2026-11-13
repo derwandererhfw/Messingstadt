@@ -9,7 +9,7 @@
   "scene": "nordwall",
   "itemName": "Gefangene",
   "item": [10.5, 7.5],
-  "exit": { "x0": 27, "y0": 20, "x1": 30, "y1": 23 },
+  "exit": { "x0": 27, "y0": 22, "x1": 30, "y1": 25 },
   "reinforcements": { "x": 19.5, "y": 5.5, "sprite": "Werkschutz", "type": "werkschutz", "firstDelay": 8, "interval": 5, "count": 3 },
   "doors": [
     { "name": "Pforte zur Gerichtsgasse", "tiles": [[7, 7]], "mark": [6.5, 7.5] },
@@ -96,10 +96,10 @@
   },
   "lamps": [[2.5, 10.5], [10.5, 10.5], [16.5, 10.5], [11.5, 10.1], [10.5, 6.2]],
   "agents": [
-    { "name": "Greta", "role": "Truppführerin", "skill": "truppfuehrerin", "sprite": "Agent", "x": 9.5, "y": 28.5, "legs": 2, "heart": 2 },
-    { "name": "Otto", "role": "Schlosser", "sprite": "Agent", "x": 10.5, "y": 28.5, "legs": 1, "heart": 3, "skill": "schlosser" },
-    { "name": "Emil", "role": "Buchhalter", "sprite": "Agent", "x": 11.5, "y": 28.5, "legs": 1, "heart": 1, "skill": "buchhalter" },
-    { "name": "Hanna", "role": "Kurierin", "sprite": "Agent", "x": 10.5, "y": 29.5, "legs": 3, "heart": 1 }
+    { "name": "Greta", "role": "Truppführerin", "skill": "truppfuehrerin", "sprite": "Agent", "x": 9.5, "y": 29.5, "legs": 2, "heart": 2 },
+    { "name": "Otto", "role": "Schlosser", "sprite": "Agent", "x": 10.5, "y": 29.5, "legs": 1, "heart": 3, "skill": "schlosser" },
+    { "name": "Emil", "role": "Buchhalter", "sprite": "Agent", "x": 11.5, "y": 29.5, "legs": 1, "heart": 1, "skill": "buchhalter" },
+    { "name": "Hanna", "role": "Kurierin", "sprite": "Agent", "x": 12.5, "y": 29.5, "legs": 3, "heart": 1 }
   ],
   "guards": [
     { "name": "Wallstreife 1", "sprite": "Wachmann", "x": 0.5, "y": 11.5, "patrol": [[13, 11], [0, 11]] },
@@ -111,6 +111,11 @@
     { "name": "Hund", "sprite": "Hund", "type": "hund", "handler": "Hundeführer", "x": 5.5, "y": 8.5 },
     { "name": "Wallposten", "sprite": "Schuetze", "type": "schuetze", "x": 14.5, "y": 2.5, "patrol": [[19, 2], [14, 2]] },
     { "name": "Bote", "sprite": "Laufbursche", "type": "laufbursche", "x": 16.5, "y": 12.5, "patrol": [[6, 12], [16, 12]] },
-    { "name": "Mann vom Werk", "sprite": "Werkschutz", "type": "werkschutz", "x": 14.5, "y": 7.5, "facing": [0, 1] }
+    { "name": "Mann vom Werk", "sprite": "Werkschutz", "type": "werkschutz", "x": 14.5, "y": 7.5, "facing": [0, 1] },
+    { "name": "Friedhofsstreife", "sprite": "Wachmann", "x": 3.5, "y": 14.5, "facing": [0, -1] },
+    { "name": "Posten am Fahnenmast", "sprite": "Wachmann", "x": 24.5, "y": 6.5, "facing": [0, 1], "noBribe": true },
+    { "name": "Posten an der Remise", "sprite": "Wachmann", "x": 26.5, "y": 18.5, "facing": [0, 1], "noBribe": true },
+    { "name": "Nachtwächter", "sprite": "Wachmann", "x": 14.5, "y": 14.5, "patrol": [[14, 17], [14, 13], [20, 13], [14, 13]] },
+    { "name": "Südstreife", "sprite": "Wachmann", "x": 23.5, "y": 26.5, "patrol": [[3, 26], [23, 26]] }
   ]
 }

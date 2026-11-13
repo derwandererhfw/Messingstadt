@@ -47,6 +47,9 @@ namespace Messingstadt.Core
         /// <summary>Namen der Türen, zu denen diese Wache den Schlüssel trägt. Wer sie besticht, bekommt ihn, wer sie niederschlägt, hebt ihn auf.</summary>
         public List<string> Keys { get; set; } = new();
 
+        /// <summary>True für eine Wache, die kein Geld nimmt, obwohl ihre Art käuflich wäre.</summary>
+        public bool NoBribe { get; set; }
+
         /// <summary>Für einen Hund an der Leine: der Name seines Hundeführers.</summary>
         public string Handler { get; set; } = "";
         public double X { get; set; }

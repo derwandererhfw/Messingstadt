@@ -97,6 +97,8 @@ def main():
     walls += wall_run("hofmauer_mittelgasse", "hofmauer", 34, [(x, 22) for x in range(13, 17)], door_tiles)
     walls += wall_run("hofmauer_osthof", "hofmauer", 34, [(16, y) for y in range(18, 22)], door_tiles)
     walls += wall_run("hofmauer_ost_aussen", "hofmauer", 34, [(21, y) for y in range(18, 26)], door_tiles)
+    # Bretterzaun quer durch den Kohlenhof: Der Posten an der Remise sieht den Wagen dahinter nicht.
+    walls += wall_run("bretterzaun", "bretterzaun", 34, [(x, 20) for x in range(24, 30)], door_tiles)
     scene["walls"] = walls
 
     gates = [g for g in scene.get("gates", []) if g["id"] in KEEP_GATES]
@@ -112,11 +114,11 @@ def main():
     props = [p for p in scene["props"] if p["id"] in KEEP_PROPS]
     props += [
         {"id": "gefangenenwagen", "kind": "gefangenenwagen", "x": 26.5, "y": 16, "solid": False, "opaque": False, "note": "steht in der Remise, nur Bild"},
-        {"id": "waeschereiwagen", "kind": "fluchtwagen", "x": 28, "y": 21.5, "solid": False, "opaque": False, "note": "Wagen der Wäscherei im Kohlenhof, Ziel"},
+        {"id": "waeschereiwagen", "kind": "fluchtwagen", "x": 28, "y": 23.5, "solid": False, "opaque": False, "note": "Wagen der Wäscherei im Kohlenhof, Ziel"},
         {"id": "telefon", "kind": "telefon", "x": 13.5, "y": 9.3, "solid": False, "opaque": False, "note": "Apparat in der Schreibstube, an der Wand zur Kaserne"},
         {"id": "brunnen", "kind": "brunnen", "x": 10.5, "y": 19.5, "solid": True, "opaque": False, "note": "Pumpe im Westhof, Deckung"},
         {"id": "faesser", "kind": "kiste", "x": 19.5, "y": 18.5, "solid": True, "opaque": False, "note": "Bierfässer im Osthof, Deckung"},
-        {"id": "kohlenhaufen", "kind": "kiste", "x": 24.5, "y": 22.5, "solid": True, "opaque": False, "note": "Kohlenhaufen im Kohlenhof, Deckung vor dem Wagen"},
+        {"id": "kohlenhaufen", "kind": "kiste", "x": 25.5, "y": 23.5, "solid": True, "opaque": False, "note": "Kohlenhaufen im Kohlenhof, Deckung vor dem Wagen"},
         {"id": "fahnenmast", "kind": "mast", "x": 25.5, "y": 6.5, "solid": True, "opaque": False, "note": "Mitte des Exerzierplatzes"},
         {"id": "baum_1", "kind": "baum", "x": 1.5, "y": 18.5, "solid": True, "opaque": False, "note": "kahle Linde auf dem Friedhof"},
         {"id": "baum_2", "kind": "baum", "x": 3.5, "y": 21.5, "solid": True, "opaque": False},
@@ -135,7 +137,7 @@ def main():
         {"x": 19.3, "y": 5.5, "group": "kaserne", "kind": "wandlampe"},
         {"x": 18.5, "y": 26.3, "group": "kneipe", "kind": "wandlampe"},
         {"x": 26.5, "y": 18.3, "group": "remise", "kind": "wandlampe"},
-        {"x": 10.5, "y": 27.5, "group": "suedgasse"},
+        {"x": 8.5, "y": 26.6, "group": "suedgasse"},
     ]
     scene["lamps"] = lamps
 
@@ -162,8 +164,8 @@ def main():
 
     marks = [m for m in scene["marks"] if m["kind"] in ("gefangener", "beute")]
     marks += [
-        {"kind": "start", "x0": 9, "y0": 28, "x1": 13, "y1": 30},
-        {"kind": "ziel", "x0": 27, "y0": 20, "x1": 30, "y1": 23},
+        {"kind": "start", "x0": 9, "y0": 29, "x1": 13, "y1": 30},
+        {"kind": "ziel", "x0": 27, "y0": 22, "x1": 30, "y1": 25},
         {"kind": "verstaerkung", "x": 19.5, "y": 5.5, "note": "Kasernentür. Kommt nur, wenn das Telefon in der Schreibstube durchkommt"},
         {"kind": "telefon", "x": 13.5, "y": 9.5, "note": "Apparat in der Schreibstube"},
         {"kind": "draht", "points": [[13.9, 9.4], [14.5, 9.0], [14.5, 8.3], [15.0, 7.8]],
