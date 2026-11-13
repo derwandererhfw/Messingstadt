@@ -68,6 +68,7 @@ namespace Messingstadt
         private const float PrisonerStepDb = -24f;
         private const float PhoneDb = -18f;
         private const float PhoneReach = 520f;
+        private const float PhoneDeadAfterCut = 0.7f;
         private const float HeartRisePerSecond = 4f;
         private const float HeartFallPerSecond = 0.5f;
         private const string MusicBus = "Musik";
@@ -83,6 +84,8 @@ namespace Messingstadt
         private int _keysOnGround;
         private PhoneState _phone;
         private bool _wireCut;
+        private float _wireCutAt = -100f;
+        private float _phoneDeadAt = -1f;
         private readonly HashSet<int> _bandaging = new();
         private readonly HashSet<SmokeCloud> _smokes = new();
         private readonly Dictionary<string, float> _lastPlayed = new();
@@ -557,6 +560,7 @@ namespace Messingstadt
             _keysOnGround = 0;
             _phone = world.Phone;
             _wireCut = world.WireCut;
+            _phoneDeadAt = -1f;
             _bandaging.Clear();
             _smokes.Clear();
             _world = world;
@@ -724,22 +728,31 @@ namespace Messingstadt
             if (world.WireCut && !_wireCut)
             {
                 Play("wire_cut", at, PhoneDb, PhoneReach);
+                _wireCutAt = _time;
             }
             _wireCut = world.WireCut;
+            if (_phoneDeadAt >= 0f && _time >= _phoneDeadAt)
+            {
+                _phoneDeadAt = -1f;
+                Play("phone_dead", at, PhoneDb, PhoneReach, 0.03f);
+            }
             if (world.Phone == _phone)
             {
                 return;
             }
-            // Tot klingt die Leitung nur, wenn er gerade telefonieren wollte.
-            bool wasTrying = _phone is PhoneState.Fetching or PhoneState.Dialing;
             _phone = world.Phone;
-            string? sound = _phone switch
+            if (_phone == PhoneState.Silent)
             {
-                PhoneState.Dialing => "phone_dial",
-                PhoneState.Called => "phone_called",
-                PhoneState.Silent when wasTrying => "phone_dead",
-                _ => null,
-            };
+                // Tot klingt die Leitung nur bei gekapptem Draht: Dann drückt der Mann vergeblich die Gabel.
+                // Ist er selbst gekauft, niedergeschlagen oder tot, fasst niemand den Apparat an.
+                // Fällt der Schnitt in den Anruf, kommt die Gabel erst nach der Zange.
+                if (world.WireCut)
+                {
+                    _phoneDeadAt = Mathf.Max(_time, _wireCutAt + PhoneDeadAfterCut);
+                }
+                return;
+            }
+            string? sound = _phone == PhoneState.Dialing ? "phone_dial" : _phone == PhoneState.Called ? "phone_called" : null;
             if (sound != null)
             {
                 Play(sound, at, PhoneDb, PhoneReach, 0.03f);
