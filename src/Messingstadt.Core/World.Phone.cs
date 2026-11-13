@@ -92,6 +92,12 @@ namespace Messingstadt.Core
         /// <summary>Mehr als Betten in der Kaserne stehen, rückt nie an, auch nicht mit Fahndung.</summary>
         private int Housed(int count) => _reinforcements!.Beds > 0 ? Math.Min(count, _reinforcements.Beds) : count;
 
+        /// <summary>
+        /// Löst den Alarm an die Kaserne aus, als wäre gerade geschossen worden. Für Prüfstände und Prüfläufe, die das Telefon
+        /// ohne Gefecht prüfen. Ein Alarm, der schon läuft, bleibt, wie er ist.
+        /// </summary>
+        public void SoundAlarm() => CallReinforcements();
+
         private void CallReinforcements()
         {
             if (_reinforcements == null || _reinforceTick != 0 || _reinforcedCount != 0 || Phone is not (PhoneState.None or PhoneState.Idle))
