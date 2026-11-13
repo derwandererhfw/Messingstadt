@@ -313,6 +313,45 @@ Was die Zahlen sagen, und was sie nicht sagen:
 - Die Zeiten der leisen Wege sind lang, weil die Mess-Spielweise vor jedem Wegstück wartet, bis der Lageplan es ganz frei zeigt, höchstens 40 s. Ein Spieler geht früher.
 - Im Spiel nachgestellt ist bisher nur der Hinweg bis zur Befreiung (`einsatz2_leise.txt`, `greta_nachlass.txt`) und der ganze Ablauf mit ruhiggestellten Wachen (`einsatz2_befreien.txt`). Der Heimweg mit echten Wachen wurde im Spiel auf beiden Wegen am Ende bemerkt.
 
+#### Nordwall mit Telefon und Kaserne, Messung vom 13.11.2026
+
+Echte Daten aus `data/mission_02.json`: Stadtwache aus der Kasernentür, der Wachhabende ruft an, erster Mann 8 s nach Alarm, dann alle 5 s, drei Mann, drei Betten. Ohne Anruf ein Mann nach 16 s. Je 300 Läufe, Sieg in Prozent.
+
+Warum die früheren Zahlen bei 0 % lagen: Die Pläne im Messwerkzeug passten nicht zur großen Karte. Der laute Bot schoss vom Start aus auf die Südstreife und lief dann der nächsten Wache nach, bis er an der Ecke Ostgasse und Wallstraße im Licht stand, acht Felder vor der Kasernentür. „Leise mit Geld“ nahm ohne Angabe den Friedhofsgang, auf dem die Südstreife den Trupp immer bemerkt. Jetzt gilt ohne Angabe der Friedhof, und für den lauten Weg gibt es den Plan „Laut aus einer Stellung“ (`--stellung`): an einen Platz gehen, dort das Feuer eröffnen, die Wachen kommen lassen, nach 15 s Ruhe die Gefangenen holen.
+
+| Laut aus der Stellung | Pistolen | vier MP | vier MP + Verband |
+|---|---|---|---|
+| Durchgang (7, 15) | 13 | 82 | 76 |
+| Friedhofsgang (7, 20) | 38 | 69 | 74 |
+| Südgasse West (4, 27) | 15 | 52 | 58 |
+| Start an der Böschung (10, 29) | 7 | 43 | 57 |
+| Der Wache nachlaufen, alter Plan | 0 | 14 | 14 |
+
+| Verstärkung, vier MP | Durchgang | Friedhofsgang | Südgasse West | Start |
+|---|---|---|---|---|
+| Draht gekappt: ein Mann nach 16 s | 88 | 79 | 68 | 70 |
+| drei Mann, alle 5 s (Daten) | 82 | 69 | 52 | 43 |
+| vier Mann, vier Betten | 80 | 67 | 37 | 21 |
+| fünf Mann, fünf Betten | 80 | 66 | 16 | 5 |
+| fünf Mann, alle 3 s | 78 | 67 | 15 | 5 |
+| sechs Mann, alle 3 s | 76 | 66 | 6 | 1 |
+
+Die Verstärkung trifft nur, wer im Offenen steht. In den zwei engen Gängen kommen die Wachen einzeln, dort ändert die Zahl der Betten fast nichts. Die Daten bleiben darum bei drei Mann. Wer die engen Gänge schwerer haben will, braucht eine andere Schraube als die Kaserne, etwa einen zweiten Ankunftsort im Süden.
+
+| Leise, Rückweg über den Friedhof | Sieg | davon leise |
+|---|---|---|
+| Otto und Emil mit Geld, bis 1 s spät | 100 | 100 |
+| dasselbe, 1,5 s spät | 67 | 67 |
+| dasselbe, 2 s spät | 39 | 39 |
+| Otto allein mit Dietrich, bis 0,5 s spät | 100 | 100 |
+| Totschläger ohne Dietrich, Klick genau | 100 | 100 |
+| dasselbe, bis 0,5 s spät | 8 | 8 |
+| Rückweg über die Höfe, mit Geld oder allein, Klick genau | 100 | 100 |
+| Höfe mit offenen Helfertüren, mit Geld, 0,5 s spät | 14 | 9 |
+| Abkürzung Friedhofsgang, mit Geld | 39 | 0 |
+
+Nicht gemessen: Stadt gegen den Trupp und rufende Bewohner mit den echten Daten. Der Bot schießt genauer zusammen als ein Mensch, die lauten Zahlen sind eher eine Obergrenze.
+
 ### Mehrere Einsätze
 
 Jeder Einsatz hat eine Missionsdatei, eine Regelkarte, eine Lichtkarte und einen Grafikordner: `data/mission_02.json` nennt `mapId`, `lightId` und `scene`, die Stadt liegt in `game/assets/maps/<scene>/` mit demselben Aufbau wie die erste. Welcher Einsatz gespielt wird, bestimmt das gewählte Viertel im Stadtplan. Hat es eine andere Stadt, lädt das Spiel die Szene neu und setzt mit derselben Akte fort. Der Grundriss `data/scene_02.json` ist die gemeinsame Quelle: `tools/level/scene_to_map.py` schreibt daraus die Regelkarte und zeigt, was die Kamera verdeckt, `tools/level/placeholder_city.py` baut eine schlichte Platzhalterstadt samt Licht. Zielorte, Türen mit Spielbedeutung und Hauptwege dürfen nie hinter hohen Gebäuden liegen.

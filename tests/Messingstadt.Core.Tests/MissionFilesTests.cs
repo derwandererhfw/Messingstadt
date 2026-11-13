@@ -136,7 +136,11 @@ namespace Messingstadt.Core.Tests
             var keeper = w.Units.First(u => u.Name == "Schließer");
             Assert.Equal(2, keeper.Keys.Count);
             Assert.All(keeper.Keys, k => Assert.StartsWith("Zelle", w.Doors[k].Name));
-            Assert.Equal(GuardType.Werkschutz, GuardType.ForId(mission.Reinforcements!.Type));
+            // Die Verstärkung ist Stadtwache aus der Kaserne. Der Wachhabende ruft sie vom Apparat an seinem Posten, drei Betten.
+            Assert.Equal("", mission.Reinforcements!.Type);
+            Assert.Equal("Wachhabender", mission.Reinforcements.Phone);
+            Assert.Equal(3, mission.Reinforcements.Beds);
+            Assert.Contains(mission.Doors, d => d.Wire && d.Name == "Telefondraht");
             Assert.Equal("nordwall", mission.Scene);
             Assert.NotEmpty(mission.Chatter!.Guards);
         }
@@ -177,6 +181,7 @@ namespace Messingstadt.Core.Tests
             var (map, mission) = Load("mission_02");
             mission.Agents.RemoveAll(a => a.Skill != World.SkillBookkeeper);
             mission.Guards.RemoveAll(g => g.Name != "Schließer" && g.Name != "Türposten");
+            mission.Reinforcements!.Phone = "";
             mission.Money = 400;
             var w = new World(map, mission);
             Assert.False(w.OrderOpenDoor(0, 0));
