@@ -130,7 +130,7 @@ namespace Messingstadt.Core
         public const string HelperLandlady = "wirtin";
         public const int MaxBloodDebt = 6;
 
-        /// <summary>Mehr als so viel zählt eine Nacht nicht, auch wenn mehr Wachen sterben.</summary>
+        /// <summary>Um mehr als so viel steigt die Schuld in einer Nacht nicht, auch wenn mehr Wachen sterben.</summary>
         public const int BloodPerNight = 3;
 
         /// <summary>So viel tilgt eine Nacht ohne tote Wache.</summary>
@@ -141,8 +141,9 @@ namespace Messingstadt.Core
         public const int AgainstFrom = 4;
 
         /// <summary>
-        /// Die Blutschuld des Trupps bei der ganzen Stadt, 0 bis 6. Eine Nacht mit mehreren toten Wachen erhöht sie um deren Zahl,
-        /// höchstens um 3. Ein einzelner Toter lässt sie stehen. Eine Nacht ohne tote Wache tilgt 2. Das Totenbuch selbst vergisst nichts.
+        /// Die Blutschuld des Trupps bei der ganzen Stadt, 0 bis 6. Der erste Tote einer Nacht ist frei, jeder weitere erhöht sie um 1,
+        /// höchstens um 3 je Nacht. Eine Nacht ohne tote Wache tilgt 2. Gelegentliche Tote verzeiht die Stadt, eine Gewohnheit nicht,
+        /// und keine einzelne Nacht kippt alles. Das Totenbuch selbst vergisst nichts.
         /// </summary>
         public int BloodDebt { get; set; }
 
@@ -156,8 +157,7 @@ namespace Messingstadt.Core
         /// <summary>Die Schuld nach einer Nacht mit so vielen toten Wachen.</summary>
         public static int DebtAfter(int bloodDebt, int deadGuards) =>
             deadGuards == 0 ? Math.Max(0, bloodDebt - BloodForgiven)
-            : deadGuards == 1 ? bloodDebt
-            : Math.Min(MaxBloodDebt, bloodDebt + Math.Min(deadGuards, BloodPerNight));
+            : Math.Min(MaxBloodDebt, bloodDebt + Math.Min(deadGuards - 1, BloodPerNight));
 
         /// <summary>Das Totenbuch in der Reihenfolge der Tode. Niedergeschlagene und Verwundete stehen nicht darin.</summary>
         public List<LedgerEntry> Ledger { get; set; } = new();
