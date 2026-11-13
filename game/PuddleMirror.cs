@@ -28,8 +28,9 @@ namespace Messingstadt
         private const float PostAlpha = 0.45f;
 
         // Spiegelbilder: Größe der Lichtquelle im Bild und wie weit Regenwellen das Bild senkrecht ziehen.
-        private const float MinSmear = 1.3f;
-        private const float RainSmear = 1.7f;
+        // Lichter ziehen sich im nassen Pflaster zu langen Schlieren. --ohne=schlieren stellt die kurzen Spiegelbilder her.
+        private static readonly float MinSmear = AirTest.Off("schlieren") ? 1.3f : 2.1f;
+        private static readonly float RainSmear = AirTest.Off("schlieren") ? 1.7f : 2.6f;
         private static readonly Vector2 LampSize = new(7f, 8f);
         private static readonly Vector2 PaneSize = new(10f, 15f);
         private static readonly Vector2 LetterSize = new(9f, 11f);
@@ -95,6 +96,7 @@ render_mode {0};
 uniform sampler2D mask : filter_linear;
 uniform vec2 ground_size;
 uniform float rain = 0.3;
+uniform float breaks = 1.0;
 varying vec2 world;
 void vertex() {
     world = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
@@ -106,8 +108,20 @@ void fragment() {
     // Das Spiegelbild zittert zeilenweise, stärker im Regen.
     float wobble = sin(p.y * 0.9 + TIME * 4.0) * 0.6 + sin(p.y * 2.3 - TIME * 6.5) * 0.4;
     vec2 uv = UV + vec2(TEXTURE_PIXEL_SIZE.x * wobble * (0.5 + 1.6 * rain), 0.0);
+    // Regenringe brechen das Spiegelbild: In jedem Feld der Wasserfläche läuft ab und zu ein Ring auf, verschiebt die
+    // Schliere an seinem Rand und nimmt ihr dort das Licht. Je stärker der Regen, desto mehr Felder treffen.
+    vec2 grid = world / vec2(18.0, 9.0);
+    vec2 cell = floor(grid);
+    vec2 f = (fract(grid) - 0.5) * vec2(18.0, 18.0);
+    float h = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
+    float age = fract(TIME * (0.6 + 0.8 * h) + h * 7.0);
+    float ring = abs(length(f) - age * 8.5);
+    float hit = (1.0 - smoothstep(0.0, 1.3, ring)) * (1.0 - age) * step(h, rain * 1.15) * breaks;
+    uv += TEXTURE_PIXEL_SIZE * vec2(3.0, 2.0) * hit;
+    // Die Schliere liegt nicht glatt: Kleine Wellen zerhacken sie in kurze, helle Stücke.
+    float chop = mix(1.0, 0.72 + 0.28 * sin(p.y * 1.9 + TIME * 3.2 + sin(p.x * 0.4) * 2.0), breaks);
     vec4 t = texture(TEXTURE, uv) * COLOR;
-    COLOR = vec4(t.rgb, t.a * cover);
+    COLOR = vec4(t.rgb * chop * (1.0 - 0.6 * hit), t.a * cover);
 }";
 
         private enum Kind
@@ -188,6 +202,9 @@ void fragment() {
             });
             _mixMaterial = MirrorMaterial("blend_mix", mask, size);
             _addMaterial = MirrorMaterial("blend_add", mask, size);
+            // Figuren spiegeln sich ruhig, nur die Lichter werden zerhackt.
+            _mixMaterial.SetShaderParameter("breaks", 0f);
+            _addMaterial.SetShaderParameter("breaks", AirTest.Off("schlieren") ? 0f : 1f);
             // Erst die dunklen Spiegelbilder von Figuren und Pfosten, darüber das Licht.
             _shapes = new Mirror { Owner_ = this, Lights = false, Material = _mixMaterial, LightMask = 0 };
             AddChild(_shapes);

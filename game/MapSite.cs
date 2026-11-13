@@ -47,7 +47,14 @@ namespace Messingstadt
         /// Fenster stellt, wenn es hilft. Sonst ein Haus, das nie hilft und nach Blut als erstes die Läden schließt.
         /// Darkens nennt ein Fenster, das für den Trupp ausgeht, wenn er in die Nähe kommt.
         /// </summary>
-        public sealed record House(string Id, Vector2 Window, float Height, bool Helper, Vector2? Darkens);
+        public sealed record House(string Id, Vector2 Window, float Height, bool Helper, Vector2? Darkens)
+        {
+            /// <summary>Mitte der Tür, hinter der dieses Haus hilft oder schweigt. Null: Es gilt das Fenster.</summary>
+            public Vector2? Door { get; init; }
+
+            /// <summary>Sätze der Bewohner: pass (Trupp geht durch), passGreta (mit Greta im Trupp), shut (Tür zu, Agent davor), spare (ruft nicht, obwohl die Stadt gegen den Trupp steht).</summary>
+            public Dictionary<string, string> Lines { get; init; } = new();
+        }
 
         private static MapSite? _current;
 
@@ -115,6 +122,18 @@ namespace Messingstadt
         /// <summary>Häuser, deren Fenster die Stimmung der Stadt zeigen (houses). Leer: keine benannten Häuser.</summary>
         public List<House> Houses { get; } = new();
 
+        /// <summary>Welche Vögel auf den Sitzplätzen hocken: tauben oder kraehen.</summary>
+        public string Birds { get; private set; } = "tauben";
+
+        /// <summary>Flächen, über denen Nebelschwaden ziehen (mist): x0, y0, x1, y1 in Feldern. Nur Bild, keine Sichtregel.</summary>
+        public List<Rect2> Mist { get; } = new();
+
+        /// <summary>Wäscheleinen (laundry): von Feld zu Feld in einer Höhe in Bildpunkten.</summary>
+        public List<(Vector2 From, Vector2 To, float Height)> Laundry { get; } = new();
+
+        /// <summary>Fahnen (flags): Feld des Masts und Höhe des Tuchs in Bildpunkten.</summary>
+        public List<(Vector2 Tile, float Height)> Flags { get; } = new();
+
         /// <summary>Die eine Laterne, die flackert und aussetzt. Null: Auf dieser Karte brennen alle ruhig.</summary>
         public Vector2? StutterLamp { get; private set; }
 
@@ -152,6 +171,11 @@ namespace Messingstadt
                 {
                     using var doc = JsonDocument.Parse(File.ReadAllText(file));
                     site.Read(doc.RootElement);
+                    // Unter sizes stehen Angaben, die nur für eine Kartengröße gelten, etwa "30x30". Sie gehen vor.
+                    if (doc.RootElement.TryGetProperty("sizes", out var sizes) && sizes.TryGetProperty($"{(int)Tiles.X}x{(int)Tiles.Y}", out var forSize))
+                    {
+                        site.Read(forSize);
+                    }
                 }
             }
             return site;
@@ -239,11 +263,52 @@ namespace Messingstadt
                 Houses.Clear();
                 foreach (var h in houses.EnumerateArray())
                 {
+                    var lines = new Dictionary<string, string>();
+                    if (h.TryGetProperty("lines", out var said))
+                    {
+                        foreach (var line in said.EnumerateObject())
+                        {
+                            lines[line.Name] = line.Value.GetString() ?? "";
+                        }
+                    }
                     Houses.Add(new House(
                         h.GetProperty("id").GetString() ?? "", Pair(h.GetProperty("window")),
                         h.TryGetProperty("height", out var height) ? height.GetSingle() : 30f,
                         h.TryGetProperty("helper", out var helper) && helper.ValueKind == JsonValueKind.True,
-                        h.TryGetProperty("darkens", out var darkens) ? Pair(darkens) : null));
+                        h.TryGetProperty("darkens", out var darkens) ? Pair(darkens) : null)
+                    {
+                        // Türen stehen im Grundriss als Feld, gemeint ist dessen Mitte.
+                        Door = h.TryGetProperty("door", out var door) ? Pair(door) + new Vector2(0.5f, 0.5f) : null,
+                        Lines = lines,
+                    });
+                }
+            }
+            if (root.TryGetProperty("birds", out var birds))
+            {
+                Birds = birds.GetString() ?? Birds;
+            }
+            if (root.TryGetProperty("mist", out var mist))
+            {
+                Mist.Clear();
+                foreach (var m in mist.EnumerateArray())
+                {
+                    Mist.Add(new Rect2(m[0].GetSingle(), m[1].GetSingle(), m[2].GetSingle() - m[0].GetSingle(), m[3].GetSingle() - m[1].GetSingle()));
+                }
+            }
+            if (root.TryGetProperty("laundry", out var laundry))
+            {
+                Laundry.Clear();
+                foreach (var l in laundry.EnumerateArray())
+                {
+                    Laundry.Add((new Vector2(l[0].GetSingle(), l[1].GetSingle()), new Vector2(l[2].GetSingle(), l[3].GetSingle()), l[4].GetSingle()));
+                }
+            }
+            if (root.TryGetProperty("flags", out var flags))
+            {
+                Flags.Clear();
+                foreach (var f in flags.EnumerateArray())
+                {
+                    Flags.Add((Pair(f), f[2].GetSingle()));
                 }
             }
             if (root.TryGetProperty("passersby", out var people))
