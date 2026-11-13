@@ -24,7 +24,9 @@ namespace Messingstadt
         private const int StateLeft = 44;
         private const int Fields = 4;
         private const int InventoryTop = Margin + 2 * FieldHeight + FieldGap + 8;
-        private const int InventoryHeight = 172;
+        private const int InventoryHeight = 172 + TraitHeight;
+        // Platz für die Zeile, die sagt, was der Agent besonders kann.
+        private const int TraitHeight = 12;
         private const int LevelDots = 3;
         private static readonly Color SelectedEdge = new(0.95f, 0.78f, 0.35f);
         private static readonly Color Board = new(0.17f, 0.15f, 0.13f);
@@ -85,6 +87,10 @@ namespace Messingstadt
         private Label _info = null!;
         private Label _owner = null!;
         private Label _role = null!;
+        private Label _trait = null!;
+
+        /// <summary>Für den Prüflauf: die Zeile zur Fähigkeit des gewählten Agenten.</summary>
+        public string Trait => _trait.Text;
         private Control _levels = null!;
         private Peil _peil = null!;
         private int _owned = -1;
@@ -227,7 +233,10 @@ namespace Messingstadt
             _role = Small("", new Color(PaperUi.Ink, 0.8f));
             _role.Position = new Vector2(6, 19);
             sheet.AddChild(_role);
-            _levels = new Control { Position = new Vector2(0, 32), MouseFilter = MouseFilterEnum.Ignore };
+            _trait = Small("", PaperUi.StampRed);
+            _trait.Position = new Vector2(6, 31);
+            sheet.AddChild(_trait);
+            _levels = new Control { Position = new Vector2(0, 32 + TraitHeight), MouseFilter = MouseFilterEnum.Ignore };
             sheet.AddChild(_levels);
             AddLevelRow(_levels, _legs, "Beine", 6);
             AddLevelRow(_levels, _heart, "Herz", 116);
@@ -236,7 +245,7 @@ namespace Messingstadt
                 int slot = i;
                 var button = new Button
                 {
-                    Position = new Vector2(5, 52 + i * 29), Size = new Vector2(sheet.Size.X - 10, 26), Alignment = HorizontalAlignment.Left,
+                    Position = new Vector2(5, 52 + TraitHeight + i * 29), Size = new Vector2(sheet.Size.X - 10, 26), Alignment = HorizontalAlignment.Left,
                     // Nur Maus: Die Tasten gehören im Einsatz dem Spiel, die Plätze dürfen sie nicht einfangen.
                     FocusMode = FocusModeEnum.None, ClipText = true,
                 };
@@ -371,6 +380,7 @@ namespace Messingstadt
             {
                 _owner.Text = "NIEMAND GEWÄHLT";
                 _role.Text = "";
+                _trait.Text = "";
                 foreach (var button in _slots)
                 {
                     SetSlot(button, "", false, false);
@@ -380,6 +390,7 @@ namespace Messingstadt
             int more = selected.Count(id => id != u.Id && id < world.Units.Count && world.Units[id].Alive);
             _owner.Text = $"{u.Id + 1} {u.Name.ToUpperInvariant()}{(more > 0 ? $"  +{more}" : "")}";
             _role.Text = Game.AgentRole(u.Id);
+            _trait.Text = Game.AgentTrait(u);
             ShowLevel(_legs, u.Legs);
             ShowLevel(_heart, u.Heart);
             for (int i = 0; i < _slots.Count; i++)

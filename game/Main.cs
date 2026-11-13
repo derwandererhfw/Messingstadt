@@ -423,6 +423,39 @@ void fragment() {
         public bool SlotExists(int slot) => !_fresh && _saves.Exists(slot);
         public string SlotLine(int slot) => SlotExists(slot) ? _saves.Describe(slot) : "leer";
 
+        /// <summary>Die Kampagne einer Akte, zum Nachschlagen im Totenbuch. Geladen wird nur gelesen.</summary>
+        public Campaign SlotCampaign(int slot) => SlotExists(slot) ? _saves.Load(slot) : new Campaign();
+
+        /// <summary>Name eines Viertels für das Totenbuch. Tote aus Ständen vor dem Buch haben kein Viertel.</summary>
+        public string DistrictName(string id) => id.Length == 0 ? "Viertel nicht vermerkt" : City.Get(id)?.Name ?? id;
+
+        /// <summary>
+        /// Der Name einer Wache am Mauszeiger: der Mensch (Unit.Person), nicht der Posten (Unit.Name).
+        /// </summary>
+        public static string GuardName(Unit guard) => guard.Person;
+
+        /// <summary>Text am Mauszeiger über einer Wache: Name, Art, Preis. Hunde und Namenlose zeigen nur die Art.</summary>
+        public string GuardLine(Unit guard)
+        {
+            var type = guard.Type;
+            string name = GuardName(guard);
+            string who = name.Length == 0 ? type.Title : $"{name}, {type.Title}";
+            string text = who + (guard.Bribed ? ", bestochen" : type.BribeCost == 0 ? ", nicht käuflich" : ", " + BribeWord(guard));
+            if (World.Units.Exists(o => o.LeashedTo == guard.Id))
+            {
+                text += " samt Hund";
+            }
+            return type.OrderOnly ? text + ", Feuer nur auf Befehl" : text;
+        }
+
+        /// <summary>Was ein Agent besonders kann, eine kurze Zeile für das Inventarblatt der Spalte. Leer, wenn es nichts zu sagen gibt.</summary>
+        public string AgentTrait(Unit agent) => agent.Skill == World.SkillLeader && World.LeaderDiscountPercent > 0
+            ? $"In Rufweite: Bestechen {LeaderCut}"
+            : "";
+
+        // "halber Preis" bei 50 Prozent, sonst die Zahl. Hilfezeile, Spalte und Mauszeiger nennen den Nachlass gleich.
+        private string LeaderCut => World.LeaderDiscountPercent == 50 ? "halber Preis" : $"{World.LeaderDiscountPercent} % billiger";
+
         /// <summary>Wer in der Akte gerade aussetzt, für den Aktenschrank.</summary>
         public List<string> SlotResting(int slot) => SlotExists(slot) ? SaveFolder.Resting(_saves.Load(slot)) : new List<string>();
 
@@ -696,9 +729,13 @@ void fragment() {
             ["citymap"] = _cityMap.State,
             ["mapsource"] = _cityMap.MapSource,
             ["mapopen"] = _cityMap.Selectable,
+            ["citysign"] = _cityMap.SignLights,
             ["sounds"] = _sound.PlayCount.ToString(),
             ["menusounds"] = _sound.MenuPlayCount.ToString(),
             ["menusound"] = _sound.LastMenuSound,
+            ["ledger"] = _menus.LedgerProbe,
+            ["guardline"] = World.Units.Find(u => u.Faction == Faction.Guard && u.Alive && u.Type != GuardType.Hund) is { } first ? GuardLine(first) : "",
+            ["trait"] = _paper.Trait,
             ["uisounds"] = _sound.UiPlayCount.ToString(),
             ["alarm"] = string.Join(", ", World.Units.Where(u => u.Faction == Faction.Guard && u.Alive && !u.Bribed && (u.Roused || u.GuardState != GuardState.Patrol)).Select(u => $"{u.Name} {u.GuardState} {u.TileX},{u.TileY}")),
             ["prices"] = string.Join(" | ", World.Units.Where(u => u.Faction == Faction.Guard && u.Alive && !u.Bribed && World.Bribable(u) && u.LeashedTo < 0).Select(u => $"{u.Name}: {BribeWord(u)}")),
@@ -1502,7 +1539,8 @@ void fragment() {
             {
                 CustomMinimumSize = new Vector2(680, 0), Visible = false,
                 AnchorLeft = 0.5f, AnchorRight = 0.5f, AnchorTop = 0.5f, AnchorBottom = 0.5f,
-                OffsetLeft = -340f, OffsetRight = 340f,
+                // Mitte der Spielfläche, nicht des Bildes: Ein breites Blatt darf die Spalte links nicht verdecken.
+                OffsetLeft = -340f + Hud.ColumnWidth / 2f, OffsetRight = 340f + Hud.ColumnWidth / 2f,
                 GrowHorizontal = Control.GrowDirection.Both, GrowVertical = Control.GrowDirection.Both,
             };
             _panel.AddThemeStyleboxOverride("panel", PaperUi.PaperBox(PaperUi.PaperColor));
@@ -2192,7 +2230,7 @@ void fragment() {
             int now = World.BribePrice(guard, payer);
             int with = full * (100 - World.LeaderDiscountPercent) / 100;
             return now < full ? $"käuflich für {now}, {leader.Name} ist dabei"
-                : World.LeaderBacksLater ? $"käuflich für {full}, mit {leader.Name} in der Nähe {with}" : $"käuflich für {full}";
+                : World.LeaderBacksLater ? $"käuflich für {full}, mit {leader.Name} {with}" : $"käuflich für {full}";
         }
 
         public Unit? HoveredGuard()
@@ -2407,8 +2445,11 @@ void fragment() {
         private string HelpLine()
         {
             var agents = World.Units.Where(u => u.Faction == Faction.Agent && u.Alive).ToList();
+            // Solange die Truppführerin lebt und ihr Nachlass gilt, steht er beim Bestechen dabei.
+            string backed = World.LeaderBacksLater && agents.Find(u => u.Skill == World.SkillLeader) is { } leader
+                ? $" (mit {leader.Name} {LeaderCut})" : "";
             string right = string.Concat(
-                agents.Where(u => u.Skill == World.SkillBookkeeper).Select(u => $", {u.Name}: bestechen")
+                agents.Where(u => u.Skill == World.SkillBookkeeper).Select(u => $", {u.Name}: bestechen{backed}")
                 .Concat(agents.Where(u => u.Skill == World.SkillLocksmith).Select(u => $", {u.Name}: Tür")));
             // Die Zifferntasten wählen die Agenten im Einsatz, auch Gefallene behalten ihre Ziffer.
             int squad = World.Units.Count(u => u.Faction == Faction.Agent);
