@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using Messingstadt.Core;
 
@@ -120,6 +121,9 @@ namespace Messingstadt
         private float _nextTalk = 5f;
 
         public Main Game = null!;
+
+        /// <summary>Für den Prüflauf: linker Rand des am weitesten links stehenden Satzes, in Bildpunkten der Oberfläche. Ohne Satz sehr groß.</summary>
+        public float LeftmostSpeech { get; private set; } = float.MaxValue;
 
         /// <summary>Wer sonst noch redet, etwa Streikposten. Liefert null, wenn die Person gerade nicht da ist.</summary>
         public List<Func<Vector2?>> Workers { get; } = new();
@@ -464,6 +468,10 @@ namespace Messingstadt
             // Sichtbarer Ausschnitt der Welt: Sätze rücken vom Rand ein und weichen einander nach oben aus.
             var view = GetCanvasTransform().AffineInverse() * GetViewportRect();
             float line = font.GetHeight(FontSize);
+            // Die Spalte links verdeckt die Welt: Sätze beginnen rechts von ihr.
+            float column = Game.HudColumn * view.Size.X / GetViewportRect().Size.X;
+            float room = view.Size.X - column - 2f * EdgeMargin;
+            LeftmostSpeech = float.MaxValue;
             var placed = new List<Rect2>();
             foreach (var s in _speeches)
             {
@@ -472,12 +480,21 @@ namespace Messingstadt
                     continue;
                 }
                 float alpha = Mathf.Clamp((s.Until - _time) / FadeSeconds, 0f, 1f);
+                // Ein Satz, der breiter ist als die Spielfläche, bricht in zwei Zeilen um.
+                string[] rows = { s.Text };
                 float width = font.GetStringSize(s.Text, HorizontalAlignment.Left, -1, FontSize).X;
-                var at = p + new Vector2(-width / 2f, -HeadHeight);
-                float left = view.Position.X + EdgeMargin;
+                if (width > room && s.Text.Contains(' '))
+                {
+                    int cut = s.Text.LastIndexOf(' ', s.Text.Length / 2);
+                    cut = cut > 0 ? cut : s.Text.IndexOf(' ');
+                    rows = new[] { s.Text[..cut], s.Text[(cut + 1)..] };
+                    width = rows.Max(r => font.GetStringSize(r, HorizontalAlignment.Left, -1, FontSize).X);
+                }
+                var at = p + new Vector2(-width / 2f, -HeadHeight - (rows.Length - 1) * line);
+                float left = view.Position.X + column + EdgeMargin;
                 at.X = Mathf.Clamp(at.X, left, Mathf.Max(left, view.End.X - EdgeMargin - width));
                 at.Y = Mathf.Clamp(at.Y, view.Position.Y + TopMargin, Mathf.Max(view.Position.Y + TopMargin, view.End.Y - BottomMargin));
-                var box = new Rect2(at.X - 3f, at.Y - line, width + 6f, line + 3f);
+                var box = new Rect2(at.X - 3f, at.Y - line, width + 6f, rows.Length * line + 3f);
                 for (int tries = 0; tries < 6 && placed.Exists(r => r.Intersects(box)); tries++)
                 {
                     // Nahe am oberen Rand geht es nach unten weiter, sonst nach oben.
@@ -486,8 +503,13 @@ namespace Messingstadt
                     box.Position += new Vector2(0f, step);
                 }
                 placed.Add(box);
-                DrawStringOutline(font, at, s.Text, HorizontalAlignment.Left, -1, FontSize, 4, new Color(0f, 0f, 0f, 0.95f * alpha));
-                DrawString(font, at, s.Text, HorizontalAlignment.Left, -1, FontSize, new Color(s.Color, alpha));
+                LeftmostSpeech = Mathf.Min(LeftmostSpeech, (GetCanvasTransform() * at).X);
+                for (int i = 0; i < rows.Length; i++)
+                {
+                    var rowAt = at + new Vector2(0f, i * line);
+                    DrawStringOutline(font, rowAt, rows[i], HorizontalAlignment.Left, -1, FontSize, 4, new Color(0f, 0f, 0f, 0.95f * alpha));
+                    DrawString(font, rowAt, rows[i], HorizontalAlignment.Left, -1, FontSize, new Color(s.Color, alpha));
+                }
             }
         }
     }

@@ -234,7 +234,11 @@ void fragment() {
         private bool _briefingFromResult;
         // Ein neues Spiel aus dem Menü: Nach dem Prolog kommen erst Stadtplan und Waffenkammer.
         private bool _briefFirst;
+        private const string PlanWayFirst = "Zum Buch führt der Weg über die Straße in die Gasse am Mietshaus, zum Wagen hinten um das Lager.";
         private float _hudShift;
+
+        /// <summary>Breite der Spalte links in Bildpunkten der Oberfläche, 0 wenn sie nicht zu sehen ist. Was in der Welt beschriftet, bleibt rechts davon.</summary>
+        public float HudColumn => _paper != null && _paper.Visible ? Hud.ColumnWidth : 0f;
         private float _peilSeconds = Hud.PeilSeconds;
         private const float HudShiftPerSecond = 240f;
         // Agent, dessen Rauchtopf auf den nächsten Linksklick in die Welt wartet. -1: keiner.
@@ -685,6 +689,7 @@ void fragment() {
             ["finished"] = _finished.ToString(),
             ["panel"] = _panel.Visible.ToString(),
             ["hud"] = _paper.Visible.ToString(),
+            ["speechleft"] = _chatter.LeftmostSpeech > 1e6f ? "" : Mathf.RoundToInt(_chatter.LeftmostSpeech).ToString(),
             ["help"] = _help.Visible.ToString(),
             ["helpline"] = _helpPlain,
             ["helprows"] = string.Join(" / ", _help.Text.Split('\n').Select(row => row.Replace(' ', ' ').Trim())),
@@ -1503,7 +1508,7 @@ void fragment() {
             layer.AddChild(_planBand);
             _planLegend = PaperUi.Text(
                 "LAGEPLAN  Grün: nie bewacht. Gelb bis Rot: immer öfter im Blick. Punkte: Wege der Wachen. Klick: losgehen, sobald frei.\n"
-                + "Zum Buch führt der Weg über die Straße in die Gasse am Mietshaus, zum Wagen hinten um das Lager.",
+                + PlanWayFirst,
                 13, PaperUi.Ink, PaperUi.Typewriter);
             _planLegend.Position = new Vector2(Hud.ColumnWidth + 18f, 65);
             _planLegend.AnchorRight = 1f;
@@ -1956,6 +1961,8 @@ void fragment() {
         {
             bool held = PlanHeld && !_finished;
             _planLegend.Visible = held;
+            // Der Weghinweis in der zweiten Zeile gilt nur für den ersten Einsatz.
+            _planLegend.MaxLinesVisible = MissionId == "mission_01" ? -1 : 1;
             _planBand.Visible = held;
             PreviewPath.Clear();
             PreviewRisk = -1;

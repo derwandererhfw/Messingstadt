@@ -4,7 +4,7 @@ wait 40
 expect mission mission_02
 expect scene nordwall
 expect hud True
-expect telegram GEFANGENE IM ARRESTHOF STOP PFORTE AN DER GERICHTSGASSE STOP DANN ZUM WAGEN IN DER WALLGASSE STOP
+expect telegram GEFANGENE IM ARRESTHOF STOP PFORTE AN DER GERICHTSGASSE STOP DANN ZUM WAGEN IM KOHLENHOF STOP
 expect prisoners Anton Weiß:Zelle, Paul Roth:Zelle
 expect keys Türposten:1, Schließer:2
 calm
@@ -19,15 +19,16 @@ waitcontains prisoners Anton Weiß:folgt Otto
 expect telegram WEISS FREI STOP DER ZWEITE FEHLT NOCH STOP
 rclickdoor Zelle 2
 waitcontains prisoners Paul Roth:folgt Otto
-expect telegram BEIDE FREI STOP ZUM WAGEN IN DER WALLGASSE STOP SIE SIND LANGSAM STOP
-expect doors Pforte zur Gerichtsgasse, Zelle 1, Zelle 2
+expect telegram BEIDE FREI STOP ZUM WAGEN IM KOHLENHOF STOP SIE SIND LANGSAM STOP
+# Frische Kampagne ohne Blut: Totengräber, Witwe und Wirtin haben ihre Türen offen gelassen
+expect doors Pforte zur Gerichtsgasse, Zelle 1, Zelle 2, Pforte des Totengräbers, Hoftür der Witwe, Kellerluke der Kneipe
 # Rechtsklick auf einen Befreiten: Er wartet, beim zweiten Mal folgt er wieder
 rclickunit Anton Weiß
 expect prisoners Anton Weiß:wartet, Paul Roth:folgt Otto
 rclickunit Anton Weiß
 expect prisoners Anton Weiß:folgt Otto, Paul Roth:folgt Otto
-# Zum Wagen in der Wallgasse
-clickfield 1 18
+# Zum Wagen im Kohlenhof
+clickfield 28 23
 waitcontains telegram EINSTEIGEN
 waitfor state Won
 expect rating Unseen
