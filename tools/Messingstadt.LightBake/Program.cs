@@ -121,7 +121,8 @@ if (root.TryGetProperty("extras", out var extrasElement))
             window ? e.GetProperty("axis").GetInt32() : 0, window ? e.GetProperty("c").GetSingle() : 0f,
             window ? e.GetProperty("a0").GetSingle() : 0f, window ? e.GetProperty("a1").GetSingle() : 0f,
             window ? e.GetProperty("z0").GetSingle() : 0f, window ? e.GetProperty("z1").GetSingle() : 0f,
-            window ? e.GetProperty("bar").GetSingle() : 0f));
+            window ? e.GetProperty("bar").GetSingle() : 0f,
+            e.TryGetProperty("gloss", out var glossElement) ? glossElement.GetSingle() : 0f));
     }
 }
 var extraArray = extras.ToArray();
@@ -576,6 +577,12 @@ float[] Shade(Surface s, ref uint rng, float px, float py)
     foreach (var x in extraArray)
     {
         float e = ExtraAt(x, s.Pos, s.Normal, s.Box, ref rng);
+        if (x.Gloss > 0f && s.IsGround && e > 0f)
+        {
+            // Nasses Pflaster spiegelt auch die kleine Quelle zur Kamera, wie bei den Laternen.
+            var half = Vector3.Normalize(Vector3.Normalize(x.Pos - s.Pos) + viewDir);
+            e += e * x.Gloss * spec * MathF.Pow(MathF.Max(half.Z, 0f), shine);
+        }
         if (x.Group < 0)
         {
             direct += x.Color * e;
@@ -698,7 +705,7 @@ static float Next(ref uint rng)
     return rng / 4294967296f;
 }
 
-internal readonly record struct Extra(int Group, bool Window, Vector3 Pos, Vector3 Color, float Power, float Reach, int Axis, float C, float A0, float A1, float Z0, float Z1, float Bar);
+internal readonly record struct Extra(int Group, bool Window, Vector3 Pos, Vector3 Color, float Power, float Reach, int Axis, float C, float A0, float A1, float Z0, float Z1, float Bar, float Gloss);
 internal readonly record struct Light(Vector3 Pos, Vector3 Color, Vector3 Rules, float Power, int Layer, bool Hooded, float Scale, float Cut);
 
 internal readonly record struct Sprite(int Box, int Left, int Top, int W, int H, int Offset);

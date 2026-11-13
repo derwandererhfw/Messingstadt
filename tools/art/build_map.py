@@ -299,6 +299,11 @@ GATES = []  # Tore des Grundrisses, damit die Mauer daneben ihre Pfosten bekommt
 HELPERS = {}  # Helferfenster des Grundrisses: Name -> (x, y)
 
 
+def mat_fence(f):
+    """Oberkante des Bretterzauns: dunkles, nasses Holz in Bohlenbreite."""
+    return g._c("wood_d")[None, :] * (0.55 + 0.35 * R.hash01(np.floor(f.fx * 6.4), np.floor(f.fy * 6.4), 17))[:, None]
+
+
 def mat_post(f):
     return g._c("stone_l")[None, :] * (0.86 + 0.2 * R.noise(f.fx * 9, f.fy * 9 + f.z / 5, 21))[:, None]
 
@@ -438,6 +443,15 @@ def nordwall_building(b, s, things):
         if posts:
             plain = roof
             roof = lambda x0, y0, x1, y1, hh: plain(x0, y0, x1, y1, hh) + [R.block(*q, hh, hh + 7, mat_post, "post") for q in posts]  # noqa: E731
+    elif kind == "bretterzaun":
+        # Bretterzaun des Kohlenhofs: geteerte Bohlen, oben ein Abdeckbrett
+        left, right = planks(wl, h, "wood_d", "soot"), planks(wr, h, "wood_d", "soot")
+        d = g.draw_on(left)
+        for u in range(3, wl, 32):  # Pfosten und ein paar hellere, nachgesetzte Bohlen
+            d.rectangle((u, 2, u + 3, h), fill=g.C["soot"])
+            d.rectangle((u + 14 + (u * 7) % 9, 3, u + 17 + (u * 7) % 9, h - 6), fill=g.C["wood"])
+        d.shade((0, h - 5, wl, h), 0.7)
+        roof = lambda x0, y0, x1, y1, hh: [R.Prism(x0, y0, x1, y1, hh, [R.flat(hh + 1)], mat_fence, "flat")]  # noqa: E731
     elif kind == "huette":
         # Hütte des Totengräbers: Bretter, Teerpappe, ein kleines Fenster nach Süden, in dem die Kerze stehen kann
         left, right = planks(wl, h), planks(wr, h)
@@ -686,6 +700,47 @@ def arc_lamp(x, y, s, things, glows):
 
 
 LAMP_KINDS = {}  # (x, y) -> Art der Laterne, wenn sie nicht die übliche der Karte ist
+PICTURE_LIGHTS = []  # Lichtquellen nur fürs Bild: {x, y, z, kind}. Farbe und Stärke stehen im Lichtbaker, das Schleichlicht kennt sie nicht
+
+
+def storm_lantern(x, y, z, s, things):
+    """Sturmlaterne am Haken: kleines Petroleumlicht, das einen Wagen oder eine Ecke auffindbar macht. Nur Bild."""
+    PICTURE_LIGHTS.append({"x": x, "y": y, "z": z, "kind": "sturmlaterne"})
+
+    def draw():
+        k = s.res
+        sx, sy = s.to_screen(x, y, z)
+        sx, sy = int(sx), int(sy)
+        dr = ImageDraw.Draw(s.img)
+        dr.rectangle((sx - k, sy - 7 * k, sx + k - 1, sy - 5 * k), fill=g.C["iron"] + (255,))  # Haken und Deckel
+        dr.rectangle((sx - 2 * k, sy - 5 * k, sx + 2 * k - 1, sy - 4 * k), fill=g.C["black"] + (255,))
+        dr.rectangle((sx - 2 * k, sy - 4 * k, sx + 2 * k - 1, sy + k - 1), fill=(255, 232, 160, 255))  # Glas
+        dr.rectangle((sx - k, sy - 3 * k, sx + k - 1, sy), fill=(226, 170, 90, 255))
+        dr.rectangle((sx - 2 * k, sy + k, sx + 2 * k - 1, sy + 2 * k), fill=g.C["black"] + (255,))  # Tank
+    things.append(g.Thing(x - 0.04, y - 0.04, x + 0.04, y + 0.04, z - 3, z + 8, draw))
+    things[-1].kind = "glow"
+
+
+def coal_basket(x, y, s, things):
+    """Kohlenkorb: eiserner Korb auf drei Beinen, darin Glut. Wärmt den Hofwächter und wirft etwas rotes Licht. Nur Bild."""
+    PICTURE_LIGHTS.append({"x": x, "y": y, "z": 13, "kind": "kohlenkorb"})
+
+    def draw():
+        k = s.res
+        px, py = s.to_screen(x, y, 0)
+        px, py = int(px), int(py)
+        dr = ImageDraw.Draw(s.img)
+        for dx in (-4, 0, 4):  # Beine
+            dr.rectangle((px + dx * k, py - 6 * k, px + dx * k + k - 1, py), fill=g.C["black"] + (255,))
+        dr.rectangle((px - 5 * k, py - 14 * k, px + 5 * k - 1, py - 6 * k), fill=(150, 52, 24, 255))  # Glut hinter den Stäben
+        dr.rectangle((px - 4 * k, py - 15 * k, px + 4 * k - 1, py - 13 * k), fill=(226, 170, 90, 255))
+        dr.rectangle((px - 2 * k, py - 16 * k, px + k - 1, py - 15 * k), fill=(255, 232, 160, 255))
+        for dx in range(-5, 6, 2):  # Korbstäbe
+            dr.rectangle((px + dx * k, py - 14 * k, px + dx * k + max(1, k // 2) - 1, py - 6 * k), fill=g.C["black"] + (255,))
+        for v in (-14, -10, -6):
+            dr.rectangle((px - 5 * k, py + v * k, px + 5 * k - 1, py + v * k + max(1, k // 2) - 1), fill=g.C["iron"] + (255,))
+    things.append(g.Thing(x - 0.08, y - 0.08, x + 0.08, y + 0.08, 0, 16, draw))
+    things[-1].kind = "glow"
 
 
 def yard_things(yard, scene, s, things):
@@ -941,6 +996,7 @@ def build(scene, theme):
     HELPERS.clear()
     HELPERS.update({m["helper"]: (m["x"], m["y"]) for m in scene.get("marks", ()) if m["kind"] == "helferfenster"})
     LAMP_KINDS.clear()
+    PICTURE_LIGHTS.clear()
     for b in scene["buildings"] + scene["walls"]:
         nordwall_building(b, s, things)
     for gate in scene.get("gates", ()):
@@ -961,6 +1017,10 @@ def build(scene, theme):
         if kind == "fluchtwagen":
             laundry_van(prop["x"] - 0.4, prop["y"] - 0.7, s, things)
             things[-1].solid, things[-1].opaque = prop["solid"], prop["opaque"]
+            # Der Wagen ist das Ziel des Rückwegs und muss von weitem zu finden sein: eine Sturmlaterne an der Ostwand des Kastens,
+            # ein Kohlenkorb an der Zufahrt. Beides leuchtet nur im Bild.
+            storm_lantern(prop["x"] + 0.47, prop["y"] - 0.25, 27, s, things)
+            coal_basket(prop["x"] - 1.0, prop["y"] + 1.7, s, things)
         elif kind == "kiste" and "kohlenhaufen" in prop["id"]:
             post_thing(prop["x"], prop["y"], 12, s, things, paint_coal, kind="prop")
         elif kind == "kiste" and "faesser" in prop["id"]:
@@ -1024,6 +1084,7 @@ def export(scene, theme, s, things, assets):
     (assets / "manifest.json").write_text(json.dumps({"map": scene["id"], "size": size, "ox": s.ox, "oy": s.oy, "things": manifest, "backdrop": backdrop,
                                                       "perches": [list(p) for p in theme.get("perches", ())],
                                                       "lightKinds": [LAMP_KINDS.get((x, y), "") for x, y, _ in g.AMBIENT["lights"]],
+                                                      "pictureLights": list(PICTURE_LIGHTS),
                                                       "hd": {"res": g.HD, "ground": "hd/ground.png", "things": [n for t, n, _ in exported if t.hd]},
                                                       **g.AMBIENT}), encoding="utf-8")
     g.export_backdrop(assets, theme.get("backdrop_keep"), size)

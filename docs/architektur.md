@@ -94,6 +94,7 @@ Eingabe (Godot) -> Befehle -> World.Tick() -> Zustand -> Darstellung (Godot)
   jedem Tor, Tore aus `gates` (Blech, Holz, Gitter; im Manifest mit `door`, damit das Spiel das Blatt bei offener Tür ausblendet),
   Requisiten aus `props` (Baum, Grabkreuz, Mast, Brunnen, Kohlenhaufen), Bodenarten aus `streets` (`kies`, `erde`, Lehmhöfe).
   Helferfenster aus `marks` werden Kerzenfenster: in `panes.json` mit `helper`, dazu ein Lichtflicken der Art `kerze`.
+- **Bildlichter:** Kleine Quellen, die nur einen Ort auffindbar machen (Sturmlaterne am Fluchtwagen, Kohlenkorb im Kohlenhof), stehen im Manifest unter `pictureLights` (`x`, `y`, `z`, `kind`). Farbe, Stärke, Reichweite und Glanz auf nassem Pflaster stehen in `PICTURE_LIGHTS` im Lichtbaker. Sie leuchten nur im Bild, das Schleichlicht kennt sie nicht. Ihre Bilder haben die Art `glow`: kein Schatten, kein eigenes Leuchten in den Regeln.
   Laternen anderer Art als die der Karte stehen als `lightKinds` im Manifest (`bogen`: elektrisch, weiß, weit).
   Karten sind quadratisch und beliebig groß: Die Kantenlänge steht als `size` im Manifest, Lichtbake und Kulisse richten sich danach.
   Ab 21 Feldern schrumpft der Rand der Zeichenfläche, damit das feine Bodenbild höchstens 4096 Punkte breit wird (30 Felder: genau 4096).

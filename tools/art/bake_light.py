@@ -48,6 +48,12 @@ CARPET_MAX_SILL = 70  # Fenster, deren Unterkante höher liegt, werfen ihr Licht
 CARPET_DEPTH = 0.55  # so viele Felder hinter der Wand hängt die Lampe
 NEON_COLOR, NEON_POWER, NEON_REACH = (1.0, 0.16, 0.12), 2.6, 6.5
 WELD_COLOR, WELD_POWER, WELD_REACH = (0.62, 0.8, 1.0), 5.0, 5.5
+# Kleine Lichtquellen nur fürs Bild (Manifest "pictureLights"): Sie machen einen Ort auffindbar, das Schleichlicht kennt sie nicht.
+# gloss: wie stark das nasse Pflaster die Quelle zur Kamera spiegelt, als Vielfaches des üblichen Glanzes.
+PICTURE_LIGHTS = {
+    "sturmlaterne": dict(color=(1.0, 0.78, 0.46), power=1.5, reach=4.6, gloss=2.5),
+    "kohlenkorb": dict(color=(1.0, 0.42, 0.16), power=1.1, reach=3.6, gloss=2.5),
+}
 RAIL_GLOSS = 1.5  # Schienenköpfe sind blank: Sie werfen das Licht, das sie trifft, um diesen Faktor stärker zurück
 RAIL_GLOSS_CAP = 0.85  # aber nie über diesen Lichtwert hinaus: Eine Schiene leuchtet nicht heller als das Pflaster unter der Laterne
 MAP_RAILS = {"": ("x", (8.42, 8.58, 9.42, 9.58)), "nordwall": ("y", (10.8, 11.2))}
@@ -326,7 +332,7 @@ def main():
         boxes.append({"x0": x0, "y0": y0, "x1": x1, "y1": y1, "z0": t["z0"], "z1": z1, "albedo": albedo,
                       "rulesAlbedo": frozen["boxes"].get(key, albedo), "roof": t.get("roof", []),
                       # Kleinkram wirft im Bild Schatten, fürs Schleichlicht aber keinen. Durchbrochenes wie Fahrräder nie.
-                      "ghost": {"prop": 1, "open": 2}.get(t["kind"], 0)})
+                      "ghost": {"prop": 1, "open": 2, "glow": 2}.get(t["kind"], 0)})
         sprites.append({"name": Path(t["file"]).stem, "box": len(boxes) - 1, "left": t["px"], "top": t["py"], "kind": t["kind"], "thing": t})
         images.append(rgba)
 
@@ -427,7 +433,7 @@ def main():
     with open(WORK / "scene.bin", "wb") as f:
         for sprite, rgba in zip(sprites, images):
             # Lampengläser und Feuerluken sind eigene Lichtquellen, sie zählen nicht als Fenster.
-            allowed = sprite.get("kind", "") not in ("lamp", "boiler") and sprite["box"] >= 0
+            allowed = sprite.get("kind", "") not in ("lamp", "boiler", "glow") and sprite["box"] >= 0
             glow = sprite["lit"].copy()
             if allowed:
                 glow[is_emissive(rgba) & (sprite["ids"] == 0)] = 1
@@ -443,6 +449,10 @@ def main():
             extras.append({"type": "point", "group": len(groups), "color": NEON_COLOR, "power": NEON_POWER / count, "reach": NEON_REACH,
                            "pos": [thing["x0"] + (thing["x1"] - thing["x0"]) * f, thing["y1"] + 0.12, (thing["z0"] + thing["z1"]) / 2 / Z_SCALE]})
         groups.append({"kind": "neon", "panes": ids, "color": NEON_COLOR})
+    for light in manifest.get("pictureLights", ()):
+        look = PICTURE_LIGHTS[light["kind"]]
+        extras.append({"type": "point", "group": -1, "color": look["color"], "power": trial("PICTURE", look["power"]), "reach": look["reach"],
+                       "gloss": look["gloss"], "pos": [light["x"], light["y"], light["z"] / Z_SCALE]})
     rails = MAP_RAILS.get(args.get("map", ""))
     rails = rails and (rails[0], rails[1], manifest["ox"], manifest["oy"])
     lamp = dict(MAP_LAMPS.get(args.get("map", ""), MAP_LAMPS[""]))
