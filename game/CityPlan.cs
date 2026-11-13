@@ -148,6 +148,10 @@ namespace Messingstadt
         private int _selected;
         private bool _fromResult;
         private bool _opening;
+        private CitySign _sign = null!;
+
+        /// <summary>Für den Prüflauf: wie viele Fenster im Zeichen der Stadt brennen.</summary>
+        public string SignLights => _sign.Lights;
 
         /// <summary>Für den Prüflauf: gewähltes Viertel und wem jedes gehört.</summary>
         public string State => !Visible || _districts.Count == 0 ? ""
@@ -179,6 +183,10 @@ namespace Messingstadt
             var title = PaperUi.Text(Heading, 14, PaperUi.StampRed, PaperUi.Serif);
             title.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             head.AddChild(title);
+            // Wie die Stadt zum Trupp steht: ein Zeichen, keine Zahl, kein Text.
+            _sign = new CitySign { SizeFlagsVertical = SizeFlags.ShrinkEnd };
+            head.AddThemeConstantOverride("separation", 16);
+            head.AddChild(_sign);
             head.AddChild(PaperUi.Text(Subline, 18, PaperUi.Ink, PaperUi.Serif));
             body.AddChild(head);
             body.AddChild(Rule(2, PaperUi.Ink));
@@ -237,6 +245,7 @@ namespace Messingstadt
             _fromResult = fromResult;
             _districts = Game.Plan.Read();
             _back.Visible = fromResult;
+            _sign.Stance = CityMood.Of(Game);
             BuildList();
             Visible = true;
             _plan.Show(_districts);

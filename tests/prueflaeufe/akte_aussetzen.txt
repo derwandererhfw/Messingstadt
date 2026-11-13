@@ -13,7 +13,7 @@ wait 20
 expect screen
 expect hud True
 expect resting Otto: angeschlagen, setzt aus; Hanna: Krankenstube, setzt aus
-expect helpline Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen   Q halten: Lageplan   1-2 Leertaste   WASD F P M   Esc: Menü
+expect helpline Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen (mit Greta halber Preis)   Q halten: Lageplan   1-2 Leertaste   WASD F P M   Esc: Menü
 # In der Spalte stehen sie durchgestrichen in den freien Agentenfeldern
 seetext OTTO
 seetext angeschlagen,\nsetzt aus

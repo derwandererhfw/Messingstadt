@@ -729,6 +729,7 @@ void fragment() {
             ["citymap"] = _cityMap.State,
             ["mapsource"] = _cityMap.MapSource,
             ["mapopen"] = _cityMap.Selectable,
+            ["citysign"] = _cityMap.SignLights,
             ["sounds"] = _sound.PlayCount.ToString(),
             ["menusounds"] = _sound.MenuPlayCount.ToString(),
             ["menusound"] = _sound.LastMenuSound,
@@ -1536,7 +1537,8 @@ void fragment() {
             {
                 CustomMinimumSize = new Vector2(680, 0), Visible = false,
                 AnchorLeft = 0.5f, AnchorRight = 0.5f, AnchorTop = 0.5f, AnchorBottom = 0.5f,
-                OffsetLeft = -340f, OffsetRight = 340f,
+                // Mitte der Spielfläche, nicht des Bildes: Ein breites Blatt darf die Spalte links nicht verdecken.
+                OffsetLeft = -340f + Hud.ColumnWidth / 2f, OffsetRight = 340f + Hud.ColumnWidth / 2f,
                 GrowHorizontal = Control.GrowDirection.Both, GrowVertical = Control.GrowDirection.Both,
             };
             _panel.AddThemeStyleboxOverride("panel", PaperUi.PaperBox(PaperUi.PaperColor));

@@ -3,6 +3,8 @@
 wait 20
 click Neues Spiel
 wait 10
+# Das Zeichen der Stadt im Kopf des Plans: Ohne Blut brennen alle Fenster
+expect citysign 34/34
 click Einsatz annehmen
 click Zum Einsatz
 wait 20
@@ -16,7 +18,8 @@ key Key2
 wait 3
 expect trait
 # Am Mauszeiger steht der Name der Wache vorn
-expect guardline Wache 1, Wachmann, käuflich für 100, Greta ist dabei
+# (trägt die Mission den Personennamen im Feld person, steht er davor)
+expect guardline Wachmann, käuflich für 100, Greta ist dabei
 # Vor dem ersten Toten ist das Buch leer
 key Escape
 expect screen Pausenmappe
@@ -67,3 +70,9 @@ seetext DIE WACHE   1
 seetext Wache 1
 seetext Kesselviertel
 seetext GEFALLEN
+# Zurück auf den Plan: Nach dem Toten brennen nur noch wenige Fenster
+key Escape
+key Escape
+click Nächster Einsatz
+wait 5
+expect citysign 9/34
