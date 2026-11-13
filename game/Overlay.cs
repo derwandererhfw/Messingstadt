@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Collections.Generic;
 using Godot;
@@ -79,7 +80,7 @@ namespace Messingstadt
                     labels.Add(p);
                     if (Game.WaitingIds.Contains(u.Id))
                     {
-                        DrawString(ThemeDB.FallbackFont, p + new Vector2(-14, -58), $"wartet {Game.WaitSeconds} s", HorizontalAlignment.Left, -1, 8, Colors.White);
+                        DrawFieldText(ThemeDB.FallbackFont, p + new Vector2(-14, -58), $"wartet {Game.WaitSeconds} s", 8, Colors.White);
                     }
                     // Der Schatten hält die Nummer auch im Laternenlicht lesbar.
                     string number = (u.Id + 1).ToString();
@@ -195,16 +196,78 @@ namespace Messingstadt
         /// <summary>Unter dem Mauszeiger steht, was das für ein Gegner ist.</summary>
         private void DrawHoveredGuard()
         {
+            GuardLineLeft = GuardLineRight = -1f;
             if (Game.HoveredGuard() is not { } guard)
             {
                 return;
             }
             string text = Game.GuardLine(guard);
             var font = PaperUi.Typewriter;
+            // Breiter als das Spielfeld: an einem Komma in zwei Zeilen teilen.
+            string[] rows = { text };
             float width = font.GetStringSize(text, HorizontalAlignment.Left, -1, 9).X;
-            var at = Game.UnitPos(guard) + new Vector2(-width / 2f, 14f);
-            DrawStringOutline(font, at, text, HorizontalAlignment.Left, -1, 9, 3, new Color(0f, 0f, 0f, 0.85f));
-            DrawString(font, at, text, HorizontalAlignment.Left, -1, 9, new Color(1f, 0.85f, 0.6f));
+            if (width > FieldRoom && text.Contains(", "))
+            {
+                int cut = text.LastIndexOf(", ", Math.Max(2, text.Length / 2), StringComparison.Ordinal);
+                cut = cut > 0 ? cut : text.IndexOf(", ", StringComparison.Ordinal);
+                rows = new[] { text[..(cut + 1)], text[(cut + 2)..] };
+                width = Math.Max(font.GetStringSize(rows[0], HorizontalAlignment.Left, -1, 9).X, font.GetStringSize(rows[1], HorizontalAlignment.Left, -1, 9).X);
+            }
+            float line = font.GetHeight(9);
+            var at = KeepInField(Game.UnitPos(guard) + new Vector2(-width / 2f, 14f), width, rows.Length * line);
+            GuardLineLeft = (GetCanvasTransform() * at).X;
+            GuardLineRight = (GetCanvasTransform() * (at + new Vector2(width, 0f))).X;
+            for (int i = 0; i < rows.Length; i++)
+            {
+                var rowAt = at + new Vector2(0f, i * line);
+                DrawStringOutline(font, rowAt, rows[i], HorizontalAlignment.Left, -1, 9, 3, new Color(0f, 0f, 0f, 0.85f));
+                DrawString(font, rowAt, rows[i], HorizontalAlignment.Left, -1, 9, new Color(1f, 0.85f, 0.6f));
+            }
+        }
+
+        // Abstand der Einblendungen zu Spalte, Rand, Telegramm und Hilfezeile, in Bildpunkten der Oberfläche.
+        private const float FieldMargin = 8f, FieldTop = 70f, FieldBottom = 48f;
+
+        /// <summary>Für den Prüflauf: linker und rechter Rand der Zeile zur Wache, in Bildpunkten der Oberfläche. -1 ohne Zeile.</summary>
+        public float GuardLineLeft { get; private set; } = -1f;
+        public float GuardLineRight { get; private set; } = -1f;
+
+        // Sichtbares Spielfeld in Weltpunkten: rechts der Spalte, unter dem Telegramm, über der Hilfezeile.
+        private Rect2 Field
+        {
+            get
+            {
+                var view = GetCanvasTransform().AffineInverse() * GetViewportRect();
+                float scale = view.Size.X / GetViewportRect().Size.X;
+                var from = view.Position + new Vector2(Game.HudColumn + FieldMargin, FieldTop) * scale;
+                var to = view.End - new Vector2(FieldMargin, FieldBottom) * scale;
+                return new Rect2(from, to - from);
+            }
+        }
+
+        private float FieldRoom => Field.Size.X;
+
+        /// <summary>
+        /// Hält eine Einblendung im Spielfeld: nie unter der Spalte links, nie über den rechten Rand, nicht unter Telegramm und Hilfezeile.
+        /// at ist die Grundlinie der ersten Zeile, height die Höhe aller Zeilen.
+        /// </summary>
+        private Vector2 KeepInField(Vector2 at, float width, float height)
+        {
+            var field = Field;
+            at.X = Mathf.Clamp(at.X, field.Position.X, Mathf.Max(field.Position.X, field.End.X - width));
+            at.Y = Mathf.Clamp(at.Y, field.Position.Y + height, Mathf.Max(field.Position.Y + height, field.End.Y));
+            return at;
+        }
+
+        /// <summary>Kurzer Text an einer Stelle der Welt, im Spielfeld gehalten.</summary>
+        private void DrawFieldText(Font font, Vector2 at, string text, int size, Color color, bool shadow = false)
+        {
+            at = KeepInField(at, font.GetStringSize(text, HorizontalAlignment.Left, -1, size).X, font.GetHeight(size));
+            if (shadow)
+            {
+                DrawString(font, at + new Vector2(1, 1), text, HorizontalAlignment.Left, -1, size, Colors.Black);
+            }
+            DrawString(font, at, text, HorizontalAlignment.Left, -1, size, color);
         }
 
         /// <summary>Zeigt im Lageplan den Weg zum Mauszeiger: grün bis zum ersten Feld, auf dem man bemerkt würde.</summary>
@@ -219,8 +282,7 @@ namespace Messingstadt
             if (Game.PreviewText.Length > 0)
             {
                 var at = GetGlobalMousePosition() + new Vector2(10, -6);
-                DrawString(ThemeDB.FallbackFont, at + new Vector2(1, 1), Game.PreviewText, HorizontalAlignment.Left, -1, 9, Colors.Black);
-                DrawString(ThemeDB.FallbackFont, at, Game.PreviewText, HorizontalAlignment.Left, -1, 9, Colors.White);
+                DrawFieldText(ThemeDB.FallbackFont, at, Game.PreviewText, 9, Colors.White, true);
             }
         }
 
@@ -239,7 +301,7 @@ namespace Messingstadt
                     // Nur an der Tür, hinter der die Beute wirklich liegt.
                     if (w.HasLoot && !w.LootTaken && door.Tiles.Contains((w.LootX / World.TileUnits, w.LootY / World.TileUnits)))
                     {
-                        DrawString(ThemeDB.FallbackFont, p + new Vector2(-16, -8), $"{w.LootName} drinnen", HorizontalAlignment.Left, -1, 8, green);
+                        DrawFieldText(ThemeDB.FallbackFont, p + new Vector2(-16, -8), $"{w.LootName} drinnen", 8, green);
                     }
                     continue;
                 }
@@ -251,7 +313,11 @@ namespace Messingstadt
                 var inmate = w.Prisoners.FirstOrDefault(u => u.Alive && u.Captive && u.CellDoor == index);
                 if (inmate != null)
                 {
-                    DrawString(ThemeDB.FallbackFont, p + new Vector2(8, 4), w.PrisonerShort(inmate), HorizontalAlignment.Left, -1, 8, brass);
+                    // Passt der Name rechts vom Schloss nicht mehr ins Spielfeld, steht er links davon.
+                    string who = w.PrisonerShort(inmate);
+                    float wide = ThemeDB.FallbackFont.GetStringSize(who, HorizontalAlignment.Left, -1, 8).X;
+                    bool fits = p.X + 8f + wide <= Field.End.X;
+                    DrawFieldText(ThemeDB.FallbackFont, p + new Vector2(fits ? 8f : -8f - wide, 4), who, 8, brass);
                 }
                 if (door.Progress > 0)
                 {
