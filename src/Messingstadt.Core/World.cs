@@ -250,7 +250,11 @@ namespace Messingstadt.Core
             _reinforcements = mission.Reinforcements;
             Money = mission.Money;
             Press = mission.Headlines;
-            _residents.AddRange(mission.Residents.FindAll(r => !mission.Helpers.Contains(r.Id)));
+            Stance = mission.Stance;
+            if (Stance != CityStance.Helps)
+            {
+                _residents.AddRange(mission.Residents);
+            }
             foreach (var d in mission.Doors)
             {
                 var door = new Door { Name = d.Name, Helper = d.Helper };

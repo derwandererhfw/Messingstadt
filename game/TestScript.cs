@@ -33,6 +33,7 @@ namespace Messingstadt
         private int _waitTick;
         private bool _fighting;
         private int _fightLeft;
+        private int _fightUntil;
 
         public Main Game = null!;
         public string FilePath = "";
@@ -63,7 +64,13 @@ namespace Messingstadt
                 var guards = world.Units.Where(u => u.Faction == Faction.Guard && u.Alive && !u.Bribed
                     && squad.Exists(a => world.Map.FindPath(a.TileX, a.TileY, u.TileX, u.TileY) != null)).ToList();
                 bool over = world.State != MissionState.Running || squad.Count == 0 || (guards.Count == 0 && world.TicksUntilReinforcement < 0);
-                if (over || --_fightLeft <= 0)
+                if (!over && _fightUntil > 0 && world.Tick >= _fightUntil)
+                {
+                    // Gefecht bis zu einem Takt: Der Lauf prüft danach selbst, wie es steht.
+                    _fighting = false;
+                    GD.Print($"       Gefecht bis Takt {_fightUntil}: Wachen {guards.Count}, Agenten {squad.Count}");
+                }
+                else if (over || --_fightLeft <= 0)
                 {
                     _fighting = false;
                     Check("fight", world.State == MissionState.Running && guards.Count == 0, $"Wachen {guards.Count}, Agenten {squad.Count}, {world.State}");
@@ -242,7 +249,8 @@ namespace Messingstadt
                     }
                     break;
                 case "fight":
-                    (_fighting, _fightLeft) = (true, 2 * MaxWaitFrames);
+                    // Ohne Zahl bis keine Wache mehr steht, mit Zahl bis zu diesem Takt der Spielwelt.
+                    (_fighting, _fightLeft, _fightUntil) = (true, 2 * MaxWaitFrames, arg.Length > 0 ? int.Parse(arg) : 0);
                     break;
                 case "waittick":
                     // Bis zu einem Takt der Spielwelt warten. Im Prüflauf ist die Spielzeit fest, der Ablauf also jedes Mal derselbe.

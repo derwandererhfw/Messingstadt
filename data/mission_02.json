@@ -101,6 +101,11 @@
       "Bote": "Ich hab keinen gesehen. Krieg ich noch einen Groschen?"
     }
   },
+  "residents": [
+    { "id": "gerichtsdiener", "x": 3.0, "y": 9.5 },
+    { "id": "frau_des_wachmanns", "x": 19.0, "y": 18.2 },
+    { "id": "kasernenkoch", "x": 17.0, "y": 8.3 }
+  ],
   "lamps": [[2.5, 10.5], [10.5, 10.5], [16.5, 10.5], [11.5, 10.1], [10.5, 6.2]],
   "agents": [
     { "name": "Greta", "role": "Truppführerin", "skill": "truppfuehrerin", "sprite": "Agent", "x": 9.5, "y": 29.5, "legs": 2, "heart": 2 },

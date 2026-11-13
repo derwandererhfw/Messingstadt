@@ -244,6 +244,16 @@ Der Totschläger schlägt eine ahnungslose Wache nieder. Sie liegt, lebt und ste
 
 Eine Tür mit `helper` in der Mission steht zu Beginn offen, wenn der Bewohner hilft. Ob er hilft, entscheidet `Campaign.HouseHelps(helper, mission)`, `Campaign.Prepare` trägt die Helfer in `MissionData.Helpers` ein. `openAtSupport` verlangt zusätzlich einen Rückhalt und ist bisher überall 0. Sonst braucht die Tür Schlosser, Dietrich oder Schlüssel wie jede andere. In Einsatz 2: Pforte des Totengräbers, Hoftür der Witwe, Kellerluke der Kneipe.
 
+Bewohner, die nicht helfen, stehen als `residents` in der Mission (Kennung und Feld). Ob sie rufen, hängt an der Haltung der Stadt, `Campaign.Prepare` trägt `Campaign.Stance` als `MissionData.Stance` ein:
+
+| Haltung | Blutschuld | Bewohner |
+|---|---|---|
+| Stadt hilft | 0 bis 1 | Niemand ruft, auch wer nicht hilft, schaut weg. |
+| Stadt schweigt | 2 bis 3 | Wer jemanden vom Trupp oder einen Befreiten auf 2,5 Felder mit freier Sicht sieht, ruft einmal. Die nächste ahnungslose Wache in 9 Feldern Hörweite geht an die Stelle und sieht nach. |
+| Stadt gegen den Trupp | 4 bis 6 | Wie zuvor, aber die zwei nächsten Wachen gehen. |
+
+Jeder Bewohner ruft höchstens einmal je Einsatz. Ein Ruf macht den Einsatz bemerkt, nicht laut. Gekaufte Wachen, Hunde und Wachen, die schon suchen oder kämpfen, gehen nicht. Ist keine Wache in Hörweite, verhallt der Ruf. Für Bild und Ton steht jeder Ruf in `World.ResidentCalls` (Takt, Kennung, Wache oder -1). In Einsatz 2: Gerichtsdiener am Portal des Amtsgerichts, Frau des Wachmanns am Osthof, Kasernenkoch an der Küchentür. Ohne Kampagne, also auch im Messwerkzeug, hilft die Stadt. Die Rückwege sind mit rufenden Bewohnern noch nicht gemessen.
+
 #### Der lange Rückweg, Messung auf 30 × 30
 
 Gemessen mit `--mission=mission_02 --wege`, je 300 Läufe, Kasse 600. 15 Gegner statt 10, der Wagen steht im Kohlenhof. Die Wegsuche bricht Gleichstände nach Feldnummern, die an der Kartenbreite hängen: Der Kern ist Feld für Feld gleich, die Figuren nehmen aber zwischen gleich langen Wegen andere Felder, deshalb ist alles neu gemessen.

@@ -58,14 +58,21 @@ namespace Messingstadt.Core
         /// <summary>So weit hört eine Wache den Ruf eines Bewohners.</summary>
         public const int ResidentHeardRange = 9 * TileUnits;
 
-        /// <summary>Rufe der Bewohner: wann, wer und welche Wache nachsehen geht (-1, wenn keine in Hörweite war). Für Darstellung und Ton.</summary>
+        /// <summary>Haltung der Stadt in diesem Einsatz, aus den Missionsdaten.</summary>
+        public CityStance Stance { get; }
+
+        /// <summary>
+        /// Rufe der Bewohner: wann, wer und welche Wache nachsehen geht (-1, wenn keine in Hörweite war). Für Darstellung und Ton.
+        /// Steht die Stadt gegen den Trupp, gehen zwei Wachen, dann stehen zwei Einträge mit demselben Takt in der Liste.
+        /// </summary>
         public List<(int Tick, string Resident, int GuardId)> ResidentCalls { get; } = new();
 
         private readonly List<ResidentData> _residents = new();
 
         /// <summary>
-        /// Ein Bewohner, der nicht hilft, ruft einmal, wenn ein Agent oder Befreiter nah an ihm vorbeikommt.
-        /// Die nächste ahnungslose Wache in Hörweite geht an die Stelle und sieht nach. Der Einsatz gilt damit als bemerkt, nicht als laut.
+        /// Ein Bewohner, der nicht hilft, ruft einmal, wenn ein Agent oder Befreiter nah an ihm vorbeikommt. Hilft die Stadt, ruft niemand.
+        /// Schweigt sie, geht die nächste ahnungslose Wache in Hörweite an die Stelle und sieht nach, steht sie gegen den Trupp, gehen zwei.
+        /// Der Einsatz gilt damit als bemerkt, nicht als laut.
         /// </summary>
         private void ResidentsWatch()
         {
@@ -80,21 +87,32 @@ namespace Messingstadt.Core
                     continue;
                 }
                 _residents.RemoveAt(i);
-                Unit? nearest = null;
-                foreach (var g in Units)
+                _everNoticed = true;
+                int sent = 0;
+                for (int n = Stance == CityStance.Against ? 2 : 1; n > 0; n--)
                 {
-                    if (g.Alive && g.Faction == Faction.Guard && !g.Bribed && !g.Type.Bites && g.GuardState == GuardState.Patrol
-                        && DistanceTo(g, rx, ry) <= ResidentHeardRange && (nearest == null || DistanceTo(g, rx, ry) < DistanceTo(nearest, rx, ry)))
+                    Unit? nearest = null;
+                    foreach (var g in Units)
                     {
-                        nearest = g;
+                        if (g.Alive && g.Faction == Faction.Guard && !g.Bribed && !g.Type.Bites && g.GuardState == GuardState.Patrol
+                            && DistanceTo(g, rx, ry) <= ResidentHeardRange && (nearest == null || DistanceTo(g, rx, ry) < DistanceTo(nearest, rx, ry)))
+                        {
+                            nearest = g;
+                        }
                     }
-                }
-                ResidentCalls.Add((Tick, r.Id, nearest?.Id ?? -1));
-                if (nearest != null)
-                {
+                    if (nearest == null)
+                    {
+                        break;
+                    }
+                    ResidentCalls.Add((Tick, r.Id, nearest.Id));
                     nearest.LastKnownX = seen.X;
                     nearest.LastKnownY = seen.Y;
                     StartInvestigating(nearest);
+                    sent++;
+                }
+                if (sent == 0)
+                {
+                    ResidentCalls.Add((Tick, r.Id, -1));
                 }
             }
         }

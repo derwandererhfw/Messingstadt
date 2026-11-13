@@ -130,12 +130,13 @@ namespace Messingstadt.Core
     }
 
     /// <summary>
-    /// Ein Bewohner an Fenster oder Tür, der dem Trupp nicht hilft. Sieht er jemanden vom Trupp nah bei sich, ruft er einmal,
-    /// und die nächste Wache in Hörweite geht nachsehen. Steht seine Kennung in MissionData.Helpers, schweigt er.
+    /// Ein Bewohner an Fenster oder Tür, der dem Trupp nicht hilft. Ob er ruft, hängt an der Haltung der Stadt (MissionData.Stance):
+    /// Hilft die Stadt, schaut auch er weg. Schweigt sie, ruft er einmal, wenn er jemanden vom Trupp nah bei sich sieht, und die
+    /// nächste Wache in Hörweite geht nachsehen. Steht die Stadt gegen den Trupp, gehen die zwei nächsten.
     /// </summary>
     public sealed class ResidentData
     {
-        /// <summary>Kennung, etwa "gerichtsdiener". Die Kampagne entscheidet darüber mit Campaign.HouseHelps.</summary>
+        /// <summary>Kennung, etwa "gerichtsdiener". Für Darstellung und Ton.</summary>
         public string Id { get; set; } = "";
         public double X { get; set; }
         public double Y { get; set; }
@@ -290,10 +291,13 @@ namespace Messingstadt.Core
         /// <summary>Rückhalt in der Stadt, 0 bis 5. Die Kampagne trägt ihn vor dem Einsatz ein, er öffnet die Türen der Stadt.</summary>
         public int Support { get; set; }
 
-        /// <summary>Bewohner, die diesmal helfen: Sie lassen ihre Tür offen oder schweigen. Die Kampagne trägt sie vor dem Einsatz ein.</summary>
+        /// <summary>Haltung der Stadt aus der Blutschuld (Campaign.Stance). Die Kampagne trägt sie vor dem Einsatz ein, ohne Kampagne hilft die Stadt.</summary>
+        public CityStance Stance { get; set; } = CityStance.Helps;
+
+        /// <summary>Bewohner, die diesmal helfen: Sie lassen ihre Tür offen. Die Kampagne trägt sie vor dem Einsatz ein.</summary>
         public List<string> Helpers { get; set; } = new();
 
-        /// <summary>Bewohner, die rufen, wenn sie den Trupp sehen, außer sie stehen in Helpers.</summary>
+        /// <summary>Bewohner, die rufen, wenn sie den Trupp sehen, sobald die Stadt nicht mehr hilft (Stance).</summary>
         public List<ResidentData> Residents { get; set; } = new();
 
         /// <summary>Standorte der Straßenlaternen in Feldern. Nur für die Darstellung.</summary>
