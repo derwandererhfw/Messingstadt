@@ -220,19 +220,26 @@ namespace Messingstadt.Core.Tests
         public void BloodDebtFollowsTheApprovedRule()
         {
             Assert.Equal(new[] { 0, 0, 0, 0, 0, 0 }, Debts(0, 0, 0, 0, 0, 0));
+            // Einmal laut, dann leise: nach zwei leisen Nächten getilgt.
             Assert.Equal(new[] { 3, 1, 0, 0, 0, 0 }, Debts(5, 0, 0, 0, 0, 0));
             Assert.Equal(new[] { 3, 1, 4, 2, 5, 3 }, Debts(5, 0, 5, 0, 5, 0));
+            // Vier oder mehr je Nacht: schlimmer als 6 wird es nicht.
+            Assert.Equal(new[] { 3, 6, 6, 6, 6, 6 }, Debts(4, 4, 4, 4, 4, 4));
             Assert.Equal(new[] { 3, 6, 6, 6, 6, 6 }, Debts(5, 5, 5, 5, 5, 5));
-            Assert.Equal(new[] { 2, 4, 6, 6 }, Debts(2, 2, 2, 2));
         }
 
         [Fact]
-        public void ASingleDeadGuardPerNightNeverTurnsTheCityAway()
+        public void TheFirstDeadGuardOfANightIsFreeEveryFurtherOneCounts()
         {
             Assert.Equal(new[] { 0, 0, 0, 0, 0, 0 }, Debts(1, 1, 1, 1, 1, 1));
+            // Zwei je Nacht sind eine Gewohnheit: gegen den Trupp erst ab der vierten Nacht.
+            Assert.Equal(new[] { 1, 2, 3, 4, 5, 6 }, Debts(2, 2, 2, 2, 2, 2));
+            Assert.Equal(new[] { 2, 4, 6, 6 }, Debts(3, 3, 3, 3));
             // Nach einer lauten Nacht tilgt ein einzelner Toter nichts, erhöht aber auch nichts.
             Assert.Equal(new[] { 3, 3, 3, 1 }, Debts(5, 1, 1, 0));
-            Assert.All(Debts(1, 1, 1, 1, 1, 1), d => Assert.NotEqual(CityStance.Against, Campaign.StanceFor(d)));
+            // Keine einzelne Nacht kippt alles: aus dem Stand höchstens "schweigt".
+            Assert.Equal(CityStance.Silent, Campaign.StanceFor(Campaign.DebtAfter(0, 50)));
+            Assert.All(Debts(1, 1, 1, 1, 1, 1), d => Assert.Equal(CityStance.Helps, Campaign.StanceFor(d)));
         }
 
         [Theory]
@@ -309,7 +316,7 @@ namespace Messingstadt.Core.Tests
         public void WhenTheCityIsSilentOnlyTheLandladyHelpsAndOnlyWhileGretaLives()
         {
             var c = new Campaign();
-            Night(c, 3);
+            Night(c, 4);
             Assert.Equal(CityStance.Silent, c.Stance);
             Assert.False(c.HouseHelps(Campaign.HelperWidow));
             Assert.False(c.HouseHelps(Campaign.HelperGravedigger));
@@ -406,7 +413,7 @@ namespace Messingstadt.Core.Tests
             }
             c.Finish(Win(w));
             Assert.Equal(new[] { "Wachmann", "Wachmann (2)", "Wachmann (3)" }, c.Dead(LedgerSide.Guard).Select(e => e.Name));
-            Assert.Equal(3, c.BloodDebt);
+            Assert.Equal(2, c.BloodDebt);
         }
 
         [Fact]
@@ -415,9 +422,9 @@ namespace Messingstadt.Core.Tests
             const string old = "{\"Version\":5,\"Nights\":3,\"Ledger\":[{\"Name\":\"A\",\"Side\":1,\"Night\":1},{\"Name\":\"B\",\"Side\":1,\"Night\":1},{\"Name\":\"C\",\"Side\":1,\"Night\":1},{\"Name\":\"Otto\",\"Side\":0,\"Night\":2},{\"Name\":\"D\",\"Side\":1,\"Night\":3},{\"Name\":\"E\",\"Side\":1,\"Night\":3}]}";
             var c = Campaign.Load(old, out var status);
             Assert.Equal(SaveStatus.Migrated, status);
-            // Nacht 1: drei Tote, 3. Nacht 2: keine tote Wache, 1. Nacht 3: zwei Tote, 3.
-            Assert.Equal(3, c.BloodDebt);
-            Assert.Equal(3, Campaign.Load(c.ToJson(), out _).BloodDebt);
+            // Nacht 1: drei Tote, 2. Nacht 2: keine tote Wache, 0. Nacht 3: zwei Tote, 1.
+            Assert.Equal(1, c.BloodDebt);
+            Assert.Equal(1, Campaign.Load(c.ToJson(), out _).BloodDebt);
             Assert.Equal(Campaign.MaxBloodDebt, Campaign.Load("{\"Version\":6,\"BloodDebt\":40}", out _).BloodDebt);
             Assert.Equal(0, Campaign.Load("{\"Version\":6,\"BloodDebt\":-4}", out _).BloodDebt);
         }
