@@ -2171,7 +2171,7 @@ void fragment() {
         /// </summary>
         public string BribeWord(Unit guard)
         {
-            int full = guard.Type.BribeCost;
+            int full = World.BribePrice(guard);
             var payer = World.Units.Find(u => u.Alive && u.Faction == Faction.Agent && u.Skill == World.SkillBookkeeper);
             var leader = World.Units.Find(u => u.Alive && u.Faction == Faction.Agent && u.Skill == World.SkillLeader);
             if (payer == null || leader == null || World.LeaderDiscountPercent <= 0)
@@ -2179,7 +2179,7 @@ void fragment() {
                 return $"käuflich für {full}";
             }
             int now = World.BribePrice(guard, payer);
-            int with = full * (100 - World.LeaderDiscountPercent) / 100;
+            int with = World.BribePriceWithLeader(guard);
             return now < full ? $"käuflich für {now}, {leader.Name} ist dabei"
                 : World.LeaderBacksLater ? $"käuflich für {full}, mit {leader.Name} in der Nähe {with}" : $"käuflich für {full}";
         }

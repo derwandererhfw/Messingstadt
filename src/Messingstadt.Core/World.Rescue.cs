@@ -176,7 +176,7 @@ namespace Messingstadt.Core
         private bool HasKey(Unit u, int doorId) => u.Keys.Contains(doorId);
 
         /// <summary>Was das Bestechen dieser Wache kostet. Hier säße ein Nachlass, etwa wenn eine bestimmte Agentin dabei ist.</summary>
-        public int BribePrice(Unit guard) => guard.Type.BribeCost;
+        public int BribePrice(Unit guard) => BribePriceWith(guard, 0);
 
         /// <summary>Rufweite der Truppführerin: So nah am Bestechenden gilt sie als dabei.</summary>
         public const int LeaderRange = 5 * TileUnits;
@@ -212,12 +212,12 @@ namespace Messingstadt.Core
 
         /// <summary>Was diese Wache jetzt von diesem Agenten nimmt, mit dem Nachlass der Truppführerin, wenn sie dabei ist.</summary>
         public int BribePrice(Unit guard, Unit briber) =>
-            LeaderBacks(briber, guard) ? guard.Type.BribeCost * (100 - LeaderDiscountPercent) / 100 : guard.Type.BribeCost;
+            BribePriceWith(guard, LeaderBacks(briber, guard) ? LeaderDiscountPercent : 0);
 
         private int PayBribe(Unit guard, Unit briber)
         {
             int price = BribePrice(guard, briber);
-            LeaderDiscountsUsed += price < guard.Type.BribeCost ? 1 : 0;
+            LeaderDiscountsUsed += price < BribePrice(guard) ? 1 : 0;
             return price;
         }
 

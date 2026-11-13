@@ -47,6 +47,12 @@ namespace Messingstadt.Core
         /// <summary>Name des Menschen hinter dem Posten, etwa "Krüger". Name bleibt der Posten, an dem Schlüssel und Hundeführer hängen.</summary>
         public string Person { get; set; } = "";
 
+        /// <summary>Geht nur mit, wenn im letzten Einsatz Wachen starben: der zweite Mann einer Streife. Höchstens World.MaxBloodPartners.</summary>
+        public bool AfterBlood { get; set; }
+
+        /// <summary>Schaut weg, wenn im letzten Einsatz niemand starb. Höchstens World.MaxAtEase.</summary>
+        public bool AtEase { get; set; }
+
         /// <summary>Namen der Türen, zu denen diese Wache den Schlüssel trägt. Wer sie besticht, bekommt ihn, wer sie niederschlägt, hebt ihn auf.</summary>
         public List<string> Keys { get; set; } = new();
 
@@ -97,6 +103,21 @@ namespace Messingstadt.Core
         public int Interval { get; set; }
         public int Count { get; set; }
 
+        /// <summary>Posten des Telefonisten. Ohne Angabe gibt es kein Telefon, die Verstärkung kommt nach FirstDelay in voller Zahl.</summary>
+        public string Phone { get; set; } = "";
+
+        /// <summary>Sekunden vom fertigen Anruf bis zum ersten Mann.</summary>
+        public int PhoneDelay { get; set; } = 1;
+
+        /// <summary>Sekunden vom Alarm bis zum ersten Mann, wenn niemand anrufen kann. 0 heißt doppelt so lange wie FirstDelay.</summary>
+        public int LateDelay { get; set; }
+
+        /// <summary>So viele kommen ohne Anruf. 0 heißt die Hälfte, mindestens einer.</summary>
+        public int LateCount { get; set; }
+
+        /// <summary>Betten in der Kaserne: Mehr rücken nie an, auch nicht mit Fahndung. 0 heißt keine Grenze.</summary>
+        public int Beds { get; set; }
+
         /// <summary>Namen der Leute, die als Verstärkung kommen, in dieser Reihenfolge. Fehlen welche, bleiben sie namenlos.</summary>
         public List<string> Persons { get; set; } = new();
     }
@@ -109,6 +130,9 @@ namespace Messingstadt.Core
 
         /// <summary>Wo die Tür im Bild zu sehen ist, in Feldern. Ohne Angabe das erste Feld.</summary>
         public double[]? Mark { get; set; }
+
+        /// <summary>Keine Tür, sondern der Telefondraht an der Wand: Wer ihn "öffnet", kappt ihn. Das Feld bleibt gesperrt.</summary>
+        public bool Wire { get; set; }
     }
 
     /// <summary>Ein Gefangener in einem Einsatz der Art Befreien.</summary>
@@ -227,6 +251,17 @@ namespace Messingstadt.Core
         public int Seed { get; set; }
         public List<UnitData> Agents { get; set; } = new();
         public List<UnitData> Guards { get; set; } = new();
+
+        /// <summary>Was die Wachen vom letzten Einsatz wissen, siehe World.Recall.cs. Kommt von der Kampagne.</summary>
+        public GuardMemoryData? Memory { get; set; }
+
+        /// <summary>Dieselbe Mission mit anderer Wachenliste, ohne das Original zu ändern.</summary>
+        public MissionData WithGuards(List<UnitData> guards)
+        {
+            var copy = (MissionData)MemberwiseClone();
+            copy.Guards = guards;
+            return copy;
+        }
         public double[] Item { get; set; } = new double[2];
         public string ItemName { get; set; } = "";
         public ZoneData Exit { get; set; } = new();

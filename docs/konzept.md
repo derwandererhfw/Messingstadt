@@ -69,6 +69,37 @@ Fällt der Führer, läuft der Hund auf den nächsten Agenten los. Sobald einer 
 
 Der Laufbursche ist schneller als ein gehender Agent und langsamer als ein rennender. Ein Treffer stoppt ihn. Emil rennt ihm von selbst nach, wenn er ihn bestechen soll, die Puste reicht aber nur für ein kurzes Stück. Kommt die Meldung an, geht die Wache zum gemeldeten Ort, alle Wachen im Umkreis werden alarmiert und die Verstärkung rückt an. Die Wertung bleibt ohne Schuss leise.
 
+### Namen, Schicksal und Erinnerung
+
+Jede Wache kann in der Mission unter `person` einen Namen tragen, etwa „Krüger“. `name` bleibt der Posten, an dem Schlüssel und Hundeführer hängen. Verstärkung bekommt ihre Namen aus `reinforcements.persons`. Der Name steht beim Überfahren vor der Art.
+
+Wachen rufen Namen, ohne dass sich am Ablauf etwas ändert: Begegnen sich zwei auf dem Rundgang auf 1,5 Felder, nennt eine die andere, höchstens alle 30 s je Wache. Fällt eine Wache mit Namen, ruft ihn der nächste Kollege, der sie auf bis zu 8 Felder sieht, einmal. Niedergeschlagene lösen keinen Ruf aus. Die Rufe stehen in `World.Calls`.
+
+Am Ende sagt `World.GuardOutcomes()` für jede Wache, was aus ihr wurde: ahnungslos, aufgeschreckt, gekauft, niedergeschlagen oder tot. Niedergeschlagene sind nicht tot.
+
+Die Kampagne gibt dem nächsten Einsatz in `MissionData.Memory` mit, wie viele Wachen im letzten starben und welche Wachen der Trupp schon kennt. Daraus folgt:
+
+| Fall | Wirkung | Decke |
+|---|---|---|
+| Die Wache wurde früher gekauft | 25 % Nachlass, bemerkt 50 % langsamer. Mit Gretas Nachlass gilt der größere, nicht beide | keine |
+| Die Wache hat ein Blutbad überlebt (ab 3 Toten) | nimmt kein Geld, bemerkt 25 % schneller | höchstens 2 Wachen |
+| Im letzten Einsatz starb jemand | Wachen mit `afterBlood` gehen mit, als zweiter Mann einer Streife | höchstens 2 |
+| Im letzten Einsatz starb niemand | Wachen mit `atEase` bemerken 50 % langsamer | höchstens 2 |
+
+Mehr als die Decke kostet Blut im nächsten Einsatz nie, egal wie viele gefallen sind. Ohne `Memory` gilt nichts davon.
+
+### Telefonist und Kaserne
+
+Nennt `reinforcements.phone` den Posten eines Telefonisten, hängt die Verstärkung am Telefon. Der Telefonist ist unbewaffnet, hat 40 Lebenspunkte und ist für 100 käuflich. Bemerkt er jemanden oder läuft der Alarm, wählt er 3 s lang und bleibt dabei am Apparat.
+
+| Fall | Erster Mann | Anzahl |
+|---|---|---|
+| Anruf kommt durch | `phoneDelay` nach dem Anruf, sonst 1 s | alle |
+| Kein Anruf: Draht gekappt, Telefonist gekauft, niedergeschlagen oder tot, auch noch während er wählt | `lateDelay` nach dem Alarm, sonst doppelt so spät wie `firstDelay` | `lateCount`, sonst die Hälfte, mindestens einer |
+| Kein Telefon in der Mission | `firstDelay` nach dem Alarm | alle |
+
+Der Draht ist eine Tür mit `wire`: Jeder kann ihn kappen, nach den Zeiten für Türen, das Feld bleibt gesperrt. `beds` begrenzt die Kaserne: Mehr rücken nie an, auch nicht mit Fahndung. Schuss, Bote und Telefonist lösen denselben Alarm aus, er läuft nur einmal.
+
 ### Verhalten der Wachen
 
 Eine Wache ist immer in einem von fünf Zuständen. Sichtbare Wachen tragen im Spiel eine farbige Marke.
