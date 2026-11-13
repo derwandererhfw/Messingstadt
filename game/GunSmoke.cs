@@ -116,7 +116,7 @@ namespace Messingstadt
             {
                 float f = p.Age / PuffSeconds;
                 var tile = Game.ScreenToMap(p.Pos + new Vector2(0f, MuzzleHeight));
-                var light = Game.FigureLight(Units(tile.X), Units(tile.Y), MinLight);
+                var light = Game.FigureLight(Units(tile.X, MapSite.Tiles.X), Units(tile.Y, MapSite.Tiles.Y), MinLight);
                 float alpha = PuffAlpha * (1f - f) * Mathf.Min(1f, f * 8f + 0.3f);
                 float size = Mathf.Lerp(StartSize, EndSize, Mathf.Sqrt(f));
                 DrawTextureRect(_disc, new Rect2(p.Pos - new Vector2(size, size * 0.8f), new Vector2(size * 2f, size * 1.6f)), false,
@@ -124,6 +124,6 @@ namespace Messingstadt
             }
         }
 
-        private static int Units(float tile) => (int)(Mathf.Clamp(tile, 0.1f, 19.9f) * World.TileUnits);
+        private static int Units(float tile, float tiles) => (int)(Mathf.Clamp(tile, 0.1f, tiles - 0.1f) * World.TileUnits);
     }
 }

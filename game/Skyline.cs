@@ -80,7 +80,6 @@ void fragment() {
         private bool _painted;
         private bool _sized;
         // Die Welt steht noch nicht, wenn diese Ebene entsteht. Bis dahin gilt die übliche Kartengröße.
-        private const float DefaultTiles = 20f;
         // Ohne gemalte Kulisse: So weit reicht der Dunst über das Bodenbild hinaus, und so färbt er sich.
         private static readonly Vector2 HazeMargin = new(700f, 420f);
         private static readonly Color PlainHaze = new(0.13f, 0.15f, 0.22f);
@@ -128,7 +127,10 @@ void fragment() {
                 var empty = Image.CreateEmpty(2, 2, false, Image.Format.Rgba8);
                 picture = effects = ImageTexture.CreateFromImage(empty);
                 var top = Game.ToScreen(0, 0);
-                size = new Vector2(2f * top.X, top.Y + (DefaultTiles + DefaultTiles) * 16f) + 2f * margin;
+                // Der Boden reicht links bis zur unteren, rechts bis zur rechten Ecke der Raute.
+                float left = MapSite.Tiles.Y * 32f, right = MapSite.Tiles.X * 32f;
+                margin = new Vector2(HazeMargin.X + Mathf.Max(0f, left - top.X), HazeMargin.Y);
+                size = new Vector2(top.X + right + Mathf.Max(0f, left - top.X), top.Y + (MapSite.Tiles.X + MapSite.Tiles.Y) * 16f) + 2f * HazeMargin;
             }
             _material = new ShaderMaterial { Shader = new Shader { Code = ShaderCode } };
             _material.SetShaderParameter("noise_map", Noise);

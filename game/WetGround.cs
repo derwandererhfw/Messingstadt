@@ -36,6 +36,7 @@ uniform sampler2D noise_map : filter_linear, repeat_enable;
 uniform sampler2D wet_map : filter_linear;
 uniform vec2 ground_size;
 uniform vec2 origin;
+uniform vec2 tiles = vec2(20.0, 20.0);
 varying vec2 world;
 void vertex() {
     world = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
@@ -49,7 +50,7 @@ void fragment() {
     float wet = texture(wet_map, world / ground_size).r;
     float mx = ((p.x - origin.x) / 32.0 + (p.y - origin.y) / 16.0) / 2.0;
     float my = ((p.y - origin.y) / 16.0 - (p.x - origin.x) / 32.0) / 2.0;
-    float inside = step(0.0, mx) * step(0.0, my) * step(mx, 20.0) * step(my, 20.0);
+    float inside = step(0.0, mx) * step(0.0, my) * step(mx, tiles.x) * step(my, tiles.y);
     COLOR = vec4(COLOR.rgb, COLOR.a * a * mix(smoothstep(0.3, 0.6, grain) * 0.85, 1.4, wet) * inside);
 }";
 
@@ -94,6 +95,7 @@ void fragment() {
             material.SetShaderParameter("wet_map", MakeWetMap());
             material.SetShaderParameter("ground_size", GroundSize);
             material.SetShaderParameter("origin", Game.ToScreen(0, 0));
+            material.SetShaderParameter("tiles", MapSite.Tiles);
             Material = material;
             LightMask = 0;
             foreach (var lamp in Lamps)

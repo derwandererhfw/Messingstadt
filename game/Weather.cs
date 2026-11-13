@@ -78,16 +78,17 @@ uniform float lightning = 0.0;
 uniform float density = 1.0;
 uniform float wind_shift = 0.0;
 uniform float air = 1.0;
+uniform vec2 tiles = vec2(20.0, 20.0);
 void fragment() {
     vec2 px = UV * size;
     float a = (px.x - origin.x) / 32.0, b = (px.y - origin.y) / 16.0;
     float mx = (a + b) / 2.0, my = (b - a) / 2.0;
-    float edge = smoothstep(0.0, 1.5, mx) * smoothstep(0.0, 1.5, my) * smoothstep(20.0, 18.5, mx) * smoothstep(20.0, 18.5, my);
+    float edge = smoothstep(0.0, 1.5, mx) * smoothstep(0.0, 1.5, my) * smoothstep(tiles.x, tiles.x - 1.5, mx) * smoothstep(tiles.y, tiles.y - 1.5, my);
     vec2 iso = vec2(px.x, px.y * 2.0) / 512.0;
     float n = texture(noise_map, iso + vec2(TIME * 0.012 + wind_shift, TIME * 0.004)).r * 0.6
         + texture(noise_map, iso * 1.9 - vec2(TIME * 0.018 - wind_shift * 1.4, -TIME * 0.009)).r * 0.4;
     // Am Kartenrand steht der Smog dicht und verwischt die Grenze zur Stadt dahinter.
-    float inside = min(min(mx, my), min(20.0 - mx, 20.0 - my));
+    float inside = min(min(mx, my), min(tiles.x - mx, tiles.y - my));
     float rim = smoothstep(1.3, 0.0, abs(inside + 0.2));
     float amount = max(smoothstep(0.46, 0.78, n) * 0.5 * density * edge, rim * (0.3 + 0.45 * n));
     vec3 l = texture(ground_light, UV).rgb;
@@ -193,6 +194,8 @@ void fragment() {
             public bool Stutters;
             public float Share = 1f;
             public float Reach = 1f;
+            public Vector2 Foot;
+            public ConeRain? Rain;
         }
 
         private readonly Random _rng = new();
@@ -266,6 +269,7 @@ void fragment() {
             _fog.SetShaderParameter("size", GroundSize);
             // Die Nebelfläche hat die Maße des Bodens und liegt direkt darauf, unter den Gebäuden.
             _fog.SetShaderParameter("air", AirTest.Scale);
+            _fog.SetShaderParameter("tiles", MapSite.Tiles);
             AddChild(new Sprite2D { Texture = GroundLight, Centered = false, ZIndex = 0, Material = _fog, Visible = !AirTest.Off("nebel") });
             var additive = new CanvasItemMaterial { BlendMode = CanvasItemMaterial.BlendModeEnum.Add };
             // Der nahe Strahl trifft einen Schornstein und liegt vorn, der ferne geht hinter den Häusern der Karte nieder.
@@ -331,10 +335,7 @@ void fragment() {
             _fog.SetShaderParameter("wind_shift", _windShift);
             // Starker Regen drückt den Nebel nieder, in den Pausen steigt er.
             _fog.SetShaderParameter("density", Mathf.Lerp(1.5f, 0.75f, RainStrength));
-            foreach (var rain in _coneRain)
-            {
-                rain.QueueRedraw();
-            }
+            // Die Fäden zeichnet nur neu, wer im Bild steht: siehe die Schleife über die Kegel.
         }
 
         /// <summary>Wohin der Blitz dieses Gewitters fährt: auf einen Schornstein im Bild oder hinter die Häuser in die Stadt.</summary>
@@ -359,10 +360,10 @@ void fragment() {
             {
                 var point = origin + new Vector2(Rand(0.1f, 0.9f) * size.X, Rand(0.15f, 0.6f) * size.Y);
                 var map = Game.ScreenToMap(point);
-                if (map.X < -0.5f || map.Y < -0.5f || map.X > 20.5f || map.Y > 20.5f)
+                if (map.X < -0.5f || map.Y < -0.5f || map.X > MapSite.Tiles.X + 0.5f || map.Y > MapSite.Tiles.Y + 0.5f)
                 {
                     // Hinter der Karte verdeckt sie den Strahl, davor fährt er vor allem nieder.
-                    bool front = map.X > 20.5f || map.Y > 20.5f;
+                    bool front = map.X > MapSite.Tiles.X + 0.5f || map.Y > MapSite.Tiles.Y + 0.5f;
                     _strikePath = (new Vector2(point.X + Rand(-0.14f, 0.14f) * size.X, topY), point, front, false);
                     FlashFrom = map;
                     return;
@@ -471,7 +472,6 @@ void fragment() {
                 };
                 AddChild(shape);
                 bool stutters = Mathf.Abs((float)lamp[0] - stutterLamp.X) < 0.01f && Mathf.Abs((float)lamp[1] - stutterLamp.Y) < 0.01f;
-                shape.Visible = !AirTest.Off("kegel");
                 Sprite2D? halo = null;
                 if (AirTest.Light)
                 {
@@ -483,7 +483,8 @@ void fragment() {
                     };
                     AddChild(halo);
                 }
-                _cones.Add(new Cone { Shape = shape, Halo = halo, Stutters = stutters, Share = share, Reach = source.Reach / DefaultReach });
+                var cone = new Cone { Shape = shape, Halo = halo, Stutters = stutters, Share = share, Reach = source.Reach / DefaultReach, Foot = foot };
+                _cones.Add(cone);
                 var rain = new ConeRain
                 {
                     Weather = this, Material = additive, Position = foot - new Vector2(0, height), ZIndex = shape.ZIndex,
@@ -491,6 +492,7 @@ void fragment() {
                 };
                 AddChild(rain);
                 _coneRain.Add(rain);
+                cone.Rain = rain;
             }
         }
 
@@ -556,8 +558,28 @@ void fragment() {
                 Game.Sound.PlayEverywhere(_thunderSound, _thunderVolume);
                 Game.ShakeCamera(Mathf.Clamp((_thunderVolume + 22f) / 16f, 0.15f, 0.6f));
             }
+            var seen = ViewCull.Seen(this, ConeRadius * 2f);
             foreach (var cone in _cones)
             {
+                // Was außerhalb des Bilds steht, wird weder gezeichnet noch je Bild neu gerechnet.
+                bool inView = seen.HasPoint(cone.Foot);
+                cone.Shape.Visible = inView && !AirTest.Off("kegel");
+                if (cone.Halo != null)
+                {
+                    cone.Halo.Visible = inView;
+                }
+                if (cone.Rain != null)
+                {
+                    cone.Rain.Visible = inView;
+                    if (inView)
+                    {
+                        cone.Rain.QueueRedraw();
+                    }
+                }
+                if (!inView)
+                {
+                    continue;
+                }
                 // Im Regen streut die nasse Luft das Licht, der Kegel steht dann deutlicher.
                 float level = cone.Stutters ? Game.StutterLevel : Game.UnrestLevel;
                 level *= 1f + 0.07f * (AirTest.Off("gas") ? 0f : MapSite.Current.LampUnrest) * Mathf.Sin(_time * 6.3f + cone.Shape.Position.X * 0.37f + cone.Shape.Polygon[0].X * 0.11f);

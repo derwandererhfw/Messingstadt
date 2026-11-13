@@ -353,7 +353,7 @@ void fragment() {
             _lightData = _mission.Light ?? new LightData { Cells = 1, Size = _map.Width, Levels = Enumerable.Repeat(World.BrightLevel, _map.Width * _map.Width).ToArray() };
             s_scene = _mission.Scene;
             // Die Atmosphäre liest ihre festen Orte je Karte: Vorgaben nur für die Stadt des ersten Einsatzes.
-            MapSite.Use(Globalize("res://assets/manifest.json"), FirstCity);
+            MapSite.Use(Globalize("res://assets/manifest.json"), FirstCity, _map.Width, _map.Height);
             _mission = LoadMission();
             Watch = WatchMap.Measure(_map, _mission);
 
@@ -430,18 +430,16 @@ void fragment() {
         public string DistrictName(string id) => id.Length == 0 ? "Viertel nicht vermerkt" : City.Get(id)?.Name ?? id;
 
         /// <summary>
-        /// Der Name einer Wache, wie ihn Mauszeiger und Totenbuch zeigen. Die einzige Stelle im Bild, die weiß, in welchem Feld er steht:
-        /// Bekommt die Wache ein eigenes Feld für den Personennamen, wird nur hier umgestellt.
+        /// Der Name einer Wache am Mauszeiger: der Mensch (Unit.Person), nicht der Posten (Unit.Name).
         /// </summary>
-        public static string GuardName(Unit guard) => guard.Name;
+        public static string GuardName(Unit guard) => guard.Person;
 
-        /// <summary>Text am Mauszeiger über einer Wache: Name, Art, Preis. Steht im Namen nur der Posten, fällt die Art weg.</summary>
+        /// <summary>Text am Mauszeiger über einer Wache: Name, Art, Preis. Hunde und Namenlose zeigen nur die Art.</summary>
         public string GuardLine(Unit guard)
         {
             var type = guard.Type;
             string name = GuardName(guard);
-            string who = name.Length == 0 || name == type.Title ? type.Title
-                : name.StartsWith(type.Title, StringComparison.Ordinal) ? name : $"{name}, {type.Title}";
+            string who = name.Length == 0 ? type.Title : $"{name}, {type.Title}";
             string text = who + (guard.Bribed ? ", bestochen" : type.BribeCost == 0 ? ", nicht käuflich" : ", " + BribeWord(guard));
             if (World.Units.Exists(o => o.LeashedTo == guard.Id))
             {
