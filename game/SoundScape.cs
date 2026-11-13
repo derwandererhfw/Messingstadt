@@ -66,6 +66,8 @@ namespace Messingstadt
         private const float PeilBoostDb = 10f;
         private const float HeartDb = -10f;
         private const float PrisonerStepDb = -24f;
+        private const float PhoneDb = -18f;
+        private const float PhoneReach = 520f;
         private const float HeartRisePerSecond = 4f;
         private const float HeartFallPerSecond = 0.5f;
         private const string MusicBus = "Musik";
@@ -79,6 +81,8 @@ namespace Messingstadt
         private readonly HashSet<int> _reloading = new();
         private readonly Dictionary<int, int> _keysHeld = new();
         private int _keysOnGround;
+        private PhoneState _phone;
+        private bool _wireCut;
         private readonly HashSet<int> _bandaging = new();
         private readonly HashSet<SmokeCloud> _smokes = new();
         private readonly Dictionary<string, float> _lastPlayed = new();
@@ -551,6 +555,8 @@ namespace Messingstadt
             _wasAlarmed = false;
             _stinger = null;
             _keysOnGround = 0;
+            _phone = world.Phone;
+            _wireCut = world.WireCut;
             _bandaging.Clear();
             _smokes.Clear();
             _world = world;
@@ -582,6 +588,7 @@ namespace Messingstadt
             ListenToShots(world);
             ListenToSmoke(world);
             ListenToDroppedKeys(world);
+            ListenToPhone(world);
             ListenToMission(world);
             UpdateMusic(world, (float)delta);
             UpdateRoom(world, (float)delta);
@@ -708,6 +715,35 @@ namespace Messingstadt
                 Play("keys", Game.ToScreen(keys.X, keys.Y), -13f, StepReach);
             }
             _keysOnGround = world.KeysOnGround.Count;
+        }
+
+        /// <summary>Das Telefon der Wache, leise und am Apparat: Kurbel beim Wählen, Klingeln und Stimme beim Anruf, Gabel bei toter Leitung, Zange am Draht.</summary>
+        private void ListenToPhone(World world)
+        {
+            var at = world.PhoneSpot is { } spot ? Game.ToScreen(spot.X, spot.Y) : Game.CameraCenter;
+            if (world.WireCut && !_wireCut)
+            {
+                Play("wire_cut", at, PhoneDb, PhoneReach);
+            }
+            _wireCut = world.WireCut;
+            if (world.Phone == _phone)
+            {
+                return;
+            }
+            // Tot klingt die Leitung nur, wenn er gerade telefonieren wollte.
+            bool wasTrying = _phone is PhoneState.Fetching or PhoneState.Dialing;
+            _phone = world.Phone;
+            string? sound = _phone switch
+            {
+                PhoneState.Dialing => "phone_dial",
+                PhoneState.Called => "phone_called",
+                PhoneState.Silent when wasTrying => "phone_dead",
+                _ => null,
+            };
+            if (sound != null)
+            {
+                Play(sound, at, PhoneDb, PhoneReach, 0.03f);
+            }
         }
 
         /// <summary>Ein neuer Rauchtopf schlägt auf und zischt.</summary>
