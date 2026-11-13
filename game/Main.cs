@@ -201,6 +201,7 @@ void fragment() {
         private Camera2D _camera = null!;
         private Hud _paper = null!;
         private Chatter _chatter = null!;
+        private Overlay _overlay = null!;
         private Label _banner = null!;
         // Eine Zwischensequenz läuft, das Spiel steht still.
         private bool _introRunning;
@@ -371,7 +372,8 @@ void fragment() {
             // Eigene Ebene, die der Kamera folgt: Ringe und Balken bleiben auch in der Nacht gut lesbar.
             _overlayLayer = new CanvasLayer { Layer = 1, FollowViewportEnabled = true };
             AddChild(_overlayLayer);
-            _overlayLayer.AddChild(new Overlay { Game = this });
+            _overlay = new Overlay { Game = this };
+            _overlayLayer.AddChild(_overlay);
             _chatter = new Chatter { Game = this };
             _overlayLayer.AddChild(_chatter);
             BuildUi();
@@ -690,6 +692,9 @@ void fragment() {
             ["finished"] = _finished.ToString(),
             ["panel"] = _panel.Visible.ToString(),
             ["hud"] = _paper.Visible.ToString(),
+            ["hover"] = HoveredGuard() is { } hovered ? GuardLine(hovered) : "",
+            // Liegt die Zeile zur Wache ganz im Spielfeld, rechts der Spalte und links vom rechten Rand?
+            ["hoverfits"] = _overlay.GuardLineLeft < 0f ? "" : (_overlay.GuardLineLeft >= HudColumn && _overlay.GuardLineRight <= GetViewportRect().Size.X).ToString(),
             ["phone"] = $"{World.Phone}{(World.WireCut ? " gekappt" : "")}",
             ["speechleft"] = _chatter.LeftmostSpeech > 1e6f ? "" : Mathf.RoundToInt(_chatter.LeftmostSpeech).ToString(),
             ["help"] = _help.Visible.ToString(),
@@ -2245,7 +2250,8 @@ void fragment() {
 
         public Unit? HoveredGuard()
         {
-            var guard = UnitUnderCursor(GetGlobalMousePosition(), Faction.Guard);
+            // Die zuletzt gemeldete Mausposition, damit auch der Prüflauf eine Wache überfahren kann.
+            var guard = UnitUnderCursor(GetCanvasTransform().AffineInverse() * _mouseAt, Faction.Guard);
             return guard != null && World.IsSpottedByAgents(guard) ? guard : null;
         }
         public static int IdleFirstColumn => FigureAnimator.IdleFirst;

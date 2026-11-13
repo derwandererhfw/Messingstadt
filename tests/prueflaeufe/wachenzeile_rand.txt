@@ -1,0 +1,22 @@
+# Zeile zur Wache am Mauszeiger: Sie liegt ganz im Spielfeld, nie unter der Agentenspalte und nie über dem rechten Rand.
+# Aufruf mit --fresh --mission=mission_02 --look=8,14. Die Kamera fährt an den linken Kartenrand, Greta steht neben der Friedhofsstreife.
+wait 40
+hold A
+wait 120
+release A
+stand Greta 4 16
+wait 4
+pointunit Friedhofsstreife
+wait 2
+expect hover Buchholz, Wachmann, käuflich für 100, Greta ist dabei
+expect hoverfits True
+# Am rechten Kartenrand dasselbe mit dem Posten an der Remise
+hold D
+wait 200
+release D
+stand Greta 26 20
+wait 4
+pointunit Posten an der Remise
+wait 2
+expect hover Roloff, Wachmann, nicht käuflich
+expect hoverfits True

@@ -232,6 +232,23 @@ namespace Messingstadt
                     var tileAt = arg.Split(' ');
                     MouseAt(Game.TileCenter(int.Parse(tileAt[0]), int.Parse(tileAt[1])), MouseButton.Left);
                     break;
+                case "pointunit":
+                    // Maus über eine Figur, ohne Klick: für die Zeile am Mauszeiger.
+                    var pointed = Game.World.Units.FirstOrDefault(u => u.Name == arg);
+                    Check(line, pointed != null, arg);
+                    if (pointed != null)
+                    {
+                        var over = GetViewport().GetFinalTransform() * (Game.GetCanvasTransform() * (Game.UnitPos(pointed) + new Vector2(0, -20)));
+                        Input.ParseInputEvent(new InputEventMouseMotion { Position = over, GlobalPosition = over });
+                    }
+                    break;
+                case "stand":
+                    // Stellt einen Agenten auf ein Feld, damit er eine Wache ohne langen Weg sieht: stand Name x y.
+                    var put = arg.Split(' ');
+                    var mover = Game.World.Units.First(u => u.Faction == Faction.Agent && u.Name == put[0]);
+                    mover.Path.Clear();
+                    (mover.X, mover.Y) = (mover.X + (int.Parse(put[1]) - mover.TileX) * World.TileUnits, mover.Y + (int.Parse(put[2]) - mover.TileY) * World.TileUnits);
+                    break;
                 case "rclickunit":
                     var clicked = Game.World.Units.FirstOrDefault(u => u.Name == arg);
                     Check(line, clicked != null, arg);
