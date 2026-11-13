@@ -852,12 +852,103 @@ Func<Action<World>> Rescue(bool alone, bool fightFirst, string[]? bribes = null,
     };
 };
 
+// Laut aus einer Stellung: Der Trupp geht an einen Platz mit Deckung, eröffnet dort das Feuer und lässt die Wachen kommen,
+// statt ihnen über die helle Wallstraße nachzulaufen. Ist es eine Weile still, holt er die Gefangenen und schießt auf dem Weg
+// nur noch auf Wachen, die er sieht. cut: Auf dem Weg in die Stellung kappt einer den Telefondraht, solange es noch still ist.
+Func<Action<World>> LoudFromPost((int X, int Y) post, bool cut = false) => () =>
+{
+    var rescue = Rescue(false, false)();
+    int stage = 0, calm = 0;
+    return w =>
+    {
+        var squad = w.Units.Where(u => u.Faction == Faction.Agent && u.Alive).ToList();
+        if (squad.Count == 0)
+        {
+            return;
+        }
+        var ids = squad.Select(a => a.Id).ToList();
+        var armed = w.Units.Where(u => u.Faction == Faction.Guard && u.Alive && !u.Bribed && !u.Type.OrderOnly).ToList();
+        var seen = armed.Where(g => squad.Any(a => w.CanSee(a, g, 10 * World.TileUnits))).ToList();
+        int px = post.X * World.TileUnits + World.TileUnits / 2, py = post.Y * World.TileUnits + World.TileUnits / 2;
+        long Far(Unit u) => Math.Abs(u.X - px) + Math.Abs(u.Y - py);
+        void Fire(List<Unit> targets)
+        {
+            var target = targets.OrderBy(g => World.Distance(squad[0], g)).First();
+            foreach (var a in squad.Where(a => a.DoorTarget < 0 && (a.TargetId < 0 || !w.Units[a.TargetId].Alive || !seen.Contains(w.Units[a.TargetId]))))
+            {
+                w.OrderAttack(a.Id, target.Id);
+            }
+        }
+        if (stage == 0)
+        {
+            int wire = cut ? w.Doors.FindIndex(d => d.Wire && !d.Open) : -1;
+            if (wire >= 0 && w.Rating != MissionRating.Loud)
+            {
+                if (squad[^1].DoorTarget != wire)
+                {
+                    w.OrderOpenDoor(squad[^1].Id, wire);
+                }
+                return;
+            }
+            if (w.Rating == MissionRating.Loud || squad.All(a => Far(a) <= 2 * World.TileUnits))
+            {
+                stage = 1;
+            }
+            else if (squad.Any(a => a.Path.Count == 0 && Far(a) > 2 * World.TileUnits))
+            {
+                w.OrderGroupMove(ids, post.X, post.Y);
+            }
+            return;
+        }
+        if (stage == 1)
+        {
+            if (seen.Count > 0)
+            {
+                calm = 0;
+                Fire(seen);
+                return;
+            }
+            if (w.Rating != MissionRating.Loud && armed.Count > 0)
+            {
+                // Noch still: die nächste Wache angreifen, das weckt die übrigen.
+                Fire(armed);
+                return;
+            }
+            var away = squad.Where(a => Far(a) > 2 * World.TileUnits).Select(a => a.Id).ToList();
+            if (away.Count > 0)
+            {
+                foreach (var a in squad.Where(a => a.TargetId >= 0))
+                {
+                    a.TargetId = -1;
+                }
+                w.OrderGroupMove(away, post.X, post.Y);
+            }
+            if (++calm >= 30 || armed.Count == 0)
+            {
+                stage = 2;
+            }
+            return;
+        }
+        if (seen.Count > 0)
+        {
+            Fire(seen);
+            return;
+        }
+        foreach (var a in squad.Where(a => a.TargetId >= 0))
+        {
+            a.TargetId = -1;
+        }
+        rescue(w);
+    };
+};
+
 // Der Rückweg zum Wagen, wenn der Trupp wieder im dunklen Durchgang steht. Drei Wege und eine Abkürzung:
 // "friedhof": Pforte des Totengräbers, über den Friedhof, Südpforte, die dunkle Böschung entlang nach Osten.
 // "hoefe": Hoftür der Witwe, Westhof, Hoftür am Osthof, Kellerluke, Kellerhals.
 // "gang": ohne Tür den Friedhofsgang hinunter und die Südgasse entlang. "platz": die Wallstraße nach Osten am Exerzierplatz vorbei.
 // Der Führer öffnet, was zu ist, und wartet an jeder Station, bis alle aufgeschlossen haben.
-string homeRoute = args.FirstOrDefault(x => x.StartsWith("--weg="))?["--weg=".Length..] ?? "gang";
+// Ohne Angabe gilt der Friedhof: Der Friedhofsgang ist die Abkürzung, auf der die Südstreife den Trupp immer bemerkt.
+string homeRoute = args.FirstOrDefault(x => x.StartsWith("--weg="))?["--weg=".Length..] ?? "friedhof";
 if (args.FirstOrDefault(x => x.StartsWith("--rueckhalt=")) is { } supportArg)
 {
     int support = int.Parse(supportArg["--rueckhalt=".Length..]);
@@ -1395,6 +1486,50 @@ if (args.Length > 0 && (args[0] == "--wege" || args[0] == "--laut"))
             loadout = null;
         }
     }
+    variant = null;
+    return;
+}
+
+// Laut aus einer Stellung: --stellung misst Plätze, Ausrüstung und Fassungen der Verstärkung.
+if (args.Length > 0 && args[0] == "--stellung")
+{
+    var p0 = new[] { "pistole" };
+    var kits = new (string Name, string[][] Items)[]
+    {
+        ("Pistolen", new[] { p0 }),
+        ("vier MP", new[] { new[] { "maschinenpistole" } }),
+        ("vier MP + Verband", new[] { new[] { "maschinenpistole", "verbandszeug" } }),
+    };
+    var posts = new (string Name, (int, int) At)[] { ("Durchgang", (7, 15)), ("Friedhofsgang", (7, 20)), ("Südgasse West", (4, 27)), ("Start", (10, 29)) };
+    var versions = new (string Name, Action<MissionData> Set)[]
+    {
+        ("Daten wie sie sind", m => { }),
+        ("vier Mann, vier Betten", m => { m.Reinforcements!.Count = 4; m.Reinforcements.Beds = 4; }),
+        ("fünf Mann, fünf Betten", m => { m.Reinforcements!.Count = 5; m.Reinforcements.Beds = 5; }),
+        ("fünf Mann, Abstand 3 s", m => { m.Reinforcements!.Count = 5; m.Reinforcements.Beds = 5; m.Reinforcements.Interval = 3; }),
+        ("sechs Mann, Abstand 3 s", m => { m.Reinforcements!.Count = 6; m.Reinforcements.Beds = 6; m.Reinforcements.Interval = 3; }),
+        ("Draht gekappt: ein Mann, spät", m => { m.Reinforcements!.Phone = ""; m.Reinforcements.FirstDelay = m.Reinforcements.LateDelay; m.Reinforcements.Count = m.Reinforcements.LateCount; }),
+    };
+    int only = args.Length > 1 ? int.Parse(args[1]) : -1;
+    for (int v = 0; v < versions.Length; v++)
+    {
+        if (only >= 0 && v != only)
+        {
+            continue;
+        }
+        variant = versions[v].Set;
+        Console.WriteLine($"== {versions[v].Name} ({missionId}, je {Runs} Läufe)");
+        foreach (var (kitName, items) in kits)
+        {
+            loadout = items;
+            foreach (var (postName, at) in posts)
+            {
+                ReportRescue($"{postName}, {kitName}", Bandaged(LoudFromPost(at)));
+            }
+            ReportRescue($"Nachlaufen wie bisher, {kitName}", Rescue(false, true, focus: true));
+        }
+    }
+    loadout = null;
     variant = null;
     return;
 }
