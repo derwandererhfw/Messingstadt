@@ -101,6 +101,11 @@
       "Bote": "Ich hab keinen gesehen. Krieg ich noch einen Groschen?"
     }
   },
+  "residents": [
+    { "id": "gerichtsdiener", "x": 3.0, "y": 9.5 },
+    { "id": "frau_des_wachmanns", "x": 19.0, "y": 18.2 },
+    { "id": "kasernenkoch", "x": 17.0, "y": 8.3 }
+  ],
   "lamps": [[2.5, 10.5], [10.5, 10.5], [16.5, 10.5], [11.5, 10.1], [10.5, 6.2]],
   "agents": [
     { "name": "Greta", "role": "Truppführerin", "skill": "truppfuehrerin", "sprite": "Agent", "x": 9.5, "y": 29.5, "legs": 2, "heart": 2 },
@@ -122,7 +127,7 @@
     { "name": "Friedhofsstreife", "person": "Buchholz", "sprite": "Wachmann", "x": 3.5, "y": 14.5, "facing": [0, -1] },
     { "name": "Posten am Fahnenmast", "person": "Lindner", "sprite": "Wachmann", "x": 24.5, "y": 6.5, "facing": [0, 1], "noBribe": true },
     { "name": "Posten an der Remise", "person": "Roloff", "sprite": "Wachmann", "x": 26.5, "y": 18.5, "facing": [0, 1], "noBribe": true },
-    { "name": "Nachtwächter", "person": "Fenske", "sprite": "Wachmann", "x": 14.5, "y": 14.5, "patrol": [[14, 17], [14, 13], [20, 13], [14, 13]] },
+    { "name": "Nachtwächter", "person": "Fenske", "sprite": "Wachmann", "x": 14.5, "y": 14.5, "patrol": [[14, 17], [14, 13], [23, 13], [14, 13]] },
     { "name": "Südstreife", "person": "Zander", "sprite": "Wachmann", "x": 23.5, "y": 26.5, "patrol": [[3, 26], [23, 26]] }
   ]
 }

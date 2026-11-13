@@ -236,6 +236,46 @@ A und C machen den Weg teurer, aber nicht riskanter: Das Wagnis liegt in den zwe
 
 Die Zellen liegen im Gebäude. Wer auf einem Feld seiner Zelle steht, wird nicht gezeichnet (`World.HiddenInCell`), sonst klebte er außen an der Fassade. Solange die Tür zu ist, steht sein kurzer Name neben dem Schloss. Ein Befreiter bleibt nie in der Zelle stehen, auch wenn sein Führer direkt vor der Tür wartet, sondern tritt auf das nächste freie Feld davor.
 
+#### Niedergeschlagen ist nicht tot
+
+Der Totschläger schlägt eine ahnungslose Wache nieder. Sie liegt, lebt und steht in diesem Einsatz nicht wieder auf, sieht, hört und meldet nichts und verliert ihre Schlüssel. Im Kern ist sie aus dem Spiel (`Alive` ist false) und trägt `Unit.KnockedOut`. Wirklich tot ist nur, für wen `Unit.Dead` gilt. Schlagzeile, Fahndung und Totenbuch zählen nur Tote, die Wertung bleibt leise. Wer auf einen Niedergeschlagenen schießt und trifft, tötet ihn: Er ist dann ein Toter wie jeder andere, und der Schuss macht den Einsatz laut. Mit dem Totschläger weiterschlagen tötet nicht. Findet eine andere Wache einen Niedergeschlagenen, geschieht in den Regeln nichts, wie bei einem Toten auch: Wachen bemerken bisher keine Liegenden. Der Ruf „Wach auf!“ wäre eine neue Regel und ist nicht gebaut.
+
+#### Türen der Stadt
+
+Eine Tür mit `helper` in der Mission steht zu Beginn offen, wenn der Bewohner hilft. Ob er hilft, entscheidet `Campaign.HouseHelps(helper, mission)`, `Campaign.Prepare` trägt die Helfer in `MissionData.Helpers` ein. `openAtSupport` verlangt zusätzlich einen Rückhalt und ist bisher überall 0. Sonst braucht die Tür Schlosser, Dietrich oder Schlüssel wie jede andere. In Einsatz 2: Pforte des Totengräbers, Hoftür der Witwe, Kellerluke der Kneipe.
+
+Bewohner, die nicht helfen, stehen als `residents` in der Mission (Kennung und Feld). Ob sie rufen, hängt an der Haltung der Stadt, `Campaign.Prepare` trägt `Campaign.Stance` als `MissionData.Stance` ein:
+
+| Haltung | Blutschuld | Bewohner |
+|---|---|---|
+| Stadt hilft | 0 bis 1 | Niemand ruft, auch wer nicht hilft, schaut weg. |
+| Stadt schweigt | 2 bis 3 | Wer jemanden vom Trupp oder einen Befreiten auf 2,5 Felder mit freier Sicht sieht, ruft einmal. Die nächste ahnungslose Wache in 9 Feldern Hörweite geht an die Stelle und sieht nach. |
+| Stadt gegen den Trupp | 4 bis 6 | Wie zuvor, aber die zwei nächsten Wachen gehen. |
+
+Jeder Bewohner ruft höchstens einmal je Einsatz. Ein Ruf macht den Einsatz bemerkt, nicht laut. Gekaufte Wachen, Hunde und Wachen, die schon suchen oder kämpfen, gehen nicht. Ist keine Wache in Hörweite, verhallt der Ruf. Für Bild und Ton steht jeder Ruf in `World.ResidentCalls` (Takt, Kennung, Wache oder -1). In Einsatz 2: Gerichtsdiener am Portal des Amtsgerichts, Frau des Wachmanns am Osthof, Kasernenkoch an der Küchentür. Ohne Kampagne, also auch im Messwerkzeug, hilft die Stadt. Die Rückwege sind mit rufenden Bewohnern noch nicht gemessen.
+
+#### Der lange Rückweg, Messung auf 30 × 30
+
+Gemessen mit `--mission=mission_02 --wege`, je 300 Läufe, Kasse 600. 15 Gegner statt 10, der Wagen steht im Kohlenhof. Die Wegsuche bricht Gleichstände nach Feldnummern, die an der Kartenbreite hängen: Der Kern ist Feld für Feld gleich, die Figuren nehmen aber zwischen gleich langen Wegen andere Felder, deshalb ist alles neu gemessen.
+
+| Rückweg | Spielweise | Türen zu (kein Helfer) | Helfertüren offen |
+|---|---|---|---|
+| Friedhof und Böschung | Otto und Emil mit Geld (500) | 100 % leise, 108 s | 100 % leise, 90 s |
+| | Otto allein mit Dietrich | 100 % leise, 158 s | 100 % leise, 158 s |
+| Beamtenhöfe | Otto und Emil mit Geld | 100 % leise, 175 s | genau 100 % leise, 124 s. Bis 0,5 s spät 14 % Siege, bis 1 s 37 % |
+| | Otto allein mit Dietrich | 100 % leise, 220 s | 100 % leise, 185 s |
+| Friedhofsgang ohne Tür | Otto und Emil mit Geld | 39 % Siege, immer laut | ebenso |
+| | Otto allein mit Dietrich | 99 % Siege, immer laut | ebenso |
+| Laut, Trupp zusammen | Pistolen, eine MP, Schrot, vier MP | 0 % Siege, der Trupp fällt in 22 bis 33 s | |
+
+Was die Zahlen sagen, und was sie nicht sagen:
+
+- Die leisen Wege tragen. Friedhof ist der sichere, lange Weg. Die Höfe sind kürzer, sobald die Helfer öffnen, aber empfindlich: Die Tür zum Osthof liegt in der Mittelgasse des Nachtwächters.
+- Der Friedhofsgang ohne Tür ist die Falle: An seinem Ausgang steht eine Laterne, und die Südstreife läuft daran vorbei.
+- Der laute Weg ist kaputt. Wer am Start schießt, hat binnen Sekunden Südstreife, Nachtwächter, Türposten, Wachhabenden, beide neuen Posten und die Verstärkung auf sich. Ziel war 40 bis 50 % mit Grundausstattung. Das ist offen und hängt an der Regel für Telefon und Verstärkung, die die Gegner-Session baut.
+- Die Zeiten der leisen Wege sind lang, weil die Mess-Spielweise vor jedem Wegstück wartet, bis der Lageplan es ganz frei zeigt, höchstens 40 s. Ein Spieler geht früher.
+- Im Spiel nachgestellt ist bisher nur der Hinweg bis zur Befreiung (`einsatz2_leise.txt`, `greta_nachlass.txt`) und der ganze Ablauf mit ruhiggestellten Wachen (`einsatz2_befreien.txt`). Der Heimweg mit echten Wachen wurde im Spiel auf beiden Wegen am Ende bemerkt.
+
 ### Mehrere Einsätze
 
 Jeder Einsatz hat eine Missionsdatei, eine Regelkarte, eine Lichtkarte und einen Grafikordner: `data/mission_02.json` nennt `mapId`, `lightId` und `scene`, die Stadt liegt in `game/assets/maps/<scene>/` mit demselben Aufbau wie die erste. Welcher Einsatz gespielt wird, bestimmt das gewählte Viertel im Stadtplan. Hat es eine andere Stadt, lädt das Spiel die Szene neu und setzt mit derselben Akte fort. Der Grundriss `data/scene_02.json` ist die gemeinsame Quelle: `tools/level/scene_to_map.py` schreibt daraus die Regelkarte und zeigt, was die Kamera verdeckt, `tools/level/placeholder_city.py` baut eine schlichte Platzhalterstadt samt Licht. Zielorte, Türen mit Spielbedeutung und Hauptwege dürfen nie hinter hohen Gebäuden liegen.
