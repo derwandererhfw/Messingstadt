@@ -38,8 +38,15 @@ namespace Messingstadt.Core
         /// <summary>Name des Menschen hinter dem Posten, etwa "Krüger". Leer, wenn die Mission keinen nennt.</summary>
         public string Person = "";
 
-        /// <summary>Im Nahkampf niedergeschlagen: liegt am Boden, lebt aber und steht nicht im Totenbuch.</summary>
+        /// <summary>
+        /// Im Nahkampf niedergeschlagen: liegt am Boden, lebt aber und steht nicht im Totenbuch. Er steht in diesem Einsatz nicht
+        /// wieder auf, sieht, hört und meldet nichts. Für die Regeln ist er wie ein Gefallener aus dem Spiel (Alive ist false),
+        /// gezählt wird er nicht als Toter: siehe Dead. Wer auf ihn schießt und trifft, tötet ihn.
+        /// </summary>
         public bool KnockedOut;
+
+        /// <summary>Wirklich tot. Niedergeschlagene sind es nicht.</summary>
+        public bool Dead => !Alive && !KnockedOut;
 
         /// <summary>Hat den Rundgang im Einsatz mindestens einmal verlassen.</summary>
         public bool Roused;

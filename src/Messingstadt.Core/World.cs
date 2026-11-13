@@ -29,6 +29,12 @@ namespace Messingstadt.Core
         public int MarkX, MarkY;
         public bool Open;
         public int Progress;
+
+        /// <summary>Wer diese Tür offen lassen kann, leer bei gewöhnlichen Türen.</summary>
+        public string Helper = "";
+
+        /// <summary>True, wenn ein Bewohner sie vor dem Einsatz offen gelassen hat.</summary>
+        public bool LeftOpen;
     }
 
     /// <summary>Wie leise der Einsatz bisher lief: nie bemerkt, bemerkt ohne Schuss, Schüsse gefallen.</summary>
@@ -84,6 +90,9 @@ namespace Messingstadt.Core
         public int Stamina;
         public bool Sprinting;
         public string Skill = "";
+
+        /// <summary>Diese Wache nimmt kein Geld, gleich welcher Art sie ist.</summary>
+        public bool NoBribe;
         public int DoorTarget = -1;
         public int BribeTarget = -1;
         public bool Bribed;
@@ -243,11 +252,21 @@ namespace Messingstadt.Core
             Press = mission.Headlines;
             foreach (var d in mission.Doors)
             {
-                var door = new Door { Name = d.Name };
+                var door = new Door { Name = d.Name, Helper = d.Helper };
+                // Türen der Stadt: Hilft der Bewohner, lässt er sie offen. Sonst braucht sie Schlosser, Dietrich oder Schlüssel.
+                door.LeftOpen = d.Helper.Length > 0 && mission.Helpers.Contains(d.Helper) && mission.Support >= d.OpenAtSupport;
+                door.Open = door.LeftOpen;
                 foreach (var t in d.Tiles)
                 {
                     door.Tiles.Add(((int)t[0], (int)t[1]));
-                    Map.Block((int)t[0], (int)t[1], true);
+                    if (door.Open)
+                    {
+                        Map.Unblock((int)t[0], (int)t[1]);
+                    }
+                    else
+                    {
+                        Map.Block((int)t[0], (int)t[1], true);
+                    }
                 }
                 if (d.Mark is { Length: 2 })
                 {
@@ -323,6 +342,7 @@ namespace Messingstadt.Core
                 Equip(u, d.Items ?? new List<string>(ItemCatalog.StarterKit));
             }
             u.Skill = d.Skill;
+            u.NoBribe = d.NoBribe;
             u.Legs = Math.Clamp(d.Legs, 1, 3);
             u.Heart = Math.Clamp(d.Heart, 1, 3);
             u.Stamina = MaxStamina(u);
@@ -410,7 +430,7 @@ namespace Messingstadt.Core
             var u = Units[unitId];
             var g = Units[guardId];
             if (!u.Alive || u.Skill != SkillBookkeeper || !g.Alive || g.Faction != Faction.Guard || g.Bribed
-                || g.GuardState == GuardState.Combat || g.Type.BribeCost == 0 || Money < BribePrice(g, u) || State != MissionState.Running)
+                || g.GuardState == GuardState.Combat || !Bribable(g) || Money < BribePrice(g, u) || State != MissionState.Running)
             {
                 return false;
             }
@@ -464,7 +484,7 @@ namespace Messingstadt.Core
         {
             var u = Units[unitId];
             var target = Units[targetId];
-            if (!u.Alive || !target.Alive || target.Bribed || !Hostile(u, target) || State != MissionState.Running)
+            if (!u.Alive || !Attackable(target) || target.Bribed || !Hostile(u, target) || State != MissionState.Running)
             {
                 return false;
             }
@@ -615,7 +635,7 @@ namespace Messingstadt.Core
                 (a.AnchorX, a.AnchorY) = a.Path[^1];
             }
             Unit? target = a.TargetId >= 0 ? Units[a.TargetId] : null;
-            if (target != null && !target.Alive)
+            if (target != null && !Attackable(target))
             {
                 a.TargetId = -1;
                 a.Path.Clear();
@@ -1243,7 +1263,7 @@ namespace Messingstadt.Core
                 return;
             }
             Unit? target = u.TargetId >= 0 ? Units[u.TargetId] : null;
-            if (target != null && !target.Alive)
+            if (target != null && !Attackable(target))
             {
                 u.TargetId = -1;
                 target = null;
@@ -1330,8 +1350,21 @@ namespace Messingstadt.Core
             }
         }
 
+        /// <summary>Ein befohlenes Ziel bleibt gültig, solange es lebt oder niedergeschlagen am Boden liegt: Auch auf den kann man schießen.</summary>
+        private static bool Attackable(Unit target) => target.Alive || target.KnockedOut;
+
         private void Hurt(Unit target, int damage)
         {
+            if (!target.Alive && target.KnockedOut)
+            {
+                // Ein Treffer auf einen Niedergeschlagenen tötet ihn. Jetzt ist er ein Toter wie jeder andere.
+                if (damage > 0)
+                {
+                    target.KnockedOut = false;
+                    Mourn(target);
+                }
+                return;
+            }
             target.Hp = Math.Max(0, target.Hp - damage);
             if (!target.Alive)
             {

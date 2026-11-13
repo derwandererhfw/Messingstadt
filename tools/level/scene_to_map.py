@@ -38,10 +38,21 @@ def write_light(scene, nr, w, h):
             level = 6.0
             for lamp in scene["lamps"]:
                 if lit(lamp["x"], lamp["y"], x, y):
-                    power = 110 if lamp.get("kind") == "wandlampe" else 170
+                    power = {"wandlampe": 110, "bogenlampe": 260}.get(lamp.get("kind"), 170)
                     d2 = (x - lamp["x"]) ** 2 + (y - lamp["y"]) ** 2
                     level += power / (1 + d2 / 2.56)
             levels.append(0 if opaque[cy // cells][cx // cells] else int(level))
+    # Der Kern der Karte behält das gebackene Licht, mit dem der leise Weg gemessen ist: data/light_<nr>_kern.json.
+    # Das sind die Felder x < 20, y < 13 und der Durchgang mit dem Beamtenhaus A (x 6 bis 13, y 13 bis 18).
+    core_file = ROOT / "data" / f"light_{nr}_kern.json"
+    if core_file.exists():
+        core = json.loads(core_file.read_text(encoding="utf-8"))
+        if core["cells"] == cells:
+            for cy in range(min(19 * cells, core["size"])):
+                for cx in range(min(20 * cells, core["size"])):
+                    tx, ty = cx // cells, cy // cells
+                    if ty < 13 or 6 <= tx < 14:
+                        levels[cy * w * cells + cx] = core["levels"][cy * core["size"] + cx]
     (ROOT / "data" / f"light_{nr}.json").write_text(json.dumps({"cells": cells, "size": w * cells, "levels": levels, "provisional": True}), encoding="utf-8")
 
 

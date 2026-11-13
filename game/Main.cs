@@ -700,7 +700,7 @@ void fragment() {
             ["menusounds"] = _sound.MenuPlayCount.ToString(),
             ["menusound"] = _sound.LastMenuSound,
             ["uisounds"] = _sound.UiPlayCount.ToString(),
-            ["prices"] = string.Join(" | ", World.Units.Where(u => u.Faction == Faction.Guard && u.Alive && !u.Bribed && u.Type.BribeCost > 0 && u.LeashedTo < 0).Select(u => $"{u.Name}: {BribeWord(u)}")),
+            ["prices"] = string.Join(" | ", World.Units.Where(u => u.Faction == Faction.Guard && u.Alive && !u.Bribed && World.Bribable(u) && u.LeashedTo < 0).Select(u => $"{u.Name}: {BribeWord(u)}")),
             ["state"] = World.State.ToString(),
             ["item"] = World.ItemTaken.ToString(),
             ["fields"] = _paper.FieldTexts,

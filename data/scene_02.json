@@ -369,6 +369,16 @@
    "y1": 26,
    "height": 34,
    "opaque": true
+  },
+  {
+   "id": "bretterzaun_1",
+   "kind": "bretterzaun",
+   "x0": 24,
+   "y0": 20,
+   "x1": 30,
+   "y1": 21,
+   "height": 34,
+   "opaque": true
   }
  ],
  "props": [
@@ -394,7 +404,7 @@
    "id": "waeschereiwagen",
    "kind": "fluchtwagen",
    "x": 28,
-   "y": 21.5,
+   "y": 23.5,
    "solid": false,
    "opaque": false,
    "note": "Wagen der Wäscherei im Kohlenhof, Ziel"
@@ -429,8 +439,8 @@
   {
    "id": "kohlenhaufen",
    "kind": "kiste",
-   "x": 24.5,
-   "y": 22.5,
+   "x": 25.5,
+   "y": 23.5,
    "solid": true,
    "opaque": false,
    "note": "Kohlenhaufen im Kohlenhof, Deckung vor dem Wagen"
@@ -748,6 +758,36 @@
    "kind": "wandlampe"
   },
   {
+   "x": 19.3,
+   "y": 5.5,
+   "group": "kaserne",
+   "kind": "wandlampe"
+  },
+  {
+   "x": 19.3,
+   "y": 5.5,
+   "group": "kaserne",
+   "kind": "wandlampe"
+  },
+  {
+   "x": 19.3,
+   "y": 5.5,
+   "group": "kaserne",
+   "kind": "wandlampe"
+  },
+  {
+   "x": 19.3,
+   "y": 5.5,
+   "group": "kaserne",
+   "kind": "wandlampe"
+  },
+  {
+   "x": 19.3,
+   "y": 5.5,
+   "group": "kaserne",
+   "kind": "wandlampe"
+  },
+  {
    "x": 22.5,
    "y": 10.5,
    "group": "wallstrasse"
@@ -800,8 +840,8 @@
    "kind": "wandlampe"
   },
   {
-   "x": 10.5,
-   "y": 27.5,
+   "x": 8.5,
+   "y": 26.6,
    "group": "suedgasse"
   }
  ],
@@ -981,16 +1021,16 @@
   {
    "kind": "start",
    "x0": 9,
-   "y0": 28,
+   "y0": 29,
    "x1": 13,
    "y1": 30
   },
   {
    "kind": "ziel",
    "x0": 27,
-   "y0": 20,
+   "y0": 22,
    "x1": 30,
-   "y1": 23
+   "y1": 25
   },
   {
    "kind": "verstaerkung",

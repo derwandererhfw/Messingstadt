@@ -175,7 +175,7 @@ namespace Messingstadt.Core.Tests
                 Assert.Equal(0, p.FollowId);
                 p.Waiting = false;
             }
-            w.OrderMove(0, 1, 18);
+            w.OrderMove(0, 28, 23);
             for (int i = 0; i < 3000 && w.State == MissionState.Running; i++)
             {
                 w.Step();
