@@ -23,6 +23,7 @@ namespace Messingstadt
         {
             var world = Game.World;
             DrawExit(world);
+            DrawPhone(world);
             if (!world.ItemTaken && !world.IsRescue)
             {
                 // Pulsierende Markierung: Das Missionsziel bleibt sichtbar, auch wenn etwas davorsteht.
@@ -148,6 +149,46 @@ namespace Messingstadt
                     continue;
                 }
                 DrawShot(s, age);
+            }
+        }
+
+        /// <summary>
+        /// Zeichen am Telefon der Wache: ein Apparat, der zeigt, wie es um den Anruf steht. Ruhig blass, auf dem Weg zum Apparat
+        /// blinkt er gelb, beim Wählen rot mit einem Balken, der sich füllt, nach dem Anruf steht er rot, ohne Leitung ist er durchgestrichen.
+        /// </summary>
+        private void DrawPhone(World world)
+        {
+            if (world.PhoneSpot is not { } spot)
+            {
+                return;
+            }
+            var at = Game.ToScreen(spot.X, spot.Y) + new Vector2(0f, -44f);
+            var state = world.Phone;
+            bool dead = state == PhoneState.Silent || world.WireCut;
+            float pulse = 0.5f + 0.5f * Mathf.Sin(Time.GetTicksMsec() / 120f);
+            var color = dead ? new Color(0.62f, 0.60f, 0.56f, 0.9f)
+                : state == PhoneState.Fetching ? new Color(1f, 0.82f, 0.3f, 0.55f + 0.45f * pulse)
+                : state == PhoneState.Dialing ? new Color(0.95f, 0.25f, 0.2f, 0.55f + 0.45f * pulse)
+                : state == PhoneState.Called ? new Color(0.95f, 0.25f, 0.2f)
+                : new Color(0.87f, 0.82f, 0.69f, 0.6f);
+            var dark = new Color(0f, 0f, 0f, 0.75f);
+            // Apparat: Sockel, Wählscheibe, Hörer quer darüber.
+            DrawRect(new Rect2(at + new Vector2(-8f, -3f), new Vector2(16f, 10f)), dark);
+            DrawRect(new Rect2(at + new Vector2(-6f, -1f), new Vector2(12f, 7f)), color);
+            DrawCircle(at + new Vector2(0f, 2.5f), 2.2f, dark);
+            DrawRect(new Rect2(at + new Vector2(-10f, -8f), new Vector2(20f, 5f)), dark);
+            DrawRect(new Rect2(at + new Vector2(-9f, -7f), new Vector2(18f, 3f)), color);
+            DrawRect(new Rect2(at + new Vector2(-9f, -7f), new Vector2(4f, 5f)), color);
+            DrawRect(new Rect2(at + new Vector2(5f, -7f), new Vector2(4f, 5f)), color);
+            if (dead)
+            {
+                DrawLine(at + new Vector2(-11f, 8f), at + new Vector2(11f, -9f), new Color(0.9f, 0.2f, 0.15f), 2f);
+            }
+            if (world.TicksUntilCall >= 0)
+            {
+                float f = 1f - Mathf.Clamp((float)world.TicksUntilCall / World.PhoneTicks, 0f, 1f);
+                DrawRect(new Rect2(at + new Vector2(-14f, 10f), new Vector2(28f, 4f)), dark);
+                DrawRect(new Rect2(at + new Vector2(-13f, 11f), new Vector2(26f * f, 2f)), new Color(0.95f, 0.25f, 0.2f));
             }
         }
 
