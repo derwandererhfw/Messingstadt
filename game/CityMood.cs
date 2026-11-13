@@ -51,8 +51,12 @@ namespace Messingstadt
                 case "gegen":
                     return Stance.Against;
             }
-            int blood = game.Campaign.BloodLast(District(game));
-            return blood == 0 ? Stance.Helps : blood < Campaign.BloodyNight ? Stance.Silent : Stance.Against;
+            return game.Campaign.Stance switch
+            {
+                CityStance.Helps => Stance.Helps,
+                CityStance.Silent => Stance.Silent,
+                _ => Stance.Against,
+            };
         }
 
         /// <summary>Hilft dieses Haus dem Trupp? Die Kennungen und die Bedingung gehören der Kampagne.</summary>

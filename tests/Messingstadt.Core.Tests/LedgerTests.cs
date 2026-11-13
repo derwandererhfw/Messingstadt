@@ -195,51 +195,231 @@ namespace Messingstadt.Core.Tests
             Assert.Equal(1, c.BloodLast("viertel_1"));
         }
 
-        [Fact]
-        public void HousesInTheNordwallHelpAfterABloodlessFirstMission()
+        /// <summary>Eine Nacht, in der so viele Wachen sterben. Die Namen wechseln, damit jede Nacht neue Tote ins Buch kommen.</summary>
+        private static void Night(Campaign c, int dead)
+        {
+            var guards = Enumerable.Range(0, 5).Select(i => Guard($"N{c.Nights}-{i}", 20.5 + i)).ToArray();
+            var m = Mission(guards);
+            c.District = "viertel_1";
+            c.Prepare(m, "mission_01");
+            var w = new World(Map, m);
+            foreach (var g in w.Units.Where(u => u.Faction == Faction.Guard).Take(dead))
+            {
+                g.Hp = 0;
+            }
+            c.Finish(Win(w));
+        }
+
+        private static int[] Debts(params int[] deadPerNight)
         {
             var c = new Campaign();
-            Assert.True(c.HouseHelps(Campaign.HelperWidow));
-            c.Finish(Win(Start(c)));
-            Assert.True(c.HouseHelps(Campaign.HelperWidow));
-            Assert.True(c.HouseHelps(Campaign.HelperGravedigger));
-            Assert.True(c.HouseHelps(Campaign.HelperLandlady));
+            return deadPerNight.Select(d => { Night(c, d); return c.BloodDebt; }).ToArray();
         }
 
         [Fact]
-        public void WidowAndGravediggerCloseTheirDoorsAfterBloodButTheLandladyStandsByGreta()
+        public void BloodDebtFollowsTheApprovedRule()
+        {
+            Assert.Equal(new[] { 0, 0, 0, 0, 0, 0 }, Debts(0, 0, 0, 0, 0, 0));
+            Assert.Equal(new[] { 3, 1, 0, 0, 0, 0 }, Debts(5, 0, 0, 0, 0, 0));
+            Assert.Equal(new[] { 3, 1, 4, 2, 5, 3 }, Debts(5, 0, 5, 0, 5, 0));
+            Assert.Equal(new[] { 3, 6, 6, 6, 6, 6 }, Debts(5, 5, 5, 5, 5, 5));
+            Assert.Equal(new[] { 2, 4, 6, 6 }, Debts(2, 2, 2, 2));
+        }
+
+        [Fact]
+        public void ASingleDeadGuardPerNightNeverTurnsTheCityAway()
+        {
+            Assert.Equal(new[] { 0, 0, 0, 0, 0, 0 }, Debts(1, 1, 1, 1, 1, 1));
+            // Nach einer lauten Nacht tilgt ein einzelner Toter nichts, erhöht aber auch nichts.
+            Assert.Equal(new[] { 3, 3, 3, 1 }, Debts(5, 1, 1, 0));
+            Assert.All(Debts(1, 1, 1, 1, 1, 1), d => Assert.NotEqual(CityStance.Against, Campaign.StanceFor(d)));
+        }
+
+        [Theory]
+        [InlineData(0, CityStance.Helps)]
+        [InlineData(1, CityStance.Helps)]
+        [InlineData(2, CityStance.Silent)]
+        [InlineData(3, CityStance.Silent)]
+        [InlineData(4, CityStance.Against)]
+        [InlineData(6, CityStance.Against)]
+        public void StanceHasThreeSteps(int debt, CityStance stance)
+        {
+            Assert.Equal(stance, Campaign.StanceFor(debt));
+            Assert.Equal(stance, new Campaign { BloodDebt = debt }.Stance);
+        }
+
+        [Fact]
+        public void KnockedOutAndBribedGuardsLeaveNoDebt()
         {
             var c = new Campaign();
             var w = Start(c);
             Unit(w, "Krüger").Hp = 0;
+            Unit(w, "Krüger").KnockedOut = true;
+            Unit(w, "Behrens").Hp = 0;
+            Unit(w, "Behrens").KnockedOut = true;
+            Unit(w, "Pieper").Bribed = true;
             c.Finish(Win(w));
-            Assert.False(c.HouseHelps(Campaign.HelperWidow));
-            Assert.False(c.HouseHelps(Campaign.HelperGravedigger));
-            Assert.True(c.HouseHelps(Campaign.HelperLandlady));
-            // Ein leiser Einsatz danach macht den Toten nicht lebendig.
-            c.Finish(Win(Start(c)));
-            Assert.False(c.HouseHelps(Campaign.HelperWidow));
-
-            c.Agent("Greta").Falls = 1;
-            var last = Start(c);
-            Unit(last, "Greta").Hp = 0;
-            c.Finish(Win(last));
-            Assert.True(c.IsDead("Greta"));
-            Assert.False(c.HouseHelps(Campaign.HelperLandlady));
+            Assert.Equal(0, c.BloodDebt);
+            Assert.Empty(c.Ledger);
+            Assert.Equal(GuardFate.KnockedOut, c.FateOf("Krüger"));
         }
 
         [Fact]
-        public void OtherHousesFollowTheLastNightInTheirDistrict()
+        public void KnockedOutGuardsAreNotCountedAsDeadAnywhere()
         {
             var c = new Campaign();
-            Assert.True(c.HouseHelps("baecker", "viertel_3"));
-            var w = Start(c, "mission_03", "viertel_3");
-            Unit(w, "Krüger").Hp = 0;
+            var w = Start(c);
+            foreach (string name in new[] { "Krüger", "Behrens", "Pieper" })
+            {
+                Unit(w, name).Hp = 0;
+                Unit(w, name).KnockedOut = true;
+            }
             c.Finish(Win(w));
-            Assert.False(c.HouseHelps("baecker", "viertel_3"));
-            Assert.True(c.HouseHelps("baecker", "viertel_4"));
-            c.Finish(Win(Start(c, "mission_03", "viertel_3")));
+            // Drei am Boden wären sonst eine blutige Nacht: Fahndung, Merker und Blut im Viertel bleiben bei null.
+            Assert.Equal(0, c.Heat);
+            Assert.Equal(0, c.Records["mission_01"].DeadGuards);
+            Assert.Equal(0, c.BloodLast("viertel_1"));
+            Assert.Equal(0, c.BloodTotal());
+            Assert.Empty(c.DeadLastNight());
+
+            var bloody = Start(c);
+            foreach (string name in new[] { "Krüger", "Behrens", "Pieper" })
+            {
+                Unit(bloody, name).Hp = 0;
+            }
+            c.Finish(Win(bloody));
+            Assert.Equal(3, c.Records["mission_01"].DeadGuards);
+            Assert.Equal(3, c.BloodLast("viertel_1"));
+        }
+
+        [Fact]
+        public void EveryHouseHelpsWhileTheCityHelps()
+        {
+            var c = new Campaign();
+            Assert.True(c.HouseHelps(Campaign.HelperWidow));
+            Assert.True(c.HouseHelps(Campaign.HelperGravedigger));
+            Assert.True(c.HouseHelps(Campaign.HelperLandlady));
             Assert.True(c.HouseHelps("baecker", "viertel_3"));
+            // Ein einzelner Toter ändert daran nichts.
+            Night(c, 1);
+            Assert.True(c.HouseHelps(Campaign.HelperWidow));
+        }
+
+        [Fact]
+        public void WhenTheCityIsSilentOnlyTheLandladyHelpsAndOnlyWhileGretaLives()
+        {
+            var c = new Campaign();
+            Night(c, 3);
+            Assert.Equal(CityStance.Silent, c.Stance);
+            Assert.False(c.HouseHelps(Campaign.HelperWidow));
+            Assert.False(c.HouseHelps(Campaign.HelperGravedigger));
+            Assert.False(c.HouseHelps("baecker"));
+            Assert.True(c.HouseHelps(Campaign.HelperLandlady));
+
+            var dead = new Campaign { BloodDebt = 3 };
+            dead.Ledger.Add(new LedgerEntry { Name = "Greta", Side = LedgerSide.Squad });
+            Assert.False(dead.HouseHelps(Campaign.HelperLandlady));
+            // Zwei leise Nächte bringen die Türen zurück, auch ohne Greta.
+            dead.BloodDebt = Campaign.DebtAfter(Campaign.DebtAfter(3, 0), 0);
+            Assert.True(dead.HouseHelps(Campaign.HelperLandlady));
+            Assert.True(dead.HouseHelps(Campaign.HelperWidow));
+        }
+
+        [Fact]
+        public void WhenTheCityIsAgainstTheSquadNoHouseHelps()
+        {
+            var c = new Campaign { BloodDebt = 4 };
+            Assert.Equal(CityStance.Against, c.Stance);
+            Assert.False(c.HouseHelps(Campaign.HelperLandlady));
+            Assert.False(c.HouseHelps(Campaign.HelperWidow));
+        }
+
+        [Fact]
+        public void RankAndAgeGoIntoTheBookAndGiveTheTitle()
+        {
+            var c = new Campaign();
+            var guards = new[]
+            {
+                Guard("Posten 1", 20.5), Guard("Posten 2", 21.5, "offizier"), Guard("Posten 3", 22.5, "werkschutz"),
+                Guard("Posten 4", 23.5, "laufbursche"), Guard("Posten 5", 24.5, "offizier"), Guard("Posten 6", 25.5, "laufbursche"),
+                Guard("Posten 7", 26.5, "hund"),
+            };
+            string[] persons = { "Krüger", "Behrens", "Rademacher", "Lüders", "Vogt", "Pagel", "Rex" };
+            for (int i = 0; i < guards.Length; i++)
+            {
+                guards[i].Person = persons[i];
+            }
+            guards[3].Age = 14;
+            guards[4].Rank = "Oberwachtmeister";
+            guards[5].Rank = "Bote";
+            guards[5].Age = 13;
+            var m = Mission(guards);
+            c.District = "viertel_2";
+            c.Prepare(m, "mission_02");
+            var w = new World(Map, m);
+            foreach (var g in w.Units.Where(u => u.Faction == Faction.Guard))
+            {
+                g.Hp = 0;
+            }
+            var reports = GuardReport.From(w);
+            Assert.Equal(new[] { "Wachmann", "Wachtmeister", "Werkschutzmann", "Laufbursche", "Oberwachtmeister", "Bote" }, reports.Select(r => r.Title));
+            Assert.Equal(new[] { 0, 0, 0, 14, 0, 13 }, reports.Select(r => r.Age));
+            c.Finish(Win(w));
+            var book = Campaign.Load(c.ToJson(), out _).Dead(LedgerSide.Guard);
+            Assert.Equal(new[] { "Krüger", "Behrens", "Rademacher", "Lüders", "Vogt", "Pagel" }, book.Select(e => e.Name));
+            Assert.Equal(new[] { "Wachmann", "Wachtmeister", "Werkschutzmann", "Laufbursche", "Oberwachtmeister", "Bote" }, book.Select(e => e.Title));
+            Assert.Equal(13, book[5].Age);
+            Assert.Equal("", book[0].Rank);
+            Assert.DoesNotContain(book, e => e.Name == "Rex");
+        }
+
+        [Fact]
+        public void OwnDeadStandInTheBookWithTheirJob()
+        {
+            var c = new Campaign();
+            c.Prepare(Mission(Watch()), "mission_01");
+            Assert.Equal("Schlosser", c.Agent("Otto").Role);
+            Assert.Equal("Agent", c.Agent("Greta").Role);
+            c.Agent("Otto").Falls = 1;
+            var w = Start(c);
+            Unit(w, "Otto").Hp = 0;
+            c.Finish(Win(w));
+            var otto = Assert.Single(c.Dead(LedgerSide.Squad));
+            Assert.Equal("Schlosser", otto.Title);
+            Assert.True(c.TryRecruit("Otto"));
+            Assert.Equal("Schlosser", c.Roster()[1].Job);
+            c.Prepare(Mission(Watch()), "mission_01");
+            Assert.Equal("Schlosser", c.Roster()[1].Role);
+        }
+
+        [Fact]
+        public void NamelessReinforcementsAreCountedOneByOne()
+        {
+            var c = new Campaign();
+            var m = Mission(Guard("Wachmann", 20.5), Guard("Wachmann", 21.5), Guard("Wachmann", 22.5));
+            c.District = "viertel_1";
+            c.Prepare(m, "mission_01");
+            var w = new World(Map, m);
+            foreach (var g in w.Units.Where(u => u.Faction == Faction.Guard))
+            {
+                g.Hp = 0;
+            }
+            c.Finish(Win(w));
+            Assert.Equal(new[] { "Wachmann", "Wachmann (2)", "Wachmann (3)" }, c.Dead(LedgerSide.Guard).Select(e => e.Name));
+            Assert.Equal(3, c.BloodDebt);
+        }
+
+        [Fact]
+        public void OlderBookGetsItsDebtFromItsNights()
+        {
+            const string old = "{\"Version\":5,\"Nights\":3,\"Ledger\":[{\"Name\":\"A\",\"Side\":1,\"Night\":1},{\"Name\":\"B\",\"Side\":1,\"Night\":1},{\"Name\":\"C\",\"Side\":1,\"Night\":1},{\"Name\":\"Otto\",\"Side\":0,\"Night\":2},{\"Name\":\"D\",\"Side\":1,\"Night\":3},{\"Name\":\"E\",\"Side\":1,\"Night\":3}]}";
+            var c = Campaign.Load(old, out var status);
+            Assert.Equal(SaveStatus.Migrated, status);
+            // Nacht 1: drei Tote, 3. Nacht 2: keine tote Wache, 1. Nacht 3: zwei Tote, 3.
+            Assert.Equal(3, c.BloodDebt);
+            Assert.Equal(3, Campaign.Load(c.ToJson(), out _).BloodDebt);
+            Assert.Equal(Campaign.MaxBloodDebt, Campaign.Load("{\"Version\":6,\"BloodDebt\":40}", out _).BloodDebt);
+            Assert.Equal(0, Campaign.Load("{\"Version\":6,\"BloodDebt\":-4}", out _).BloodDebt);
         }
 
         [Fact]
@@ -268,11 +448,12 @@ namespace Messingstadt.Core.Tests
         {
             var c = Campaign.Load(json, out var status);
             Assert.Equal(SaveStatus.Migrated, status);
-            Assert.Equal(5, c.Version);
+            Assert.Equal(Campaign.CurrentVersion, c.Version);
             Assert.Empty(c.Ledger);
             Assert.Empty(c.Guards);
             Assert.Equal(0, c.BloodTotal());
             Assert.True(c.HouseHelps(Campaign.HelperWidow));
+            Assert.Equal(0, c.BloodDebt);
         }
 
         [Fact]
@@ -290,13 +471,13 @@ namespace Messingstadt.Core.Tests
         [Fact]
         public void BrokenBookValuesAreRepaired()
         {
-            var c = Campaign.Load("{\"Version\":5,\"Nights\":-3,\"Ledger\":[null,{\"Name\":\"\"},{\"Name\":\"Krüger\",\"Side\":1,\"Mission\":null}],\"Guards\":null,\"LastBlood\":{\"viertel_1\":-2}}", out var status);
+            var c = Campaign.Load("{\"Version\":6,\"Nights\":-3,\"Ledger\":[null,{\"Name\":\"\"},{\"Name\":\"Krüger\",\"Side\":1,\"Mission\":null}],\"Guards\":null,\"LastBlood\":{\"viertel_1\":-2}}", out var status);
             Assert.Equal(SaveStatus.Loaded, status);
             Assert.Equal(0, c.Nights);
             Assert.Equal("", Assert.Single(c.Ledger).Mission);
             Assert.Empty(c.Guards);
             Assert.Equal(0, c.BloodLast("viertel_1"));
-            Assert.Empty(Campaign.Load("{\"Version\":5,\"Ledger\":null,\"LastBlood\":null}", out _).Ledger);
+            Assert.Empty(Campaign.Load("{\"Version\":6,\"Ledger\":null,\"LastBlood\":null}", out _).Ledger);
         }
 
         [Fact]
