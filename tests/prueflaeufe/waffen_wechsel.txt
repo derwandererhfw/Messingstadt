@@ -9,7 +9,7 @@ key Enter
 wait 20
 expect screen
 expect hud True
-expect helpline Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen, Otto: Tür   E: Waffe   G: Rauch   H: Verband   Q halten: Lageplan   1-4 Leertaste   WASD F P M   Esc: Menü
+expect helpline Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen (mit Greta halber Preis), Otto: Tür   E: Waffe   G: Rauch   H: Verband   Q halten: Lageplan   1-4 Leertaste   WASD F P M   Esc: Menü
 expect weapons Greta:Pistole 10, Otto:Pistole 10, Emil:ohne Waffe, Hanna:Knüppel
 key P
 expect paused True
@@ -41,5 +41,5 @@ pointat Greta 0 -2
 key G
 expect smokes 1
 expect items Greta:pistole+maschinenpistole, Otto:pistole+dietrich, Emil:, Hanna:totschlaeger+pistole
-expect helpline Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen, Otto: Tür   E: Waffe   Q halten: Lageplan   1-4 Leertaste   WASD F P M   Esc: Menü
+expect helpline Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen (mit Greta halber Preis), Otto: Tür   E: Waffe   Q halten: Lageplan   1-4 Leertaste   WASD F P M   Esc: Menü
 expect weapons Greta:MP 20, Otto:Pistole 10, Emil:ohne Waffe, Hanna:Pistole 10

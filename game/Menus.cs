@@ -266,6 +266,7 @@ namespace Messingstadt
             }
             Entry("Einstellungen", ShowSettings);
             Entry("Bedienung", ShowControls);
+            Entry("Totenbuch", () => ShowLedger(Game.Campaign));
             Entry("Zum Hauptmenü", () => AskAbandon("Zum Hauptmenü", "Zum Hauptmenü", Game.ToMainMenu));
             Entry("Beenden", () => AskAbandon("Beenden", "Beenden", Game.QuitGame));
         }
@@ -305,7 +306,8 @@ namespace Messingstadt
         private void ShowLoad()
         {
             var filled = Enumerable.Range(1, SaveFolder.Slots).Where(Game.SlotExists).ToList();
-            Open("Spiel laden", BuildLoad, focus: Math.Max(0, filled.IndexOf(Game.CurrentSlot)));
+            // Je belegter Akte zwei Knöpfe: die Akte selbst und ihr Totenbuch.
+            Open("Spiel laden", BuildLoad, focus: 2 * Math.Max(0, filled.IndexOf(Game.CurrentSlot)));
         }
 
         /// <summary>Belegte Akten setzen ihre Kampagne fort, leere stehen ausgegraut da. Neu beginnen geht nur über "Neues Spiel".</summary>
@@ -328,7 +330,11 @@ namespace Messingstadt
                 }
                 any = true;
                 string mark = s == Game.CurrentSlot ? "  *" : "";
-                _body.AddChild(MakeEntry($"Akte {s}: {Game.SlotLine(s)}{mark}", () => Game.OpenSlot(s, false), false));
+                var row = new HBoxContainer();
+                row.AddThemeConstantOverride("separation", 12);
+                _body.AddChild(row);
+                row.AddChild(MakeEntry($"Akte {s}: {Game.SlotLine(s)}{mark}", () => Game.OpenSlot(s, false), true));
+                row.AddChild(MakeEntry("Totenbuch", () => ShowLedger(Game.SlotCampaign(s)), false));
                 // Wer aussetzt, steht klein unter der Akte, wie auf dem Ergebnis-Bildschirm.
                 foreach (string resting in Game.SlotResting(s))
                 {
@@ -342,6 +348,100 @@ namespace Messingstadt
                 ? PaperUi.Text("* zuletzt geöffnet", 13, new Color(PaperUi.Ink, 0.7f), PaperUi.Typewriter)
                 : Wrapped("Noch liegt keine Akte im Schrank. \"Neues Spiel\" legt die erste an.", 15, SheetWidth));
             Entry("Zurück", Back);
+        }
+
+        // ---- Totenbuch ----
+
+        /// <summary>So viele Namen je Seite und Spalte. Mehr wird geblättert, damit das Blatt nie über den Bildschirm wächst.</summary>
+        public const int LedgerRows = 6;
+        public const string LedgerStamp = "GEFALLEN";
+        public const string LedgerEmpty = "Noch steht kein Name im Buch.";
+        private const float LedgerColumnWidth = 344f;
+        private const float LedgerRowHeight = 40f;
+        private const float LedgerNameWidth = 236f;
+
+        private Campaign? _ledgerOf;
+        private int _ledgerPage;
+
+        /// <summary>Das Blatt "Totenbuch" einer Kampagne: links die Toten des Trupps, rechts die der Wache. Nur Namen, Viertel und Stempel.</summary>
+        public void ShowLedger(Campaign campaign)
+        {
+            _ledgerOf = campaign;
+            _ledgerPage = 0;
+            Open("Totenbuch", BuildLedger);
+        }
+
+        private int LedgerPages => _ledgerOf == null ? 1
+            : Math.Max(1, (Math.Max(_ledgerOf.Dead(LedgerSide.Squad).Count, _ledgerOf.Dead(LedgerSide.Guard).Count) + LedgerRows - 1) / LedgerRows);
+
+        /// <summary>Für den Prüflauf: wer auf dem offenen Blatt steht und welche Seite aufgeschlagen ist.</summary>
+        public string LedgerProbe => ScreenName != "Totenbuch" || _ledgerOf == null ? ""
+            : $"trupp {string.Join(", ", _ledgerOf.Dead(LedgerSide.Squad).Select(e => e.Name))} | wache {string.Join(", ", _ledgerOf.Dead(LedgerSide.Guard).Select(e => e.Name))} | seite {_ledgerPage + 1}/{LedgerPages}";
+
+        private void BuildLedger()
+        {
+            var book = _ledgerOf!;
+            var squad = book.Dead(LedgerSide.Squad);
+            var guards = book.Dead(LedgerSide.Guard);
+            int pages = LedgerPages;
+            _ledgerPage = Math.Clamp(_ledgerPage, 0, pages - 1);
+            Heading("ROTER HAMMER   AKTENSCHRANK", "", WideSheetWidth);
+            _body.AddChild(PaperUi.Text("Totenbuch", 26, PaperUi.Ink, PaperUi.Serif));
+            _body.AddChild(Rule());
+            if (squad.Count + guards.Count == 0)
+            {
+                _body.AddChild(Wrapped(LedgerEmpty, 15, WideSheetWidth));
+            }
+            else
+            {
+                var columns = new HBoxContainer();
+                columns.AddThemeConstantOverride("separation", 16);
+                columns.AddChild(LedgerColumn("DER TRUPP", squad));
+                columns.AddChild(new ColorRect { CustomMinimumSize = new Vector2(1, 0), Color = PaperUi.PaperDark, MouseFilter = Control.MouseFilterEnum.Ignore });
+                columns.AddChild(LedgerColumn("DIE WACHE", guards));
+                _body.AddChild(columns);
+            }
+            _body.AddChild(Rule());
+            if (pages > 1)
+            {
+                // Ein Knopf, der im Kreis blättert: Die Wahl bleibt auf ihm stehen.
+                Entry($"Blättern   Seite {_ledgerPage + 1} von {pages}", () =>
+                {
+                    _ledgerPage = (_ledgerPage + 1) % pages;
+                    Refresh();
+                });
+            }
+            Entry("Zurück", Back);
+        }
+
+        private Control LedgerColumn(string title, List<LedgerEntry> dead)
+        {
+            var column = new VBoxContainer { CustomMinimumSize = new Vector2(LedgerColumnWidth, LedgerRows * LedgerRowHeight + 24f) };
+            column.AddThemeConstantOverride("separation", 0);
+            column.AddChild(PaperUi.Text($"{title}   {dead.Count}", 14, PaperUi.StampRed, PaperUi.Serif));
+            if (dead.Count == 0)
+            {
+                column.AddChild(PaperUi.Text("Niemand.", 14, new Color(PaperUi.Ink, 0.7f), PaperUi.Typewriter));
+            }
+            foreach (var entry in dead.Skip(_ledgerPage * LedgerRows).Take(LedgerRows))
+            {
+                var row = new Control { CustomMinimumSize = new Vector2(LedgerColumnWidth, LedgerRowHeight), MouseFilter = Control.MouseFilterEnum.Ignore };
+                var name = PaperUi.Text(entry.Name, 15, PaperUi.Ink, PaperUi.Typewriter);
+                name.Position = new Vector2(0, 2);
+                name.Size = new Vector2(LedgerNameWidth, 18);
+                name.ClipText = true;
+                name.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+                row.AddChild(name);
+                var where = PaperUi.Text(Game.DistrictName(entry.District), 12, new Color(PaperUi.Ink, 0.7f), PaperUi.Typewriter);
+                where.Position = new Vector2(0, 20);
+                row.AddChild(where);
+                var stamp = PaperUi.Text(LedgerStamp, 13, new Color(PaperUi.StampRed, 0.75f), PaperUi.Serif);
+                stamp.Position = new Vector2(LedgerNameWidth + 12f, 14f);
+                stamp.RotationDegrees = -7f;
+                row.AddChild(stamp);
+                column.AddChild(row);
+            }
+            return column;
         }
 
         private void ShowFiles() => Open("Akten", BuildFiles);
@@ -366,6 +466,7 @@ namespace Messingstadt
                 string line = Game.SlotLine(s);
                 string mark = s == Game.CurrentSlot ? "  *" : "";
                 row.AddChild(MakeEntry($"Akte {s}: {line}{mark}", () => Game.OpenSlot(s, false), true));
+                row.AddChild(MakeEntry("Totenbuch", () => ShowLedger(Game.SlotCampaign(s)), false));
                 var fresh = MakeEntry("Neu", () => Ask(
                     $"Akte {s} neu beginnen", $"Die Akte wird überschrieben: {line}.", "Neu beginnen", () => Game.OpenSlot(s, true)), false);
                 fresh.CustomMinimumSize = new Vector2(70, 0);
@@ -422,6 +523,7 @@ namespace Messingstadt
             ("Umschalt + Klick", "Agent zur Auswahl hinzufügen"),
             ("Doppelklick", "rennen, kostet Puste, dabei kein Feuer"),
             ("Rechtsklick Wache", "angreifen. Nur Emil gewählt: bestechen"),
+            ("Greta in Rufweite", "Bestechen kostet die Hälfte"),
             ("Rechtsklick Tür", "Otto öffnet die Tür, mit Dietrich auch andere"),
             ("E", "nächste Waffe in die Hand"),
             ("G", "Rauchtopf auf das Feld unter der Maus"),

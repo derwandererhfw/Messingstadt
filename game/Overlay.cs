@@ -158,16 +158,7 @@ namespace Messingstadt
             {
                 return;
             }
-            var type = guard.Type;
-            string text = (guard.Person.Length > 0 ? guard.Person + ", " : "") + type.Title + (guard.Bribed ? ", bestochen" : !Game.World.Bribable(guard) ? ", nicht käuflich" : ", " + Game.BribeWord(guard));
-            if (Game.World.Units.Exists(o => o.LeashedTo == guard.Id))
-            {
-                text += " samt Hund";
-            }
-            if (type.OrderOnly)
-            {
-                text += ", Feuer nur auf Befehl";
-            }
+            string text = Game.GuardLine(guard);
             var font = PaperUi.Typewriter;
             float width = font.GetStringSize(text, HorizontalAlignment.Left, -1, 9).X;
             var at = Game.UnitPos(guard) + new Vector2(-width / 2f, 14f);

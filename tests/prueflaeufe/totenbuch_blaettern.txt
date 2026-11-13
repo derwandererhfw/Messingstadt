@@ -1,0 +1,35 @@
+# Totenbuch im Aktenschrank mit vielen Namen: zwei Spalten, sechs Zeilen je Seite, der Rest wird geblättert.
+# Aufruf mit --menu --script-writes in einem eigenen APPDATA-Ordner, in dem totenbuch_akte.json als Godot/app_userdata/Messingstadt/kampagne.json liegt.
+wait 20
+expect screen Startbildschirm
+click Spiel laden
+expect screen Spiel laden
+# Neben jeder belegten Akte liegt ihr Totenbuch, mit Tasten erreichbar
+key Right
+expect focus Totenbuch
+key Enter
+expect screen Totenbuch
+expect ledger trupp Otto, Lene | wache Hermann Krüger, Fritz Bartels, Walter Henke, August Thiele, Oberwachtmeister Ernst Vogt, Wilhelm Jahnke, Hans Olbrich, Friedrich Kempe | seite 1/2
+seetext DER TRUPP   2
+seetext DIE WACHE   8
+seetext Otto
+seetext Kesselviertel
+seetext Viertel nicht vermerkt
+seetext Oberwachtmeister Ernst Vogt
+seetext GEFALLEN
+expect focus Blättern   Seite 1 von 2
+# Blättern mit Enter, die Wahl bleibt auf dem Knopf. Seite 2 zeigt den Rest der Wache, links steht niemand mehr
+key Enter
+expect ledger trupp Otto, Lene | wache Hermann Krüger, Fritz Bartels, Walter Henke, August Thiele, Oberwachtmeister Ernst Vogt, Wilhelm Jahnke, Hans Olbrich, Friedrich Kempe | seite 2/2
+expect focus Blättern   Seite 2 von 2
+seetext Hans Olbrich
+seetext Nordwall
+# Mit der Maus weiter: wieder Seite 1
+click Blättern   Seite 2 von 2
+expect focus Blättern   Seite 1 von 2
+# Esc führt zurück in den Schrank, die Wahl steht wieder auf dem Totenbuch
+key Escape
+expect screen Spiel laden
+expect focus Totenbuch
+key Escape
+expect screen Startbildschirm
