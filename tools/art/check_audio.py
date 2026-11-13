@@ -50,6 +50,10 @@ MAX_MENU_ABOVE_4K = 5.0
 MAX_MENU_BELOW_120 = 50.0
 MAX_PEIL_ABOVE_2K = 3.0
 STINGERS = ("music_in_fight", "music_to_calm")
+# Telefon der Wache: leise am Apparat, im Spiel deutlich unter dem Peilgerät.
+PHONE = ("phone_dial", "phone_called", "phone_dead", "wire_cut")
+MAX_PHONE_DBA = -31.0
+MAX_PHONE_ABOVE_4K = 2.0
 # Dampfstoß und Schweißen: nach dem Urteil des Nutzers gedeckelt, im Pegel und in den Höhen.
 HISSES = {"steam_burst": (-30.0, 12.0), "weld": (-35.0, 3.0)}
 MAX_STINGER_GAME_DBA = -38.0
@@ -169,6 +173,14 @@ def main():
         x, rate = load(name)
         check(dba(x, rate) <= limit, f"{name}: {dba(x, rate):.1f} dB(A) in der Datei, Grenze {limit}")
         check(share(x, rate, 4000, 1e9) <= bright, f"{name}: über 4 kHz {share(x, rate, 4000, 1e9):.1f} %")
+
+    for name in PHONE:
+        x, rate = load(name)
+        check(dba(x, rate) <= MAX_PHONE_DBA, f"{name}: {dba(x, rate):.1f} dB(A) in der Datei, Grenze {MAX_PHONE_DBA}")
+        check(share(x, rate, 4000, 1e9) <= MAX_PHONE_ABOVE_4K, f"{name}: über 4 kHz {share(x, rate, 4000, 1e9):.2f} %")
+        peil, _ = load("peil_ping_0")
+        in_game = dba(x, rate) + code_db("PhoneDb")
+        check(in_game <= dba(peil, rate) - 22 + code_db("PeilBoostDb") - 3, f"{name}: am Apparat {in_game:.1f} dB(A), unter dem Peilgerät")
 
     for name in STINGERS:
         x, rate = load(name)

@@ -1464,9 +1464,48 @@ def quieter_hiss():
     save_level("weld", loopable(x, 0.2), -35.8)
 
 
+def telephone():
+    """Feldtelefon der Wache: Kurbel, kurzes Klingeln mit gedämpfter Stimme, tote Leitung, gekappter Draht. Alles leise und dunkel."""
+    rng = own_rng("telephone")
+    # Kurbelinduktor: Hörer ab, dann ratternde Umdrehungen.
+    t = time(2.0)
+    lift = puff(rng, 2.0, 300, 1800, 0.012, 0.001) + 0.7 * puff(rng, 2.0, 200, 900, 0.02, 0.001, 0.09)
+    turns = band(noise(2.0, rng), 300, 1900) * (0.5 + 0.5 * np.sin(2 * np.pi * 7.5 * t)) ** 4 * np.clip((t - 0.3) / 0.1, 0, 1) * np.clip((1.85 - t) / 0.15, 0, 1)
+    whirr = band(rich(58, t, 700, 1.3, rng, 0.3), 150, 700) * np.clip((t - 0.3) / 0.2, 0, 1) * np.clip((1.85 - t) / 0.2, 0, 1)
+    save_level("phone_dial", fade(lift / np.abs(lift).max() + 0.8 * turns / np.abs(turns).max() + 0.25 * whirr / np.abs(whirr).max(), 0.002, 0.1), -32.0)
+
+    # Die Kaserne meldet sich: ein kurzer Wecker, dann eine Stimme durch die Muschel. Keine Worte, nur Silben.
+    t = time(2.6)
+    strikes = np.zeros_like(t)
+    for at in np.arange(0.0, 0.7, 1 / 22):
+        strikes[int(at * RATE)] = rng.uniform(0.7, 1.0)
+    h = time(0.4)
+    gong = ring(h, ((1150, 1, 0.12), (1730, 0.6, 0.09), (2300, 0.25, 0.05)))
+    bell_ = np.fft.irfft(np.fft.rfft(strikes, 2 * len(t)) * np.fft.rfft(gong, 2 * len(t)), 2 * len(t))[:len(t)]
+    syllables = np.zeros_like(t)
+    at = 1.0
+    while at < 2.35:
+        length = rng.uniform(0.09, 0.2)
+        syllables += np.exp(-((t - at - length / 2) / (length / 2.5)) ** 2) * rng.uniform(0.6, 1.0)
+        at += length + rng.uniform(0.02, 0.09)
+    pitch = 118 + 14 * np.sin(2 * np.pi * 1.3 * t) + 8 * np.sin(2 * np.pi * 3.1 * t + 1)
+    voice_ = band(rich(pitch, t, 1600, 0.9, rng, 0.2), 320, 1300) * syllables
+    save_level("phone_called", fade(band(bell_, 600, 3000) / np.abs(bell_).max() * 0.7 + voice_ / np.abs(voice_).max(), 0.002, 0.15), -32.0)
+
+    # Tote Leitung: Er drückt dreimal die Gabel, nichts kommt zurück.
+    taps = sum(puff(rng, 1.1, 350, 2000, 0.01, 0.001, at) + 0.6 * puff(rng, 1.1, 150, 600, 0.02, 0.001, at + 0.05) for at in (0.0, 0.28, 0.52))
+    save_level("phone_dead", fade(taps, 0.001, 0.2), -33.0)
+
+    # Draht gekappt: die Zange beißt zu, der gespannte Draht schnalzt weg.
+    t = time(0.5)
+    snip = puff(rng, 0.5, 700, 3000, 0.006, 0.0008) + 0.6 * puff(rng, 0.5, 300, 1200, 0.015, 0.001, 0.02)
+    twang = ring(t, ((410, 1, 0.12), (830, 0.5, 0.08), (1270, 0.25, 0.05)), 0.03)
+    save_level("wire_cut", fade(snip / np.abs(snip).max() + 0.35 * twang / np.abs(twang).max(), 0.0008, 0.1), -32.0)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld, dog, siren, factory_horn, train, radio, heartbeat, typewriter, fresh_random, dog_fight, boy_whistle, wind_gust, distant_shots, tram, foghorn, church_bell, shutter, gutter, piano, tram_hum, match, title_theme, menu_sounds, peil_ping, new_shots, new_steps, new_hits, reloads, field_kit, soft_signals, new_rain, rails, new_hums, new_signals, for_others, new_music, quieter_hiss):
+    for make in (rain, wind, lamp, neon, steam, fire, diesel, machine, television, steps, shots, hits, whistle, bell, small_things, stingers, music, thunder, airship, steam_burst, weld, dog, siren, factory_horn, train, radio, heartbeat, typewriter, fresh_random, dog_fight, boy_whistle, wind_gust, distant_shots, tram, foghorn, church_bell, shutter, gutter, piano, tram_hum, match, title_theme, menu_sounds, peil_ping, new_shots, new_steps, new_hits, reloads, field_kit, soft_signals, new_rain, rails, new_hums, new_signals, for_others, new_music, quieter_hiss, telephone):
         make()
     files = list(OUT.glob("*.wav"))
     print(f"{len(files)} Geräusche, {sum(f.stat().st_size for f in files) // 1024} KiB")

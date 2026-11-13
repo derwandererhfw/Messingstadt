@@ -290,8 +290,20 @@ def recordings():
     save("V6_verband_und_ausruesten_alt_dann_neu", both(row([before("bandage"), before("shop_equip")], -10, 1.0), row([new("bandage"), new("shop_equip")], -10, 1.0)))
 
 
+def phone():
+    """Telefon der Wache am Apparat (-18 dB), über ruhiger Musik und Niesel. Dazwischen zum Vergleich das Peilgerät."""
+    seconds = 16
+    out = looped("music_calm", seconds) * gain(MUSIC_DB) + weather(seconds, DRIZZLE)
+    for at, name, db in ((0.8, "peil_ping_0", -12), (2.0, "phone_dial", -18), (5.0, "phone_called", -18), (8.6, "peil_ping_1", -12), (10.0, "phone_dead", -18), (12.5, "wire_cut", -18), (14.0, "peil_ping_2", -12)):
+        x = new(name)
+        i = int(at * RATE)
+        out[i:i + len(x)] += x[:len(out) - i] * gain(db)
+    save("W_telefon_peilton_kurbel_anruf_peilton_tote_leitung_draht_peilton", out)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
+    phone()
     recordings()
     loud_one()
     music_round()
