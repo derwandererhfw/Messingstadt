@@ -9,35 +9,44 @@ namespace Messingstadt.Core
         None,
         Idle,
 
-        /// <summary>Der Telefonist wählt. Wer ihn jetzt noch aufhält, bekommt die Verstärkung spät und dünn.</summary>
+        /// <summary>Der Alarm läuft, der Mann am Telefon ist auf dem Weg zum Apparat. Wer ihn jetzt aufhält, bekommt die Verstärkung spät und dünn.</summary>
+        Fetching,
+
+        /// <summary>Er wählt. Auch jetzt hilft es noch, ihn aufzuhalten oder den Draht zu kappen.</summary>
         Dialing,
 
         /// <summary>Der Anruf ist durch: Die Kaserne kommt sofort und voll.</summary>
         Called,
 
-        /// <summary>Kein Anruf möglich: Draht gekappt, Telefonist gekauft, niedergeschlagen oder tot.</summary>
+        /// <summary>Kein Anruf möglich: Draht gekappt, der Mann am Telefon gekauft, niedergeschlagen oder tot.</summary>
         Silent,
     }
 
     public sealed partial class World
     {
-        /// <summary>So lange braucht der Telefonist, bis der Anruf durch ist.</summary>
+        /// <summary>So lange dauert es am Apparat, bis der Anruf durch ist.</summary>
         public const int PhoneTicks = 3 * TickRate;
+        private const int PhoneReach = 1500;
 
         private int _phoneId = -1;
         private int _dialUntil;
         private int _alarmTick;
         private int _reinforceLimit;
+        private bool _phonePlaced;
+        private int _phoneX, _phoneY;
 
         /// <summary>Der Telefondraht ist gekappt.</summary>
         public bool WireCut { get; private set; }
 
         public PhoneState Phone { get; private set; }
 
+        /// <summary>Wer in diesem Einsatz telefoniert, -1 ohne Telefon.</summary>
+        public int PhoneOperatorId => _phoneId;
+
         /// <summary>Takte, bis der Anruf durch ist, -1 wenn niemand wählt.</summary>
         public int TicksUntilCall => Phone == PhoneState.Dialing ? _dialUntil - Tick : -1;
 
-        /// <summary>So viele rücken in diesem Einsatz höchstens noch an. Erst bekannt, wenn der Alarm läuft.</summary>
+        /// <summary>So viele rücken in diesem Einsatz höchstens an. Erst bekannt, wenn der Alarm läuft.</summary>
         public int ReinforcementLimit => _reinforceLimit;
 
         private void SetUpPhone()
@@ -46,9 +55,15 @@ namespace Messingstadt.Core
             {
                 return;
             }
-            var operatorUnit = Units.Find(u => u.Faction == Faction.Guard && u.Name == r.Phone) ?? throw new ArgumentException($"Unbekannter Telefonist {r.Phone}");
+            var operatorUnit = Units.Find(u => u.Faction == Faction.Guard && u.Name == r.Phone) ?? throw new ArgumentException($"Unbekannter Posten am Telefon {r.Phone}");
             _phoneId = operatorUnit.Id;
             Phone = PhoneState.Idle;
+            if (r.PhoneAt is { Length: 2 })
+            {
+                _phonePlaced = true;
+                _phoneX = ToUnits(r.PhoneAt[0]);
+                _phoneY = ToUnits(r.PhoneAt[1]);
+            }
         }
 
         /// <summary>Kann jetzt jemand die Kaserne anrufen?</summary>
@@ -59,7 +74,7 @@ namespace Messingstadt.Core
 
         private void CallReinforcements()
         {
-            if (_reinforcements == null || _reinforceTick != 0 || _reinforcedCount != 0 || Phone is PhoneState.Dialing or PhoneState.Called or PhoneState.Silent)
+            if (_reinforcements == null || _reinforceTick != 0 || _reinforcedCount != 0 || Phone is not (PhoneState.None or PhoneState.Idle))
             {
                 return;
             }
@@ -71,8 +86,7 @@ namespace Messingstadt.Core
             }
             else if (PhoneWorks)
             {
-                Phone = PhoneState.Dialing;
-                _dialUntil = Tick + PhoneTicks;
+                Phone = PhoneState.Fetching;
             }
             else
             {
@@ -82,13 +96,36 @@ namespace Messingstadt.Core
 
         private void Telephone()
         {
-            if (Phone != PhoneState.Dialing)
+            if (Phone is not (PhoneState.Fetching or PhoneState.Dialing))
             {
                 return;
             }
             if (!PhoneWorks)
             {
                 ComeLate();
+                return;
+            }
+            var man = Units[_phoneId];
+            bool atPhone = !_phonePlaced || DistanceTo(man, _phoneX, _phoneY) <= PhoneReach;
+            if (!atPhone)
+            {
+                // Er lässt alles stehen und geht zum Apparat. Führt kein Weg hin, ruft er von dort an, wo er steht.
+                Phone = PhoneState.Fetching;
+                if (man.Path.Count == 0 || man.Path[^1] != (_phoneX / TileUnits, _phoneY / TileUnits))
+                {
+                    WalkTo(man, _phoneX / TileUnits, _phoneY / TileUnits);
+                    atPhone = man.Path.Count == 0;
+                }
+                if (!atPhone)
+                {
+                    return;
+                }
+            }
+            if (Phone == PhoneState.Fetching)
+            {
+                Phone = PhoneState.Dialing;
+                _dialUntil = Tick + PhoneTicks;
+                man.Path.Clear();
             }
             else if (Tick >= _dialUntil)
             {

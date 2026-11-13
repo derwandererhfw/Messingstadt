@@ -94,6 +94,8 @@ Unabhängig vom letzten Einsatz kann die Mission eine Wache mit `noBribe` unbest
 
 Nennt `reinforcements.phone` den Posten eines Telefonisten, hängt die Verstärkung am Telefon. Der Telefonist ist unbewaffnet, hat 40 Lebenspunkte und ist für 100 käuflich. Bemerkt er jemanden oder läuft der Alarm, wählt er 3 s lang und bleibt dabei am Apparat.
 
+Am Telefon kann auch ein anderer Posten stehen, etwa der Wachhabende. Mit `phoneAt` steht der Apparat auf einem eigenen, begehbaren Feld: Bei Alarm lässt der Posten alles stehen, geht dorthin und wählt erst dort. Wer ihn auf dem Weg aufhält, hat denselben Vorteil wie mit gekapptem Draht. Führt kein Weg zum Apparat, ruft er von seinem Platz aus an.
+
 | Fall | Erster Mann | Anzahl |
 |---|---|---|
 | Anruf kommt durch | `phoneDelay` nach dem Anruf, sonst 1 s | alle |

@@ -381,6 +381,45 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void AnOfficerOnDutyWalksToThePhoneFirst()
+        {
+            var m = Station();
+            m.Guards[1] = Guard("Wachhabender", "Seidel", 10.5, 20.5, "offizier", fx: 0, fy: 1);
+            m.Reinforcements!.Phone = "Wachhabender";
+            m.Reinforcements.PhoneAt = new[] { 20.5, 20.5 };
+            var w = NewWorld(m);
+            w.OrderAttack(0, 1);
+            RunUntil(w, () => w.Phone == PhoneState.Fetching);
+            int alarm = w.Tick;
+            w.Units[0].Hp = 100000;
+            RunUntil(w, () => w.Phone == PhoneState.Dialing);
+            Assert.True(World.Distance(w.Units[2], new Unit { X = 20500, Y = 20500 }) <= 1500);
+            Assert.True(w.Tick - alarm > 3 * World.TickRate, "Der Weg zum Apparat kostet Zeit");
+            RunUntil(w, () => w.Phone == PhoneState.Called);
+            Run(w, 600);
+            Assert.Equal(4, Came(w));
+        }
+
+        [Fact]
+        public void StoppingTheOfficerOnHisWayKeepsTheBarracksAsleep()
+        {
+            var m = Station();
+            m.Guards[1] = Guard("Wachhabender", "Seidel", 10.5, 20.5, "offizier", fx: 0, fy: 1);
+            m.Reinforcements!.Phone = "Wachhabender";
+            m.Reinforcements.PhoneAt = new[] { 20.5, 20.5 };
+            var w = NewWorld(m);
+            w.OrderAttack(0, 1);
+            RunUntil(w, () => w.Phone == PhoneState.Fetching);
+            Run(w, 20);
+            w.Units[2].Hp = 0;
+            Run(w, 2);
+            Assert.Equal(PhoneState.Silent, w.Phone);
+            w.Units[0].Hp = 100000;
+            Run(w, 900);
+            Assert.Equal(2, Came(w));
+        }
+
+        [Fact]
         public void BedsCapTheBarracksEvenWithAManhunt()
         {
             var m = Station(count: 4 + 2, beds: 4);

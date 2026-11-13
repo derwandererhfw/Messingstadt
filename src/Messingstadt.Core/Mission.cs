@@ -115,6 +115,10 @@ namespace Messingstadt.Core
         /// <summary>Posten des Telefonisten. Ohne Angabe gibt es kein Telefon, die Verstärkung kommt nach FirstDelay in voller Zahl.</summary>
         public string Phone { get; set; } = "";
 
+        /// <summary>Wo der Apparat steht, in Feldern, auf einem begehbaren Feld. Der Posten am Telefon geht bei Alarm dorthin und wählt erst dort.
+        /// Ohne Angabe ruft er von seinem Platz aus an.</summary>
+        public double[]? PhoneAt { get; set; }
+
         /// <summary>Sekunden vom fertigen Anruf bis zum ersten Mann.</summary>
         public int PhoneDelay { get; set; } = 1;
 
