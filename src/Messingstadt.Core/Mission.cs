@@ -53,6 +53,15 @@ namespace Messingstadt.Core
         /// <summary>Schaut weg, wenn im letzten Einsatz niemand starb. Höchstens World.MaxAtEase.</summary>
         public bool AtEase { get; set; }
 
+        /// <summary>Nimmt kein Geld, obwohl seine Art käuflich ist.</summary>
+        public bool NoBribe { get; set; }
+
+        /// <summary>Zeit bis zum Bemerken in Prozent, unabhängig vom letzten Einsatz. Über 100 schaut er gern weg.</summary>
+        public int NoticeScale { get; set; } = 100;
+
+        /// <summary>Name einer Wache aus einem früheren Einsatz, die diesen Posten übernimmt, wenn sie noch lebt. Sonst bleibt es bei Person.</summary>
+        public string Returning { get; set; } = "";
+
         /// <summary>Namen der Türen, zu denen diese Wache den Schlüssel trägt. Wer sie besticht, bekommt ihn, wer sie niederschlägt, hebt ihn auf.</summary>
         public List<string> Keys { get; set; } = new();
 

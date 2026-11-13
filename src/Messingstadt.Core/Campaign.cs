@@ -249,6 +249,8 @@ namespace Messingstadt.Core
         {
             Current = missionId;
             mission.Money = Money;
+            // Vor der ersten zählenden Nacht weiß keine Wache etwas vom Trupp.
+            mission.Memory ??= Nights > 0 ? GuardMemoryData.From(this) : null;
             foreach (var a in mission.Agents)
             {
                 if (!Agents.Exists(r => r.Slot == a.Name))

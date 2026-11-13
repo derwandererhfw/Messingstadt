@@ -99,7 +99,7 @@ while (args.Length > 0 && (args[0].StartsWith("--erinnerung=") || args[0].Starts
                 return;
             }
             string[] grudge = value == "streifen" ? new[] { "Krüger", "Behrens" } : new[] { "Wolff", "Adam" };
-            m.Memory = new GuardMemoryData { Dead = 9, Known = grudge.Select(p => new KnownGuardData { Person = p, Fate = GuardFate.Alerted }).ToList() };
+            m.Memory = new GuardMemoryData { Dead = 9, Known = grudge.Select(p => new KnownGuardData { Person = p, Fate = GuardFate.Survived }).ToList() };
             m.Guards.Add(new UnitData { Name = "Wallstreife 1b", Person = "Noack", Sprite = "Wachmann", AfterBlood = true, X = 1.5, Y = 11.5, Patrol = { new double[] { 13, 11 }, new double[] { 0, 11 } } });
             m.Guards.Add(new UnitData { Name = "Wallstreife 2b", Person = "Hartung", Sprite = "Wachmann", AfterBlood = true, X = 12.5, Y = 12.5, Patrol = { new double[] { 0, 12 }, new double[] { 13, 12 } } });
         };

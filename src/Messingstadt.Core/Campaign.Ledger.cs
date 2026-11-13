@@ -42,9 +42,10 @@ namespace Messingstadt.Core
             .Where(u => u.Faction == Faction.Guard && u.Type != GuardType.Hund)
             .Select(u => new GuardReport
             {
-                Name = u.Name,
+                // Der Mensch, nicht der Posten: Unter diesem Namen steht die Wache im Buch und wird wiedererkannt.
+                Name = u.Person.Length > 0 ? u.Person : u.Name,
                 Kind = u.Type.Id,
-                Fate = !u.Alive ? GuardFate.Dead : u.Bribed ? GuardFate.Bribed : GuardFate.Survived,
+                Fate = World.FateOf(u),
             })
             .ToList();
     }

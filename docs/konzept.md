@@ -88,6 +88,8 @@ Die Kampagne gibt dem nächsten Einsatz in `MissionData.Memory` mit, wie viele W
 
 Mehr als die Decke kostet Blut im nächsten Einsatz nie, egal wie viele gefallen sind. Ohne `Memory` gilt nichts davon.
 
+Unabhängig vom letzten Einsatz kann die Mission eine Wache mit `noBribe` unbestechlich machen und mit `noticeScale` wachsamer oder nachlässiger (150 heißt 50 % langsamer). `returning` nennt eine Wache aus einem früheren Einsatz, die den Posten übernimmt, wenn sie noch lebt. Wer im Totenbuch steht, rückt auch nicht mehr als Verstärkung an, der Nächste auf der Liste kommt. Die Kampagne füllt `Memory` vor jedem Einsatz aus dem Totenbuch (`GuardMemoryData.From`).
+
 ### Telefonist und Kaserne
 
 Nennt `reinforcements.phone` den Posten eines Telefonisten, hängt die Verstärkung am Telefon. Der Telefonist ist unbewaffnet, hat 40 Lebenspunkte und ist für 100 käuflich. Bemerkt er jemanden oder läuft der Alarm, wählt er 3 s lang und bleibt dabei am Apparat.

@@ -169,7 +169,7 @@ namespace Messingstadt.Core.Tests
             w.RaiseAlarm(6500, 5500);
             Run(w, 400);
             Assert.Equal(GuardState.Patrol, w.Units[1].GuardState);
-            Assert.Equal(GuardFate.Alerted, w.GuardOutcomes()[0].Fate);
+            Assert.Equal(GuardFate.Survived, w.GuardOutcomes()[0].Fate);
         }
 
         [Fact]

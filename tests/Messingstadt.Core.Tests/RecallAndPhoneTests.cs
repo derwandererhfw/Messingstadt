@@ -98,7 +98,7 @@ namespace Messingstadt.Core.Tests
         {
             var plain = Mission(new[] { Agent(6.5, skill: World.SkillBookkeeper) }, Guard("Posten", "Krüger", 2.5));
             var met = Mission(new[] { Agent(6.5, skill: World.SkillBookkeeper) }, Guard("Posten", "Krüger", 2.5));
-            met.Memory = Memory(World.BloodbathDead, ("Krüger", GuardFate.Alerted));
+            met.Memory = Memory(World.BloodbathDead, ("Krüger", GuardFate.Survived));
             var w = NewWorld(met);
             Assert.Equal(GuardRecall.Grudge, w.Units[1].Recall);
             Assert.False(w.IsBribable(w.Units[1]));
@@ -110,7 +110,7 @@ namespace Messingstadt.Core.Tests
         public void BelowABloodbathASurvivorHoldsNoGrudge()
         {
             var m = Mission(new[] { Agent(6.5) }, Guard("Posten", "Krüger", 2.5));
-            m.Memory = Memory(World.BloodbathDead - 1, ("Krüger", GuardFate.Alerted));
+            m.Memory = Memory(World.BloodbathDead - 1, ("Krüger", GuardFate.Survived));
             Assert.Equal(GuardRecall.None, NewWorld(m).Units[1].Recall);
         }
 
@@ -122,7 +122,7 @@ namespace Messingstadt.Core.Tests
             for (int i = 0; i < 6; i++)
             {
                 guards.Add(Guard($"Posten {i}", $"Mann {i}", 20.5 + i, 30.5));
-                known.Add(($"Mann {i}", GuardFate.Alerted));
+                known.Add(($"Mann {i}", GuardFate.Survived));
             }
             for (int i = 0; i < 5; i++)
             {
@@ -182,6 +182,67 @@ namespace Messingstadt.Core.Tests
             Assert.Equal(GuardRecall.AtEase, NewWorld(M(Memory(0))).Units[1].Recall);
             Assert.True(NoticeTicks(M(Memory(0))) > NoticeTicks(M(null)));
             Assert.Equal(NoticeTicks(M(null)), NoticeTicks(M(Memory(1))));
+        }
+
+        [Fact]
+        public void AMissionCanMarkAGuardAsIncorruptibleOrInattentive()
+        {
+            var plain = Mission(new[] { Agent(6.5, skill: World.SkillBookkeeper) }, Guard("Posten", "Lindner", 2.5));
+            var marked = Mission(new[] { Agent(6.5, skill: World.SkillBookkeeper) }, Guard("Posten", "Lindner", 2.5));
+            marked.Guards[0].NoBribe = true;
+            marked.Guards[0].NoticeScale = 150;
+            var w = NewWorld(marked);
+            Assert.False(w.IsBribable(w.Units[1]));
+            Assert.False(w.OrderBribe(0, 1));
+            Assert.True(NoticeTicks(marked) > NoticeTicks(plain));
+        }
+
+        [Fact]
+        public void AVeteranTakesThePostIfHeIsStillAlive()
+        {
+            MissionData M(GuardFate fate)
+            {
+                var m = Mission(new[] { Agent(30.5) }, Guard("Wallstreife 2", "Olbrich", 2.5));
+                m.Guards[0].Returning = "Bartels";
+                m.Memory = Memory(0, ("Bartels", fate));
+                return m;
+            }
+            Assert.Equal("Bartels", NewWorld(M(GuardFate.Unaware)).Units[1].Person);
+            Assert.Equal("Olbrich", NewWorld(M(GuardFate.Dead)).Units[1].Person);
+            var none = Mission(new[] { Agent(30.5) }, Guard("Wallstreife 2", "Olbrich", 2.5));
+            none.Guards[0].Returning = "Bartels";
+            Assert.Equal("Olbrich", NewWorld(none).Units[1].Person);
+        }
+
+        [Fact]
+        public void DeadMenDoNotComeAsReinforcements()
+        {
+            var m = Mission(new[] { Agent(8.5) }, Guard("Posten", "Krüger", 2.5));
+            m.Reinforcements = new ReinforcementData { X = 30.5, Y = 30.5, Sprite = "W", FirstDelay = 1, Interval = 1, Count = 2, Persons = new() { "Kasten", "Dreyer", "Hinz" } };
+            m.Memory = Memory(1, ("Kasten", GuardFate.Dead));
+            var w = NewWorld(m);
+            w.OrderAttack(0, 1);
+            w.Units[0].Hp = 100000;
+            Run(w, 400);
+            Assert.Equal(new[] { "Dreyer", "Hinz" }, w.Units.Where(u => u.Reinforcement).Select(u => u.Person));
+        }
+
+        [Fact]
+        public void TheCampaignHandsItsBookToTheNextMission()
+        {
+            var c = new Campaign { Nights = 1 };
+            c.Guards.Add(new GuardMemory { Name = "Wiese", Mission = "mission_01", Fate = GuardFate.Bribed, Night = 1 });
+            c.Guards.Add(new GuardMemory { Name = "Krüger", Mission = "mission_01", Fate = GuardFate.Dead, Night = 1 });
+            c.Ledger.Add(new LedgerEntry { Name = "Krüger", Side = LedgerSide.Guard, Mission = "mission_01", Night = 1 });
+            var memory = GuardMemoryData.From(c);
+            Assert.Equal(1, memory.Dead);
+            Assert.Equal(GuardFate.Bribed, memory.Known.Single(k => k.Person == "Wiese").Fate);
+            var m = Mission(new[] { Agent(6.5, skill: World.SkillBookkeeper) }, Guard("Hundeführer", "Wiese", 2.5, type: "hundefuehrer"));
+            c.Prepare(m, "mission_02");
+            Assert.NotNull(m.Memory);
+            var fresh = Mission(new[] { Agent(6.5) }, Guard("Posten", "Krüger", 2.5));
+            new Campaign().Prepare(fresh, "mission_01");
+            Assert.Null(fresh.Memory);
         }
 
         // ---------- Telefonist und Kaserne ----------

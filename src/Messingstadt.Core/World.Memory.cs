@@ -3,20 +3,7 @@ using System.Collections.Generic;
 
 namespace Messingstadt.Core
 {
-    /// <summary>Was aus einer Wache im Einsatz geworden ist. Niedergeschlagene sind nicht tot.</summary>
-    public enum GuardFate
-    {
-        /// <summary>Hat bis zum Schluss nichts gemerkt.</summary>
-        Unaware,
-
-        /// <summary>Hat etwas bemerkt, gesucht, gemeldet oder gekämpft und lebt.</summary>
-        Alerted,
-        Bribed,
-        KnockedOut,
-        Dead,
-    }
-
-    /// <summary>Eine Wache im Ergebnis des Einsatzes. Role ist der Posten aus der Mission, Person der Name des Menschen.</summary>
+    /// <summary>Eine Wache im Ergebnis des Einsatzes. Role ist der Posten aus der Mission, Person der Name des Menschen. GuardFate steht beim Totenbuch.</summary>
     public sealed record GuardOutcome(string Role, string Person, string Type, GuardFate Fate, bool Reinforcement);
 
     public enum CallKind
@@ -71,11 +58,12 @@ namespace Messingstadt.Core
             return list;
         }
 
+        /// <summary>Woran der Kern tot, niedergeschlagen, gekauft und ahnungslos erkennt. Niedergeschlagen geht vor tot, tot vor gekauft.</summary>
         public static GuardFate FateOf(Unit guard) =>
             guard.KnockedOut ? GuardFate.KnockedOut
             : !guard.Alive ? GuardFate.Dead
             : guard.Bribed ? GuardFate.Bribed
-            : guard.Roused || guard.GuardState != GuardState.Patrol ? GuardFate.Alerted
+            : guard.Roused || guard.GuardState != GuardState.Patrol ? GuardFate.Survived
             : GuardFate.Unaware;
 
         private void AddCall(Unit speaker, Unit subject, CallKind kind)
@@ -134,7 +122,8 @@ namespace Messingstadt.Core
         private void NameReinforcement(Unit g)
         {
             g.Reinforcement = true;
-            var persons = _reinforcements!.Persons;
+            // Wer im Totenbuch steht, rückt nicht mehr an: Der Nächste auf der Liste kommt.
+            var persons = _reinforcements!.Persons.FindAll(p => _memory?.Known.Exists(k => k.Person == p && k.Fate == GuardFate.Dead) != true);
             if (_reinforcedCount <= persons.Count)
             {
                 g.Person = persons[_reinforcedCount - 1];

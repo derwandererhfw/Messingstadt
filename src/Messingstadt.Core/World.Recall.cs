@@ -18,6 +18,21 @@ namespace Messingstadt.Core
 
         /// <summary>Wachen aus früheren Einsätzen, die hier wieder Dienst haben können, mit ihrem Schicksal dort.</summary>
         public List<KnownGuardData> Known { get; set; } = new();
+
+        /// <summary>
+        /// Was die Wachen nach dem bisherigen Verlauf der Kampagne wissen: die toten Wachen der letzten Nacht und jede Wache, der der Trupp begegnet ist.
+        /// Dead ist die eine Zahl, an der die Erinnerung hängt. Kommt später eine Blutschuld der Stadt, wird nur diese Zeile getauscht.
+        /// </summary>
+        public static GuardMemoryData From(Campaign campaign)
+        {
+            var memory = new GuardMemoryData { Dead = campaign.DeadLastNight().FindAll(e => e.Side == LedgerSide.Guard).Count };
+            foreach (var g in campaign.Guards)
+            {
+                memory.Known.RemoveAll(k => k.Person == g.Name);
+                memory.Known.Add(new KnownGuardData { Person = g.Name, Fate = g.Fate });
+            }
+            return memory;
+        }
     }
 
     /// <summary>Wie eine Wache dem Trupp wegen des letzten Einsatzes begegnet.</summary>
@@ -85,23 +100,37 @@ namespace Messingstadt.Core
             return mission.WithGuards(guards);
         }
 
+        private GuardMemoryData? _memory;
+
         private void ApplyMemory(MissionData mission)
         {
+            for (int i = 0; i < mission.Guards.Count; i++)
+            {
+                var g = Units[mission.Agents.Count + i];
+                g.Unbribable = mission.Guards[i].NoBribe;
+                g.NoticeScale = Math.Max(1, mission.Guards[i].NoticeScale);
+            }
             if (mission.Memory is not { } memory)
             {
                 return;
             }
+            _memory = memory;
             int grudges = 0, atEase = 0;
             for (int i = 0; i < mission.Guards.Count; i++)
             {
                 var g = Units[mission.Agents.Count + i];
+                string returning = mission.Guards[i].Returning;
+                if (returning.Length > 0 && memory.Known.Exists(k => k.Person == returning && k.Fate != GuardFate.Dead))
+                {
+                    g.Person = returning;
+                }
                 var known = g.Person.Length > 0 ? memory.Known.Find(k => k.Person == g.Person) : null;
                 bool human = !g.Type.Bites;
                 if (known is { Fate: GuardFate.Bribed } && g.Type.BribeCost > 0)
                 {
                     g.Recall = GuardRecall.OldDeal;
                     g.MemoryDiscount = OldDealDiscount;
-                    g.NoticeScale = AtEaseNoticeScale;
+                    g.NoticeScale = Math.Max(g.NoticeScale, AtEaseNoticeScale);
                 }
                 else if (known != null && known.Fate != GuardFate.Dead && human && memory.Dead >= BloodbathDead && grudges < MaxGrudges)
                 {
@@ -114,7 +143,7 @@ namespace Messingstadt.Core
                 {
                     atEase++;
                     g.Recall = GuardRecall.AtEase;
-                    g.NoticeScale = AtEaseNoticeScale;
+                    g.NoticeScale = Math.Max(g.NoticeScale, AtEaseNoticeScale);
                 }
             }
         }

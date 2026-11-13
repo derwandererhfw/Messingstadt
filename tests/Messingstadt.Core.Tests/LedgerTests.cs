@@ -74,6 +74,8 @@ namespace Messingstadt.Core.Tests
             var w = Start(c);
             Unit(w, "Krüger").Hp = 0;
             Unit(w, "Behrens").Bribed = true;
+            // Pieper hat etwas gemerkt und lebt. Wer nichts merkt, gilt als ahnungslos.
+            Unit(w, "Pieper").Roused = true;
             c.Finish(Win(w));
             Assert.Equal(GuardFate.Dead, c.FateOf("Krüger"));
             Assert.Equal(GuardFate.Bribed, c.FateOf("Behrens"));
