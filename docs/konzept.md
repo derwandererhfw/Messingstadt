@@ -104,6 +104,8 @@ Am Telefon kann auch ein anderer Posten stehen, etwa der Wachhabende. Mit `phone
 
 Der Draht ist eine Tür mit `wire`: Jeder kann ihn kappen, nach den Zeiten für Türen, das Feld bleibt gesperrt. `beds` begrenzt die Kaserne: Mehr rücken nie an, auch nicht mit Fahndung. Schuss, Bote und Telefonist lösen denselben Alarm aus, er läuft nur einmal.
 
+Für Anzeige und Ton: `World.Phone` nennt den Stand (`Idle`, `Fetching` auf dem Weg zum Apparat, `Dialing`, `Called`, `Silent`), `World.PhoneSince` den Takt des letzten Wechsels, `World.TicksUntilCall` die Zeit bis zum fertigen Anruf, `World.PhoneSpot` den Platz des Apparats, `World.PhoneOperatorId` den Mann am Telefon, `World.WireCut` den gekappten Draht und `World.ReinforcementLimit`, wie viele höchstens anrücken.
+
 ### Verhalten der Wachen
 
 Eine Wache ist immer in einem von fünf Zuständen. Sichtbare Wachen tragen im Spiel eine farbige Marke.

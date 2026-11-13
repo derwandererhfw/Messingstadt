@@ -65,8 +65,9 @@ while (args.Length > 1 && (args[0] == "--wert" || args[0] == "--startgeld"))
 // --erinnerung=blut      die Stadt steht gegen den Trupp, Groll trifft Schließer und Hundeführer, Streifen gehen zu zweit, soweit die Decke es zulässt
 // --erinnerung=streifen  dasselbe, aber der Groll trifft die beiden Wallstreifen
 // --erinnerung=frieden   niemand starb, der Hundeführer wurde gekauft, Türposten und eine Streife schauen weg
-// --telefon=an           Telefonist vor dem Wachlokal, Kaserne mit drei Betten
+// --telefon=an           der Wachhabende ruft vom Apparat an seinem Posten an, Kaserne mit drei Betten, es kommt Stadtwache
 // --telefon=stumm        dasselbe, aber der Draht ist gekappt: Die Verstärkung kommt spät und dünn
+// --telefon=stadtwache   kein Telefon, nur die Art der Verstärkung geleert: Stadtwache statt Werkschutz
 Action<MissionData>? remembered = null;
 bool phoneSilent = false;
 while (args.Length > 0 && (args[0].StartsWith("--erinnerung=") || args[0].StartsWith("--telefon=")))
@@ -79,8 +80,13 @@ while (args.Length > 0 && (args[0].StartsWith("--erinnerung=") || args[0].Starts
         remembered = m =>
         {
             before?.Invoke(m);
-            m.Guards.Add(new UnitData { Name = "Telefonist", Person = "Lemke", Sprite = "Laufbursche", Type = "telefonist", X = 12.5, Y = 10.5, Facing = new[] { 0.0, 1.0 } });
-            m.Reinforcements!.Beds = 3;
+            m.Reinforcements!.Type = "";
+            m.Reinforcements.Sprite = "Wachmann";
+            if (value == "stadtwache")
+            {
+                return;
+            }
+            m.Reinforcements.Beds = 3;
             if (phoneSilent)
             {
                 // Kein Anruf: Die Kaserne kommt so spät und so dünn, wie es der Kern ohne Telefon rechnet.
@@ -89,7 +95,8 @@ while (args.Length > 0 && (args[0].StartsWith("--erinnerung=") || args[0].Starts
             }
             else
             {
-                m.Reinforcements.Phone = "Telefonist";
+                m.Reinforcements.Phone = "Wachhabender";
+                m.Reinforcements.PhoneAt = new[] { 14.5, 9.5 };
             }
         };
     }

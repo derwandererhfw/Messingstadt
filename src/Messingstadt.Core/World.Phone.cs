@@ -38,7 +38,27 @@ namespace Messingstadt.Core
         /// <summary>Der Telefondraht ist gekappt.</summary>
         public bool WireCut { get; private set; }
 
-        public PhoneState Phone { get; private set; }
+        private PhoneState _phone;
+
+        /// <summary>Stand des Telefons. Anzeige und Ton hängen sich an den Wechsel: siehe PhoneSince.</summary>
+        public PhoneState Phone
+        {
+            get => _phone;
+            private set
+            {
+                if (_phone != value)
+                {
+                    _phone = value;
+                    PhoneSince = Tick;
+                }
+            }
+        }
+
+        /// <summary>Takt, in dem das Telefon in seinen jetzigen Stand kam. Wer Tick == PhoneSince sieht, spielt den Ton zum Stand genau einmal.</summary>
+        public int PhoneSince { get; private set; }
+
+        /// <summary>Wo der Apparat steht, in Welteinheiten. Ohne eigenen Platz dort, wo der Mann am Telefon gerade ist. Null ohne Telefon.</summary>
+        public (int X, int Y)? PhoneSpot => _phoneId < 0 ? null : _phonePlaced ? (_phoneX, _phoneY) : (Units[_phoneId].X, Units[_phoneId].Y);
 
         /// <summary>Wer in diesem Einsatz telefoniert, -1 ohne Telefon.</summary>
         public int PhoneOperatorId => _phoneId;

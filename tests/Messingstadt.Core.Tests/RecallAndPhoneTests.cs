@@ -393,6 +393,8 @@ namespace Messingstadt.Core.Tests
             int alarm = w.Tick;
             w.Units[0].Hp = 100000;
             RunUntil(w, () => w.Phone == PhoneState.Dialing);
+            Assert.Equal(w.Tick, w.PhoneSince);
+            Assert.Equal((20500, 20500), w.PhoneSpot);
             Assert.True(World.Distance(w.Units[2], new Unit { X = 20500, Y = 20500 }) <= 1500);
             Assert.True(w.Tick - alarm > 3 * World.TickRate, "Der Weg zum Apparat kostet Zeit");
             RunUntil(w, () => w.Phone == PhoneState.Called);
