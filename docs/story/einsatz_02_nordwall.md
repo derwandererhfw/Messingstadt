@@ -334,21 +334,32 @@ Auf der Südgasse läuft Zander Streife. Er kreuzt den Friedhofsweg und den Weg 
 
 ### Helfer
 
-Das Zeichen ist eine Kerze im Fenster, kein Text. Brennt sie, ist die Tür offen. Die Stadt hilft, solange am Trupp kein Blut klebt. Heute heißt das im Spiel: kein Toter in Einsatz 1 (`Campaign.HouseHelps`). Entscheidet sich der Nutzer für die Blutschuld von 0 bis 6, gilt stattdessen die Stufe „hilft“. Die Texte passen zu beidem.
+Das Zeichen ist eine Kerze im Fenster, kein Text. Brennt sie, ist die Tür offen. Die Stadt hilft, solange am Trupp kein Blut klebt. Maß dafür ist die Blutschuld (Nutzer, 2026-11-13, Regel in `kanon.md`): Bei Stufe „hilft“ brennen die Kerzen, bei „schweigt“ sind die Türen zu, bei „gegen den Trupp“ rufen die Leute nach der Wache.
 
 | Wer | Tür | Bedingung | Satz, wenn der Trupp durchgeht |
 |---|---|---|---|
 | Matthes Kroll, Totengräber | Pforte des Totengräbers [5, 17] | Die Stadt hilft | „Geht nur. Die hier verraten keinen.“ |
 | Agnes Töpfer, Witwe eines Wachmanns | Hoftür [8, 20] | Die Stadt hilft | „Geht durch. Ich hab nichts gehört.“ |
-| Else Radtke, Wirtin | Kellerluke [20, 22] | Greta lebt, oder die Stadt hilft | Mit Greta im Trupp: „Durch den Keller, Lenz. Wie früher.“ Sonst: „Durch den Keller. Schnell.“ |
+| Else Radtke, Wirtin | Kellerluke [20, 22] | Die Stadt hilft. Mit lebender Greta auch, wenn die Stadt schweigt | Mit Greta im Trupp: „Durch den Keller, Lenz. Wie früher.“ Sonst: „Durch den Keller. Schnell.“ |
 
-Ist die Tür zu und ein Agent steht davor, höchstens ein Satz hinter der Tür:
+Stufe „schweigt“: Ist die Tür zu und ein Agent steht davor, höchstens ein Satz hinter der Tür:
 
 - Kroll: „Ich begrabe genug. Geht woanders lang.“
 - Töpfer: „Ich mach nicht auf. Nicht für euch.“
 - Radtke: „Geschlossen.“
 
-Warum die Wirtin auch nach Blut öffnet, wenn Greta lebt: Greta hat hier zehn Jahre ihren Feierabend verbracht. Das ist ABLEITUNG aus ihrer Zeit als Wachtmeisterin.
+Stufe „gegen den Trupp“: Wer den Trupp sieht, ruft einmal, dann kommt die nächste Wache nachsehen. `{toter}` ist ein Name aus dem Totenbuch.
+
+- Töpfer: „Wache! Hier sind sie!“
+- Kroll: „Wache! Am Friedhof!“
+- Radtke, ohne Greta im Trupp: „Wache! Im Hof!“
+- Radtke, mit Greta im Trupp, ruft nicht: „Geh, Lenz. Ich hab dich nicht gesehen.“
+- Aus einem Fenster: „Mörder!“ / „Die haben {toter} auf dem Gewissen!“ / „Licht an! Sie sind im Hof!“
+- Ein Passant: „Wache! Da sind die mit den Pistolen!“
+
+Niemand ruft „Hammer“ oder „Abteilung K“. Die Leute wissen nur, was in der Zeitung stand.
+
+Warum die Wirtin länger öffnet, wenn Greta lebt: Greta hat hier zehn Jahre ihren Feierabend verbracht. Das ist ABLEITUNG aus ihrer Zeit als Wachtmeisterin.
 
 ### Die nie helfen
 
