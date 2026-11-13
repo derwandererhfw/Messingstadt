@@ -47,6 +47,9 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 | 2026-11-13 | Blutschuld 0 bis 6 für die ganze Stadt, Stufen hilft, schweigt, gegen den Trupp. Helfer hängen an „hilft“, die Wirtin mit lebender Greta auch an „schweigt“. Regel in `kanon.md` | Nutzer über die Hauptsession („Ja, so bauen“) |
 | 2026-11-13 | Verstärkung in Einsatz 2 sind Wachleute aus der Kaserne, der Werkschutz tritt dort nicht auf. Der Satz zur Kerze bleibt in Reserve | Hauptsession |
 | 2026-11-13 | Zeitung mit Namen: Die Story baut sie in `Headlines.cs`, sobald die Kampagne die Abfrage auf das Totenbuch meldet. Felder `person`, `rank`, `age` trägt Level ein | Hauptsession |
+| 2026-11-13 | Zeitung: tote Wachen mit Namen und Anrede (gebaut in `Headlines.cs`). Eigene Tote bleiben Blutspuren und stehen nur in Akte und Totenbuch. Der Nutzer kann das später ändern | Hauptsession, auf Empfehlung der Story |
+| 2026-11-13 | Feld `person` trägt den vollen Namen, der Rufname ist das letzte Wort, `call` überschreibt ihn bei den Jungen | Hauptsession |
+| 2026-11-13 | Blutschuld geglättet: Der erste Tote einer Nacht ist frei, jeder weitere 1, höchstens 3 je Nacht. Stufen unverändert | Kampagne über die Hauptsession, keine wörtliche Freigabe des Nutzers |
 
 ## Offene Entscheidungen
 

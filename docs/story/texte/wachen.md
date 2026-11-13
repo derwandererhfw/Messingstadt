@@ -4,7 +4,7 @@ Stand 2026-11-12. Alles hier ist VORSCHLAG der Story, bis die Hauptsession oder 
 
 Regeln:
 
-- Gerufen wird der Nachname, bei den Jungen der Vorname.
+- Gerufen wird der Nachname, bei den Jungen der Vorname. In den Missionsdaten trägt `person` den vollen Namen, der Rufname ist das letzte Wort. Bei den Jungen überschreibt `call` ihn: „Kurt“, „Jakob“. Kein Name hier hat einen Doppelnamen oder ein „von“.
 - Alle Nachnamen klingen verschieden und stoßen sich mit keinem Namen in `../kanon.md`.
 - Die Zeile „Hintergrund“ liest man im Spiel nie. Sie hilft Gegner- und Level-Session.
 - Reihenfolge wie in den Missionsdateien (Index in `guards`).

@@ -427,7 +427,7 @@ Für die Wachen eingebaut in `Headlines.cs` am 2026-11-13. Für die eigenen Tote
 | Werkschutz | „ Vom Werkschutz starb Viktor Grabow.“ Eigener Satz nach den Wachleuten |
 | Junge | „ Auch der Bote Jakob Pagel, dreizehn Jahre alt, ist tot.“ Immer als letzter Satz |
 
-Für die eigenen Toten, `{fallen}`: „ Einer der Täter blieb tot zurück. Es ist der Schlosser Otto Brenner.“ Bei zweien: „ Zwei der Täter blieben tot zurück, der Schlosser Otto Brenner und die Kurierin Hanna Roth.“ Die Zeitung nennt Beruf und Namen, nie Abteilung K.
+Nicht gebaut, Entscheidung der Hauptsession vom 2026-11-13: Die Zeitung schreibt bei eigenen Toten weiter nur von Blutspuren. Als Reserve, falls der Nutzer es anders will, `{fallen}`: „ Einer der Täter blieb tot zurück. Es ist der Schlosser Otto Brenner.“ Bei zweien: „ Zwei der Täter blieben tot zurück, der Schlosser Otto Brenner und die Kurierin Hanna Roth.“ Die Zeitung nennt Beruf und Namen, nie Abteilung K.
 
 Niedergeschlagene nennt die Zeitung nicht.
 
