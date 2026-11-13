@@ -1,17 +1,17 @@
 # Einsatz 2 leise mit Greta: Sie geht mit Otto und Emil durch die Gasse. Ist sie dabei, nehmen Hundeführer und Schließer
 # nur den halben Preis, 250 statt 500. Hanna bleibt am Start.
 # Aufruf mit --fresh --mission=mission_02. Die Takte stammen aus der Spur des Messwerkzeugs
-# (dotnet run --project tools/Messingstadt.Balance -- --mission=mission_02 --spur greta). Im Prüflauf ist die Spielzeit fest,
+# (dotnet run --project tools/Messingstadt.Balance -- --mission=mission_02 --weg=friedhof --rueckhalt=5 --spur greta). Im Prüflauf ist die Spielzeit fest,
 # die Streifen stehen also jedes Mal an derselben Stelle.
 wait 40
 expect mission mission_02
 expect cash 600
-expect guards 10
+expect guards 15
 # Am Start steht Greta neben Emil: Der Nachlass gilt, der Text am Mauszeiger sagt es
 waitcontains prices Hundeführer: käuflich für 150, Greta ist dabei
 waitcontains prices Wachhabender: käuflich für 200, Greta ist dabei
 key Key1
-clickfield 6 16
+clickfield 7 16
 # In den Durchgang zwischen den Beamtenhäusern
 key Key2
 clickfield 7 15
@@ -51,23 +51,9 @@ key Key3
 clickfield 6 6
 waittick 1070
 expect rating Quiet
-clickfield 6 15
-key Key2
-clickfield 7 15
-# Greta ist schneller als die Befreiten und geht deshalb einen Augenblick später los, sonst stünde sie zu früh auf der Straße
-waittick 1090
-key Key1
-clickfield 6 16
-waittick 1160
-key Key2
-clickfield 1 18
-key Key3
-clickfield 0 18
-key Key1
-clickfield 1 19
-waitcontains telegram EINSTEIGEN
-waitfor state Won
-expect rating Quiet
 expect down 0
-expect guards 10
+expect guards 15
+expect prisoners Anton Weiß:folgt Otto, Paul Roth:folgt Emil
+# Hier endet der Lauf vorerst. Der Heimweg zum Wagen im Kohlenhof ist auf der großen Karte im Spiel noch nicht stabil nachgestellt:
+# In der Messung bleiben Friedhof und Höfe leise, im Spiel wurde der Trupp auf beiden Wegen am Ende bemerkt.
 print

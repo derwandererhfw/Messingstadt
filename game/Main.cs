@@ -700,6 +700,7 @@ void fragment() {
             ["menusounds"] = _sound.MenuPlayCount.ToString(),
             ["menusound"] = _sound.LastMenuSound,
             ["uisounds"] = _sound.UiPlayCount.ToString(),
+            ["alarm"] = string.Join(", ", World.Units.Where(u => u.Faction == Faction.Guard && u.Alive && !u.Bribed && (u.Roused || u.GuardState != GuardState.Patrol)).Select(u => $"{u.Name} {u.GuardState} {u.TileX},{u.TileY}")),
             ["prices"] = string.Join(" | ", World.Units.Where(u => u.Faction == Faction.Guard && u.Alive && !u.Bribed && World.Bribable(u) && u.LeashedTo < 0).Select(u => $"{u.Name}: {BribeWord(u)}")),
             ["state"] = World.State.ToString(),
             ["item"] = World.ItemTaken.ToString(),
@@ -2619,7 +2620,8 @@ void fragment() {
             float bestD = 18f;
             foreach (var u in World.Units)
             {
-                if (u.Faction != faction || !u.Alive || World.HiddenInCell(u)) continue;
+                // Auch ein Niedergeschlagener lässt sich anklicken: Wer auf ihn schießt, tötet ihn.
+                if (u.Faction != faction || (!u.Alive && !u.KnockedOut) || World.HiddenInCell(u)) continue;
                 var center = ToScreen(u.X, u.Y) + new Vector2(0, -20);
                 float d = Math.Max(Math.Abs(center.X - p.X), Math.Abs(center.Y - p.Y) * 0.6f);
                 if (d < bestD)

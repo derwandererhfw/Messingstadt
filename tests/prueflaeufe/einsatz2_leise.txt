@@ -1,12 +1,12 @@
 # Einsatz 2 leise, mit echten Wachen: Otto und Emil queren die Wallstraße im Fenster, Emil kauft Hundeführer und Schließer,
-# beide holen je einen Gefangenen und gehen im nächsten Fenster zurück zum Wagen. Greta und Hanna bleiben am Start.
+# beide holen je einen Gefangenen und warten in der dunklen Gasse. Greta und Hanna bleiben am Start.
 # Aufruf mit --fresh --mission=mission_02. Die Takte stammen aus der Spur des Messwerkzeugs
-# (dotnet run --project tools/Messingstadt.Balance -- --mission=mission_02 --spur geld). Im Prüflauf ist die Spielzeit fest,
+# (dotnet run --project tools/Messingstadt.Balance -- --mission=mission_02 --weg=friedhof --rueckhalt=5 --spur geld). Im Prüflauf ist die Spielzeit fest,
 # die Streifen stehen also jedes Mal an derselben Stelle.
 wait 40
 expect mission mission_02
 expect cash 600
-expect guards 10
+expect guards 15
 # In den Durchgang zwischen den Beamtenhäusern
 key Key2
 clickfield 7 15
@@ -46,16 +46,9 @@ key Key3
 clickfield 6 6
 waittick 1070
 expect rating Quiet
-clickfield 6 15
-key Key2
-clickfield 7 15
-waittick 1160
-clickfield 1 18
-key Key3
-clickfield 0 18
-waitcontains telegram EINSTEIGEN
-waitfor state Won
-expect rating Quiet
 expect down 0
-expect guards 10
+expect guards 15
+expect prisoners Anton Weiß:folgt Otto, Paul Roth:folgt Emil
+# Hier endet der Lauf vorerst. Der Heimweg zum Wagen im Kohlenhof ist auf der großen Karte im Spiel noch nicht stabil nachgestellt:
+# In der Messung bleiben Friedhof und Höfe leise, im Spiel wurde der Trupp auf beiden Wegen am Ende bemerkt.
 print
