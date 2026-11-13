@@ -1091,6 +1091,7 @@ void fragment() {
             _critterGlow = glow;
             AddChild(new Haze { Game = this });
             AddChild(new Drains { Game = this });
+            AddChild(new Yards { Game = this, Glow = glow });
             AddChild(new LightExtras { Game = this, Windows = _windowLife, Glow = glow, TramOf = () => _puddleMirror.Tram, ManifestPath = Globalize("res://assets/manifest.json") });
             if (MapSite.Current.Passersby || MapSite.Current.Walks.Count > 0)
             {
