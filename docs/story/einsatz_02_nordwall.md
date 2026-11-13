@@ -415,15 +415,15 @@ Vorschlag, falls der Spieler die Kerze nicht von selbst versteht: ein Satz am En
 
 ### Zeitung mit Namen
 
-Vorbereitet für das Totenbuch. Die Felder liefert die Kampagne, der Einbau in `Headlines.cs` ist noch nicht gemacht. Gebraucht werden je Totem: Name, Anrede und bei Jungen das Alter. Das Totenbuch liefert Name, Seite, Art, Mission, Viertel und Nacht. Die Anrede folgt aus der Art: Wachmann, Schütze und Hundeführer heißen „Wachmann“, der Offizier „Wachtmeister“, der Werkschutz „Werkschutzmann“, der Laufbursche „Laufbursche“. Zwei freiwillige Felder je Wache in der Missionsdatei überschreiben das: `rank` (etwa „Oberwachtmeister“ für Vogt, „Bote“ für Pagel) und `age` (14 für Lüders, 13 für Pagel). Fehlt `age` bei einem Jungen, entfällt das Alter im Satz. Hunde nennt die Zeitung nicht.
+Für die Wachen eingebaut in `Headlines.cs` am 2026-11-13. Für die eigenen Toten noch nicht: Die Zeitung kennt nur den Einsatz, nicht die Kampagne, und weiß darum nicht, wer wirklich tot ist. Gebraucht werden je Totem: Name, Anrede und bei Jungen das Alter. Das Totenbuch liefert Name, Seite, Art, Mission, Viertel und Nacht. Die Anrede folgt aus der Art: Wachmann, Schütze und Hundeführer heißen „Wachmann“, der Offizier „Wachtmeister“, der Werkschutz „Werkschutzmann“, der Laufbursche „Laufbursche“. Zwei freiwillige Felder je Wache in der Missionsdatei überschreiben das: `rank` (etwa „Oberwachtmeister“ für Vogt, „Bote“ für Pagel) und `age` (14 für Lüders, 13 für Pagel). Fehlt `age` bei einem Jungen, entfällt das Alter im Satz. Hunde nennt die Zeitung nicht.
 
 | Fall | `{dead}` |
 |---|---|
-| Ein Wachmann | „ Wachmann Wilhelm Jahnke kam dabei ums Leben.“ |
-| Zwei | „ Die Wachleute Wilhelm Jahnke und Hans Olbrich kamen dabei ums Leben.“ |
-| Drei | „ Die Wachleute Wilhelm Jahnke, Hans Olbrich und Friedrich Kempe kamen dabei ums Leben.“ |
-| Mehr als drei | „ Die Wachleute Wilhelm Jahnke, Hans Olbrich, Friedrich Kempe und zwei weitere kamen dabei ums Leben.“ |
-| Mit Rang | „ Wachtmeister Arthur Seidel kam dabei ums Leben.“ Der Ranghöchste steht vorn |
+| Ein Wachmann | „ Wachmann Wilhelm Jahnke kam ums Leben.“ |
+| Zwei | „ Die Wachleute Wilhelm Jahnke und Hans Olbrich kamen ums Leben.“ |
+| Drei | „ Die Wachleute Wilhelm Jahnke, Hans Olbrich und Friedrich Kempe kamen ums Leben.“ |
+| Mehr als drei | „ Die Wachleute Wilhelm Jahnke, Hans Olbrich, Friedrich Kempe und zwei weitere kamen ums Leben.“ |
+| Mit Rang | „ Wachtmeister Arthur Seidel kam ums Leben.“ Der Ranghöchste steht vorn |
 | Werkschutz | „ Vom Werkschutz starb Viktor Grabow.“ Eigener Satz nach den Wachleuten |
 | Junge | „ Auch der Bote Jakob Pagel, dreizehn Jahre alt, ist tot.“ Immer als letzter Satz |
 
