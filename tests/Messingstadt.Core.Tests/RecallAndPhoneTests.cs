@@ -98,7 +98,7 @@ namespace Messingstadt.Core.Tests
         {
             var plain = Mission(new[] { Agent(6.5, skill: World.SkillBookkeeper) }, Guard("Posten", "Krüger", 2.5));
             var met = Mission(new[] { Agent(6.5, skill: World.SkillBookkeeper) }, Guard("Posten", "Krüger", 2.5));
-            met.Memory = Memory(World.BloodbathDead, ("Krüger", GuardFate.Survived));
+            met.Memory = Memory(World.BloodbathDead, ("Krüger", GuardFate.Alerted));
             var w = NewWorld(met);
             Assert.Equal(GuardRecall.Grudge, w.Units[1].Recall);
             Assert.False(w.IsBribable(w.Units[1]));
@@ -110,7 +110,7 @@ namespace Messingstadt.Core.Tests
         public void BelowABloodbathASurvivorHoldsNoGrudge()
         {
             var m = Mission(new[] { Agent(6.5) }, Guard("Posten", "Krüger", 2.5));
-            m.Memory = Memory(World.BloodbathDead - 1, ("Krüger", GuardFate.Survived));
+            m.Memory = Memory(World.BloodbathDead - 1, ("Krüger", GuardFate.Alerted));
             Assert.Equal(GuardRecall.None, NewWorld(m).Units[1].Recall);
         }
 
@@ -122,7 +122,7 @@ namespace Messingstadt.Core.Tests
             for (int i = 0; i < 6; i++)
             {
                 guards.Add(Guard($"Posten {i}", $"Mann {i}", 20.5 + i, 30.5));
-                known.Add(($"Mann {i}", GuardFate.Survived));
+                known.Add(($"Mann {i}", GuardFate.Alerted));
             }
             for (int i = 0; i < 5; i++)
             {

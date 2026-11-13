@@ -3,7 +3,22 @@ using System.Collections.Generic;
 
 namespace Messingstadt.Core
 {
-    /// <summary>Eine Wache im Ergebnis des Einsatzes. Role ist der Posten aus der Mission, Person der Name des Menschen. GuardFate steht beim Totenbuch.</summary>
+    /// <summary>Was aus einer Wache im Einsatz geworden ist. Niedergeschlagene sind nicht tot.</summary>
+    public enum GuardFate
+    {
+        /// <summary>Hat etwas bemerkt, gesucht, gemeldet oder gekämpft und lebt. Steht an erster Stelle, weil Spielstände der Version 5 den Wert 0 so ablegen.</summary>
+        Alerted = 0,
+
+        /// <summary>Hat bis zum Schluss nichts gemerkt.</summary>
+        Unaware = 1,
+        Bribed = 2,
+
+        /// <summary>Niedergeschlagen, lebt.</summary>
+        KnockedOut = 3,
+        Dead = 4,
+    }
+
+    /// <summary>Eine Wache im Ergebnis des Einsatzes. Role ist der Posten aus der Mission, Person der Name des Menschen.</summary>
     public sealed record GuardOutcome(string Role, string Person, string Type, GuardFate Fate, bool Reinforcement);
 
     public enum CallKind
@@ -58,12 +73,11 @@ namespace Messingstadt.Core
             return list;
         }
 
-        /// <summary>Woran der Kern tot, niedergeschlagen, gekauft und ahnungslos erkennt. Niedergeschlagen geht vor tot, tot vor gekauft.</summary>
         public static GuardFate FateOf(Unit guard) =>
             guard.KnockedOut ? GuardFate.KnockedOut
             : !guard.Alive ? GuardFate.Dead
             : guard.Bribed ? GuardFate.Bribed
-            : guard.Roused || guard.GuardState != GuardState.Patrol ? GuardFate.Survived
+            : guard.Roused || guard.GuardState != GuardState.Patrol ? GuardFate.Alerted
             : GuardFate.Unaware;
 
         private void AddCall(Unit speaker, Unit subject, CallKind kind)

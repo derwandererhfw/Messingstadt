@@ -353,7 +353,7 @@ void fragment() {
             _lightData = _mission.Light ?? new LightData { Cells = 1, Size = _map.Width, Levels = Enumerable.Repeat(World.BrightLevel, _map.Width * _map.Width).ToArray() };
             s_scene = _mission.Scene;
             // Die Atmosphäre liest ihre festen Orte je Karte: Vorgaben nur für die Stadt des ersten Einsatzes.
-            MapSite.Use(Globalize("res://assets/manifest.json"), FirstCity);
+            MapSite.Use(Globalize("res://assets/manifest.json"), FirstCity, _map.Width, _map.Height);
             _mission = LoadMission();
             Watch = WatchMap.Measure(_map, _mission);
 

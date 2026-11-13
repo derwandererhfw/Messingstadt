@@ -13,19 +13,21 @@ namespace Messingstadt
         // Linien gleicher Entfernung liegen in der Schrägansicht waagerecht: x + y = Tiefe.
         private const float FirstDepth = 7f;
         private const float DepthStep = 7.5f;
-        private const int Sheets = 4;
+        // So viele Schleier, wie die Karte tief ist: bei 20 x 20 Feldern vier, bei 30 x 30 sieben.
+        private const float LastSheetBeforeEnd = 3f;
         private const float SheetAlpha = 0.042f;
         private const float GroundMistAlpha = 0.04f;
         private const float RampPixels = 110f;
         private const float MistTopPixels = 190f;
         private const float RowPixels = 16f;
-        private const float Left = -1000f;
-        private const float Right = 2500f;
+        private const float SideMargin = 1100f;
+        private static float Left;
+        private static float Right;
         private const float Top = -560f;
         private const float RainBoost = 0.2f;
         private static readonly Color HazeColor = new(0.3f, 0.36f, 0.56f);
 
-        private readonly Sheet[] _sheets = new Sheet[Sheets];
+        private readonly System.Collections.Generic.List<Sheet> _sheets = new();
 
         private sealed partial class Sheet : Node2D
         {
@@ -52,15 +54,19 @@ namespace Messingstadt
             var night = Game.NightColor;
             var tint = new Color(HazeColor.R / night.R, HazeColor.G / night.G, HazeColor.B / night.B);
             float originY = Game.ToScreen(0, 0).Y;
-            for (int i = 0; i < Sheets; i++)
+            // Die Schleier reichen seitlich über die ganze Raute der Karte hinaus.
+            float originX = Game.ToScreen(0, 0).X;
+            Left = originX - MapSite.Tiles.Y * 32f - SideMargin;
+            Right = originX + MapSite.Tiles.X * 32f + SideMargin + 20f;
+            for (float depth = FirstDepth; depth < MapSite.Tiles.X + MapSite.Tiles.Y - LastSheetBeforeEnd; depth += DepthStep)
             {
-                float depth = FirstDepth + i * DepthStep;
                 float line = originY + depth * RowPixels;
                 // Von der Linie am Boden weich ansteigend, darüber eine Bank aus Bodendunst, in der Höhe nur der Schleier.
                 float[] rows = { line, line - RampPixels, line - MistTopPixels, Top };
                 float[] alphas = { 0f, SheetAlpha + GroundMistAlpha, SheetAlpha, SheetAlpha };
-                _sheets[i] = new Sheet { Rows = rows, Alphas = alphas, Tint = tint, ZIndex = Game.BehindLineZ(depth), LightMask = 0 };
-                AddChild(_sheets[i]);
+                var sheet = new Sheet { Rows = rows, Alphas = alphas, Tint = tint, ZIndex = Game.BehindLineZ(depth), LightMask = 0 };
+                _sheets.Add(sheet);
+                AddChild(sheet);
             }
         }
 

@@ -504,7 +504,7 @@ void fragment() {
         private bool OpenGround(Vector2 at, List<(float X0, float Y0, float X1, float Y1, float Z1)> boxes)
         {
             var tile = Game.ScreenToMap(at);
-            if (tile.X < 0.2f || tile.Y < 0.2f || tile.X > 19.8f || tile.Y > 19.8f || _blocked.IsBlocked((int)tile.X, (int)tile.Y))
+            if (tile.X < 0.2f || tile.Y < 0.2f || tile.X > MapSite.Tiles.X - 0.2f || tile.Y > MapSite.Tiles.Y - 0.2f || _blocked.IsBlocked((int)tile.X, (int)tile.Y))
             {
                 return false;
             }
@@ -620,8 +620,14 @@ void fragment() {
         private void DrawLights(CanvasItem canvas)
         {
             float smear = MinSmear + RainSmear * Game.Climate.RainStrength;
+            var seen = ViewCull.Seen(canvas, 80f);
             foreach (var src in _sources)
             {
+                // Spiegelbilder außerhalb des Bilds bleiben ungezeichnet.
+                if (!seen.HasPoint(src.Mirror))
+                {
+                    continue;
+                }
                 var (color, level) = Look(src);
                 if (level <= 0.01f)
                 {
