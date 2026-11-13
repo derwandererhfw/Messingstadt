@@ -78,5 +78,8 @@ Ergebnisse werden als HISTORISCH mit Quelle eingetragen.
 - Die Zeitung druckt, was die Wache sagt. Sie weiß nichts von Abteilung K.
 - Wachen sind arme Leute, keine Monster. Jede hat einen Namen, den man hört (`texte/wachen.md`).
 - Der Totschläger schlägt bewusstlos. Niedergeschlagene stehen nicht im Totenbuch (Nutzer über die Hauptsession, 2026-11-12).
+- Blutschuld, eine Zahl von 0 bis 6 für die ganze Stadt (Nutzer, 2026-11-13: „Ja, so bauen“): Der erste Tote einer Nacht ist frei, jeder weitere erhöht sie um 1, höchstens um 3 je Nacht. Eine Nacht ohne tote Wache tilgt 2. Diese Staffel hat die Kampagne am 2026-11-13 geglättet (Hauptsession). Freigegeben hatte der Nutzer: je Toter 1, höchstens 3. Stufen: hilft (0 bis 1), schweigt (2 bis 3), gegen den Trupp (4 bis 6). Im Spiel ohne Zahl und ohne Erklärtext.
+- Die Zeitung nennt tote Wachen mit Namen. Von den eigenen Toten schreibt sie nur Blutspuren: Die Wache gibt die Namen der Täter nicht heraus, solange sie die anderen sucht (Hauptsession, 2026-11-13).
+- Bewohner wissen nur, was in der Zeitung stand. Niemand ruft „Hammer“ oder „Abteilung K“.
 - Brandt erscheint nie selbst im Einsatz, nur über Werkschutz, Luftschiff und Geld.
 - Die Kampagne läuft vom 22. November bis 5. Dezember 1927 in der Reihenfolge aus `../story.md`.

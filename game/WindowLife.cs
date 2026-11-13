@@ -75,6 +75,13 @@ namespace Messingstadt
             public float CurtainAt = -1f;
             // Wie viel Licht gerade aus dem Fenster fällt, 0 bis 1. Für Höfe und die Lichtflicken der Grafik.
             public float Level;
+            // Türen der Stadt: Läden zu für den Rest des Einsatzes, Kerze eines Helfers, dunkel für den Trupp.
+            public bool Shut;
+            public float ShutAt = -1f;
+            public bool Curtained;
+            public bool Helper;
+            public float DimFrom;
+            public float DimUntil = -1f;
         }
 
         private readonly Dictionary<int, Pane> _byId = new();
@@ -261,20 +268,206 @@ namespace Messingstadt
                     PaneKind.Letter => pane == _brokenLetter && _time < _stutterUntil && _rng.NextDouble() < 0.5 || _time < _dropoutUntil ? DeadLetter : NeonColor,
                     _ => UpdateWindow(pane, dt),
                 };
+                bool own = false;
+                if (Hushable(pane))
+                {
+                    var town = Townsfolk(pane, look);
+                    own = town != look || pane.Helper;
+                    // Was die Bewohner selbst entscheiden, geht vor: Dann schaltet kein Schuss mehr dazwischen.
+                    look = own ? town : Hushed(pane, look);
+                }
+                bool unlit = look == DarkPane || look == ShutPane || look == CurtainPane || look == PeekPane || look == PasserPane;
                 pane.Level = pane.Kind switch
                 {
                     PaneKind.Dark => 0f,
                     PaneKind.Letter => look == NeonColor ? 1f : 0f,
                     PaneKind.Weld => pane.Light == null ? 0f : Mathf.Clamp(pane.Light.Energy, 0f, 1f),
-                    PaneKind.Toggle => pane.On ? 1f : 0f,
-                    _ => look == DarkPane ? 0f : 1f,
+                    PaneKind.Toggle => pane.On && !unlit ? 1f : 0f,
+                    _ => unlit ? 0f : 1f,
                 };
-                _states.SetPixel(pane.Id, 0, Hushable(pane) ? Hushed(pane, look) : look);
+                _states.SetPixel(pane.Id, 0, look);
             }
             States.Update(_states);
         }
 
         // Geschweißt wird weiter, und das Schild brennt weiter: Nur hinter den gewöhnlichen Fenstern geht das Licht aus.
+        // ---------------------------------------------------------------------------------------------------------
+        // Türen der Stadt: Die Fenster zeigen ohne ein Wort, wie die Leute zum Trupp stehen (CityMood).
+        // ---------------------------------------------------------------------------------------------------------
+
+        private static readonly Color ShutPane = new(0.07f, 0.075f, 0.085f, 1f);
+        private const float MournRadius = 900f;
+        private const float MournSpreadSpeed = 210f;
+        private const float HouseSnapPixels = 70f;
+        private const float DimTiles = 3.5f;
+        private const float DimSeconds = 6f;
+        private readonly List<Pane> _watchers = new();
+        private readonly List<(Pane Pane, Vector2 Tile)> _dimmers = new();
+        private readonly Dictionary<string, Pane> _helperPanes = new();
+        private readonly HashSet<int> _mourned = new();
+        private int _testMournFrame = -1;
+        private int _frames;
+
+        /// <summary>Das Fenster eines Helferhauses, falls die Karte dort eines hat. Für die Kerze, die davor leuchtet.</summary>
+        public Vector2? HelperPane(string house) => _helperPanes.TryGetValue(house, out var pane) ? pane.Center : null;
+
+        /// <summary>Wie die Stadt in diesem Einsatz zum Trupp steht. Wird beim Aufbau der Welt einmal gefragt.</summary>
+        public CityMood.Stance Stance { get; private set; } = CityMood.Stance.Helps;
+
+        private Pane? NearestPane(Vector2 tile, float height)
+        {
+            if (Game == null)
+            {
+                return null;
+            }
+            var at = Game.ToScreen((int)(tile.X * Messingstadt.Core.World.TileUnits), (int)(tile.Y * Messingstadt.Core.World.TileUnits)) - new Vector2(0, height);
+            Pane? best = null;
+            float bestDistance = HouseSnapPixels;
+            foreach (var pane in _panes)
+            {
+                float d = pane.Center.DistanceTo(at);
+                if (Hushable(pane) && d < bestDistance)
+                {
+                    best = pane;
+                    bestDistance = d;
+                }
+            }
+            return best;
+        }
+
+        /// <summary>
+        /// Beim Beginn des Einsatzes: Je schlechter die Stadt zum Trupp steht, desto mehr Läden sind schon zu. Helfer
+        /// stellen eine Kerze ins Fenster, wer nie hilft, hat nach Blut als erster geschlossen.
+        /// </summary>
+        private void MeetTown()
+        {
+            _watchers.Clear();
+            _dimmers.Clear();
+            _helperPanes.Clear();
+            _mourned.Clear();
+            Stance = CityMood.Of(Game!);
+            float share = CityMood.LitShare(Stance);
+            foreach (var pane in _panes)
+            {
+                // Feste Zufallswerte je Fenster: Dieselben Läden sind zu, solange die Stimmung dieselbe ist.
+                float chance = Mathf.Abs(Mathf.Sin(pane.Id * 12.9898f) * 43758.547f) % 1f;
+                pane.Shut = Hushable(pane) && chance > share;
+                pane.Curtained = pane.Id % 3 == 0;
+                pane.ShutAt = -1f;
+                pane.Helper = false;
+                pane.DimUntil = -1f;
+            }
+            foreach (var house in MapSite.Current.Houses)
+            {
+                var pane = NearestPane(house.Window, house.Height);
+                bool helps = house.Helper && CityMood.HouseHelps(Game!, house.Id);
+                if (pane != null)
+                {
+                    pane.Helper = helps;
+                    // Ein Helfer, der nicht mehr hilft, und wer nie hilft, haben nach Blut geschlossen.
+                    pane.Shut = !helps && (house.Helper || Stance != CityMood.Stance.Helps);
+                    if (helps)
+                    {
+                        _helperPanes[house.Id] = pane;
+                    }
+                    else if (!house.Helper)
+                    {
+                        _watchers.Add(pane);
+                    }
+                }
+                if (helps && house.Darkens is Vector2 dark && NearestPane(dark, house.Height) is Pane dims && dims != pane)
+                {
+                    _dimmers.Add((dims, dark));
+                }
+            }
+            foreach (string a in OS.GetCmdlineUserArgs())
+            {
+                // Prüflauf: --trauer=<bild> lässt in diesem Bild die Lichterwelle laufen, als läge mitten im Bild ein Toter.
+                if (a.StartsWith("--trauer="))
+                {
+                    _testMournFrame = int.Parse(a["--trauer=".Length..]);
+                }
+            }
+        }
+
+        /// <summary>Stirbt jemand, gehen ringsum die Lichter aus: zuerst bei denen, die nie helfen, dann in einer Welle die Straße hinunter.</summary>
+        private void WatchForBlood()
+        {
+            var world = Game!.World;
+            foreach (var u in world.Units)
+            {
+                if (!u.Alive && _mourned.Add(u.Id))
+                {
+                    Mourn(Game.ToScreen(u.X, u.Y));
+                }
+            }
+            _frames++;
+            if (_testMournFrame >= 0 && _frames >= _testMournFrame && GetViewport().GetCamera2D() is Camera2D camera)
+            {
+                _testMournFrame = -1;
+                Mourn(camera.GetScreenCenterPosition());
+            }
+            foreach (var (pane, tile) in _dimmers)
+            {
+                foreach (var u in world.Units)
+                {
+                    if (u.Alive && u.Faction == Messingstadt.Core.Faction.Agent && new Vector2(u.X, u.Y).DistanceTo(tile * Messingstadt.Core.World.TileUnits) < DimTiles * Messingstadt.Core.World.TileUnits)
+                    {
+                        // Das Licht geht für den Trupp aus und bleibt aus, solange er in der Nähe ist.
+                        if (_time > pane.DimUntil)
+                        {
+                            pane.DimFrom = _time + ShadowLeadSeconds;
+                        }
+                        pane.DimUntil = _time + DimSeconds;
+                        break;
+                    }
+                }
+            }
+        }
+
+        private void Mourn(Vector2 at)
+        {
+            foreach (var pane in _panes)
+            {
+                if (!Hushable(pane) || pane.Helper || pane.Shut || pane.ShutAt >= 0f)
+                {
+                    continue;
+                }
+                float distance = pane.Center.DistanceTo(at);
+                if (_watchers.Contains(pane))
+                {
+                    pane.ShutAt = _time + Rand(0.3f, 0.9f);
+                }
+                else if (distance < MournRadius)
+                {
+                    pane.ShutAt = _time + 1.2f + distance / MournSpreadSpeed + Rand(0f, 1.4f);
+                }
+            }
+        }
+
+        /// <summary>Was die Bewohner mit ihrem Fenster tun. Gibt look zurück, wenn sie nichts Besonderes vorhaben.</summary>
+        private Color Townsfolk(Pane pane, Color look)
+        {
+            if (pane.Helper)
+            {
+                return UpdateCandle(pane);
+            }
+            if (pane.Shut || (pane.ShutAt >= 0f && _time >= pane.ShutAt))
+            {
+                return pane.Curtained ? CurtainPane : ShutPane;
+            }
+            if (pane.ShutAt >= 0f && _time >= pane.ShutAt - ShadowLeadSeconds && look != DarkPane)
+            {
+                // Jemand tritt ans Fenster, bevor der Laden zugeht.
+                return PasserPane;
+            }
+            if (_time < pane.DimUntil)
+            {
+                return _time < pane.DimFrom ? (look == DarkPane ? look : PasserPane) : DarkPane;
+            }
+            return look;
+        }
+
         private static bool Hushable(Pane pane) => pane.Kind is PaneKind.Window or PaneKind.Toggle or PaneKind.Screen or PaneKind.Candle;
 
         /// <summary>Hört die Nachbarschaft Schüsse oder Alarm? Beides lässt dort das Licht ausgehen.</summary>
@@ -296,7 +489,9 @@ namespace Messingstadt
                     pane.PeekAt = -1f;
                     pane.CurtainAt = -1f;
                 }
+                MeetTown();
             }
+            WatchForBlood();
             if (world.Shots.Count > 0 && world.Shots[^1].Tick > _lastShotTick)
             {
                 var shot = world.Shots[^1];

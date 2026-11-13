@@ -59,6 +59,9 @@ namespace Messingstadt
         private readonly Random _rng = new();
         private readonly List<Rat> _rats = new();
         private readonly List<Pigeon> _pigeons = new();
+        private bool _crows;
+        private const float CrowShade = 0.3f;
+        private const float CrowScale = 1.25f;
         private readonly List<(int X, int Y)> _wallTiles = new();
         private Sprite2D _worker = null!;
         private Sprite2D _ember = null!;
@@ -112,6 +115,8 @@ namespace Messingstadt
                 rat.TargetY = rat.Y;
                 _rats.Add(rat);
             }
+            // Am Nordwall sitzen Krähen: dunkler und größer als Tauben, sonst dasselbe Blatt.
+            _crows = MapSite.Current.Birds == "kraehen";
             foreach (var (x, y, z) in Perches)
             {
                 var seat = Game.ToScreen((int)(x * World.TileUnits), (int)(y * World.TileUnits)) - new Vector2(0, z);
@@ -120,6 +125,10 @@ namespace Messingstadt
                     Sprite = NewSprite(Sheet, CellW, CellH), X = x, Y = y, Z = z, Seat = seat, Peck = Rand(0f, 6f),
                 };
                 pigeon.Sprite.FlipH = _rng.NextDouble() < 0.5;
+                if (_crows)
+                {
+                    pigeon.Sprite.Scale = Vector2.One * CrowScale;
+                }
                 pigeon.Sprite.ZIndex = Game.PerchZ(x, y, z);
                 _pigeons.Add(pigeon);
             }
@@ -297,7 +306,7 @@ namespace Messingstadt
 
         private void UpdatePigeon(Pigeon p, World world, Vector2? shot, float dt)
         {
-            var light = Game.FigureLight((int)(Mathf.Min(p.X, 19.9f) * World.TileUnits), (int)(Mathf.Min(p.Y, 19.9f) * World.TileUnits), PigeonMinLight);
+            var light = Game.FigureLight((int)(Mathf.Min(p.X, MapSite.Tiles.X - 0.1f) * World.TileUnits), (int)(Mathf.Min(p.Y, MapSite.Tiles.Y - 0.1f) * World.TileUnits), PigeonMinLight);
             if (p.Airborne < 0f)
             {
                 bool spooked = (shot is { } s && new Vector2(p.X, p.Y).DistanceTo(s) < ShotHeardTiles)
@@ -318,7 +327,7 @@ namespace Messingstadt
                 }
                 p.Sprite.Position = p.Seat - new Vector2(CellW / 2, CellH - 1);
                 p.Sprite.RegionRect = new Rect2((p.Peck < 0f ? 1 : 0) * CellW, PigeonRow * CellH, CellW, CellH);
-                p.Sprite.Modulate = light;
+                p.Sprite.Modulate = _crows ? new Color(light.R * CrowShade, light.G * CrowShade, light.B * CrowShade * 1.1f) : light;
                 p.Sprite.Visible = true;
                 return;
             }

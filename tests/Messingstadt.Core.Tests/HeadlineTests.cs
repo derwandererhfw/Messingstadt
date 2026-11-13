@@ -98,6 +98,83 @@ namespace Messingstadt.Core.Tests
             Assert.DoesNotContain("Verletzt wurde niemand", line);
         }
 
+        private static UnitData Guard(string person, string type = "", string rank = "", int age = 0, double x = 5.5) => new()
+        {
+            Name = "Posten", Person = person, Type = type, Rank = rank, Age = age, X = x, Y = 5.5,
+            Sprite = type == "laufbursche" ? "Laufbursche" : "Wachmann",
+        };
+
+        private static string DeadLine(params UnitData[] guards)
+        {
+            var m = Mission();
+            m.Headlines = new HeadlineData { Lost = new HeadlineText { Head = "V", Line = "X.{dead}" } };
+            m.Guards = new(guards);
+            var w = Lost(m);
+            for (int i = 1; i < w.Units.Count; i++)
+            {
+                w.Units[i].Hp = 0;
+            }
+            return Headlines.For(w, false).Line;
+        }
+
+        [Fact]
+        public void OneNamedGuardIsNamedWithTitle()
+        {
+            Assert.Equal("X. Wachmann Wilhelm Jahnke kam ums Leben.", DeadLine(Guard("Wilhelm Jahnke")));
+        }
+
+        [Fact]
+        public void SeveralNamedGuardsShareOneSentence()
+        {
+            Assert.Equal("X. Die Wachleute Wilhelm Jahnke, Hans Olbrich und Friedrich Kempe kamen ums Leben.",
+                DeadLine(Guard("Wilhelm Jahnke"), Guard("Hans Olbrich", x: 7.5), Guard("Friedrich Kempe", x: 9.5)));
+        }
+
+        [Fact]
+        public void HighestRankComesFirstAndKeepsItsTitle()
+        {
+            Assert.Equal("X. Wachtmeister Arthur Seidel und Wachmann Hans Olbrich kamen ums Leben.",
+                DeadLine(Guard("Hans Olbrich"), Guard("Arthur Seidel", "offizier", x: 7.5)));
+            Assert.StartsWith("X. Oberwachtmeister Ernst Vogt ",
+                DeadLine(Guard("Hans Olbrich"), Guard("Ernst Vogt", "offizier", "Oberwachtmeister", x: 7.5)));
+        }
+
+        [Fact]
+        public void GuardsWithoutPersonFallIntoTheCount()
+        {
+            Assert.Equal("X. Wachmann Wilhelm Jahnke und zwei weitere kamen ums Leben.",
+                DeadLine(Guard("Wilhelm Jahnke"), Guard("", x: 7.5), Guard("", x: 9.5)));
+            Assert.Equal("X. Wachmann Wilhelm Jahnke und ein weiterer kamen ums Leben.",
+                DeadLine(Guard("Wilhelm Jahnke"), Guard("", x: 7.5)));
+            Assert.DoesNotContain("Posten", DeadLine(Guard("", x: 7.5)));
+        }
+
+        [Fact]
+        public void MoreThanThreeNamesEndInACount()
+        {
+            Assert.Equal("X. Die Wachleute A B, C D, E F und zwei weitere kamen ums Leben.",
+                DeadLine(Guard("A B"), Guard("C D", x: 6.5), Guard("E F", x: 7.5), Guard("G H", x: 8.5), Guard("", x: 9.5)));
+        }
+
+        [Fact]
+        public void WorksGuardAndBoyGetTheirOwnSentences()
+        {
+            Assert.Equal("X. Wachmann Hans Olbrich kam ums Leben. Vom Werkschutz starb Viktor Grabow. Auch der Bote Jakob Pagel, dreizehn Jahre alt, ist tot.",
+                DeadLine(Guard("Hans Olbrich"), Guard("Viktor Grabow", "werkschutz", x: 7.5), Guard("Jakob Pagel", "laufbursche", "Bote", 13, x: 9.5)));
+            Assert.Equal("X. Der Laufbursche Kurt Lüders ist tot.", DeadLine(Guard("Kurt Lüders", "laufbursche")));
+        }
+
+        [Fact]
+        public void KnockedOutGuardsAreNotInThePaper()
+        {
+            var m = Mission();
+            m.Headlines = new HeadlineData { Lost = new HeadlineText { Head = "V", Line = "X.{dead}" } };
+            m.Guards = new() { Guard("Wilhelm Jahnke") };
+            var w = Lost(m);
+            w.Units[1].KnockedOut = true;
+            Assert.Equal("X. Verletzt wurde niemand.", Headlines.For(w, false).Line);
+        }
+
         [Fact]
         public void MissionTextsReplaceTheGeneralOnes()
         {

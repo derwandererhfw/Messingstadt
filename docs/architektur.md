@@ -90,6 +90,13 @@ Eingabe (Godot) -> Befehle -> World.Tick() -> Zustand -> Darstellung (Godot)
   Dächer steigen dort von Norden und Westen höchstens so steil wie die Blickrichtung, damit sie nicht mehr verdecken
   als die Quader des Grundrisses. `tools/art/check_cover.py <nr>` prüft das an den fertigen Bildern. Das Schleichlicht
   einer neuen Karte wird beim ersten Lichtbake festgehalten (`rules_albedo_<nr>.json`, `rules_windows_<nr>.json`).
+  Bausteine des Nordwalls in `build_map.py`: Gebäude nach `kind` (auch `huette`, `hinterhaus`, `kneipe`), Mauern mit Granitpfosten an
+  jedem Tor, Tore aus `gates` (Blech, Holz, Gitter; im Manifest mit `door`, damit das Spiel das Blatt bei offener Tür ausblendet),
+  Requisiten aus `props` (Baum, Grabkreuz, Mast, Brunnen, Kohlenhaufen), Bodenarten aus `streets` (`kies`, `erde`, Lehmhöfe).
+  Helferfenster aus `marks` werden Kerzenfenster: in `panes.json` mit `helper`, dazu ein Lichtflicken der Art `kerze`.
+  Laternen anderer Art als die der Karte stehen als `lightKinds` im Manifest (`bogen`: elektrisch, weiß, weit).
+  Karten sind quadratisch und beliebig groß: Die Kantenlänge steht als `size` im Manifest, Lichtbake und Kulisse richten sich danach.
+  Ab 21 Feldern schrumpft der Rand der Zeichenfläche, damit das feine Bodenbild höchstens 4096 Punkte breit wird (30 Felder: genau 4096).
 
 ## Zeichenreihenfolge
 

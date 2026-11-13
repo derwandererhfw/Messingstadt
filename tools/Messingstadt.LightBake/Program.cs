@@ -88,16 +88,20 @@ foreach (var b in root.GetProperty("boxes").EnumerateArray())
 }
 var boxArray = boxes.ToArray();
 
+float lampScale = root.TryGetProperty("lampScale", out var lampScaleElement) ? lampScaleElement.GetSingle() : 1f;
+float lampReach = root.TryGetProperty("lampReach", out var lampReachElement) ? lampReachElement.GetSingle() : 0f;
 var lamps = new List<Light>();
 foreach (var l in root.GetProperty("lights").EnumerateArray())
 {
     lamps.Add(new Light(
         new Vector3(l.GetProperty("x").GetSingle(), l.GetProperty("y").GetSingle(), l.GetProperty("z").GetSingle() / zScale),
-        l.GetProperty("color").GetString() == "fire" ? fireColor : lampPicture,
+        l.GetProperty("color").GetString() == "fire" ? fireColor : l.TryGetProperty("rgb", out var ownColor) ? Vec(ownColor) : lampPicture,
         l.GetProperty("color").GetString() == "fire" ? fireColor : lampColor,
         l.GetProperty("power").GetSingle(),
         l.GetProperty("layer").GetInt32(),
-        l.GetProperty("hooded").GetBoolean()));
+        l.GetProperty("hooded").GetBoolean(),
+        l.TryGetProperty("scale", out var ownScale) ? ownScale.GetSingle() : lampScale,
+        l.TryGetProperty("cut", out var ownCut) ? ownCut.GetSingle() : lampReach));
 }
 var lightArray = lamps.ToArray();
 
@@ -295,8 +299,6 @@ Vector3 CosineDir(Vector3 n, ref uint rng) => Vector3.Normalize(n + RandomOnSphe
 float fireScale = 1f;
 // Laternen im Bild: schwächer und mit weichem Ende bei lampReach Feldern, damit zwischen ihnen Dunkel bleibt. Die Regeln
 // rechnen mit voller Stärke und ohne Ende.
-float lampScale = root.TryGetProperty("lampScale", out var lampScaleElement) ? lampScaleElement.GetSingle() : 1f;
-float lampReach = root.TryGetProperty("lampReach", out var lampReachElement) ? lampReachElement.GetSingle() : 0f;
 
 float LightAt(Light l, Vector3 p, Vector3 n, int ignore, ref uint rng, out Vector3 toLight)
 {
@@ -313,8 +315,8 @@ float LightAt(Light l, Vector3 p, Vector3 n, int ignore, ref uint rng, out Vecto
     float shape = 1f;
     if (l.Layer != 2 && !rulesPass)
     {
-        float edge = lampReach > 0f ? MathF.Max(0f, 1f - dist2 / (lampReach * lampReach)) : 1f;
-        shape = lampScale * edge * edge;
+        float edge = l.Cut > 0f ? MathF.Max(0f, 1f - dist2 / (l.Cut * l.Cut)) : 1f;
+        shape = l.Scale * edge * edge;
     }
     return l.Power * shape * (l.Layer == 2 ? fireScale : 1f) * cos / MathF.Max(dist2, 0.15f);
 }
@@ -697,7 +699,7 @@ static float Next(ref uint rng)
 }
 
 internal readonly record struct Extra(int Group, bool Window, Vector3 Pos, Vector3 Color, float Power, float Reach, int Axis, float C, float A0, float A1, float Z0, float Z1, float Bar);
-internal readonly record struct Light(Vector3 Pos, Vector3 Color, Vector3 Rules, float Power, int Layer, bool Hooded);
+internal readonly record struct Light(Vector3 Pos, Vector3 Color, Vector3 Rules, float Power, int Layer, bool Hooded, float Scale, float Cut);
 
 internal readonly record struct Sprite(int Box, int Left, int Top, int W, int H, int Offset);
 

@@ -61,6 +61,23 @@ namespace Messingstadt
 
         private static readonly string[] Noticed = { "Moment. War da was?", "He! Wer da?", "Hab ich was gesehen?" };
         private static readonly string[] Fighting = { "Halt! Stehen bleiben!", "Alarm! Hierher!", "Da drüben! Schießt!" };
+        // Rufe beim Namen (docs/story/texte/wachen.md). {name} ist der Rufname des Angesprochenen oder Gefallenen.
+        private static readonly string[] Greetings = { "{name}. Alles ruhig?", "Ruhig, {name}.", "{name}, hast du Feuer?", "Noch zwei Stunden, {name}.", "Geh dich wärmen, {name}." };
+        private static readonly string[] FallenCalls = { "{name}!", "{name} ist getroffen!", "Sie haben {name}!", "{name}, steh auf!" };
+        private const string BoyFallen = "Der Junge! Sie haben den Jungen!";
+        private const string DogFallenHandler = "{name}!";
+        private const string DogFallenOther = "{name}, such!";
+        private const float CallSeconds = 2.5f;
+        private static readonly Color GreetingColor = new(0.82f, 0.86f, 0.9f);
+        private static readonly Color ShoutColor = new(1f, 0.82f, 0.6f);
+        private readonly HashSet<(int Tick, int Speaker, int Subject)> _callsHeard = new();
+        private readonly HashSet<string> _housesSpoken = new();
+        private CityMood.Stance _stance;
+        private const float HouseGreetTiles = 2.2f;
+        private const float HouseDoorTiles = 1.3f;
+        private static readonly Color HelperColor = new(0.86f, 0.9f, 0.74f);
+        private static readonly Color ShutColor = new(0.72f, 0.72f, 0.76f);
+        private readonly Dictionary<int, int> _fallenCallAt = new();
         private static readonly string[] Searching = { "Wo ist er hin?", "Ausschwärmen!", "Der kann nicht weit sein." };
         private static readonly string[] Bribed = { "Ich hab nichts gesehen.", "Kein Wort zu niemandem." };
         private static readonly string[] Reporting = { "Wache! Wache!", "Da ist wer! Ich hol die Wache!" };
@@ -145,7 +162,13 @@ namespace Messingstadt
                 _speeches.Clear();
                 _rescued.Clear();
                 _answers.Clear();
+                _callsHeard.Clear();
+                _fallenCallAt.Clear();
+                _housesSpoken.Clear();
+                _stance = CityMood.Of(Game);
             }
+            ListenToCalls(world);
+            ListenToTown(world);
             ListenToPrisoners(world);
             foreach (var u in world.Units)
             {
@@ -290,6 +313,100 @@ namespace Messingstadt
             }
         }
 
+        /// <summary>
+        /// Wachen rufen einander beim Namen: bei einer Begegnung leise, wenn einer fällt laut. Die Welt meldet, wer wen
+        /// ruft, hier steht nur der Satz. Zu sehen ist er wie jeder Zuruf nur, wenn der Trupp den Rufer sieht.
+        /// </summary>
+        private void ListenToCalls(World world)
+        {
+            foreach (var call in world.Calls)
+            {
+                if (world.Tick - call.Tick > World.TickRate || !_callsHeard.Add((call.Tick, call.SpeakerId, call.SubjectId)))
+                {
+                    continue;
+                }
+                var speaker = world.Units[call.SpeakerId];
+                var subject = world.Units[call.SubjectId];
+                if (call.Kind == CallKind.Fallen)
+                {
+                    // Wer einen Namen ruft, ruft nicht im selben Atemzug noch "Alarm!": siehe ListenToGuard.
+                    _fallenCallAt[speaker.Id] = call.Tick;
+                }
+                if (!speaker.Alive || !world.IsSpottedByAgents(speaker) || Game.IsHiddenByThing(speaker))
+                {
+                    continue;
+                }
+                string name = subject.Person;
+                string line;
+                if (call.Kind == CallKind.Greeting)
+                {
+                    if (name.Length == 0)
+                    {
+                        continue;
+                    }
+                    line = Pick(_rng, Greetings);
+                }
+                else if (subject.Type.Reports)
+                {
+                    line = BoyFallen;
+                }
+                else if (subject.Type.Id == GuardType.Hund.Id)
+                {
+                    line = subject.LeashedTo == speaker.Id || speaker.Type.Id == GuardType.Hundefuehrer.Id ? DogFallenHandler : DogFallenOther;
+                }
+                else
+                {
+                    line = Pick(_rng, FallenCalls);
+                }
+                if (name.Length == 0 && line.Contains("{name}"))
+                {
+                    continue;
+                }
+                bool fallen = call.Kind == CallKind.Fallen;
+                Say(() => speaker.Alive ? Game.UnitPos(speaker) : null, line.Replace("{name}", name), fallen ? ShoutSeconds : CallSeconds, fallen ? ShoutColor : GreetingColor);
+            }
+            _callsHeard.RemoveWhere(c => world.Tick - c.Tick > World.TickRate * 2);
+        }
+
+        /// <summary>
+        /// Türen der Stadt: Wer hilft, sagt einen Satz, wenn der Trupp durchgeht. Schweigt die Stadt und ein Agent steht
+        /// vor der verschlossenen Tür, kommt höchstens ein Satz von drinnen. Rufe nach der Wache zeigt diese Stelle
+        /// nicht: Ihnen muss eine Regel folgen, und die meldet die Welt.
+        /// </summary>
+        private void ListenToTown(World world)
+        {
+            foreach (var house in MapSite.Current.Houses)
+            {
+                if (house.Lines.Count == 0 || _housesSpoken.Contains(house.Id))
+                {
+                    continue;
+                }
+                var spot = house.Door ?? house.Window;
+                float nearest = float.MaxValue;
+                bool greta = false;
+                foreach (var a in world.Units)
+                {
+                    if (a.Alive && a.Faction == Faction.Agent)
+                    {
+                        nearest = Mathf.Min(nearest, new Vector2(a.X, a.Y).DistanceTo(spot * World.TileUnits) / World.TileUnits);
+                        greta |= a.Name == "Greta";
+                    }
+                }
+                bool helps = house.Helper && CityMood.HouseHelps(Game, house.Id);
+                string key = helps ? (greta && house.Lines.ContainsKey("passGreta") ? "passGreta" : "pass")
+                    : _stance == CityMood.Stance.Silent ? "shut"
+                    : _stance == CityMood.Stance.Against && greta ? "spare" : "";
+                float reach = helps ? HouseGreetTiles : HouseDoorTiles;
+                if (key.Length == 0 || nearest > reach || !house.Lines.TryGetValue(key, out string? text) || text.Length == 0)
+                {
+                    continue;
+                }
+                _housesSpoken.Add(house.Id);
+                var at = Game.ToScreen((int)(house.Window.X * World.TileUnits), (int)(house.Window.Y * World.TileUnits)) - new Vector2(0, house.Height - 40f);
+                Say(() => at, text, SpeechSeconds, helps ? HelperColor : ShutColor);
+            }
+        }
+
         private void ListenToGuard(World world, Unit u)
         {
             Func<Vector2?> where = () => u.Alive ? Game.UnitPos(u) : null;
@@ -302,6 +419,8 @@ namespace Messingstadt
                 string[]? lines = u.GuardState switch
                 {
                     GuardState.Noticing when !u.Type.Reports => Noticed,
+                    // Ruft die Wache gerade einen Gefallenen beim Namen, entfällt ihr Kampfruf.
+                    GuardState.Combat when _fallenCallAt.TryGetValue(u.Id, out int at) && world.Tick - at <= 2 => null,
                     GuardState.Combat => Fighting,
                     GuardState.Investigate => Searching,
                     GuardState.Report => Reporting,

@@ -288,7 +288,9 @@ namespace Messingstadt.Core.Tests
 
             var bloody = new Campaign();
             bloody.Prepare(Two(), "mission_01");
-            bloody.RememberNight(new[] { new GuardReport { Name = "Krüger", Fate = GuardFate.Dead } }, "mission_01");
+            // Blutschuld: Der erste Tote einer Nacht ist frei, erst mehrere lassen die Stadt schweigen.
+            bloody.RememberNight(new[] { "Krüger", "Bartels", "Henke" }.Select(n => new GuardReport { Name = n, Fate = GuardFate.Dead }).ToArray(), "mission_01");
+            Assert.Equal(CityStance.Silent, bloody.Stance);
             var second = Two();
             bloody.Prepare(second, "mission_02");
             Assert.DoesNotContain(Campaign.HelperWidow, second.Helpers);
@@ -506,7 +508,7 @@ namespace Messingstadt.Core.Tests
 
         [Theory]
         [InlineData("{\"Version\":3,\"Money\":650,\"Missions\":1,\"Records\":{\"mission_01\":{\"Attempts\":1,\"Won\":true}}}", SaveStatus.Migrated)]
-        [InlineData("{\"Version\":5,\"Current\":\"mission_02\",\"Records\":{\"mission_02\":{\"Attempts\":1,\"Won\":true,\"Prisoners\":null},\"kaputt\":null}}", SaveStatus.Loaded)]
+        [InlineData("{\"Version\":6,\"Current\":\"mission_02\",\"Records\":{\"mission_02\":{\"Attempts\":1,\"Won\":true,\"Prisoners\":null},\"kaputt\":null}}", SaveStatus.Loaded)]
         [InlineData("{\"Money\":900,\"Missions\":2}", SaveStatus.Migrated)]
         public void SavesWithoutPrisonersLoadCleanly(string json, SaveStatus expected)
         {

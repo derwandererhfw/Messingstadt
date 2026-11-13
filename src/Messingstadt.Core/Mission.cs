@@ -47,6 +47,12 @@ namespace Messingstadt.Core
         /// <summary>Name des Menschen hinter dem Posten, etwa "Krüger". Name bleibt der Posten, an dem Schlüssel und Hundeführer hängen.</summary>
         public string Person { get; set; } = "";
 
+        /// <summary>Eigene Anrede in Zeitung und Totenbuch, etwa "Oberwachtmeister" oder "Bote". Ohne Angabe gilt die der Art.</summary>
+        public string Rank { get; set; } = "";
+
+        /// <summary>Alter, nur bei Jungen angeben. Zeitung und Totenbuch nennen es dann.</summary>
+        public int Age { get; set; }
+
         /// <summary>Namen der Türen, zu denen diese Wache den Schlüssel trägt. Wer sie besticht, bekommt ihn, wer sie niederschlägt, hebt ihn auf.</summary>
         public List<string> Keys { get; set; } = new();
 

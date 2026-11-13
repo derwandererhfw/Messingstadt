@@ -4,7 +4,7 @@ Stand 2026-11-12. Alles hier ist VORSCHLAG der Story, bis die Hauptsession oder 
 
 Regeln:
 
-- Gerufen wird der Nachname, bei den Jungen der Vorname.
+- Gerufen wird der Nachname, bei den Jungen der Vorname. In den Missionsdaten trägt `person` den vollen Namen, der Rufname ist das letzte Wort. Bei den Jungen überschreibt `call` ihn: „Kurt“, „Jakob“. Kein Name hier hat einen Doppelnamen oder ein „von“.
 - Alle Nachnamen klingen verschieden und stoßen sich mit keinem Namen in `../kanon.md`.
 - Die Zeile „Hintergrund“ liest man im Spiel nie. Sie hilft Gegner- und Level-Session.
 - Reihenfolge wie in den Missionsdateien (Index in `guards`).
@@ -69,10 +69,10 @@ Man liest die Namen nicht. Zeichen im Spiel ist eine Kerze im Fenster.
 |---|---|---|
 | Witwe eines Wachmanns | Agnes Töpfer | Hoftür zum Beamtenhof, offen |
 | Totengräber | Matthes Kroll | Pforte in der Friedhofsmauer, offen |
-| Wirtin | Else Radtke | Kellerluke, nur wenn Greta lebt oder Einsatz 1 ohne Tote blieb |
+| Wirtin | Else Radtke | Kellerluke, offen bei „hilft“, mit lebender Greta auch bei „schweigt“ |
 | Gerichtsdiener und Frau | Hugo und Minna Pfeil | Nie. Rufen nach der Wache |
 
-Nach Blut in Einsatz 1 sind alle drei Türen zu.
+Die Türen hängen an der Blutschuld (Nutzer, 2026-11-13): offen bei „hilft“, zu bei „schweigt“, bei „gegen den Trupp“ rufen die Bewohner nach der Wache. Sätze dazu in `../einsatz_02_nordwall.md`, Abschnitt 8.
 
 ## Rufe
 
@@ -130,6 +130,18 @@ Für die Gespräche der Wachen, höchstens einer je Einsatz.
 - „Für {toter} hat keiner gesammelt.“
 - „Die Frau von {toter} war gestern auf der Wache.“
 - Nur für Krüger: „Krüger hatte drei Kinder.“
+
+## Blutschuld auf dem Ergebnisbildschirm
+
+Die Blutschuld erscheint ohne Zahl und ohne Erklärtext. Falls der Bildschirm ein Wort braucht, ein Stempel je Stufe:
+
+| Stufe | Stempel | Ersatz, falls zu lang |
+|---|---|---|
+| hilft, 0 bis 1 | DIE STADT HILFT | HILFT |
+| schweigt, 2 bis 3 | DIE STADT SCHWEIGT | SCHWEIGT |
+| gegen den Trupp, 4 bis 6 | DIE STADT ZEIGT AN | ZEIGT AN |
+
+Wechselt die Stufe nach einem Einsatz, reicht der neue Stempel über dem alten. Kein Satz dazu.
 
 ## Später
 

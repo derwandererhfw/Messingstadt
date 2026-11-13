@@ -353,7 +353,7 @@ void fragment() {
             _lightData = _mission.Light ?? new LightData { Cells = 1, Size = _map.Width, Levels = Enumerable.Repeat(World.BrightLevel, _map.Width * _map.Width).ToArray() };
             s_scene = _mission.Scene;
             // Die Atmosphäre liest ihre festen Orte je Karte: Vorgaben nur für die Stadt des ersten Einsatzes.
-            MapSite.Use(Globalize("res://assets/manifest.json"), FirstCity);
+            MapSite.Use(Globalize("res://assets/manifest.json"), FirstCity, _map.Width, _map.Height);
             _mission = LoadMission();
             Watch = WatchMap.Measure(_map, _mission);
 
@@ -1092,6 +1092,7 @@ void fragment() {
             _critterGlow = glow;
             AddChild(new Haze { Game = this });
             AddChild(new Drains { Game = this });
+            AddChild(new Yards { Game = this, Glow = glow });
             AddChild(new LightExtras { Game = this, Windows = _windowLife, Glow = glow, TramOf = () => _puddleMirror.Tram, ManifestPath = Globalize("res://assets/manifest.json") });
             if (MapSite.Current.Passersby || MapSite.Current.Walks.Count > 0)
             {
