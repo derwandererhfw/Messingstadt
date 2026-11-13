@@ -301,7 +301,7 @@ namespace Messingstadt.Core
         {
             var u = new Unit
             {
-                Id = Units.Count, Name = d.Name, Person = d.Person, Sprite = d.Sprite, Faction = faction,
+                Id = Units.Count, Name = d.Name, Person = d.Person, Rank = d.Rank, Age = d.Age, Sprite = d.Sprite, Faction = faction,
                 X = ToUnits(d.X), Y = ToUnits(d.Y), Hp = hp, MaxHp = hp,
             };
             foreach (var p in d.Patrol)

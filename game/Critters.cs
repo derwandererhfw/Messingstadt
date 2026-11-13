@@ -297,7 +297,7 @@ namespace Messingstadt
 
         private void UpdatePigeon(Pigeon p, World world, Vector2? shot, float dt)
         {
-            var light = Game.FigureLight((int)(Mathf.Min(p.X, 19.9f) * World.TileUnits), (int)(Mathf.Min(p.Y, 19.9f) * World.TileUnits), PigeonMinLight);
+            var light = Game.FigureLight((int)(Mathf.Min(p.X, MapSite.Tiles.X - 0.1f) * World.TileUnits), (int)(Mathf.Min(p.Y, MapSite.Tiles.Y - 0.1f) * World.TileUnits), PigeonMinLight);
             if (p.Airborne < 0f)
             {
                 bool spooked = (shot is { } s && new Vector2(p.X, p.Y).DistanceTo(s) < ShotHeardTiles)

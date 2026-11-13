@@ -6,14 +6,16 @@ namespace Messingstadt.Core
     /// <summary>Was aus einer Wache im Einsatz geworden ist. Niedergeschlagene sind nicht tot.</summary>
     public enum GuardFate
     {
-        /// <summary>Hat bis zum Schluss nichts gemerkt.</summary>
-        Unaware,
+        /// <summary>Hat etwas bemerkt, gesucht, gemeldet oder gekämpft und lebt. Steht an erster Stelle, weil Spielstände der Version 5 den Wert 0 so ablegen.</summary>
+        Alerted = 0,
 
-        /// <summary>Hat etwas bemerkt, gesucht, gemeldet oder gekämpft und lebt.</summary>
-        Alerted,
-        Bribed,
-        KnockedOut,
-        Dead,
+        /// <summary>Hat bis zum Schluss nichts gemerkt.</summary>
+        Unaware = 1,
+        Bribed = 2,
+
+        /// <summary>Niedergeschlagen, lebt.</summary>
+        KnockedOut = 3,
+        Dead = 4,
     }
 
     /// <summary>Eine Wache im Ergebnis des Einsatzes. Role ist der Posten aus der Mission, Person der Name des Menschen.</summary>

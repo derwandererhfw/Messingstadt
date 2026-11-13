@@ -1,4 +1,12 @@
 {
+  "houses": [
+    { "id": "witwe", "window": [10.5, 18.0], "height": 30, "helper": true, "darkens": [8.5, 19.6] },
+    { "id": "totengraeber", "window": [1.0, 16.0], "height": 26, "helper": true },
+    { "id": "wirtin", "window": [20.0, 24.0], "height": 30, "helper": true },
+    { "id": "gerichtsdiener", "window": [3.0, 9.5], "height": 34 },
+    { "id": "wachmannsfrau", "window": [19.0, 18.2], "height": 30 },
+    { "id": "kasernenkoch", "window": [17.0, 8.3], "height": 30 }
+  ],
   "swingLamps": [[14.5, 8.7, 48, 12]],
   "passersby": {
     "max": 2,

@@ -12,7 +12,7 @@ namespace Messingstadt
     public partial class Drains : Node2D
     {
         // Abläufe, Roste und Fahrbahnen kommen je Karte aus MapSite. Ohne Fahrbahnen gibt es keinen Rinnstein.
-        private const float MapMin = 0.3f, MapMax = 19.7f;
+        private const float MapMin = 0.3f;
         private const float Reach = 4f;
         private const float GlintsPerTile = 1.1f;
         private const float GlintTiles = 0.09f;
@@ -53,7 +53,7 @@ namespace Messingstadt
                 // Der Rinnstein endet an der Kreuzung und am Kartenrand.
                 float at = alongY ? y : x;
                 float low = alongY ? (y < RoadY0 ? MapMin : RoadY1) : (x < RoadX0 ? MapMin : RoadX1);
-                float high = alongY ? (y < RoadY0 ? RoadY0 : MapMax) : (x < RoadX0 ? RoadX0 : MapMax);
+                float high = alongY ? (y < RoadY0 ? RoadY0 : MapSite.Tiles.Y - MapMin) : (x < RoadX0 ? RoadX0 : MapSite.Tiles.X - MapMin);
                 foreach (float end in new[] { Mathf.Max(low, at - Reach), Mathf.Min(high, at + Reach) })
                 {
                     float length = Mathf.Abs(end - at);

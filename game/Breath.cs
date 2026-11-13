@@ -100,7 +100,7 @@ namespace Messingstadt
                         _puffs.Add(new Puff
                         {
                             Pos = _mouth, Velocity = facing * Rand(5f, 9f) + new Vector2(0f, -3f),
-                            Light = Game.FigureLight(Units(tile.X), Units(tile.Y), MinLight),
+                            Light = Game.FigureLight(Units(tile.X, MapSite.Tiles.X), Units(tile.Y, MapSite.Tiles.Y), MinLight),
                         });
                     }
                 }
@@ -178,7 +178,7 @@ namespace Messingstadt
                 }
             }
 
-            private static int Units(float tile) => (int)(Mathf.Clamp(tile, 0.1f, 19.9f) * World.TileUnits);
+            private static int Units(float tile, float tiles) => (int)(Mathf.Clamp(tile, 0.1f, tiles - 0.1f) * World.TileUnits);
         }
 
         private readonly Dictionary<int, Mouth> _mouths = new();
