@@ -47,7 +47,14 @@ namespace Messingstadt
         /// Fenster stellt, wenn es hilft. Sonst ein Haus, das nie hilft und nach Blut als erstes die Läden schließt.
         /// Darkens nennt ein Fenster, das für den Trupp ausgeht, wenn er in die Nähe kommt.
         /// </summary>
-        public sealed record House(string Id, Vector2 Window, float Height, bool Helper, Vector2? Darkens);
+        public sealed record House(string Id, Vector2 Window, float Height, bool Helper, Vector2? Darkens)
+        {
+            /// <summary>Mitte der Tür, hinter der dieses Haus hilft oder schweigt. Null: Es gilt das Fenster.</summary>
+            public Vector2? Door { get; init; }
+
+            /// <summary>Sätze der Bewohner: pass (Trupp geht durch), passGreta (mit Greta im Trupp), shut (Tür zu, Agent davor), spare (ruft nicht, obwohl die Stadt gegen den Trupp steht).</summary>
+            public Dictionary<string, string> Lines { get; init; } = new();
+        }
 
         private static MapSite? _current;
 
@@ -256,11 +263,24 @@ namespace Messingstadt
                 Houses.Clear();
                 foreach (var h in houses.EnumerateArray())
                 {
+                    var lines = new Dictionary<string, string>();
+                    if (h.TryGetProperty("lines", out var said))
+                    {
+                        foreach (var line in said.EnumerateObject())
+                        {
+                            lines[line.Name] = line.Value.GetString() ?? "";
+                        }
+                    }
                     Houses.Add(new House(
                         h.GetProperty("id").GetString() ?? "", Pair(h.GetProperty("window")),
                         h.TryGetProperty("height", out var height) ? height.GetSingle() : 30f,
                         h.TryGetProperty("helper", out var helper) && helper.ValueKind == JsonValueKind.True,
-                        h.TryGetProperty("darkens", out var darkens) ? Pair(darkens) : null));
+                        h.TryGetProperty("darkens", out var darkens) ? Pair(darkens) : null)
+                    {
+                        // Türen stehen im Grundriss als Feld, gemeint ist dessen Mitte.
+                        Door = h.TryGetProperty("door", out var door) ? Pair(door) + new Vector2(0.5f, 0.5f) : null,
+                        Lines = lines,
+                    });
                 }
             }
             if (root.TryGetProperty("birds", out var birds))

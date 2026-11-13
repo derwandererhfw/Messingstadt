@@ -139,7 +139,15 @@
           "darkens": [
             8.5,
             19.6
-          ]
+          ],
+          "door": [
+            8,
+            20
+          ],
+          "lines": {
+            "pass": "Geht durch. Ich hab nichts gehört.",
+            "shut": "Ich mach nicht auf. Nicht für euch."
+          }
         },
         {
           "id": "totengraeber",
@@ -148,7 +156,15 @@
             16.0
           ],
           "height": 26,
-          "helper": true
+          "helper": true,
+          "door": [
+            5,
+            17
+          ],
+          "lines": {
+            "pass": "Geht nur. Die hier verraten keinen.",
+            "shut": "Ich begrabe genug. Geht woanders lang."
+          }
         },
         {
           "id": "wirtin",
@@ -157,7 +173,17 @@
             24.0
           ],
           "height": 30,
-          "helper": true
+          "helper": true,
+          "door": [
+            20,
+            22
+          ],
+          "lines": {
+            "pass": "Durch den Keller. Schnell.",
+            "passGreta": "Durch den Keller, Lenz. Wie früher.",
+            "shut": "Geschlossen.",
+            "spare": "Geh, Lenz. Ich hab dich nicht gesehen."
+          }
         },
         {
           "id": "gerichtsdiener",
