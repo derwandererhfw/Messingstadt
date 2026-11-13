@@ -44,6 +44,9 @@ namespace Messingstadt.Core
         /// <summary>Art des Gegners, siehe GuardType. Ohne Angabe ein Wachmann.</summary>
         public string Type { get; set; } = "";
 
+        /// <summary>Name des Menschen hinter dem Posten, etwa "Krüger". Name bleibt der Posten, an dem Schlüssel und Hundeführer hängen.</summary>
+        public string Person { get; set; } = "";
+
         /// <summary>Namen der Türen, zu denen diese Wache den Schlüssel trägt. Wer sie besticht, bekommt ihn, wer sie niederschlägt, hebt ihn auf.</summary>
         public List<string> Keys { get; set; } = new();
 
@@ -96,6 +99,9 @@ namespace Messingstadt.Core
         public int FirstDelay { get; set; }
         public int Interval { get; set; }
         public int Count { get; set; }
+
+        /// <summary>Namen der Leute, die als Verstärkung kommen, in dieser Reihenfolge. Fehlen welche, bleiben sie namenlos.</summary>
+        public List<string> Persons { get; set; } = new();
     }
 
     /// <summary>Verschlossener Durchgang: Die Felder sind gesperrt, bis ein Schlosser die Tür öffnet.</summary>
