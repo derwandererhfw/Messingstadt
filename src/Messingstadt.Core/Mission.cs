@@ -44,8 +44,11 @@ namespace Messingstadt.Core
         /// <summary>Art des Gegners, siehe GuardType. Ohne Angabe ein Wachmann.</summary>
         public string Type { get; set; } = "";
 
-        /// <summary>Name des Menschen hinter dem Posten, etwa "Krüger". Name bleibt der Posten, an dem Schlüssel und Hundeführer hängen.</summary>
+        /// <summary>Voller Name des Menschen hinter dem Posten, etwa "Hermann Krüger". Name bleibt der Posten, an dem Schlüssel und Hundeführer hängen.</summary>
         public string Person { get; set; } = "";
+
+        /// <summary>Rufname, wenn er nicht der Nachname sein soll, etwa "Kurt" für den Laufburschen Kurt Lüders.</summary>
+        public string Call { get; set; } = "";
 
         /// <summary>Geht nur mit, wenn die Stadt gegen den Trupp steht: der zweite Mann einer Streife. Höchstens World.MaxBloodPartners.</summary>
         public bool AfterBlood { get; set; }

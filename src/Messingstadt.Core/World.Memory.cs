@@ -35,8 +35,14 @@ namespace Messingstadt.Core
 
     public sealed partial class Unit
     {
-        /// <summary>Name des Menschen hinter dem Posten, etwa "Krüger". Leer, wenn die Mission keinen nennt.</summary>
+        /// <summary>Voller Name des Menschen hinter dem Posten, etwa "Hermann Krüger". Leer, wenn die Mission keinen nennt. Für Totenbuch und Zeitung.</summary>
         public string Person = "";
+
+        /// <summary>Eigener Rufname aus der Mission, sonst leer.</summary>
+        public string Call = "";
+
+        /// <summary>So rufen ihn die Kollegen, und so steht er beim Überfahren: der eigene Rufname, sonst der Nachname.</summary>
+        public string CallName => Call.Length > 0 ? Call : Person[(Person.LastIndexOf(' ') + 1)..];
 
         /// <summary>Im Nahkampf niedergeschlagen: liegt am Boden, lebt aber und steht nicht im Totenbuch.</summary>
         public bool KnockedOut;

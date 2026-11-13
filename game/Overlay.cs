@@ -165,7 +165,7 @@ namespace Messingstadt
                 {
                     continue;
                 }
-                string name = world.Units[call.SubjectId].Person;
+                string name = world.Units[call.SubjectId].CallName;
                 bool fallen = call.Kind == CallKind.Fallen;
                 string text = fallen ? name + "!" : "Abend, " + name + ".";
                 var font = PaperUi.Typewriter;
@@ -185,7 +185,7 @@ namespace Messingstadt
                 return;
             }
             var type = guard.Type;
-            string text = (guard.Person.Length > 0 ? guard.Person + ", " : "") + type.Title + (guard.Bribed ? ", bestochen" : guard.Recall == GuardRecall.Grudge ? ", nimmt von euch nichts" : type.BribeCost == 0 ? ", nicht käuflich" : ", " + Game.BribeWord(guard))
+            string text = (guard.Person.Length > 0 ? guard.CallName + ", " : "") + type.Title + (guard.Bribed ? ", bestochen" : guard.Recall == GuardRecall.Grudge ? ", nimmt von euch nichts" : type.BribeCost == 0 ? ", nicht käuflich" : ", " + Game.BribeWord(guard))
                 + (guard.Recall == GuardRecall.OldDeal && !guard.Bribed ? ", kennt euch" : "");
             if (Game.World.Units.Exists(o => o.LeashedTo == guard.Id))
             {

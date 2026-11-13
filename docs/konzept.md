@@ -71,7 +71,7 @@ Der Laufbursche ist schneller als ein gehender Agent und langsamer als ein renne
 
 ### Namen, Schicksal und Erinnerung
 
-Jede Wache kann in der Mission unter `person` einen Namen tragen, etwa „Krüger“. `name` bleibt der Posten, an dem Schlüssel und Hundeführer hängen. Verstärkung bekommt ihre Namen aus `reinforcements.persons`. Der Name steht beim Überfahren vor der Art.
+Jede Wache kann in der Mission unter `person` ihren vollen Namen tragen, etwa „Hermann Krüger“. Gerufen und beim Überfahren gezeigt wird der Rufname `Unit.CallName`: der Nachname, oder was die Mission unter `call` nennt, etwa „Kurt“ für den Laufburschen. Totenbuch und Zeitung nehmen den vollen Namen. `name` bleibt der Posten, an dem Schlüssel und Hundeführer hängen. Verstärkung bekommt ihre Namen aus `reinforcements.persons`. Der Name steht beim Überfahren vor der Art.
 
 Wachen rufen Namen, ohne dass sich am Ablauf etwas ändert: Begegnen sich zwei auf dem Rundgang auf 1,5 Felder, nennt eine die andere, höchstens alle 30 s je Wache. Fällt eine Wache mit Namen, ruft ihn der nächste Kollege, der sie auf bis zu 8 Felder sieht, einmal. Niedergeschlagene lösen keinen Ruf aus. Die Rufe stehen in `World.Calls`.
 
