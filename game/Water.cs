@@ -98,7 +98,7 @@ namespace Messingstadt
                             d.FootY = foot.Y;
                             d.Fall = 0f;
                             var tile = Game.ScreenToMap(foot);
-                            d.Light = Game.FigureLight(Units(tile.X), Units(tile.Y), MinLight);
+                            d.Light = Game.FigureLight(Units(tile.X, MapSite.Tiles.X), Units(tile.Y, MapSite.Tiles.Y), MinLight);
                         }
                     }
                 }
@@ -152,7 +152,7 @@ namespace Messingstadt
                 }
             }
 
-            private static int Units(float tile) => (int)(Mathf.Clamp(tile, 0.1f, 19.9f) * World.TileUnits);
+            private static int Units(float tile, float tiles) => (int)(Mathf.Clamp(tile, 0.1f, tiles - 0.1f) * World.TileUnits);
         }
 
         /// <summary>Tropfen zerplatzen auf einem Dach. Die Höhe folgt den Dachflächen aus dem Manifest.</summary>
@@ -262,7 +262,7 @@ namespace Messingstadt
             foreach (var (x, y) in new[] { (x1, y1), (x1, y0) })
             {
                 var foot = Tile(x, y);
-                var light = Game.FigureLight((int)(Mathf.Clamp(x + 0.1f, 0.1f, 19.9f) * World.TileUnits), (int)(Mathf.Clamp(y + 0.1f, 0.1f, 19.9f) * World.TileUnits), MinLight);
+                var light = Game.FigureLight((int)(Mathf.Clamp(x + 0.1f, 0.1f, MapSite.Tiles.X - 0.1f) * World.TileUnits), (int)(Mathf.Clamp(y + 0.1f, 0.1f, MapSite.Tiles.Y - 0.1f) * World.TileUnits), MinLight);
                 wall.AddStream(foot - new Vector2(0f, z1), foot, light);
                 Game.Sound.AddGutter(foot);
             }
@@ -315,7 +315,7 @@ namespace Messingstadt
                 _debt -= 1f;
                 var pos = origin + new Vector2(Rand(0f, size.X), Rand(0f, size.Y));
                 var tile = Game.ScreenToMap(pos);
-                if (tile.X > 0f && tile.Y > 0f && tile.X < 20f && tile.Y < 20f)
+                if (tile.X > 0f && tile.Y > 0f && tile.X < MapSite.Tiles.X && tile.Y < MapSite.Tiles.Y)
                 {
                     _splashes.Add(new Splash { Pos = pos, Light = Game.FigureLight((int)(tile.X * World.TileUnits), (int)(tile.Y * World.TileUnits), MinLight) });
                 }

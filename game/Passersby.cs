@@ -124,6 +124,8 @@ namespace Messingstadt
         private readonly List<Vector2> _positions = new();
         private MapSite _site = null!;
         private float _mapWidth = 20f;
+        private float _street = 1f;
+        private Rect2 _seen = new(-1e6f, -1e6f, 2e6f, 2e6f);
         private float _mapHeight = 20f;
         private int _views = 5;
         private World? _seenWorld;
@@ -225,6 +227,7 @@ namespace Messingstadt
         {
             float dt = (float)delta;
             _time += dt;
+            _seen = ViewCull.Seen(this, 60f);
             var world = Game.World;
             if (world != _seenWorld)
             {
@@ -237,7 +240,7 @@ namespace Messingstadt
                 _testScareFrame = -1;
                 Scare(TestScareTile, ShotHeardTiles);
             }
-            if (_time >= _calmAt && _time >= _nextSpawn && _people.Count < _site.WalkersMax)
+            if (_time >= _calmAt && _time >= _nextSpawn && _people.Count < Mathf.CeilToInt(_site.WalkersMax * _street))
             {
                 _nextSpawn = _time + Rand(_site.WalkerPause.X, _site.WalkerPause.Y);
                 if (_site.Passersby)
@@ -267,6 +270,8 @@ namespace Messingstadt
             _calmAt = 0f;
             _nextSpawn = _time + Rand(_site.WalkerPause.X, _site.WalkerPause.Y);
             _mapWidth = world.Map.Width;
+            // Nach Blut im Viertel traut sich kaum noch jemand auf die Straße, nach einer blutigen Nacht niemand.
+            _street = CityMood.StreetShare(CityMood.Of(Game));
             _mapHeight = world.Map.Height;
             foreach (var p in _people)
             {
@@ -275,7 +280,7 @@ namespace Messingstadt
             _people.Clear();
             if (!_site.Passersby)
             {
-                for (int i = 0; i < _site.WalkersAtStart; i++)
+                for (int i = 0; i < Mathf.CeilToInt(_site.WalkersAtStart * _street); i++)
                 {
                     ArriveOnWalk(alreadyThere: true);
                 }
@@ -293,7 +298,7 @@ namespace Messingstadt
             var north = Add(new Vector2(EastLane, Rand(0.5f, 2f)));
             north.Plan.Add(new Step { To = Shelters[3], Wait = Rand(8f, 18f), Look = true, Pastime = Pastime(atStop: false) });
             north.Plan.Add(new Step { To = new Vector2(north.Lane, NorthEdge) });
-            while (_people.Count > _site.WalkersAtStart)
+            while (_people.Count > Mathf.CeilToInt(_site.WalkersAtStart * _street))
             {
                 _people[^1].Sprite.QueueFree();
                 _people.RemoveAt(_people.Count - 1);
@@ -742,6 +747,8 @@ namespace Messingstadt
             var light = Game.FigureLight(Mathf.Clamp(ux, 0, (int)_mapWidth * World.TileUnits - 1), Mathf.Clamp(uy, 0, (int)_mapHeight * World.TileUnits - 1), MinLight);
             // Das Blatt malt Passanten schon grauer und dunkler als Agenten und Wachen.
             sprite.Modulate = new Color(light.R, light.G, light.B, EdgeFade(p.Tile));
+            // Wer außerhalb des Bilds geht, wird nicht gezeichnet. Sein Weg läuft weiter.
+            sprite.Visible = _seen.HasPoint(sprite.Position + Game.FigureFoot);
         }
 
         /// <summary>Am Kartenrand blendet die Figur aus, statt hart zu verschwinden.</summary>
