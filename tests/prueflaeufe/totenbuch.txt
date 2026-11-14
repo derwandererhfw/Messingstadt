@@ -24,7 +24,7 @@ key Escape
 expect screen Pausenmappe
 click Totenbuch
 expect screen Totenbuch
-expect ledger trupp  | wache  | seite 1/1
+expect ledger unsere  | wache  | seite 1/1
 seetext Noch steht kein Name im Buch.
 key Escape
 expect screen Pausenmappe
@@ -40,7 +40,7 @@ wait 20
 expect panel True
 key Escape
 click Totenbuch
-expect ledger trupp  | wache  | seite 1/1
+expect ledger unsere  | wache  | seite 1/1
 key Escape
 key Escape
 # Zweiter Einsatz im selben Viertel: Eine Wache stirbt
@@ -62,8 +62,8 @@ expect panel True
 seetext Tote der Wache: Krüger.
 key Escape
 click Totenbuch
-expect ledger trupp  | wache Krüger | seite 1/1
-seetext DER TRUPP   0
+expect ledger unsere  | wache Krüger | seite 1/1
+seetext UNSERE   0
 seetext Niemand.
 seetext DIE WACHE   1
 seetext Krüger
