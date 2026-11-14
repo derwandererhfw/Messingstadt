@@ -484,7 +484,7 @@ def draw_beine(p, img, level):
         p.dashes([(113, 65), (124, 63), (125, 81), (114, 81), (113, 65)], LEATHER_D, 0.6, 2, 2)
     if level >= 2:
         # Federwerk hinter der Wade: Schraubenfeder zwischen Kniehebel und Ferse
-        top, foot = (160, 80), (156, 150) if level == 2 else (164, 150)
+        top, foot = (174, 76), (172, 154) if level == 2 else (164, 150)
         if level == 2:
             p.line([(134, 72), top], INK, 4.4)
             p.line([(134, 72), top], BRASS, 2.6)
@@ -493,15 +493,17 @@ def draw_beine(p, img, level):
             coil = []
             for i in range(19):
                 t = i / 18
-                coil.append((top[0] + (foot[0] - top[0]) * t + (6 if i % 2 else -6) * (0 < i < 18), top[1] + 6 + (foot[1] - top[1] - 12) * t))
-            p.line([top] + coil + [foot], INK, 3.4)
-            p.line([top] + coil + [foot], STEEL_L, 1.8)
+                coil.append((top[0] + (foot[0] - top[0]) * t + (12 if i % 2 else -12) * (0 < i < 18), top[1] + 6 + (foot[1] - top[1] - 12) * t))
+            p.line([top] + coil + [foot], INK, 5.2)
+            p.line([top] + coil + [foot], STEEL_L, 3.0)
             p.oval(top[0], top[1], 3.4, 3.4, BRASS_L, INK, 0.9)
             p.oval(foot[0], foot[1], 3.4, 3.4, BRASS_L, INK, 0.9)
             p.poly([(108, 60), (127, 58), (130, 86), (110, 86)], BRASS, INK, 1.1)  # Kniekappe aus Messing
             p.poly([(111, 62), (117, 61), (119, 84), (113, 84)], BRASS_L, None)
             p.rivets([(112, 64), (124, 62), (114, 82), (126, 82)], BRASS_L, 1.3)
-            p.gear(134, 72, 12, 9, BRASS, 1.1)
+            p.poly([(106, 90), (122, 89), (125, 148), (114, 148)], BRASS, INK, 1.1)  # Schienbeinplatte
+            p.poly([(109, 92), (114, 92), (118, 146), (115, 146)], BRASS_L, None)
+            p.gear(134, 72, 17, 10, BRASS, 1.2)
         else:
             # Druckkessel am Oberschenkel, Rohr, Arbeitszylinder mit Kolbenstange zur Ferse
             pipe = bezier((186, 48), (196, 62), (176, 66), (168, 80), 16)
@@ -646,20 +648,19 @@ def draw_herz(p, img, level):
     strap(p, (192, 42), (56, 170), 13, LEATHER, 0.82)
     strap(p, (32, 118), (224, 118), 12, LEATHER_D, 0.9)
     if level == 1:
-        # Uhrwerk: kleine Messingdose mit Zifferblatt und Aufziehschlüssel
-        p.box(102, 86, 150, 126, BRASS, r=5)
-        p.box(106, 90, 114, 122, BRASS_L, None, r=3)
-        p.box(140, 92, 150, 122, BRASS_D, None, r=3)
-        p.box(102, 86, 150, 126, None, INK, 1.3, 5)
-        p.rivets([(107, 91), (145, 91), (107, 121), (145, 121)], BRASS_L, 1.4)
-        p.oval(124, 106, 12, 12, FACE, INK, 1.0)
+        # Uhrwerk: runde Dose wie eine große Taschenuhr, Zifferblatt, Aufziehschlüssel
+        p.oval(126, 106, 23, 23, BRASS)
+        p.arc(126, 106, 20, 20, 150, 250, BRASS_L, 2.4)
+        p.arc(126, 106, 20, 20, -30, 70, BRASS_D, 2.4)
+        p.oval(126, 106, 16, 16, FACE, INK, 1.0)
         for a in range(0, 360, 30):
             ca, sa = math.cos(math.radians(a)), math.sin(math.radians(a))
-            p.line([(124 + ca * 9, 106 + sa * 9), (124 + ca * 11, 106 + sa * 11)], INK, 0.6)
-        p.line([(124, 106), (124, 97)], INK, 1.0)
-        p.line([(124, 106), (130, 110)], INK, 1.0)
-        p.line([(150, 106), (160, 106)], INK, 3.2)
-        p.line([(150, 106), (160, 106)], STEEL_L, 1.6)
+            p.line([(126 + ca * 12, 106 + sa * 12), (126 + ca * 15, 106 + sa * 15)], INK, 0.7)
+        p.line([(126, 106), (126, 94)], INK, 1.2)
+        p.line([(126, 106), (134, 111)], INK, 1.2)
+        p.oval(126, 106, 1.6, 1.6, INK, None)
+        p.line([(149, 106), (160, 106)], INK, 3.2)
+        p.line([(149, 106), (160, 106)], STEEL_L, 1.6)
         p.poly([(160, 106), (166, 96), (174, 98), (172, 106), (174, 114), (166, 116)], STEEL_L, INK, 1.1)  # Flügelschlüssel
     elif level == 2:
         # Pumpe: größeres Gehäuse, Druckmesser, Handrad, zwei Anschlüsse
@@ -672,7 +673,10 @@ def draw_herz(p, img, level):
         p.line([(92, 124), (162, 124)], INK, 0.8)
         p.rivets([(98, 92), (156, 92), (98, 130), (112, 130), (126, 130), (142, 130), (156, 130)], BRASS_L, 1.4)
         p.gauge(120, 106, 14, 80)
-        p.wheel(168, 112, 11, STEEL, 4, 20)
+        p.wheel(176, 112, 17, STEEL, 5, 20)
+        p.bar(56, 98, 94, 124, STEEL, 3)  # liegender Pumpenzylinder
+        p.bar(52, 95, 62, 127, BRASS_D, 2, upright=True)
+        p.bar(86, 95, 94, 127, BRASS_D, 2, upright=True)
         p.box(140, 98, 152, 104, dark(BRASS_D, 0.4), INK, 0.8)  # Schauglas
     else:
         # Zwillingspumpe: zwei Zylinder, Schwungrad, großer Druckmesser, Ölglas
@@ -706,7 +710,7 @@ def draw_herz(p, img, level):
 
 # ---------- Karte, Papier, Ausgabe ----------
 
-def card(draw, seed, number=None, stamp=None, stamp_at=(W - 52, H - 24)):
+def card(draw, seed, number=None, stamp=None, stamp_at=(W - 32, H - 32)):
     """Zeichnet einen Gegenstand und legt ihn auf eine vergilbte Karteikarte: Schlagschatten, Flecken, Korn, Rand."""
     layer = Image.new("RGBA", (W * SUPER, H * SUPER), (0, 0, 0, 0))
     draw(Pen(layer), layer)
@@ -744,7 +748,11 @@ def card(draw, seed, number=None, stamp=None, stamp_at=(W - 52, H - 24)):
     if number:
         text(over, number, 9 + len(number) * 3.1, 13, 9.5, INK, 0, "CourierPrime-Regular.ttf", 0.7)
     if stamp:
-        text(over, stamp, stamp_at[0], stamp_at[1], 15, RED, 9, "OldStandard-Bold.ttf", 0.8, frame=True)
+        # Runder Stempel mit der Stufe als großer Ziffer: auch in 75 Bildpunkten Breite zu lesen
+        cx, cy = stamp_at[0] * SUPER, stamp_at[1] * SUPER
+        for r, width in ((23, 2.4), (19, 1.0)):
+            d.ellipse((cx - r * SUPER, cy - r * SUPER, cx + r * SUPER, cy + r * SUPER), outline=RED + (215,), width=int(width * SUPER))
+        text(over, stamp, stamp_at[0], stamp_at[1] - 1, 27, RED, 8, "OldStandard-Bold.ttf", 0.9)
     img.alpha_composite(over.resize((W, H), Image.LANCZOS))
     return img.convert("RGB")
 
@@ -793,8 +801,8 @@ def main():
         mapping["upgrades"][key] = {}
         for level in range(1, UPGRADE_LEVELS + 1):
             name = f"ausbau_{word}_{level}.png"
-            img = card(lambda p, layer, k=key, lv=level: UPGRADE_DRAWINGS[k](p, layer, lv), 2700 + u * 10 + level, None, "STUFE " + ROMAN[level - 1],
-                       (48, 22) if key == "heart" else (W - 52, H - 24))
+            img = card(lambda p, layer, k=key, lv=level: UPGRADE_DRAWINGS[k](p, layer, lv), 2700 + u * 10 + level, None, ROMAN[level - 1],
+                       (32, 32) if key == "heart" else (W - 32, H - 32))
             img.save(OUT / name)
             mapping["upgrades"][key][str(level)] = name
             entries.append((name, img))
