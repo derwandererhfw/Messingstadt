@@ -1,6 +1,6 @@
 # Texte für die Zwischensequenzen
 
-Stand 2026-11-14. Texte der Story für die Sequenzen-Session, die die Zwischensequenzen baut (Nutzer: „Ja, anfangen“). Kolb aus dem Off, Präteritum, nach `../NOIR_STYLE_GUIDE.md`. Alles hier ist VORSCHLAG, bis der Nutzer den Szenenplan mit Bildern abnimmt. Die Kästen vor und nach jedem Einsatz stehen in den Bauvorlagen `../einsatz_02_nordwall.md` bis `../einsatz_06_anzeiger.md`.
+Stand 2026-11-14. Texte der Story für die Sequenzen-Session, die die Zwischensequenzen baut. Der Nutzer hat Stufe 1 freigegeben („Ja, Stufe 1“): die Sequenz nach Einsatz 1 und die vor und nach Einsatz 2. Nicht entschieden und darum nicht geschrieben: das Schlussbild „Die Stadt am Morgen“, ein Zusatzpanel im Prolog, das Friedhofsbild. Kolb aus dem Off, Präteritum, nach `../NOIR_STYLE_GUIDE.md`. Alles hier ist VORSCHLAG, bis der Nutzer den Szenenplan mit Bildern abnimmt. Die Kästen vor und nach jedem Einsatz stehen in den Bauvorlagen `../einsatz_02_nordwall.md` bis `../einsatz_06_anzeiger.md`.
 
 ## N1 „Das Buch“
 
@@ -11,7 +11,7 @@ Nach einem Sieg in Einsatz 1. Zwei Kästen, dann das Buch-Panel. Führt hin zu V
 
 Prüfung:
 
-- Kein Agent wird genannt. In `../wissen.md` liest Emil das Buch zuerst. Das bleibt wahr, steht hier aber nicht, weil Emil fehlen kann.
+- Kein Agent wird genannt. In `../wissen.md` liest Emil das Buch zuerst. Das bleibt wahr, steht hier aber nicht: Emil kann nach einem zweiten Versuch tot sein, und Erzähltexte setzen keinen Agenten voraus. Darum liest Kolb. Das Bild darf Hände über dem Buch zeigen, die nicht ihre sind.
 - Kolb lügt nicht. Sie weiß, wer Sperling ist, und schweigt. „Sagte nichts dazu“ ist beim ersten Lesen Vorsicht und nach dem Finale ein Geständnis.
 - „Der Drucker“ ist Anton Weiß. Sein Name fällt erst in V2.
 
@@ -25,6 +25,8 @@ Letztes Panel jeder Sequenz nach einem Sieg. Das Bild zeigt eine Seite des Toten
 | Nur Wachen starben | „Ich schrieb ihre Namen ins Buch. Es waren nicht unsere. Es waren Namen.“ |
 | Nur eigene Leute starben | „In dieser Nacht stand nur auf unserer Seite etwas. Ich schrieb langsam.“ |
 | Auf beiden Seiten | „In dieser Nacht stand auf beiden Seiten etwas. Ich schrieb langsam.“ |
+
+Wer nur zwei Fassungen bauen will, mit Toten und ohne: Ohne Tote gilt der erste Satz. Mit Toten gilt für alle drei Fälle: „Ich schrieb die Namen dieser Nacht ins Buch. Ich schrieb langsam.“
 
 Die Sequenzen-Session hatte drei Fälle genannt. Der Fall „auch eigene Leute“ ist hier geteilt, weil „auf beiden Seiten“ falsch wäre, wenn keine Wache starb.
 
@@ -41,6 +43,7 @@ Für die Bilder. VORSCHLAG, bisher gab es zu keinem der drei eine Beschreibung a
 | Anton Weiß, Drucker | Mitte fünfzig, klein und breit, graues kurzes Haar. Druckerschürze über der Weste, Ärmel hochgekrempelt. Merkmal: schwarze Finger von der Farbe, die Nickelbrille auf die Stirn geschoben |
 | Paul Roth, Streikposten | Siebzehn, schmal und lang aufgeschossen. Hemd ohne Kragen, Hosenträger, in Socken, weil die Wache ihm die Schuhe genommen hat. Merkmal: hält sich beim Husten den Ärmel vor den Mund |
 | Hauptmann Lorenz Pieper | Ende fünfzig, schwer, aufrecht. Uniform der Stadtwache ohne eine Falte, grauer Schnurrbart. Merkmal: der Füllfederhalter in der Brusttasche, mit dem er alles unterschreibt |
+| Martha Kolb | Man sieht nie ihr Gesicht (KANON, Styleguide). Zu sehen sind ihre Hände: schmal, kurze Nägel, Tinte am rechten Mittelfinger, eine Männeruhr am Handgelenk. Dunkle Ärmel mit Ärmelschonern. Auf dem Tisch Stahlfeder, Stempelkissen, eine Tasse ohne Untertasse. Sie ist um die fünfzig |
 
 Pieper tritt im Spiel bisher nicht auf. In V2 unterschreibt er nur. Ein Bild von seiner Hand mit dem Füllfederhalter reicht und hält ihn für später frei.
 
