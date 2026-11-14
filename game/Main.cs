@@ -747,6 +747,8 @@ void fragment() {
             ["menusound"] = _sound.LastMenuSound,
             ["played"] = string.Join(", ", _sound.PlayedByGroup.Select(g => $"{g.Key} {g.Value}")) + ",",
             ["ledger"] = _menus.LedgerProbe,
+            ["picturesmissing"] = FilePictures.Missing(Catalog.Items.Select(i => i.Id), Campaign.MaxLevel),
+            ["armorypictures"] = _armory.PictureButtons.ToString(),
             ["guardline"] = World.Units.Find(u => u.Faction == Faction.Guard && u.Alive && u.Type != GuardType.Hund) is { } first ? GuardLine(first) : "",
             ["trait"] = _paper.Trait,
             ["uisounds"] = _sound.UiPlayCount.ToString(),
@@ -1739,8 +1741,10 @@ void fragment() {
             {
                 var row = new HBoxContainer();
                 row.AddThemeConstantOverride("separation", 12);
-                var name = PanelLabel($"{record.Name}: Beine {record.Legs}, Herz {record.Heart}{AgentStatus(record)}");
-                name.CustomMinimumSize = new Vector2(380, 0);
+                // Die Stufen zeigen die Bilder neben den Knöpfen, die Zeile nennt nur noch Namen und Zustand.
+                var name = PanelLabel($"{record.Name}{AgentStatus(record)}");
+                name.CustomMinimumSize = new Vector2(300, 0);
+                name.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
                 row.AddChild(name);
                 if (record.Dead)
                 {
@@ -1748,7 +1752,9 @@ void fragment() {
                 }
                 else
                 {
+                    row.AddChild(UpgradePictures(true, record.Legs));
                     row.AddChild(UpgradeButton("Beine", record.Name, record.Legs, true));
+                    row.AddChild(UpgradePictures(false, record.Heart));
                     row.AddChild(UpgradeButton("Herz", record.Name, record.Heart, false));
                     if (record.Rest > 0)
                     {
@@ -1793,6 +1799,38 @@ void fragment() {
                 }
             };
             return button;
+        }
+
+        private const float UpgradePicture = 56f;
+
+        /// <summary>
+        /// Zwei Aktenbilder zu einem Ausbau: die gekaufte Stufe deutlich, die nächste blass als Vorschau. Ist die höchste Stufe erreicht
+        /// oder fehlt ein Bild, bleibt der Platz leer.
+        /// </summary>
+        private Control UpgradePictures(bool legs, int level)
+        {
+            var box = new HBoxContainer { SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
+            box.AddThemeConstantOverride("separation", 3);
+            foreach (int shown in new[] { level, level + 1 })
+            {
+                var size = new Vector2(UpgradePicture, UpgradePicture / FilePictures.Aspect);
+                if (shown > Campaign.MaxLevel || FilePictures.Upgrade(legs, shown) is not { } picture)
+                {
+                    box.AddChild(new Control { CustomMinimumSize = size, MouseFilter = Control.MouseFilterEnum.Ignore });
+                    continue;
+                }
+                var rect = FilePictures.Rect(picture, UpgradePicture);
+                bool bought = shown == level;
+                rect.Modulate = bought ? Colors.White : new Color(1f, 1f, 1f, 0.4f);
+                // Die Stufe als Ziffer in der Ecke, der Stempel im Bild ist so klein nicht zu lesen.
+                var number = PaperUi.Text(shown.ToString(), 11, PaperUi.PaperColor, PaperUi.Typewriter);
+                var plate = new ColorRect { Color = new Color(PaperUi.Ink, 0.85f), Size = new Vector2(11, 13), Position = size - new Vector2(11, 13), MouseFilter = Control.MouseFilterEnum.Ignore };
+                number.Position = new Vector2(2, -2);
+                plate.AddChild(number);
+                rect.AddChild(plate);
+                box.AddChild(rect);
+            }
+            return box;
         }
 
         private Button UpgradeButton(string label, string agent, int level, bool legs)

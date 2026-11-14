@@ -384,6 +384,7 @@ namespace Messingstadt
                 foreach (var button in _slots)
                 {
                     SetSlot(button, "", false, false);
+                    SetPicture(button, null);
                 }
                 return;
             }
@@ -398,6 +399,7 @@ namespace Messingstadt
                 if (i >= u.Items.Count)
                 {
                     SetSlot(_slots[i], "frei", false, false);
+                    SetPicture(_slots[i], null);
                     continue;
                 }
                 var item = u.Items[i];
@@ -407,6 +409,20 @@ namespace Messingstadt
                 string text = Game.SmokeArmedFor == u.Id && item.Def.Kind == ItemKind.Smoke ? "Rauch: Ziel anklicken" : $"{item.Def.ShortName}  {count}".TrimEnd();
                 // Der Dietrich wirkt von selbst an der Tür, ihn anzuklicken bringt nichts.
                 SetSlot(_slots[i], (inHand ? "» " : "  ") + text, item.Def.Kind != ItemKind.Lockpick, inHand);
+                SetPicture(_slots[i], FilePictures.Item(item.Def.Id));
+            }
+        }
+
+        // Breite des Aktenbilds vor dem Namen im Inventar.
+        private const int SlotPicture = 30;
+
+        private static void SetPicture(Button button, Texture2D? picture)
+        {
+            if (button.Icon != picture)
+            {
+                button.Icon = picture;
+                button.ExpandIcon = true;
+                button.AddThemeConstantOverride("icon_max_width", SlotPicture);
             }
         }
 
