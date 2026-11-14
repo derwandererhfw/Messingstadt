@@ -18,6 +18,11 @@
       "2": "ausbau_beine_2.png",
       "3": "ausbau_beine_3.png"
     },
+    "arms": {
+      "1": "ausbau_arme_1.png",
+      "2": "ausbau_arme_2.png",
+      "3": "ausbau_arme_3.png"
+    },
     "heart": {
       "1": "ausbau_herz_1.png",
       "2": "ausbau_herz_2.png",
