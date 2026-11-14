@@ -119,7 +119,7 @@ namespace Messingstadt.Core
     /// <summary>Was zwischen den Einsätzen bleibt: Geld, Fahndung, Rückhalt, die Agenten und was in jedem Einsatz geschah.</summary>
     public sealed partial class Campaign
     {
-        public const int CurrentVersion = 7;
+        public const int CurrentVersion = 8;
         public const int StartMoney = 600;
 
         /// <summary>Das Viertel des ersten Einsatzes. Alte Stände mit einem Sieg bekommen es als erobert.</summary>
@@ -491,6 +491,8 @@ namespace Messingstadt.Core
                 if (entry.Prisoners.Count == 0)
                 {
                     entry.Prisoners = world.Prisoners.ToDictionary(p => p.Name, p => p.Alive);
+                    // Wer bei der Befreiung starb, steht auf der eigenen Seite des Totenbuchs. Nur die erste Befreiung zählt, wie beim Merker.
+                    RememberPrisoners(entry.Prisoners, Current, districtId, Nights);
                 }
             }
             FillRanks(Slots());

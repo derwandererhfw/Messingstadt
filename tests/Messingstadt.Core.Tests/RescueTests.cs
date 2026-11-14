@@ -497,6 +497,98 @@ namespace Messingstadt.Core.Tests
             Assert.False(c.PrisonerAlive("Paul Roth"));
         }
 
+        /// <summary>Befreit Weiß, Roth stirbt dabei, der Einsatz ist gewonnen.</summary>
+        private static World RescueWithRothDead(Campaign c, string district = "viertel_2")
+        {
+            var m = Mission(new() { Agent(13.5, 5.5, World.SkillLocksmith) }, new());
+            c.District = district;
+            c.Prepare(m, "mission_02");
+            var w = new World(Map(), m);
+            w.OrderOpenDoor(0, 0);
+            Run(w, 20 + World.DoorTicks + World.FreeTicks + 5);
+            Roth(w).Hp = 0;
+            (w.Units[0].X, w.Units[0].Y) = (1500, 1500);
+            (Weiss(w).X, Weiss(w).Y) = (500, 1500);
+            Weiss(w).Captive = false;
+            Weiss(w).Path.Clear();
+            Run(w, World.EscapeTicks + 2);
+            Assert.Equal(MissionState.Won, w.State);
+            return w;
+        }
+
+        [Fact]
+        public void APrisonerWhoDiesStandsOnOurSideOfTheBookButIsNoSquadMember()
+        {
+            var c = new Campaign();
+            c.Finish(RescueWithRothDead(c));
+            var roth = Assert.Single(c.Dead(LedgerSide.Prisoner));
+            Assert.Equal(("Paul Roth", "mission_02", "viertel_2", 1), (roth.Name, roth.Mission, roth.District, roth.Night));
+            Assert.Equal(Campaign.PrisonerKind, roth.Kind);
+            Assert.Equal("Gefangener", roth.Title);
+            Assert.True(roth.Ours);
+            Assert.True(c.IsDead("Paul Roth"));
+            Assert.False(c.IsDead("Anton Weiß"));
+            // Links im Buch und in der Nacht steht er, beim Trupp nicht.
+            Assert.Equal(new[] { "Paul Roth" }, c.DeadOurs().Select(e => e.Name));
+            Assert.Equal(new[] { "Paul Roth" }, c.DeadLastNight().Select(e => e.Name));
+            Assert.Empty(c.Dead(LedgerSide.Squad));
+            Assert.Empty(c.LastDeaths);
+            Assert.DoesNotContain(c.Agents, a => a.Name == "Paul Roth");
+            // Kein Blut, keine Schuld, niemand rückt nach.
+            Assert.Equal(0, c.BloodLast("viertel_2"));
+            Assert.Equal(0, c.BloodTotal());
+            Assert.Equal(0, c.BloodDebt);
+            Assert.Empty(c.LastNewcomers);
+            Assert.Equal("", CampaignTexts.DeadLine(c.DeadLastNight()));
+            Assert.Equal("Gefangener Paul Roth", SequenceTexts.Ledger(c, LedgerSide.Squad));
+            Assert.Equal("", SequenceTexts.Ledger(c, LedgerSide.Guard));
+        }
+
+        [Fact]
+        public void ADeadPrisonerIsWrittenOnceAndSurvivesSaving()
+        {
+            var c = new Campaign();
+            c.Finish(RescueWithRothDead(c));
+            c.Finish(RescueWithRothDead(c));
+            Assert.Single(c.Dead(LedgerSide.Prisoner));
+            // In der zweiten Nacht ist er kein Toter dieser Nacht mehr.
+            Assert.Empty(c.DeadLastNight());
+            var loaded = Campaign.Load(c.ToJson(), out var status);
+            Assert.Equal(SaveStatus.Loaded, status);
+            Assert.Equal("Paul Roth", Assert.Single(loaded.DeadOurs()).Name);
+            Assert.Equal(LedgerSide.Prisoner, loaded.DeadOurs()[0].Side);
+        }
+
+        [Fact]
+        public void ALostRescueWritesNoPrisonerIntoTheBook()
+        {
+            // Nach einer Niederlage sitzen beide wieder in der Zelle, der neue Versuch beginnt mit Lebenden.
+            var c = new Campaign();
+            var m = Mission(new() { Agent(13.5, 5.5, World.SkillLocksmith) }, new());
+            c.Prepare(m, "mission_02");
+            var w = new World(Map(), m);
+            Roth(w).Hp = 0;
+            Weiss(w).Hp = 0;
+            w.Step();
+            Assert.Equal(MissionState.Lost, w.State);
+            c.Finish(w);
+            Assert.Empty(c.DeadOurs());
+            Assert.Null(c.PrisonerAlive("Paul Roth"));
+        }
+
+        [Fact]
+        public void OlderSaveMovesItsDeadPrisonerIntoTheBook()
+        {
+            const string old = "{\"Version\":7,\"Nights\":2,\"Records\":{\"mission_02\":{\"Attempts\":1,\"Won\":true,\"Prisoners\":{\"Anton Weiß\":true,\"Paul Roth\":false}}}}";
+            var c = Campaign.Load(old, out var status);
+            Assert.Equal(SaveStatus.Migrated, status);
+            var roth = Assert.Single(c.DeadOurs());
+            Assert.Equal(("Paul Roth", LedgerSide.Prisoner, "mission_02", 0), (roth.Name, roth.Side, roth.Mission, roth.Night));
+            Assert.Empty(c.DeadLastNight());
+            Assert.Equal(0, c.BloodDebt);
+            Assert.Single(Campaign.Load(c.ToJson(), out _).DeadOurs());
+        }
+
         [Fact]
         public void RescueLineNamesTheFreedAndTheDead()
         {
@@ -508,7 +600,7 @@ namespace Messingstadt.Core.Tests
 
         [Theory]
         [InlineData("{\"Version\":3,\"Money\":650,\"Missions\":1,\"Records\":{\"mission_01\":{\"Attempts\":1,\"Won\":true}}}", SaveStatus.Migrated)]
-        [InlineData("{\"Version\":7,\"Current\":\"mission_02\",\"Records\":{\"mission_02\":{\"Attempts\":1,\"Won\":true,\"Prisoners\":null},\"kaputt\":null}}", SaveStatus.Loaded)]
+        [InlineData("{\"Version\":8,\"Current\":\"mission_02\",\"Records\":{\"mission_02\":{\"Attempts\":1,\"Won\":true,\"Prisoners\":null},\"kaputt\":null}}", SaveStatus.Loaded)]
         [InlineData("{\"Money\":900,\"Missions\":2}", SaveStatus.Migrated)]
         public void SavesWithoutPrisonersLoadCleanly(string json, SaveStatus expected)
         {
