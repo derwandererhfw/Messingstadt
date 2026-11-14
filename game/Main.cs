@@ -747,6 +747,9 @@ void fragment() {
             ["menusound"] = _sound.LastMenuSound,
             ["played"] = string.Join(", ", _sound.PlayedByGroup.Select(g => $"{g.Key} {g.Value}")) + ",",
             ["ledger"] = _menus.LedgerProbe,
+            ["upgradetip"] = UpgradeTipProbe,
+            ["levels"] = string.Join(", ", _campaign.Roster().Select(a => $"{a.Name} {a.Legs}{a.Heart}{a.Arms}")),
+            ["hudlevels"] = _paper.Levels,
             ["picturesmissing"] = FilePictures.Missing(Catalog.Items.Select(i => i.Id), Campaign.MaxLevel),
             ["armorypictures"] = _armory.PictureButtons.ToString(),
             ["guardline"] = World.Units.Find(u => u.Faction == Faction.Guard && u.Alive && u.Type != GuardType.Hund) is { } first ? GuardLine(first) : "",
@@ -1739,29 +1742,36 @@ void fragment() {
             _panelBody.AddChild(PanelLabel($"Fahndung {_campaign.Heat}/{Campaign.MaxHeat}   Rückhalt {_campaign.Support}/{Campaign.MaxSupport}, Beitrag {_campaign.Dues} je Einsatz"));
             foreach (var record in _campaign.Roster())
             {
+                // Name und Zustand stehen über den Ausbauten: Drei Ausbauten mit Bildern passen in 1280 nicht neben den Namen.
                 var row = new HBoxContainer();
                 row.AddThemeConstantOverride("separation", 12);
-                // Die Stufen zeigen die Bilder neben den Knöpfen, die Zeile nennt nur noch Namen und Zustand.
                 var name = PanelLabel($"{record.Name}{AgentStatus(record)}");
-                name.CustomMinimumSize = new Vector2(300, 0);
+                name.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
                 name.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
                 row.AddChild(name);
+                _panelBody.AddChild(row);
                 if (record.Dead)
                 {
                     row.AddChild(CampaignButton($"Anwerben ({Campaign.RecruitCost})", _campaign.Money >= Campaign.RecruitCost, () => _campaign.TryRecruit(record.Slot)));
+                    continue;
                 }
-                else
+                if (record.Rest > 0)
                 {
-                    row.AddChild(UpgradePictures(true, record.Legs));
-                    row.AddChild(UpgradeButton("Beine", record.Name, record.Legs, true));
-                    row.AddChild(UpgradePictures(false, record.Heart));
-                    row.AddChild(UpgradeButton("Herz", record.Name, record.Heart, false));
-                    if (record.Rest > 0)
+                    row.AddChild(CampaignButton($"Arzt ({Campaign.DoctorCost})", _campaign.Money >= Campaign.DoctorCost, () => _campaign.TryDoctor(record.Name)));
+                }
+                var upgrades = new HBoxContainer();
+                upgrades.AddThemeConstantOverride("separation", 10);
+                foreach (var kind in Enum.GetValues<Upgrade>())
+                {
+                    int level = Campaign.Level(record, kind);
+                    upgrades.AddChild(UpgradePictures(kind, level));
+                    upgrades.AddChild(UpgradeButton(record.Name, level, kind));
+                    if (kind != Upgrade.Arms)
                     {
-                        row.AddChild(CampaignButton($"Arzt ({Campaign.DoctorCost})", _campaign.Money >= Campaign.DoctorCost, () => _campaign.TryDoctor(record.Name)));
+                        upgrades.AddChild(new Control { CustomMinimumSize = new Vector2(8, 0), MouseFilter = Control.MouseFilterEnum.Ignore });
                     }
                 }
-                _panelBody.AddChild(row);
+                _panelBody.AddChild(upgrades);
             }
             _panelBody.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 1), Color = PaperUi.PaperDark, MouseFilter = Control.MouseFilterEnum.Ignore });
             // Der Weg nach vorn steht rechts und ist vorgewählt, der Weg hinaus links.
@@ -1807,14 +1817,14 @@ void fragment() {
         /// Zwei Aktenbilder zu einem Ausbau: die gekaufte Stufe deutlich, die nächste blass als Vorschau. Ist die höchste Stufe erreicht
         /// oder fehlt ein Bild, bleibt der Platz leer.
         /// </summary>
-        private Control UpgradePictures(bool legs, int level)
+        private Control UpgradePictures(Upgrade kind, int level)
         {
             var box = new HBoxContainer { SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
             box.AddThemeConstantOverride("separation", 3);
             foreach (int shown in new[] { level, level + 1 })
             {
                 var size = new Vector2(UpgradePicture, UpgradePicture / FilePictures.Aspect);
-                if (shown > Campaign.MaxLevel || FilePictures.Upgrade(legs, shown) is not { } picture)
+                if (shown > Campaign.MaxLevel || FilePictures.Upgrade(kind, shown) is not { } picture)
                 {
                     box.AddChild(new Control { CustomMinimumSize = size, MouseFilter = Control.MouseFilterEnum.Ignore });
                     continue;
@@ -1828,22 +1838,143 @@ void fragment() {
                 number.Position = new Vector2(2, -2);
                 plate.AddChild(number);
                 rect.AddChild(plate);
+                // Unter der Maus zeigt das Bild sich in voller Größe.
+                rect.MouseFilter = Control.MouseFilterEnum.Stop;
+                int tipLevel = shown;
+                rect.MouseEntered += () => ShowUpgradeTip(rect, kind, tipLevel);
+                rect.MouseExited += HideUpgradeTip;
                 box.AddChild(rect);
             }
             return box;
         }
 
-        private Button UpgradeButton(string label, string agent, int level, bool legs)
+        public static string UpgradeName(Upgrade kind) => kind switch
         {
+            Upgrade.Legs => "Beine",
+            Upgrade.Heart => "Herz",
+            _ => "Arme",
+        };
+
+        /// <summary>Was eine Stufe bewirkt, eine Zeile für das große Bild.</summary>
+        public static string UpgradeEffect(Upgrade kind, int level)
+        {
+            if (level <= 1)
+            {
+                return "Grundstufe, noch nichts ausgebaut.";
+            }
+            int steps = level - 1;
+            return kind switch
+            {
+                Upgrade.Legs => level == 2 ? "Rennt schneller." : "Rennt noch schneller.",
+                Upgrade.Heart => level == 2 ? "Mehr Puste: rennt länger." : "Noch mehr Puste: rennt am längsten.",
+                _ => $"+{World.AimPerArm * steps} Treffer, lädt und wechselt die Waffe {World.HandlingPercentPerArm * steps} % schneller.",
+            };
+        }
+
+        // Großes Bild einer Ausbaustufe mit ihrer Wirkung, unter der Maus oder an dem Knopf, auf dem die Wahl steht.
+        private static readonly Vector2 UpgradeTipSize = new(276f, 268f);
+        private PanelContainer? _upgradeTip;
+        private TextureRect _upgradeTipPicture = null!;
+        private Label _upgradeTipTitle = null!, _upgradeTipEffect = null!;
+
+        /// <summary>Für den Prüflauf: Text des großen Bilds und ob es ganz im Spielfeld liegt. Leer, wenn es nicht zu sehen ist.</summary>
+        public string UpgradeTipProbe
+        {
+            get
+            {
+                if (_upgradeTip is not { Visible: true } tip)
+                {
+                    return "";
+                }
+                var rect = tip.GetGlobalRect();
+                bool fits = rect.Position.X >= HudColumn && rect.End.X <= GetViewportRect().Size.X && rect.Position.Y >= 0f && rect.End.Y <= GetViewportRect().Size.Y;
+                return $"{_upgradeTipTitle.Text}: {_upgradeTipEffect.Text}{(fits ? "" : " (ragt hinaus)")}";
+            }
+        }
+
+        private void ShowUpgradeTip(Control anchor, Upgrade kind, int level)
+        {
+            if (level > Campaign.MaxLevel || FilePictures.Upgrade(kind, level) is not { } picture)
+            {
+                HideUpgradeTip();
+                return;
+            }
+            if (_upgradeTip == null)
+            {
+                _upgradeTip = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Ignore, CustomMinimumSize = UpgradeTipSize, ZIndex = 10 };
+                _upgradeTip.AddThemeStyleboxOverride("panel", PaperUi.PaperBox(PaperUi.PaperColor));
+                var body = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+                body.AddThemeConstantOverride("separation", 3);
+                _upgradeTip.AddChild(body);
+                _upgradeTipTitle = PaperUi.Text("", 16, PaperUi.StampRed, PaperUi.Serif);
+                body.AddChild(_upgradeTipTitle);
+                _upgradeTipPicture = FilePictures.Rect(picture, 256f);
+                body.AddChild(_upgradeTipPicture);
+                _upgradeTipEffect = PaperUi.Text("", 13, PaperUi.Ink, PaperUi.Typewriter);
+                _upgradeTipEffect.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+                _upgradeTipEffect.CustomMinimumSize = new Vector2(256f, 0f);
+                body.AddChild(_upgradeTipEffect);
+                _panel.GetParent().AddChild(_upgradeTip);
+            }
+            _upgradeTipPicture.Texture = picture;
+            _upgradeTipTitle.Text = $"{UpgradeName(kind)} Stufe {level}";
+            _upgradeTipEffect.Text = UpgradeEffect(kind, level);
+            _upgradeTip.Size = UpgradeTipSize;
+            _upgradeTip.Visible = true;
+            // Nach einem Kauf wird das Blatt neu gebaut: Wo der Knopf steht, ist erst nach dem Anordnen bekannt.
+            _upgradeTipAnchor = anchor;
+            PlaceUpgradeTip();
+            Callable.From(PlaceUpgradeTip).CallDeferred();
+        }
+
+        private Control? _upgradeTipAnchor;
+
+        /// <summary>Über der Stelle, sonst darunter. Immer im Spielfeld: rechts der Spalte, links vom Rand, im Bild.</summary>
+        private void PlaceUpgradeTip()
+        {
+            if (_upgradeTip is not { Visible: true } || _upgradeTipAnchor == null || !IsInstanceValid(_upgradeTipAnchor) || !_upgradeTipAnchor.IsInsideTree())
+            {
+                return;
+            }
+            var at = _upgradeTipAnchor.GetGlobalRect();
+            var view = GetViewportRect().Size;
+            // Die echte Größe: Der Rahmen des Blatts kommt zur Wunschgröße dazu.
+            var size = _upgradeTip.GetCombinedMinimumSize().Max(UpgradeTipSize);
+            _upgradeTip.Size = size;
+            float x = Mathf.Clamp(at.GetCenter().X - size.X / 2f, HudColumn + 8f, Mathf.Max(HudColumn + 8f, view.X - 8f - size.X));
+            float y = at.Position.Y - 6f - size.Y;
+            if (y < 8f)
+            {
+                y = Mathf.Min(at.End.Y + 6f, view.Y - 8f - size.Y);
+            }
+            _upgradeTip.Position = new Vector2(x, Mathf.Max(8f, y));
+        }
+
+        private void HideUpgradeTip()
+        {
+            if (_upgradeTip != null)
+            {
+                _upgradeTip.Visible = false;
+            }
+        }
+
+        private Button UpgradeButton(string agent, int level, Upgrade kind)
+        {
+            string label = UpgradeName(kind);
             bool full = level >= Campaign.MaxLevel;
             int cost = Campaign.UpgradeCost(level);
             var button = new Button
             {
                 Text = full ? $"{label} voll" : $"{label} + ({cost})",
                 Disabled = full || _campaign.Money < cost,
-                CustomMinimumSize = new Vector2(130, 0),
+                CustomMinimumSize = new Vector2(124, 0), SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
             };
             button.FocusMode = button.Disabled ? Control.FocusModeEnum.None : Control.FocusModeEnum.All;
+            // Der Knopf zeigt, was man kauft: die nächste Stufe groß, unter der Maus und wenn die Wahl auf ihm steht.
+            button.MouseEntered += () => ShowUpgradeTip(button, kind, Math.Min(level + 1, Campaign.MaxLevel));
+            button.MouseExited += HideUpgradeTip;
+            button.FocusEntered += () => ShowUpgradeTip(button, kind, level + 1);
+            button.FocusExited += HideUpgradeTip;
             PaperUi.InkButton(button);
             // Nach dem Kauf wird die Liste neu gebaut. Die Tastenwahl bleibt auf diesem Knopf, solange er noch geht.
             string key = agent + label;
@@ -1853,7 +1984,7 @@ void fragment() {
             }
             button.Pressed += () =>
             {
-                if (_campaign.TryUpgrade(agent, legs))
+                if (_campaign.TryUpgrade(agent, kind))
                 {
                     SaveCampaign();
                     _upgradeFocus = key;
@@ -2503,6 +2634,13 @@ void fragment() {
                 ? (World.EscapeProgress > 0 ? "EINSTEIGEN STOP STEHEN BLEIBEN STOP" : $"{name} GESICHERT STOP ZUM FLUCHTWAGEN IM OSTEN STOP")
                 : World.ItemProgress > 0 ? $"{name} WIRD GESICHERT STOP STEHEN BLEIBEN STOP"
                 : $"{name} AM MIETSHAUS HOLEN STOP GASSE NUTZEN STOP DANN ZUM FLUCHTWAGEN IM OSTEN STOP";
+            // Das große Ausbaubild gehört zum Ergebnisblatt und verschwindet mit ihm.
+            if (!_panel.Visible)
+            {
+                HideUpgradeTip();
+            }
+            // Jedes Bild neu anlegen: Nach einem Kauf ordnet sich das Blatt erst ein, zwei Bilder später.
+            PlaceUpgradeTip();
             telegram = PhoneNote() ?? telegram;
             int guards = World.Units.Count(u => u.Faction == Faction.Guard && u.Alive);
             string info = $"WACHEN {guards}   ZEIT {World.Tick / World.TickRate} S   KASSE {World.Money}";

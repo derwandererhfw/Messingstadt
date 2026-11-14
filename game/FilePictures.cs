@@ -29,20 +29,28 @@ namespace Messingstadt
             return _items!.TryGetValue(id, out string? file) ? Load(file) : null;
         }
 
-        /// <summary>Bild einer Ausbaustufe, Beine oder Herz. Null, wenn es für die Stufe kein Bild gibt.</summary>
-        public static Texture2D? Upgrade(bool legs, int level)
+        // Unter diesen Namen stehen die Ausbauten in zuordnung.json.
+        private static string KeyOf(Messingstadt.Core.Upgrade kind) => kind switch
+        {
+            Messingstadt.Core.Upgrade.Legs => "legs",
+            Messingstadt.Core.Upgrade.Heart => "heart",
+            _ => "arms",
+        };
+
+        /// <summary>Bild einer Ausbaustufe von Beinen, Herz oder Armen. Null, wenn es für die Stufe kein Bild gibt.</summary>
+        public static Texture2D? Upgrade(Messingstadt.Core.Upgrade kind, int level)
         {
             Read();
-            return Upgrades.TryGetValue(legs ? "legs" : "heart", out var levels) && levels.TryGetValue(level.ToString(), out string? file) ? Load(file) : null;
+            return Upgrades.TryGetValue(KeyOf(kind), out var levels) && levels.TryGetValue(level.ToString(), out string? file) ? Load(file) : null;
         }
 
         /// <summary>Für den Prüflauf und die Meldung an die Grafik: was von den verlangten Bildern fehlt, leer wenn alles da ist.</summary>
         public static string Missing(IEnumerable<string> itemIds, int maxLevel)
         {
             var missing = itemIds.Where(id => Item(id) == null).ToList();
-            foreach (bool legs in new[] { true, false })
+            foreach (var kind in System.Enum.GetValues<Messingstadt.Core.Upgrade>())
             {
-                missing.AddRange(Enumerable.Range(1, maxLevel).Where(l => Upgrade(legs, l) == null).Select(l => $"{(legs ? "legs" : "heart")} {l}"));
+                missing.AddRange(Enumerable.Range(1, maxLevel).Where(l => Upgrade(kind, l) == null).Select(l => $"{KeyOf(kind)} {l}"));
             }
             return string.Join(", ", missing);
         }
