@@ -7,6 +7,7 @@ using Messingstadt.Core;
 // Kampagne mit Einkauf: -- --einkauf. Totschläger: -- --knueppel-plan (Zeitfenster wie beim Schleichplan) und -- --knueppel (ohne Plan)
 // Mit --ohne-magazin vorweg gilt die Pistole der ersten Fassung, zum Vergleich mit älteren Messungen.
 // Werte ausprobieren, ohne die Datei zu ändern: --wert maschinenpistole.Magazine=20, Startgeld der Kampagnen: --startgeld 600
+// Dritter Ausbau Arme je Stufe: -- --arme
 // Anderer Einsatz: --mission=mission_02 vorweg. Einsätze der Art Befreien messen dann ihre eigenen Spielweisen.
 
 const int Runs = 300;
@@ -1806,6 +1807,50 @@ if (LitMission().Prisoners.Count > 0 && (args.Length == 0 || knobsOnly))
     variant = null;
     quietWatch = null;
     loadout = null;
+    return;
+}
+
+// Dritter Ausbau Arme: --arme misst die lauten Wege mit vier Maschinenpistolen je Stufe, im Einsatz der Art Befreien dazu einen leisen Weg.
+if (args.Length > 0 && args[0] == "--arme")
+{
+    bool rescue = LitMission().Prisoners.Count > 0;
+    foreach (int level in new[] { 1, 2, 3 })
+    {
+        variant = m =>
+        {
+            m.Agents.ForEach(a => a.Arms = level);
+            if (rescue)
+            {
+                m.Support = 0;
+                m.Helpers = new List<string>();
+            }
+        };
+        quietWatch = null;
+        Console.WriteLine($"== Arme Stufe {level} ({missionId}, je {Runs} Läufe)");
+        loadout = new[] { new[] { "maschinenpistole" } };
+        if (rescue)
+        {
+            ReportRescue("Laut, Trupp zusammen, vier MP", Rescue(false, true, focus: true));
+            loadout = null;
+            ReportRescue("Laut, Trupp zusammen, Pistolen", Rescue(false, true, focus: true));
+            // Die Wege aus --wege bei Rückhalt 5 zum Vergleich: Wo nicht geschossen wird, darf sich mit den Armen nichts ändern.
+            variant = m => { m.Agents.ForEach(a => a.Arms = level); m.Support = 5; m.Helpers = m.Doors.Select(d => d.Helper).Where(h => h.Length > 0).ToList(); };
+            quietWatch = null;
+            homeRoute = "gang";
+            ReportRescue("Weg gang, Otto und Emil mit Geld", QuietWithMoney(0));
+            loadout = new[] { new[] { "pistole" }, new[] { "pistole", "totschlaeger", "dietrich" }, new[] { "pistole" }, new[] { "pistole" } };
+            ReportRescue("Weg gang, Otto allein mit Dietrich", QuietLocksmith(0), 0);
+        }
+        else
+        {
+            Report("Feuer bündeln, vier MP", Bandaged(FocusFire));
+            Report("Alle angreifen, vier MP", Bandaged(AttackAll));
+            loadout = null;
+            Report("Feuer bündeln, Pistolen", Bandaged(FocusFire));
+        }
+    }
+    loadout = null;
+    variant = null;
     return;
 }
 

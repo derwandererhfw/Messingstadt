@@ -28,6 +28,19 @@ namespace Messingstadt.Core
         /// <summary>Takte, die der Griff zur anderen Waffe kostet.</summary>
         public const int SwitchTicks = 10;
 
+        /// <summary>Punkte Trefferchance je Stufe Arme über der ersten.</summary>
+        public const int AimPerArm = 3;
+
+        /// <summary>Prozent weniger Zeit beim Nachladen und beim Waffenwechsel je Stufe Arme über der ersten.</summary>
+        public const int HandlingPercentPerArm = 10;
+
+        /// <summary>Die ruhige Hand beim Schießen. Der Nahschlag bleibt davon unberührt.</summary>
+        public static int AimBonus(Unit u) => AimPerArm * (u.Arms - 1);
+
+        public static int ReloadTicksFor(Unit u, int ticks) => Math.Max(1, ticks * (100 - HandlingPercentPerArm * (u.Arms - 1)) / 100);
+
+        public static int SwitchTicksFor(Unit u) => ReloadTicksFor(u, SwitchTicks);
+
         private const int MeleeHitChance = 85;
 
         private readonly ItemCatalog _catalog;
@@ -106,7 +119,7 @@ namespace Messingstadt.Core
             }
             u.Weapon = slot;
             u.ReloadTicks = 0;
-            u.Cooldown = Math.Max(u.Cooldown, SwitchTicks);
+            u.Cooldown = Math.Max(u.Cooldown, SwitchTicksFor(u));
             return true;
         }
 
@@ -206,7 +219,7 @@ namespace Messingstadt.Core
             }
             else if (item.Ammo <= 0)
             {
-                u.ReloadTicks = Math.Max(1, item.Def.ReloadTicks);
+                u.ReloadTicks = ReloadTicksFor(u, item.Def.ReloadTicks);
             }
         }
 

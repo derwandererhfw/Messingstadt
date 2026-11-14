@@ -425,8 +425,8 @@ namespace Messingstadt.Core.Tests
             // Nacht 1: drei Tote, 2. Nacht 2: keine tote Wache, 0. Nacht 3: zwei Tote, 1.
             Assert.Equal(1, c.BloodDebt);
             Assert.Equal(1, Campaign.Load(c.ToJson(), out _).BloodDebt);
-            Assert.Equal(Campaign.MaxBloodDebt, Campaign.Load("{\"Version\":6,\"BloodDebt\":40}", out _).BloodDebt);
-            Assert.Equal(0, Campaign.Load("{\"Version\":6,\"BloodDebt\":-4}", out _).BloodDebt);
+            Assert.Equal(Campaign.MaxBloodDebt, Campaign.Load("{\"Version\":7,\"BloodDebt\":40}", out _).BloodDebt);
+            Assert.Equal(0, Campaign.Load("{\"Version\":7,\"BloodDebt\":-4}", out _).BloodDebt);
         }
 
         [Fact]
@@ -478,13 +478,13 @@ namespace Messingstadt.Core.Tests
         [Fact]
         public void BrokenBookValuesAreRepaired()
         {
-            var c = Campaign.Load("{\"Version\":6,\"Nights\":-3,\"Ledger\":[null,{\"Name\":\"\"},{\"Name\":\"Krüger\",\"Side\":1,\"Mission\":null}],\"Guards\":null,\"LastBlood\":{\"viertel_1\":-2}}", out var status);
+            var c = Campaign.Load("{\"Version\":7,\"Nights\":-3,\"Ledger\":[null,{\"Name\":\"\"},{\"Name\":\"Krüger\",\"Side\":1,\"Mission\":null}],\"Guards\":null,\"LastBlood\":{\"viertel_1\":-2}}", out var status);
             Assert.Equal(SaveStatus.Loaded, status);
             Assert.Equal(0, c.Nights);
             Assert.Equal("", Assert.Single(c.Ledger).Mission);
             Assert.Empty(c.Guards);
             Assert.Equal(0, c.BloodLast("viertel_1"));
-            Assert.Empty(Campaign.Load("{\"Version\":6,\"Ledger\":null,\"LastBlood\":null}", out _).Ledger);
+            Assert.Empty(Campaign.Load("{\"Version\":7,\"Ledger\":null,\"LastBlood\":null}", out _).Ledger);
         }
 
         [Fact]
