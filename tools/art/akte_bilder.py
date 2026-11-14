@@ -1,6 +1,6 @@
 """Bilder für Waffenkammer und Ausbauten: lavierte Werkstattzeichnungen auf Karteikarten, wie aus einer Akte von 1927.
 
-Je Gegenstand aus data/waffen.json ein Bild, je Ausbau (Beine, Herz) und Stufe eines. Eigene Entwürfe, gezeichnet aus Flächen und Linien.
+Je Gegenstand aus data/waffen.json ein Bild, je Ausbau (Beine, Arme, Herz) und Stufe eines. Eigene Entwürfe, gezeichnet aus Flächen und Linien.
 Aufruf: python tools/art/akte_bilder.py [--sheet=<Datei.png>]   (wenige Sekunden)
 Ergebnis: game/assets/akte/*.png, 256 × 192 Bildpunkte, gedacht für die Anzeige in halber (128 × 96) und viertel Größe (64 × 48),
 dazu game/assets/akte/zuordnung.json: Kennung -> Datei. Mit --sheet entsteht ein Übersichtsblatt aller Bilder.
@@ -19,7 +19,7 @@ FONTS = ROOT / "game" / "assets" / "fonts"
 W, H = 256, 192
 SUPER = 4
 UPGRADE_LEVELS = 3  # Campaign.MaxLevel
-UPGRADES = {"legs": "beine", "heart": "herz"}  # Kennung im Spiel (AgentRecord.Legs, .Heart) -> Name in der Datei
+UPGRADES = {"legs": "beine", "arms": "arme", "heart": "herz"}  # Kennung im Spiel -> Name in der Datei
 
 PAPER = (200, 184, 148)
 INK = (36, 30, 26)
@@ -231,7 +231,7 @@ def draw_pistole(p, img):
 
 
 def draw_schrotflinte(p, img):
-    p = p.at(-6, 4)
+    p = p.at(-6, 4).at(-13, -9, 0, 1.1)
     p.poly([(176, 66), (200, 70), (228, 94), (242, 128), (233, 139), (213, 134), (196, 108), (176, 99)], WOOD)  # abgesägter Schaft
     p.poly([(186, 74), (200, 76), (222, 96), (214, 100), (198, 84)], WOOD_L, None)
     p.poly([(233, 139), (242, 128), (238, 126), (229, 137)], light(WOOD_L, 0.3), INK, 0.8)  # rohe Sägekante
@@ -530,8 +530,101 @@ def draw_beine(p, img, level):
             p.rivets([(109, 60), (121, 58), (112, 88), (124, 87)], BRASS_L, 1.4)
 
 
+def draw_arme(p, img, level):
+    """Unterarm und Hand von der Seite, Hand nach links. Stufe 1 Lederschiene, Stufe 2 Federzug mit Handgelenk, Stufe 3 Messingarm mit Stütze und Uhrwerk."""
+    skin, skin_l, skin_d = (198, 164, 134), (222, 192, 162), (150, 116, 92)
+    p = p.at(128, 98, -7).at(-128, -100)
+    # Hemdsärmel, aufgekrempelt
+    p.poly([(196, 70), (262, 62), (262, 140), (198, 130)], SHIRT)
+    p.poly([(188, 68), (204, 68), (206, 132), (190, 132)], light(SHIRT, 0.35), INK, 1.1)
+    p.line([(214, 72), (216, 128)], dark(SHIRT, 0.3), 0.9)
+    p.line([(236, 68), (238, 134)], dark(SHIRT, 0.3), 0.9)
+    arm = [(92, 86), (190, 72), (190, 128), (92, 114)]
+    hand = [(92, 86), (70, 84), (50, 88), (30, 92), (24, 98), (30, 104), (52, 104), (56, 110), (36, 112), (32, 118), (40, 122), (66, 120), (92, 114)]
+    thumb = [(84, 86), (72, 70), (62, 64), (56, 68), (62, 76), (68, 88)]
+    if level < 3:
+        p.poly(arm, skin)
+        p.poly([(96, 88), (188, 76), (188, 86), (96, 95)], skin_l, None)
+        p.poly([(96, 106), (188, 118), (188, 126), (96, 112)], skin_d, None)
+        p.poly(arm, None)
+        p.poly(thumb, skin)
+        p.poly(hand, skin)
+        p.poly([(34, 94), (70, 87), (88, 89), (88, 94), (40, 99)], skin_l, None)
+        p.line([(30, 104), (52, 104)], INK, 0.9)
+        p.line([(52, 104), (62, 100)], INK, 0.8)
+    if level == 1:
+        # Lederschiene: Manschette über den halben Unterarm, drei Riemen, oben ein Stahlstab
+        p.poly([(104, 82), (182, 71), (182, 129), (104, 116)], LEATHER)
+        p.poly([(108, 85), (178, 75), (178, 86), (108, 94)], LEATHER_L, None)
+        p.poly([(104, 82), (182, 71), (182, 129), (104, 116)], None)
+        p.dashes([(108, 86), (178, 76), (178, 124), (108, 112), (108, 86)], LEATHER_D, 0.8, 2.4, 2.4)
+        for x in (118, 143, 168):
+            strap(p, (x, 68 + (182 - x) * 0.13), (x, 131 - (182 - x) * 0.15), 9, LEATHER_D, 0.3)
+        p.poly([(98, 78), (186, 66), (186, 72), (98, 84)], STEEL_L, INK, 1.1)
+        p.rivets([(104, 80), (182, 69)], STEEL, 1.8)
+    elif level == 2:
+        # Federzug: kürzere Manschette, darüber eine starke Schraubenfeder vom Ellbogen zum Gelenk am Handgelenk, Zugdraht zu den Fingern
+        p.poly([(124, 79), (184, 71), (184, 129), (124, 119)], LEATHER)
+        p.poly([(128, 82), (180, 75), (180, 86), (128, 92)], LEATHER_L, None)
+        p.poly([(124, 79), (184, 71), (184, 129), (124, 119)], None)
+        for x in (138, 168):
+            strap(p, (x, 68 + (184 - x) * 0.13), (x, 131 - (184 - x) * 0.16), 10, LEATHER_D, 0.3)
+        p.poly([(60, 84), (92, 82), (94, 118), (64, 118)], BRASS, INK, 1.1)  # Handrückenplatte
+        p.poly([(64, 87), (90, 85), (90, 92), (66, 94)], BRASS_L, None)
+        p.rivets([(66, 90), (88, 88), (68, 113), (88, 113)], BRASS_L, 1.4)
+        p.line([(40, 96), (62, 90)], INK, 2.4)  # Zugdraht
+        p.line([(40, 96), (62, 90)], STEEL_L, 1.0)
+        p.bar(174, 50, 190, 74, BRASS_D, 3, upright=True)  # Federbock am Ellbogen
+        a, b = (176, 58), (104, 66)
+        coil = [(a[0] + (b[0] - a[0]) * i / 16, a[1] + (b[1] - a[1]) * i / 16 + (9 if i % 2 else -9) * (0 < i < 16)) for i in range(17)]
+        p.line(coil, INK, 5.0)
+        p.line(coil, STEEL_L, 2.8)
+        p.gear(98, 96, 20, 10, BRASS, 1.3)  # Gelenk am Handgelenk
+        p.oval(98, 96, 5, 5, STEEL_D, INK, 0.9)
+        p.line([(104, 66), (100, 82)], INK, 4.4)
+        p.line([(104, 66), (100, 82)], BRASS, 2.6)
+    else:
+        # Messingarm: genietete Schale, Fingerplatten, oben das Uhrwerk, unten die ausklappbare Stütze
+        strut = [(186, 132), (120, 166), (60, 126)]
+        p.line(strut, INK, 6.4)
+        p.line(strut, STEEL_L, 4.0)
+        p.oval(120, 166, 6, 6, BRASS, INK, 1.1)
+        p.poly([(110, 168), (130, 168), (136, 180), (104, 180)], STEEL_D, INK, 1.1)  # Auflage
+        p.poly(thumb, BRASS_D)
+        p.poly(hand, BRASS)
+        p.poly([(34, 94), (70, 87), (88, 89), (88, 94), (40, 99)], BRASS_L, None)
+        for x in (44, 58, 72):
+            p.line([(x, 89 - (x - 44) * 0.08), (x + 2, 104)], INK, 0.9)
+        p.line([(30, 104), (52, 104)], INK, 0.9)
+        p.oval(60, 126, 4.5, 4.5, STEEL, INK, 0.9)
+        p.poly(arm, BRASS)
+        p.poly([(96, 88), (188, 75), (188, 86), (96, 96)], BRASS_L, None)
+        p.poly([(96, 105), (188, 117), (188, 127), (96, 112)], BRASS_D, None)
+        p.poly(arm, None)
+        for x in (124, 158):
+            p.line([(x, 82 - (x - 92) * 0.14), (x, 114 + (x - 92) * 0.14)], INK, 0.9)
+        p.rivets([(x, 84 - (x - 92) * 0.14 + 5) for x in range(100, 188, 12)] + [(x, 113 + (x - 92) * 0.14 - 5) for x in range(100, 188, 12)], BRASS_L, 1.4)
+        p.oval(92, 100, 15, 17, BRASS_D)  # Handgelenk
+        p.oval(92, 100, 6, 7, STEEL_D, INK, 0.9)
+        p.bar(182, 64, 196, 136, BRASS_D, 3, upright=True)  # Ellbogenmanschette
+        # Uhrwerk: große Dose auf dem Arm mit zwei Zahnrädern und Aufziehschlüssel
+        p.gear(166, 56, 17, 11, BRASS, 1.2)
+        p.box(112, 44, 164, 82, BRASS, r=6)
+        p.box(116, 48, 126, 78, BRASS_L, None, r=3)
+        p.box(152, 50, 164, 78, BRASS_D, None, r=4)
+        p.box(112, 44, 164, 82, None, INK, 1.3, 6)
+        p.oval(138, 63, 15, 15, dark(BRASS_D, 0.45), INK, 1.0)  # Fenster ins Werk
+        p.gear(133, 60, 8, 8, BRASS_L, 0.9)
+        p.gear(145, 68, 6, 7, STEEL_L, 0.9)
+        p.rivets([(117, 49), (159, 49), (117, 77), (159, 77)], BRASS_L, 1.4)
+        p.line([(138, 44), (138, 32)], INK, 3.6)
+        p.line([(138, 44), (138, 32)], STEEL_L, 2.0)
+        p.poly([(138, 32), (126, 26), (124, 18), (134, 20), (138, 26), (142, 20), (152, 18), (150, 26)], STEEL_L, INK, 1.1)  # Flügelschlüssel
+
+
 def draw_herz(p, img, level):
     """Brust von vorn mit Riemengeschirr. Stufe 1 Uhrwerk, Stufe 2 Pumpe mit Druckmesser, Stufe 3 Zwillingspumpe mit Schwungrad."""
+    p = p.at(-38, -40, 0, 1.3)  # nah heran: Der Apparat soll die Karte füllen
     torso = [(26, 192), (36, 74), (62, 40), (104, 26), (152, 26), (194, 40), (220, 74), (230, 192)]
     p.poly(torso, SHIRT, INK, 1.2)
     p.poly([(104, 26), (152, 26), (146, 0), (110, 0)], (196, 164, 136), INK, 1.2)  # Hals
@@ -660,25 +753,25 @@ ITEM_DRAWINGS = {
     "pistole": draw_pistole, "schrotflinte": draw_schrotflinte, "maschinenpistole": draw_maschinenpistole, "totschlaeger": draw_totschlaeger,
     "dietrich": draw_dietrich, "rauchtopf": draw_rauchtopf, "verbandszeug": draw_verbandszeug,
 }
-UPGRADE_DRAWINGS = {"legs": draw_beine, "heart": draw_herz}
+UPGRADE_DRAWINGS = {"legs": draw_beine, "arms": draw_arme, "heart": draw_herz}
 ROMAN = ("I", "II", "III")
 
 
 def sheet(entries, path):
     """Übersichtsblatt: jedes Bild mit Namen in Originalgröße, in halber und in viertel Größe."""
     cols, gap, label = 3, 14, 20
-    cell_w, cell_h = W + 128 + 64 + gap * 3, H + label + gap
+    cell_w, cell_h = W + 128 + 75 + gap * 3, H + label + gap
     rows = (len(entries) + cols - 1) // cols
     board = Image.new("RGB", (cols * cell_w + gap, rows * cell_h + gap + 30), (173, 158, 122))  # Papierfarbe des HUD
     d = ImageDraw.Draw(board)
     f = ImageFont.truetype(str(FONTS / "CourierPrime-Bold.ttf"), 14)
-    d.text((gap, 8), "Akte: Waffenkammer und Ausbauten. Je Bild 256 x 192, daneben 128 x 96 und 64 x 48", font=f, fill=INK)
+    d.text((gap, 8), "Akte: Waffenkammer und Ausbauten. Je Bild 256 x 192, daneben 128 x 96 und 75 x 56", font=f, fill=INK)
     for i, (name, img) in enumerate(entries):
         x, y = gap + (i % cols) * cell_w, 30 + gap + (i // cols) * cell_h
         d.text((x, y), name, font=f, fill=INK)
         board.paste(img, (x, y + label))
         board.paste(img.resize((128, 96), Image.LANCZOS), (x + W + gap, y + label))
-        board.paste(img.resize((64, 48), Image.LANCZOS), (x + W + gap * 2 + 128, y + label))
+        board.paste(img.resize((75, 56), Image.LANCZOS), (x + W + gap * 2 + 128, y + label))
     board.save(path)
 
 
