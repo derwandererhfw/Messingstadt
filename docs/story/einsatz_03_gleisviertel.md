@@ -1,12 +1,12 @@
 # Einsatz 3: Der Güterbahnhof (Gleisviertel, Sabotieren)
 
-Stand 2026-11-11. Bauvorlage in derselben Form wie `einsatz_02_nordwall.md`. Rahmen (Viertel, Auftragsart, Zug mit Streikbrechern, Hinweis von Rehm, vorbereitete Wachen) ist KANON. Karte, Gegner, Regeln und Texte sind VORSCHLAG der Story. Karte 20 × 20, Norden ist y = 0. Für die Schrägansicht gilt die Regel aus `../einsatz_02_grundriss.md`: Ein hohes Haus verdeckt drei Felder nördlich und westlich von sich. Zielorte, Türen und Hauptwege liegen deshalb nie dort, wichtige Türen zeigen nach Süden oder Osten, hohe Gebäude stehen am Nordrand.
+Stand 2026-11-14. Bauvorlage in derselben Form wie `einsatz_02_nordwall.md`. Rahmen (Viertel, Auftragsart, Zug mit Streikbrechern, Hinweis von Rehm, vorbereitete Wachen) ist KANON. Texte, Namen und Orte hat der Nutzer am 2026-11-14 freigegeben („ja“). Lesart der Hauptsession: Die Vorschläge gelten, abgenommen wird weiter am gebauten Einsatz. Zahlen zu Karte, Gegnern und Balance bleiben Richtwerte für Level und Mechanik. Die neue Regel wird in der vollen Fassung gebaut (Nutzer, 2026-11-14: „volle Fassung“). Karte 20 × 20, Norden ist y = 0. Für die Schrägansicht gilt die Regel aus `../einsatz_02_grundriss.md`: Ein hohes Haus verdeckt drei Felder nördlich und westlich von sich. Zielorte, Türen und Hauptwege liegen deshalb nie dort, wichtige Türen zeigen nach Süden oder Osten, hohe Gebäude stehen am Nordrand.
 
 ## 1. Geschichte
 
 ### Was vorher geschah
 
-- Am 25. November liegen Weiß' Flugblätter mit den Seiten aus dem Kontobuch in der ganzen Stadt (VORSCHLAG, folgt aus Einsatz 2). Ist Weiß tot, druckt sein Lehrling, einen Tag später.
+- Am 25. November liegen Weiß' Flugblätter mit den Seiten aus dem Kontobuch in der ganzen Stadt (freigegeben 2026-11-14, folgt aus Einsatz 2). Ist Weiß tot, druckt sein Lehrling, einen Tag später.
 - Brandt antwortet: Am Sonntag um Mitternacht soll ein Zug dreihundert Streikbrecher aus dem Umland in den Güterbahnhof Ost bringen (KANON).
 - Den Hinweis bekommt Kolb aus dem Vorstand des Hammers, von Rehm selbst (KANON). Sie schickt den Trupp.
 
@@ -115,18 +115,12 @@ Die Reihenfolge von 2 und 3 ist frei. Beides zusammen hält den Zug auf: Das Sig
 
 ### Sabotieren als Regel
 
-**Volle Fassung, neu für die Mechanik:**
+Vom Nutzer gewählt am 2026-11-14 („volle Fassung“), neu für die Mechanik:
 
 - Die Mission nennt Sabotageziele: Name, Ort, Dauer. Ein Agent steht die Dauer lang daneben, jeder Befehl bricht ab.
 - Hebelbank 6 s, Weiche 4 s. Sabotieren ist leise, aber im Licht zu sehen.
 - Gewonnen ist, wenn alle Ziele erledigt sind und ein Agent 1 s in der Zielzone steht.
 - Zeitdruck: Nach 5 Minuten Spielzeit fährt der Zug ein, dann ist der Einsatz verloren. Die Zeit steht im Telegrammstreifen. Die Dauer ist ein Richtwert für die Balance.
-
-**Kleine Fassung, ohne neue Regel:**
-
-- Das Ziel der Mission ist ein Gegenstand: `itemName` „Stellbolzen“, `item` (14,5, 4,5) im Stellwerk. Aufnehmen 3 s, dann zum Wagen. Ohne Bolzen bleibt das Signal auf Halt.
-- Die Weiche entfällt als Pflicht. Sie kann als Beute zählen: wer sie verkeilt, bekommt 200 Prämie vom Hammer („Beute“ bei (18,5, 9,5), Name „Weichenprämie“).
-- Kein Zeitdruck.
 
 ## 5. Texte
 
@@ -150,7 +144,6 @@ Die Reihenfolge von 2 und 3 ist frei. Beides zusammen hält den Zug auf: Das Sig
 | Beide erledigt | `BEIDES STEHT STOP ZUM BAHNÜBERGANG STOP` |
 | Zeit | `ZUG IN {N} MINUTEN` als Zusatz in der zweiten Zeile, in der letzten Minute in Sekunden |
 | Am Wagen | `EINSTEIGEN STOP STEHEN BLEIBEN STOP` |
-| Kleine Fassung | `STELLBOLZEN WIRD GESICHERT STOP STEHEN BLEIBEN STOP` und `STELLBOLZEN GESICHERT STOP ZUM BAHNÜBERGANG STOP` |
 
 `{ZIEL}` und `{REST}` sind STELLWERK oder WEICHE.
 
@@ -228,7 +221,7 @@ Kolbs Kästen:
 | Bereich | Was |
 |---|---|
 | Level | Karte, Gegner, Türen, Start und Ziel nach Abschnitt 2 bis 4. Lohn 400 steht im Stadtplan |
-| Mechanik | Sabotageziele und Zeitdruck (volle Fassung) oder Entscheidung für die kleine. Lautere Schritte auf Schotter als Vorschlag |
+| Mechanik | Sabotageziele und Zeitdruck. Lautere Schritte auf Schotter als Vorschlag |
 | Grafik | Gleise, Güterwagen, Stellwerk mit Glaskanzel, Güterschuppen mit Rampe, Wasserturm, Kohlenbansen, Baracken, Weichenbock, Schranke. Thema in `grafikthemen.md` |
 | Ton | Rangierstöße, Pfeife, Signalglocke, Schritte auf Schotter, ferner Zug, der näher kommt, wenn die Zeit knapp wird |
 | Atmosphäre | Rangierlok, die ab und zu auf einem Gleis vorbeizieht, als Darstellung. Arbeiter vor den Baracken |

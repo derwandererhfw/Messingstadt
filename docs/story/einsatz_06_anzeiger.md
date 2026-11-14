@@ -1,6 +1,6 @@
 # Einsatz 6: Der Anzeiger (Finale)
 
-Stand 2026-11-11. Bauvorlage in derselben Form wie `einsatz_02_nordwall.md`. Rahmen ist KANON: sechster Einsatz nach allen fünf Vierteln, Nacht des Generalstreiks, der Trupp besetzt das Druckhaus für eine Nacht, der Spieler entscheidet, was gedruckt wird, zwei leise Enden, das letzte Telegramm sagt, dass Kolb von Rehm wusste, die Zeitung zeigt, wie blutig der Spieler war. Karte, Gegner, Regeln und Texte sind VORSCHLAG der Story. Karte 20 × 20, Norden ist y = 0. Für die Schrägansicht gilt die Regel aus `../einsatz_02_grundriss.md`: Ein hohes Haus verdeckt drei Felder nördlich und westlich von sich. Zielorte, Türen und Hauptwege liegen deshalb nie dort, wichtige Türen zeigen nach Süden oder Osten, hohe Gebäude stehen am Nordrand.
+Stand 2026-11-14. Bauvorlage in derselben Form wie `einsatz_02_nordwall.md`. Rahmen ist KANON: sechster Einsatz nach allen fünf Vierteln, Nacht des Generalstreiks, der Trupp besetzt das Druckhaus für eine Nacht, der Spieler entscheidet, was gedruckt wird, zwei leise Enden, das letzte Telegramm sagt, dass Kolb von Rehm wusste, die Zeitung zeigt, wie blutig der Spieler war. Texte, Namen und Orte hat der Nutzer am 2026-11-14 freigegeben („ja“). Lesart der Hauptsession: Die Vorschläge gelten, abgenommen wird weiter am gebauten Einsatz. Zahlen zu Karte, Gegnern und Balance bleiben Richtwerte für Level und Mechanik. Die neue Regel wird in der vollen Fassung gebaut (Nutzer, 2026-11-14: „volle Fassung“). Die Schlusssequenz steht teils im Präsens, auch das ist freigegeben (Nutzer, 2026-11-14: „ja“). Karte 20 × 20, Norden ist y = 0. Für die Schrägansicht gilt die Regel aus `../einsatz_02_grundriss.md`: Ein hohes Haus verdeckt drei Felder nördlich und westlich von sich. Zielorte, Türen und Hauptwege liegen deshalb nie dort, wichtige Türen zeigen nach Süden oder Osten, hohe Gebäude stehen am Nordrand.
 
 ## 1. Geschichte
 
@@ -121,18 +121,12 @@ Bis zur Maschine geht es leise: Pforte, Papierrollen als Deckung, Hofwachen kauf
 
 ### Halten als Regel
 
-**Volle Fassung, neu für die Mechanik:**
+Vom Nutzer gewählt am 2026-11-14 („volle Fassung“), neu für die Mechanik:
 
 - Ein Ort der Mission (die Maschine) löst bei Ankunft eines Agenten eine Entscheidung aus. Das Spiel hält an und zeigt Telegramm und zwei Knöpfe.
 - Danach läuft eine Uhr, 120 s, mit Lehrling 150 s. Während sie läuft, kommt Verstärkung in Wellen. Die Maschine ist zu hören: Alle Gegner auf der Karte sind alarmiert.
 - Ist die Uhr abgelaufen, zählt die Zielzone. Gewonnen ist, wenn ein Agent 1 s darin steht.
 - Die Wahl wird in der Kampagne gespeichert und bestimmt das Ende.
-
-**Kleine Fassung, ohne neue Regel im Einsatz:**
-
-- Die Entscheidung fällt vor dem Einsatz, als Frage in der Sequenz oder auf dem Stadtplan.
-- Das Ziel der Mission ist ein Gegenstand: `itemName` „Erste Auflage“, `item` (11,5, 6,5) an der Maschine. Aufnehmen 3 s, dann zum Durchgang West. Der Drucker hat in der Nacht schon gedruckt.
-- Kein Halten, keine Uhr. Das Finale ist dann ein Diebstahl wie Einsatz 1 und spürbar kleiner.
 
 ## 5. Texte
 
@@ -155,7 +149,6 @@ Bis zur Maschine geht es leise: Pforte, Papierrollen als Deckung, Hofwachen kauf
 | Maschine läuft | `MASCHINE LÄUFT STOP HOF HALTEN STOP NOCH {N} SEKUNDEN STOP` |
 | Auflage fertig | `AUFLAGE IST DRAUSSEN STOP WEG HIER STOP DURCHGANG WEST STOP` |
 | Am Ziel | `DURCH DIE HÖFE STOP STEHEN BLEIBEN STOP` |
-| Kleine Fassung | `ERSTE AUFLAGE WIRD GEHOLT STOP STEHEN BLEIBEN STOP` und `AUFLAGE GESICHERT STOP DURCHGANG WEST STOP` |
 
 ### Der Drucker
 
@@ -294,7 +287,7 @@ Letzter Kasten, immer: „Ich heiße Martha Kolb. Unter meinen Aufträgen stand 
 |---|---|
 | Kampagne | Sechster Eintrag im Stadtplan mit allen fünf Vierteln als Voraussetzung. Merker: Wahl, tote Wachen gesamt, Weiß, Paul, Rademacher. Ende der Kampagne nach dem Sieg |
 | Level | Karte, Gegner, Türen, Start und Ziel nach Abschnitt 2 bis 4 |
-| Mechanik | Entscheidung an einem Ort, Uhr, Verstärkung in Wellen ohne Schuss als Auslöser, Zielzone erst nach Ablauf. Oder die kleine Fassung |
+| Mechanik | Entscheidung an einem Ort, Uhr, Verstärkung in Wellen ohne Schuss als Auslöser, Zielzone erst nach Ablauf |
 | Menüs | Dialog mit Telegramm und zwei Knöpfen. Schlussbildschirm |
 | Sequenzen | Titelseite, Schlusssequenz mit Bedingungen (Wahl, leise oder blutig, wer lebt), Kolbs Antwort als Telegramm |
 | Grafik | Druckhaus mit Papierhof, Papierrollen, Rotationsmaschine hinter dem Tor, Figuren Drucker und Lehrling, Zensor in Zivil. Thema Altstadt in `grafikthemen.md` |
