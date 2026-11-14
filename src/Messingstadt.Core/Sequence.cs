@@ -340,7 +340,7 @@ namespace Messingstadt.Core
         public static HashSet<string> For(Campaign? campaign, World world)
         {
             var dead = campaign?.DeadLastNight() ?? new List<LedgerEntry>();
-            bool own = dead.Exists(e => e.Side == LedgerSide.Squad);
+            bool own = dead.Exists(e => e.Ours);
             bool guards = dead.Exists(e => e.Side == LedgerSide.Guard);
             var flags = new HashSet<string>
             {
@@ -398,7 +398,7 @@ namespace Messingstadt.Core
 
         /// <summary>Eine Spalte des Totenbuchs für die letzte Nacht: je Zeile Anrede und Name. Leer ohne Tote auf dieser Seite.</summary>
         public static string Ledger(Campaign? campaign, LedgerSide side) =>
-            string.Join("\n", (campaign?.DeadLastNight() ?? new List<LedgerEntry>()).Where(e => e.Side == side).Select(e => $"{e.Title} {e.Name}".Trim()));
+            string.Join("\n", (campaign?.DeadLastNight() ?? new List<LedgerEntry>()).Where(e => side == LedgerSide.Guard ? !e.Ours : e.Ours).Select(e => $"{e.Title} {e.Name}".Trim()));
 
         /// <summary>
         /// Was K. nach einem verlorenen oder abgebrochenen Einsatz telegrafiert. Ist dabei jemand zum zweiten Mal gefallen,
