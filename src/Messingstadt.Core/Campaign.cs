@@ -181,6 +181,9 @@ namespace Messingstadt.Core
         /// <summary>Der allgemeine Hinweis zum Dauertod erscheint einmal je Kampagne. Die Anzeige setzt das, wenn sie ihn gezeigt hat.</summary>
         public bool DeathRuleExplained { get; set; }
 
+        /// <summary>Sequenzen vor und nach Einsätzen, die diese Akte schon gezeigt hat. Jede läuft einmal je Kampagne.</summary>
+        public List<string> SeenSequences { get; set; } = new();
+
         /// <summary>Was der letzte zählende Einsatz mit dem Trupp gemacht hat, für Ergebnisfenster und Telegramme. Prepare leert die Listen.</summary>
         public List<string> LastFirstFalls { get; set; } = new();
         public List<string> LastDeaths { get; set; } = new();

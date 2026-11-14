@@ -872,9 +872,7 @@ void fragment() {
             }
             _showIntro = false;
             // Bei jedem neuen Spiel erzählt Kolb den Prolog, danach folgen Kamerafahrt und Auftrag ohne Titel und Ortskarte.
-            string[] ids = SequenceEntry.For(_newCampaign, _forceSequence);
-            _newCampaign = false;
-            _forceSequence = null;
+            string[] ids = EntrySequences();
             void Play(int i)
             {
                 if (i == 1 && brief)
@@ -892,6 +890,43 @@ void fragment() {
                 }
             }
             Play(0);
+        }
+
+        /// <summary>
+        /// Welche Sequenzen beim Betreten laufen. Die Sequenz vor einem Einsatz zeigt jede Akte einmal,
+        /// der Merker dafür steht im Spielstand, bevor sie läuft.
+        /// </summary>
+        private string[] EntrySequences()
+        {
+            string before = _mission.SequenceBefore;
+            string[] ids = SequenceEntry.For(_newCampaign, _forceSequence, before, _campaign.SeenSequences.Contains(before));
+            _newCampaign = false;
+            _forceSequence = null;
+            MarkSeen(ids);
+            return ids;
+        }
+
+        private void MarkSeen(string[] ids)
+        {
+            foreach (string id in ids)
+            {
+                if ((id == _mission.SequenceBefore || id == _mission.SequenceAfter) && !_campaign.SeenSequences.Contains(id))
+                {
+                    _campaign.SeenSequences.Add(id);
+                    SaveCampaign();
+                }
+            }
+        }
+
+        /// <summary>Spielt mehrere Sequenzen nacheinander, danach done.</summary>
+        private void PlaySequences(string[] ids, Action? done = null, int from = 0)
+        {
+            if (from >= ids.Length)
+            {
+                done?.Invoke();
+                return;
+            }
+            PlaySequence(ids[from], () => PlaySequences(ids, done, from + 1));
         }
 
         /// <summary>
@@ -917,6 +952,13 @@ void fragment() {
                 {
                     GD.PushError($"Sequenz {id}: {problem}");
                 }
+                done?.Invoke();
+                return;
+            }
+            // Abschnitte mit Bedingung laufen nur, wenn sie zum Ausgang des Einsatzes passen.
+            data = data.For(SequenceFlags.For(_campaign, World));
+            if (data.Beats.Count == 0)
+            {
                 done?.Invoke();
                 return;
             }
@@ -1681,7 +1723,10 @@ void fragment() {
             _lastReward = World.State == MissionState.Won ? Campaign.Reward(World.Rating, district?.Reward ?? Campaign.BaseReward) : 0;
             _campaign.Finish(World, district);
             SaveCampaign();
-            PlaySequence(World.State == MissionState.Won ? "sieg" : "niederlage", ShowResult);
+            string after = _mission.SequenceAfter;
+            string[] ids = SequenceEntry.AfterMission(World.State == MissionState.Won, after, _campaign.SeenSequences.Contains(after));
+            MarkSeen(ids);
+            PlaySequences(ids, ShowResult);
         }
 
         private static Label PanelLabel(string text, int size = 15) => PaperUi.Text(text, size, PaperUi.Ink, PaperUi.Typewriter);
@@ -1998,7 +2043,7 @@ void fragment() {
         private void NextMission()
         {
             StartMission();
-            PlaySequence("uebergang");
+            PlaySequences(EntrySequences());
         }
 
         private void StartMission()

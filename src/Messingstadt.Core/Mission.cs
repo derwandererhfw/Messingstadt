@@ -329,6 +329,10 @@ namespace Messingstadt.Core
 
         public TelegramData? Telegrams { get; set; }
 
+        /// <summary>Sequenzen aus data/sequences: vor dem ersten Antreten und nach dem ersten Sieg. Leer heißt keine.</summary>
+        public string SequenceBefore { get; set; } = "";
+        public string SequenceAfter { get; set; } = "";
+
         /// <summary>Helligkeit der Karte. Ohne Angabe gilt überall dieselbe Reichweite beim Bemerken.</summary>
         public LightData? Light { get; set; }
 
