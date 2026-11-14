@@ -366,7 +366,8 @@ Die Logik steht in `src/Messingstadt.Core/Campaign.cs`. Sie liest am Ende eines 
 |---|---|
 | Startgeld | 600 |
 | Lohn pro Sieg | Grundlohn des Viertels, im ersten 300. Dazu 150 bei Leise, 300 bei Unentdeckt |
-| Ausbau | 150 von Stufe 1 auf 2, 300 von Stufe 2 auf 3 |
+| Ausbau | Beine, Herz und Arme, je Stufe 1 bis 3. 150 von Stufe 1 auf 2, 300 von Stufe 2 auf 3 |
+| Arme | Die ruhige Hand, in den Daten `arms`. Je Stufe über der ersten 3 Punkte Trefferchance beim Schießen und 10 % weniger Zeit beim Nachladen und beim Waffenwechsel. Der Nahschlag mit dem Totschläger bleibt unberührt, damit der leise Weg nicht leichter wird. Wer fällt, verliert die Stufen wie bei Beinen und Herz, Neue beginnen auf Stufe 1 |
 | Niederlage | Kein Lohn, Beute verloren, ausgegebenes Geld bleibt ausgegeben |
 | Erster Sturz | Krankenstube: Beine und Herz fallen auf Stufe 1, der Agent setzt einen Einsatz aus. Gilt auch bei einer Niederlage |
 | Zweiter Sturz | Tot. Der Platz bleibt leer, bis jemand angeworben wird |
@@ -386,7 +387,7 @@ Die Logik steht in `src/Messingstadt.Core/Campaign.cs`. Sie liest am Ende eines 
 
 Ein Abbruch vor dem ersten Schuss zählt nicht: Nur das Geld für Bestechungen bleibt ausgegeben.
 
-Der Stand wird im Benutzerordner des Spiels gespeichert, je Akte eine Datei (`kampagne.json`, `kampagne_2.json`, `kampagne_3.json`, Version 6). Ältere Stände werden übernommen: Kasse, Einsätze und Stufen bleiben. Stände ohne Versionsnummer bekommen gesunde Agenten, Stände vor der Waffenkammer eine Pistole je Agent, und wer vor dem Stadtplan schon einen Einsatz gewonnen hat, hält das erste Viertel. Stände vor dem Totenbuch haben ein leeres Buch, nur die eigenen Toten stehen ohne Einsatz darin. Unlesbare oder neuere Stände werden verworfen und je Akte als `kampagne*.alt.json` beiseitegelegt. Es gibt bisher nur eine Mission, „Nächster Einsatz“ spielt sie erneut.
+Der Stand wird im Benutzerordner des Spiels gespeichert, je Akte eine Datei (`kampagne.json`, `kampagne_2.json`, `kampagne_3.json`, Version 7). Ältere Stände werden übernommen: Kasse, Einsätze und Stufen bleiben. Stände ohne Versionsnummer bekommen gesunde Agenten, Stände vor der Waffenkammer eine Pistole je Agent, und wer vor dem Stadtplan schon einen Einsatz gewonnen hat, hält das erste Viertel. Stände vor dem dritten Ausbau haben Arme auf Stufe 1. Stände vor dem Totenbuch haben ein leeres Buch, nur die eigenen Toten stehen ohne Einsatz darin. Unlesbare oder neuere Stände werden verworfen und je Akte als `kampagne*.alt.json` beiseitegelegt. Es gibt bisher nur eine Mission, „Nächster Einsatz“ spielt sie erneut.
 
 Der Stadtplan ist das Modell für die Einsatzwahl (`CityMap.cs`, Abfragen in `Campaign`: `Owner`, `State`, `CanSelect`, `TrySelect`, `Selected`). Der Bildschirm dazu fehlt noch, bis dahin wählt das Spiel das erste offene Viertel selbst. Namen und Texte in `data/stadtplan.json` stammen wörtlich aus `docs/story/stadtplan-vorlage.json`: Kesselviertel, Nordwall, Gleisviertel, Kontorviertel, Altstadt. Jedes Viertel sperrt das nächste und bringt im Feld `locked` seinen Satz für „gesperrt“ mit. Ein sechster Einsatz nach allen fünf Vierteln ist vorgesehen, aber nicht gebaut: Er passt als weiterer Eintrag mit mehreren Voraussetzungen ins Modell. Ein höherer Beitrag je erobertem Viertel ist nur ein Vorschlag und nicht gebaut.
 
@@ -400,6 +401,18 @@ Gemessen mit `tools/Messingstadt.Balance -- --kampagne`, je 100 Kampagnen mit 6 
 | Stehen und schießen | 0 % | 8,0 | 66 % | 0 |
 
 Die Zahlen sind niedriger als vor den Gegnertypen und Waffen (damals 69 % für „Alle angreifen“), weil der Einsatz seither härter geworden ist. Laute Spielweisen enden immer bei Fahndung 4. Mit einer Wache mehr je Stufe Fahndung und früherer Verstärkung war es eine Abwärtsspirale, deshalb ist die Folge schwächer.
+
+Arme, gemessen mit `tools/Messingstadt.Balance -- --arme` (je 300 Läufe, alle vier Agenten auf derselben Stufe, vier Maschinenpistolen):
+
+| Einsatz und Spielweise | Stufe 1 | Stufe 2 | Stufe 3 |
+|---|---|---|---|
+| Kesselviertel, Feuer bündeln | 91 % | 98 % | 99 % |
+| Kesselviertel, alle angreifen | 83 % | 95 % | 98 % |
+| Kesselviertel, Feuer bündeln mit Pistolen | 68 % | 77 % | 84 % |
+| Nordwall, laut, Trupp zusammen | 14 % | 29 % | 44 % |
+| Nordwall, Otto allein mit Dietrich | 99 % | 99 % | 99 % |
+
+Stufe 1 entspricht den Werten vor dem Ausbau. Mit 6 Punkten und 20 % wäre der Nordwall von 14 auf 66 % gestiegen, das war zu viel.
 
 ### Umgebung
 

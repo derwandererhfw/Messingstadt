@@ -16,6 +16,9 @@ namespace Messingstadt
     {
         private const int Small = 13;
         private const int Normal = 15;
+        // Breite der Aktenbilder: klein in den Listen und Plätzen, groß beim gewählten Gegenstand.
+        private const int ListPicture = 34, SlotPicture = 26;
+        private const float DetailPicture = 200f;
         private static readonly CultureInfo German = CultureInfo.GetCultureInfo("de-DE");
 
         private enum Source { None, Catalog, Stash, Slot }
@@ -35,6 +38,9 @@ namespace Messingstadt
 
         /// <summary>Für den Prüflauf: gewählter Agent und Gegenstand.</summary>
         public string State => Visible ? $"{_agent}:{_source}:{_item}" : "";
+
+        /// <summary>Für den Prüflauf: wie viele Knöpfe gerade ein Aktenbild tragen.</summary>
+        public int PictureButtons => _buttons.Values.Count(b => b.Icon != null);
 
         public override void _Ready()
         {
@@ -166,6 +172,11 @@ namespace Messingstadt
                     button.SizeFlagsHorizontal = SizeFlags.ExpandFill;
                     button.CustomMinimumSize = new Vector2(150, 0);
                     button.AddThemeFontSizeOverride("font_size", Small);
+                    if (id != null)
+                    {
+                        button.Alignment = HorizontalAlignment.Left;
+                        FilePictures.OnButton(button, id, SlotPicture);
+                    }
                     if (id == null)
                     {
                         button.AddThemeColorOverride("font_color", PaperUi.PaperDark);
@@ -201,6 +212,7 @@ namespace Messingstadt
                 string name = Game.Catalog.Get(id)?.Name ?? id;
                 var button = MakeButton("stash:" + id, group.Count() > 1 ? $"{name} x{group.Count()}" : name, () => Choose(Source.Stash, id), 0);
                 button.Alignment = HorizontalAlignment.Left;
+                FilePictures.OnButton(button, id, ListPicture);
                 if (_source == Source.Stash && _item == id)
                 {
                     Mark(button);
@@ -226,6 +238,7 @@ namespace Messingstadt
                 var button = MakeButton("catalog:" + id, $"{def.Name}   {def.Price}", () => Choose(Source.Catalog, id), 0);
                 button.SizeFlagsHorizontal = SizeFlags.ExpandFill;
                 button.Alignment = HorizontalAlignment.Left;
+                FilePictures.OnButton(button, id, ListPicture);
                 if (_source == Source.Catalog && _item == id)
                 {
                     Mark(button);
@@ -249,10 +262,23 @@ namespace Messingstadt
                     : "Niemand kann etwas tragen.", Normal, 0));
                 return;
             }
-            box.AddChild(PaperUi.Text(def.Name, 22, PaperUi.Ink, PaperUi.Serif));
-            box.AddChild(Wrapped(Values(def), Small, 0));
-            box.AddChild(PaperUi.Text($"Preis {def.Price}   Verkauf {Game.Catalog.SellPrice(def.Id)}", Small, new Color(PaperUi.Ink, 0.75f), PaperUi.Typewriter));
-            box.AddChild(Wrapped(def.Text, Normal, 0));
+            // Das Aktenbild groß links, Name, Werte, Preis und Beschreibung daneben.
+            var sheet = new HBoxContainer();
+            sheet.AddThemeConstantOverride("separation", 14);
+            box.AddChild(sheet);
+            if (FilePictures.Item(def.Id) is { } picture)
+            {
+                var shown = FilePictures.Rect(picture, DetailPicture);
+                shown.SizeFlagsVertical = SizeFlags.ShrinkBegin;
+                sheet.AddChild(shown);
+            }
+            var facts = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            facts.AddThemeConstantOverride("separation", 4);
+            sheet.AddChild(facts);
+            facts.AddChild(PaperUi.Text(def.Name, 22, PaperUi.Ink, PaperUi.Serif));
+            facts.AddChild(Wrapped(Values(def), Small, 0));
+            facts.AddChild(PaperUi.Text($"Preis {def.Price}   Verkauf {Game.Catalog.SellPrice(def.Id)}", Small, new Color(PaperUi.Ink, 0.75f), PaperUi.Typewriter));
+            facts.AddChild(Wrapped(def.Text, Normal, 0));
             var actions = new HFlowContainer();
             actions.AddThemeConstantOverride("h_separation", 8);
             actions.AddThemeConstantOverride("v_separation", 6);

@@ -79,7 +79,10 @@ namespace Messingstadt
 
         private readonly List<Field> _fields = new();
         private readonly List<Button> _slots = new();
-        private readonly List<ColorRect> _legs = new(), _heart = new();
+        private readonly List<ColorRect> _legs = new(), _heart = new(), _arms = new();
+
+        /// <summary>Für den Prüflauf: die Stufen des gewählten Agenten, wie die Kästchen sie zeigen (Beine, Herz, Arme).</summary>
+        public string Levels => _levels.Visible ? string.Concat(new[] { _legs, _heart, _arms }.Select(p => p.Count(r => r.Color == PaperUi.Ink))) : "";
         private Label _telegram = null!;
 
         /// <summary>Was gerade im Telegrammstreifen steht, für den Prüflauf.</summary>
@@ -239,7 +242,8 @@ namespace Messingstadt
             _levels = new Control { Position = new Vector2(0, 32 + TraitHeight), MouseFilter = MouseFilterEnum.Ignore };
             sheet.AddChild(_levels);
             AddLevelRow(_levels, _legs, "Beine", 6);
-            AddLevelRow(_levels, _heart, "Herz", 116);
+            AddLevelRow(_levels, _heart, "Herz", 82);
+            AddLevelRow(_levels, _arms, "Arme", 152);
             for (int i = 0; i < Campaign.ItemSlots; i++)
             {
                 int slot = i;
@@ -270,7 +274,7 @@ namespace Messingstadt
             parent.AddChild(text);
             for (int i = 0; i < LevelDots; i++)
             {
-                var pip = new ColorRect { Position = new Vector2(x + 40 + i * 12, 3), Size = new Vector2(9, 8), MouseFilter = MouseFilterEnum.Ignore };
+                var pip = new ColorRect { Position = new Vector2(x + 34 + i * 10, 3), Size = new Vector2(8, 8), MouseFilter = MouseFilterEnum.Ignore };
                 parent.AddChild(pip);
                 pips.Add(pip);
             }
@@ -384,6 +388,7 @@ namespace Messingstadt
                 foreach (var button in _slots)
                 {
                     SetSlot(button, "", false, false);
+                    SetPicture(button, null);
                 }
                 return;
             }
@@ -393,11 +398,13 @@ namespace Messingstadt
             _trait.Text = Game.AgentTrait(u);
             ShowLevel(_legs, u.Legs);
             ShowLevel(_heart, u.Heart);
+            ShowLevel(_arms, u.Arms);
             for (int i = 0; i < _slots.Count; i++)
             {
                 if (i >= u.Items.Count)
                 {
                     SetSlot(_slots[i], "frei", false, false);
+                    SetPicture(_slots[i], null);
                     continue;
                 }
                 var item = u.Items[i];
@@ -407,6 +414,20 @@ namespace Messingstadt
                 string text = Game.SmokeArmedFor == u.Id && item.Def.Kind == ItemKind.Smoke ? "Rauch: Ziel anklicken" : $"{item.Def.ShortName}  {count}".TrimEnd();
                 // Der Dietrich wirkt von selbst an der Tür, ihn anzuklicken bringt nichts.
                 SetSlot(_slots[i], (inHand ? "» " : "  ") + text, item.Def.Kind != ItemKind.Lockpick, inHand);
+                SetPicture(_slots[i], FilePictures.Item(item.Def.Id));
+            }
+        }
+
+        // Breite des Aktenbilds vor dem Namen im Inventar.
+        private const int SlotPicture = 30;
+
+        private static void SetPicture(Button button, Texture2D? picture)
+        {
+            if (button.Icon != picture)
+            {
+                button.Icon = picture;
+                button.ExpandIcon = true;
+                button.AddThemeConstantOverride("icon_max_width", SlotPicture);
             }
         }
 

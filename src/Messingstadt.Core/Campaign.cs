@@ -13,6 +13,9 @@ namespace Messingstadt.Core
         public int Legs { get; set; } = 1;
         public int Heart { get; set; } = 1;
 
+        /// <summary>Die ruhige Hand, 1 bis 3: genauer schießen, schneller nachladen und die Waffe wechseln.</summary>
+        public int Arms { get; set; } = 1;
+
         /// <summary>Wie oft der Agent gefallen ist. Beim zweiten Mal stirbt er.</summary>
         public int Falls { get; set; }
         public bool Dead { get; set; }
@@ -97,6 +100,14 @@ namespace Messingstadt.Core
         public Dictionary<string, bool> Prisoners { get; set; } = new();
     }
 
+    /// <summary>Die drei Ausbauten eines Agenten. In den Daten heißen sie legs, heart und arms.</summary>
+    public enum Upgrade
+    {
+        Legs,
+        Heart,
+        Arms,
+    }
+
     public enum SaveStatus
     {
         New,
@@ -108,7 +119,7 @@ namespace Messingstadt.Core
     /// <summary>Was zwischen den Einsätzen bleibt: Geld, Fahndung, Rückhalt, die Agenten und was in jedem Einsatz geschah.</summary>
     public sealed partial class Campaign
     {
-        public const int CurrentVersion = 6;
+        public const int CurrentVersion = 7;
         public const int StartMoney = 600;
 
         /// <summary>Das Viertel des ersten Einsatzes. Alte Stände mit einem Sieg bekommen es als erobert.</summary>
@@ -263,7 +274,7 @@ namespace Messingstadt.Core
             {
                 if (!Agents.Exists(r => r.Slot == a.Name))
                 {
-                    Agents.Add(new AgentRecord { Name = a.Name, Slot = a.Name, Legs = a.Legs, Heart = a.Heart });
+                    Agents.Add(new AgentRecord { Name = a.Name, Slot = a.Name, Legs = a.Legs, Heart = a.Heart, Arms = a.Arms });
                 }
                 // Was die Truppführerin kann, hängt an der Person, nicht am Platz: Wer sie ersetzt, kennt die Wache nicht.
                 foreach (var record in Agents.Where(x => x.Slot == a.Name && x.Skill == "" && (a.Skill != World.SkillLeader || x.Name == a.Name)))
@@ -292,6 +303,7 @@ namespace Messingstadt.Core
                     a.Name = record.Name;
                     a.Legs = record.Legs;
                     a.Heart = record.Heart;
+                    a.Arms = record.Arms;
                     a.Items = new List<string>(record.Items);
                     squad.Add(a);
                 }
@@ -425,6 +437,7 @@ namespace Messingstadt.Core
                     record.Falls++;
                     record.Legs = 1;
                     record.Heart = 1;
+                    record.Arms = 1;
                     record.Dead = record.Falls >= 2;
                     record.Rest = record.Dead ? 0 : 1;
                     record.Infirmary = !record.Dead;
@@ -591,22 +604,38 @@ namespace Messingstadt.Core
             return null;
         }
 
-        public bool TryUpgrade(string name, bool legs)
+        public bool TryUpgrade(string name, bool legs) => TryUpgrade(name, legs ? Upgrade.Legs : Upgrade.Heart);
+
+        /// <summary>Die Stufe eines Agenten in diesem Ausbau, 1 bis MaxLevel.</summary>
+        public static int Level(AgentRecord record, Upgrade upgrade) => upgrade switch
+        {
+            Upgrade.Legs => record.Legs,
+            Upgrade.Heart => record.Heart,
+            _ => record.Arms,
+        };
+
+        /// <summary>Lässt sich dieser Ausbau jetzt kaufen: Agent lebt, Stufe nicht voll, Kasse reicht?</summary>
+        public bool CanUpgrade(string name, Upgrade upgrade)
         {
             var record = Agent(name);
-            int level = legs ? record.Legs : record.Heart;
-            if (record.Dead || level >= MaxLevel || Money < UpgradeCost(level))
+            int level = Level(record, upgrade);
+            return !record.Dead && level < MaxLevel && Money >= UpgradeCost(level);
+        }
+
+        /// <summary>Kauft die nächste Stufe. Alle drei Ausbauten kosten dasselbe: 150 auf Stufe 2, 300 auf Stufe 3.</summary>
+        public bool TryUpgrade(string name, Upgrade upgrade)
+        {
+            if (!CanUpgrade(name, upgrade))
             {
                 return false;
             }
-            Money -= UpgradeCost(level);
-            if (legs)
+            var record = Agent(name);
+            Money -= UpgradeCost(Level(record, upgrade));
+            switch (upgrade)
             {
-                record.Legs++;
-            }
-            else
-            {
-                record.Heart++;
+                case Upgrade.Legs: record.Legs++; break;
+                case Upgrade.Heart: record.Heart++; break;
+                default: record.Arms++; break;
             }
             return true;
         }
@@ -683,6 +712,8 @@ namespace Messingstadt.Core
                 a.Slot = string.IsNullOrEmpty(a.Slot) ? a.Name : a.Slot;
                 a.Legs = Math.Clamp(a.Legs, 1, MaxLevel);
                 a.Heart = Math.Clamp(a.Heart, 1, MaxLevel);
+                // Stände vor dem dritten Ausbau kennen keine Arme: Stufe 1.
+                a.Arms = version < 7 ? 1 : Math.Clamp(a.Arms, 1, MaxLevel);
                 a.Falls = Math.Clamp(a.Falls, 0, 2);
                 a.Dead = a.Dead || a.Falls >= 2;
                 a.Rest = a.Dead ? 0 : Math.Clamp(a.Rest, 0, 9);
