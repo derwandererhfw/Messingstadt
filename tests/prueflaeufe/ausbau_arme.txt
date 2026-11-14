@@ -1,0 +1,46 @@
+# Arme als dritter Ausbau: Kauf im Ergebnis-Bildschirm mit Maus und Tasten, großes Bild mit Wirkung, Kästchen in der Spalte.
+# Aufruf mit --menu --fresh. Prüfläufe schreiben nichts.
+wait 20
+click Neues Spiel
+wait 10
+click Einsatz annehmen
+expect picturesmissing
+click Zum Einsatz
+wait 20
+key Key1
+wait 3
+# Greta beginnt mit Beine 2, Herz 2, Arme 1
+expect hudlevels 221
+calm
+place item
+waitfor item True
+place exit
+waitfor state Won
+wait 20
+expect panel True
+expect levels Greta 221, Otto 131, Emil 111, Hanna 311
+expect upgradetip
+# Kauf mit der Maus: Gretas Arme auf Stufe 2. Die Wahl bleibt auf dem Knopf, das große Bild zeigt die nächste Stufe
+remember money
+click Arme + (150)
+wait 5
+changed money
+expect levels Greta 222, Otto 131, Emil 111, Hanna 311
+expect focus Arme + (300)
+expect upgradetip Arme Stufe 3: +6 Treffer, lädt und wechselt die Waffe 20 % schneller.
+# Kauf mit Enter: Stufe 3, mehr geht nicht
+key Enter
+wait 5
+expect levels Greta 223, Otto 131, Emil 111, Hanna 311
+# Voll ausgebaut: Der Knopf ist aus, das große Bild verschwindet
+expect upgradetip
+# Im nächsten Einsatz zeigt die Spalte drei Kästchen bei Arme
+click Nächster Einsatz
+wait 5
+expect upgradetip
+click Einsatz annehmen
+click Zum Einsatz
+wait 20
+key Key1
+wait 3
+expect hudlevels 223

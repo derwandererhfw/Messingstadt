@@ -77,6 +77,6 @@ wait 30
 # Emil und Hanna liegen in der Krankenstube. Greta hat nur den Knüppel als Waffe und hält ihn, der Rauchtopf ist dabei.
 expect armory
 expect hud True
-expect weapons Greta:Knüppel, Otto:Pistole 10
+expect weapons Greta:Totschläger, Otto:Pistole 10
 expect items Greta:totschlaeger+rauchtopf, Otto:pistole
 expect money 470

@@ -6,7 +6,7 @@ wait 20
 click Spiel laden
 key Enter
 wait 40
-expect weapons Greta:MP 20, Otto:Schrot 2, Emil:Pistole 10, Hanna:Knüppel
+expect weapons Greta:MP 20, Otto:Schrot 2, Emil:Pistole 10, Hanna:Totschläger
 shot user://haltung_stehen.png
 hurt Emil 50
 key Key3

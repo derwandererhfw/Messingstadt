@@ -16,7 +16,7 @@
       "text": "Zwanzig Schuss im Stangenmagazin, über einen Hafenarbeiter beschafft. Streut, frisst Patronen und weckt das ganze Viertel."
     },
     {
-      "id": "totschlaeger", "name": "Totschläger", "short": "Knüppel", "kind": "nahkampf", "price": 120,
+      "id": "totschlaeger", "name": "Totschläger", "short": "Totschläger", "kind": "nahkampf", "price": 120,
       "damage": 25, "range": 1.6, "cooldown": 0.8, "noise": 0,
       "text": "Lederner Knüppel mit Bleikern. Von hinten an eine ahnungslose Wache, und sie wacht erst im Morgengrauen auf. Gegen Panzerung und wache Gegner taugt er wenig."
     },

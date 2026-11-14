@@ -16,7 +16,7 @@ expect selected 0
 expect slots » Pistole  10/10 |   MP  20/20 |   Rauch  x1 |   Verband  x1
 # Platz 2: Maschinenpistole in die Hand, wie E
 clickat 118 312
-expect weapons Greta:MP 20, Otto:Pistole 10, Emil:ohne Waffe, Hanna:Knüppel
+expect weapons Greta:MP 20, Otto:Pistole 10, Emil:ohne Waffe, Hanna:Totschläger
 expect slots   Pistole  10/10 | » MP  20/20 |   Rauch  x1 |   Verband  x1
 # Klicks in die Spalte geben keinen Gehbefehl: zwischen die Felder, auf das Brett, auf das Peilgerät
 clickat 117 108
