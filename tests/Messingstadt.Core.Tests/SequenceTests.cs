@@ -68,9 +68,51 @@ namespace Messingstadt.Core.Tests
         [Fact]
         public void SequencesUsedByTheGameExist()
         {
-            foreach (string id in new[] { "prolog", "einstieg_nach_prolog", "einstieg", "uebergang", "sieg", "niederlage", "rueckzug" })
+            foreach (string id in new[] { "prolog", "einstieg_nach_prolog", "einstieg", "uebergang", "sieg", "niederlage", "rueckzug", "nach_01", "vor_02", "nach_02" })
             {
                 Assert.True(File.Exists(Path.Combine(RepoRoot(), "data", "sequences", id + ".json")), id);
+            }
+        }
+
+        [Fact]
+        public void MissionsNameSequencesThatExist()
+        {
+            string root = RepoRoot();
+            int named = 0;
+            foreach (string file in Directory.GetFiles(Path.Combine(root, "data"), "mission_*.json"))
+            {
+                var mission = Loader.ParseMission(File.ReadAllText(file));
+                foreach (string id in new[] { mission.SequenceBefore, mission.SequenceAfter }.Where(i => i.Length > 0))
+                {
+                    Assert.True(File.Exists(Path.Combine(root, "data", "sequences", id + ".json")), $"{Path.GetFileName(file)}: {id}");
+                    named++;
+                }
+            }
+            Assert.True(named >= 3);
+        }
+
+        [Fact]
+        public void EveryCaseOfTheLedgerPageHasExactlyOneBeat()
+        {
+            foreach (string id in new[] { "nach_01", "nach_02" })
+            {
+                var data = SequenceData.Parse(File.ReadAllText(Path.Combine(RepoRoot(), "data", "sequences", id + ".json")));
+                foreach (string flag in new[] { SequenceFlags.NoDead, SequenceFlags.GuardsOnly, SequenceFlags.OwnOnly, SequenceFlags.BothSides })
+                {
+                    var flags = new HashSet<string> { flag, "lebt:Anton Weiß", "lebt:Paul Roth" };
+                    Assert.Single(data.For(flags).Beats, b => b.Show == "ledger");
+                }
+            }
+        }
+
+        [Fact]
+        public void ThePressSequenceHasTwoPicturesInEveryCase()
+        {
+            var data = SequenceData.Parse(File.ReadAllText(Path.Combine(RepoRoot(), "data", "sequences", "nach_02.json")));
+            foreach (var alive in new[] { new[] { "lebt:Anton Weiß", "lebt:Paul Roth" }, new[] { "lebt:Anton Weiß" }, new[] { "lebt:Paul Roth" } })
+            {
+                var flags = new HashSet<string>(alive) { SequenceFlags.NoDead };
+                Assert.Equal(2, data.For(flags).Beats.Count(b => b.Show == "image"));
             }
         }
 
