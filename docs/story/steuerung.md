@@ -50,22 +50,41 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 | 2026-11-13 | Zeitung: tote Wachen mit Namen und Anrede (gebaut in `Headlines.cs`). Eigene Tote bleiben Blutspuren und stehen nur in Akte und Totenbuch. Der Nutzer kann das später ändern | Hauptsession, auf Empfehlung der Story |
 | 2026-11-13 | Feld `person` trägt den vollen Namen, der Rufname ist das letzte Wort, `call` überschreibt ihn bei den Jungen | Hauptsession |
 | 2026-11-13 | Blutschuld geglättet: Der erste Tote einer Nacht ist frei, jeder weitere 1, höchstens 3 je Nacht. Stufen unverändert | Kampagne über die Hauptsession, keine wörtliche Freigabe des Nutzers |
+| 2026-11-14 | Ein Viertel fällt nicht an Brandt zurück | Nutzer über die Hauptsession („Nein“) |
+| 2026-11-14 | Einsatz 3 bis 6 bekommen die volle Fassung ihrer neuen Regel: Sabotageziele mit Zeitdruck, Überzeugen, Ausschalten, Entscheidung und Halten. Die kleinen Fassungen sind aus den Bauvorlagen gestrichen | Nutzer über die Hauptsession („volle Fassung“) |
+| 2026-11-14 | Neue Gegnerart Werkschutzführer (Rademacher) | Nutzer über die Hauptsession („ja“) |
+| 2026-11-14 | Texte, Namen und Orte der Bauvorlagen für Einsatz 2 bis 6 freigegeben. Lesart der Hauptsession: Die Vorschläge gelten, abgenommen wird weiter am gebauten Einsatz | Nutzer über die Hauptsession („ja“), Lesart von der Hauptsession |
+| 2026-11-14 | Die Schlusssequenz steht teils im Präsens | Nutzer über die Hauptsession („ja“) |
+| 2026-11-14 | Greta und Hanna bekommen eigene Fähigkeiten. Vorschlag der Story war: Greta fälscht Papiere, Hanna bringt Beute schneller weg. Wie das mit Gretas halbem Preis zusammenpasst, steht in `faehigkeiten.md` | Nutzer über die Hauptsession („ja“) |
+| 2026-11-14 | Der Trupp erfährt vom Plan mit dem Notstand so, wie `wissen.md` es empfahl: Andeutung durch Gretas alte Kollegen in Einsatz 2, Gewissheit aus dem Zweitbuch in Einsatz 4 (Dorns Satz) | Nutzer über die Hauptsession („wie empfohlen“) |
+| 2026-11-14 | Die Währung heißt Groschen | Nutzer über die Hauptsession („Groschen“) |
 
 ## Offene Entscheidungen
 
 | Frage | Wer entscheidet | Folgen |
 |---|---|---|
-| Stadtplan: Kann ein Viertel an Brandt zurückfallen? Wie sieht der Notstand auf dem Plan aus? | Nutzer mit Kampagne | Vorschläge in `stadtplan.md`, Abschnitt Offen |
-| Je Einsatz volle oder kleine Fassung der neuen Regel: Gefangene (2), Sabotageziele mit Zeitdruck (3), Zielperson überzeugen (4), Zielperson ausschalten (5), Entscheidung und Halten (6) | Nutzer mit Mechanik | Jeweils Abschnitt 4 der Bauvorlage. Die kleine Fassung kommt ohne neue Regel aus, macht den Einsatz aber dem ersten ähnlicher |
-| Neue Gegnerart Werkschutzführer (Rademacher) | Nutzer mit Gegner | `einsatz_05_altstadt.md`, Abschnitt 3 |
-| Texte, Namen und Orte der Bauvorlagen für Einsatz 2 bis 6 | Nutzer | Stehen als VORSCHLAG in den Bauvorlagen und werden am gebauten Einsatz abgenommen |
-| Schlusssequenz teils im Präsens | Nutzer mit Sequenzen | `einsatz_06_anzeiger.md`, Abschnitt 5 |
-| Eigene Fähigkeiten für Greta und Hanna? | Nutzer mit Mechanik | Vorschlag Story: Greta fälscht Papiere, Hanna bringt Beute schneller weg |
-| Wann erfährt der Trupp vom Plan mit dem Notstand? | Nutzer | Siehe `wissen.md`, betrifft Einsatz 2 bis 4 |
-| Welche Währung gilt in Messingstadt? | Nutzer | Im Spiel stehen nur Zahlen (200, 300). Ein Arbeiter sagt „Groschen“ |
+| Wie sieht der Notstand nach Einsatz 5 auf dem Stadtplan aus? | Nutzer mit Kampagne | Vorschlag in `stadtplan.md`, Abschnitt Offen: Stempel `NOTSTAND` über dem roten Plan |
+| Geglättete Blutschuld: Der erste Tote einer Nacht ist frei | Nutzer | Gebaut von der Kampagne. Freigegeben hatte er: je Toter 1, höchstens 3 |
+| Eigene Tote in der Zeitung nur als Blutspuren | Nutzer | Entscheidung der Hauptsession, Sätze mit Namen liegen als Reserve in `einsatz_02_nordwall.md` |
+| Tote werden außerhalb von Erzähltexten genannt | Nutzer | Entscheidung der Hauptsession auf Grundlage des Leitbilds |
+| Werte und Grenzen der Fähigkeiten von Greta und Hanna | Nutzer mit Mechanik | `faehigkeiten.md` |
+| Zahlen im Spiel ohne Währung: Soll „Groschen“ angezeigt werden? | Nutzer mit Menüs | Fundstellen unter Nächste Schritte |
 
 ## Nächste Schritte
 
-1. Einbau der Dauertod-Texte durch Kampagne und Menüs begleiten.
-2. Einsatz 2 „Die Wachstube“ wird gebaut. Danach Sätze mit Spielhinweis gegen die Karte prüfen, `{prisoners}` in `Headlines.cs` einbauen und die Texte in die Missionsdatei eintragen.
-3. Recherche zum Zeitkolorit für die offenen Fragen in `kanon.md`.
+1. Einsatz 3 „Der Güterbahnhof“ wird gebaut. Danach Sätze mit Spielhinweis gegen Karte und Messung prüfen.
+2. Namen für die Wachen der Einsätze 3 bis 6, in der Form von `texte/wachen.md`.
+3. Titelseite des Finales aus dem Totenbuch, wenn Einsatz 6 gebaut wird.
+4. Recherche zum Zeitkolorit für die offenen Fragen in `kanon.md`.
+
+### Zahlen ohne Währung im Spiel
+
+Geprüft am 2026-11-14, nichts geändert. Die Anzeige gehört Menüs und Hauptsession.
+
+| Wo | Text |
+|---|---|
+| `game/Armory.cs` | „Kasse {Zahl}“, „Preis {Zahl}   Verkauf {Zahl}“ |
+| `game/CityPlan.cs` | „Belohnung: {Zahl}“ |
+| `game/Main.cs` | „Lohn {Zahl}“, „Kasse {Zahl}“, „Beitrag {Zahl} je Einsatz“, „KASSE {Zahl}“ im Einsatz, Preis beim Bestechen |
+
+In den Texten der Story steht Geld nur als Wort („Groschen“ bei Kurt und beim Boten) oder als Zahl in Regeln für andere Sessions. Kein Text nennt eine andere Währung.

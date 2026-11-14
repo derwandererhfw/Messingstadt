@@ -1,6 +1,6 @@
 # Einsatz 4: Das Schließfach (Kontorviertel, Überzeugen)
 
-Stand 2026-11-11. Bauvorlage in derselben Form wie `einsatz_02_nordwall.md`. Rahmen ist KANON: Kontorviertel, Überzeugen, Prokurist Albert Dorn schließt Valks Schließfach auf, darin das Zweitbuch mit den Klarnamen, Sperling ist Rehm. Karte, Gegner, Regeln und Texte sind VORSCHLAG der Story. Karte 20 × 20, Norden ist y = 0. Für die Schrägansicht gilt die Regel aus `../einsatz_02_grundriss.md`: Ein hohes Haus verdeckt drei Felder nördlich und westlich von sich. Deshalb stehen hier alle hohen Gebäude in einer Reihe am Nordrand, und östlich und südlich des Geschehens ist alles niedrig.
+Stand 2026-11-14. Bauvorlage in derselben Form wie `einsatz_02_nordwall.md`. Rahmen ist KANON: Kontorviertel, Überzeugen, Prokurist Albert Dorn schließt Valks Schließfach auf, darin das Zweitbuch mit den Klarnamen, Sperling ist Rehm. Texte, Namen und Orte hat der Nutzer am 2026-11-14 freigegeben („ja“). Lesart der Hauptsession: Die Vorschläge gelten, abgenommen wird weiter am gebauten Einsatz. Zahlen zu Karte, Gegnern und Balance bleiben Richtwerte für Level und Mechanik. Die neue Regel wird in der vollen Fassung gebaut (Nutzer, 2026-11-14: „volle Fassung“). Karte 20 × 20, Norden ist y = 0. Für die Schrägansicht gilt die Regel aus `../einsatz_02_grundriss.md`: Ein hohes Haus verdeckt drei Felder nördlich und westlich von sich. Deshalb stehen hier alle hohen Gebäude in einer Reihe am Nordrand, und östlich und südlich des Geschehens ist alles niedrig.
 
 ## 1. Geschichte
 
@@ -8,7 +8,7 @@ Stand 2026-11-11. Bauvorlage in derselben Form wie `einsatz_02_nordwall.md`. Rah
 
 - Am Güterbahnhof hat der Werkschutz den Trupp erwartet (Einsatz 3). Jemand hat geredet.
 - Im Kontobuch stehen Zahlungen an einen „Sperling“, ohne Namen. Die Kontorbank führt für Brandt ein zweites Buch mit den richtigen Namen. Es liegt in Direktor Valks Schließfach (KANON).
-- Emil kennt die Bank von innen und kennt Albert Dorn: Prokurist, zwanzig Jahre im Haus, hat den zweiten Schlüssel und drei Monate Mietschulden bei der eigenen Bank (VORSCHLAG). Ist Emil tot, weiß Kolb das aus einer Akte.
+- Emil kennt die Bank von innen und kennt Albert Dorn: Prokurist, zwanzig Jahre im Haus, hat den zweiten Schlüssel und drei Monate Mietschulden bei der eigenen Bank (freigegeben 2026-11-14). Ist Emil tot, weiß Kolb das aus einer Akte.
 
 ### Was auf dem Spiel steht
 
@@ -17,7 +17,7 @@ Ohne das zweite Buch bleibt Sperling ein Deckname, und der Trupp läuft beim nä
 ### Was der Trupp erfährt
 
 - Sperling ist Julius Rehm, der Vorsitzende des Roten Hammers (KANON).
-- Dorn sagt, Valk habe den Notstand schon verbucht, als Geschäft. Damit weiß der Trupp, wozu Brandt den Streik braucht (VORSCHLAG, die Frage steht in `steuerung.md` unter den offenen Entscheidungen).
+- Dorn sagt, Valk habe den Notstand schon verbucht, als Geschäft. Damit weiß der Trupp, wozu Brandt den Streik braucht (vom Nutzer am 2026-11-14 bestätigt: „wie empfohlen“. Früher stand die Frage in `steuerung.md` unter den offenen Entscheidungen).
 
 ### Wie es weitergeht
 
@@ -116,13 +116,13 @@ Kein Gegner. Unbewaffnet, 40 Lebenspunkte, alarmiert niemanden. Er bleibt stehen
 | Emil, Buchhalter | Überzeugt Dorn mit Geld, schnell und still. Kennt ihn von früher, das steht in den Zurufen |
 | Otto, Schlosser | Gittertor des Kassenhofs und Tür des Pförtnerhauses. Gegen das Schließfach hilft er nicht |
 | Hanna, Kurierin | Zieht eine Streife oder den Revierführer weg. Trägt das Buch nicht schneller, ist aber als Erste an der Brücke, um zu sichern |
-| Greta, Truppführerin | In der Mechanik keine Sonderrolle. Ist sie dabei und gilt der Vorschlag aus Einsatz 2, nimmt der Nachtwächter die Hälfte |
+| Greta, Truppführerin | Ist sie in Rufweite, nimmt der Nachtwächter die Hälfte (gebaut). Dazu ihr Passierschein, siehe `faehigkeiten.md` |
 | Totschläger | Nachtwächter, Streifen, Revierführer. Nicht die Portalwachen |
 | Rauchtopf | Vor das Gittertor oder auf die Mitte der Bankstraße |
 
 ### Überzeugen als Regel
 
-**Volle Fassung, neu für die Mechanik:**
+Vom Nutzer gewählt am 2026-11-14 („volle Fassung“), neu für die Mechanik:
 
 - Die Mission nennt eine Zielperson mit Preis und Dauer.
 - Mit Geld: Rechtsklick des Buchhalters wie beim Bestechen, 400 aus der Kasse, 2 s. Still.
@@ -130,13 +130,6 @@ Kein Gegner. Unbewaffnet, 40 Lebenspunkte, alarmiert niemanden. Er bleibt stehen
 - Überzeugt folgt Dorn dem Agenten bis zu seiner Tür und öffnet sie in 3 s. Danach geht er in den Dienstboteneingang und ist weg.
 - Die Tür des Schließfachs lässt sich auf keine andere Weise öffnen.
 - Fällt die Kasse unter 400 und kein Agent kann stehen bleiben, bleibt der Weg mit Worten. Der Einsatz ist also immer lösbar.
-
-**Kleine Fassung:**
-
-- Dorn ist eine bestechbare Figur ohne Waffe (400). Ist er bestochen, steht seine Tür offen. Das ist dieselbe Regel wie beim Schließer in Einsatz 2: Ein bestochener Schlüsselträger öffnet seine Türen.
-- Ohne Buchhalter ist diese Fassung nicht lösbar.
-
-Ganz ohne neue Regel wäre der Einsatz wieder ein Einbruch. Dann stimmt die Auftragsart auf dem Stadtplan nicht mehr.
 
 ## 5. Texte
 
@@ -248,7 +241,7 @@ Der letzte Kasten verschweigt, dass Kolb es wusste, und leugnet es nicht (KANON,
 | Bereich | Was |
 |---|---|
 | Level | Karte, Gegner, Türen, Start und Ziel nach Abschnitt 2 bis 4. Lohn 450 steht im Stadtplan |
-| Mechanik | Zielperson überzeugen (volle Fassung) oder bestochener Schlüsselträger (kleine). Dorn als Figur ohne Waffe |
+| Mechanik | Zielperson überzeugen. Dorn als Figur ohne Waffe |
 | Grafik | Kontorbank mit Portal und Kuppel, Hotel Kontor, Kassenhof mit Eisengitter, Pförtnerhaus, Uferpromenade, Kanal mit Brücke und Anlegetreppe, Kahn, Kandelaber. Figur Dorn: Mantel über dem Anzug, Kneifer, Zigarette. Thema in `grafikthemen.md` |
 | Ton | Stille, ein Motor im Leerlauf, Klavier, Rollgitter, Wasser im Kanal, Schlüssel im Tresorschloss |
 | Sequenzen | Szenenplan aus den Kästen. Rehms Name fällt hier zum ersten Mal |

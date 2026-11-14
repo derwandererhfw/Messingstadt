@@ -114,5 +114,5 @@ Der Satz für gesperrte Viertel steht ausgeschrieben in der Vorlage, weil der Ar
 
 ## Offen
 
-- Ob ein Viertel wieder an Brandt fallen kann, etwa nach einer Niederlage. Vorschlag Story: nein, einmal gehalten bleibt gehalten.
+- Entschieden: Ein Viertel fällt nicht an Brandt zurück. Einmal gehalten bleibt gehalten (Nutzer, 2026-11-14: „Nein“).
 - Wie der Notstand nach Einsatz 5 auf dem Plan aussieht. Vorschlag: Der Plan bleibt rot, aber über allem liegt der Stempel `NOTSTAND`. Die Leute halten zum Hammer, die Straße gehört trotzdem dem Werkschutz.

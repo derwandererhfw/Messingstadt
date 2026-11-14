@@ -1,6 +1,6 @@
 # Einsatz 2: Die Wachstube (Nordwall, Befreien)
 
-Stand 2026-11-12. Bauvorlage der Story-Session für Level, Mechanik, Grafik, Ton und Sequenzen. Auftrag des Nutzers über die Hauptsession. Rahmen (Viertel, Auftragsart, wer befreit wird) ist KANON. Karte, Gegner, Regeln und Texte in dieser Datei sind VORSCHLAG der Story, bis der Nutzer sie am gebauten Einsatz abnimmt. Alle Koordinaten sind Felder, Norden ist y = 0. Die Karte ist seit dem 2026-11-12 auf 30 × 30 gewachsen („Der lange Rückweg“, Entscheidung des Nutzers). Der Kern von 20 × 20 liegt unverändert oben links. Was die größere Karte ändert, steht in Abschnitt 8 und geht den Abschnitten 2 bis 4 vor. Der gebaute Grundriss steht in `../einsatz_02_grundriss.md` und geht bei Abweichungen vor. Diese Vorlage ist am 2026-11-11 daran angeglichen: Die Wachstube steht am Wall, der Arresthof liegt südlich davor, weil die Schrägansicht sonst Hof und Zellen verdeckt hätte.
+Stand 2026-11-14. Bauvorlage der Story-Session für Level, Mechanik, Grafik, Ton und Sequenzen. Auftrag des Nutzers über die Hauptsession. Rahmen (Viertel, Auftragsart, wer befreit wird) ist KANON. Texte, Namen und Orte hat der Nutzer am 2026-11-14 freigegeben („ja“). Lesart der Hauptsession: Die Vorschläge gelten, abgenommen wird weiter am gebauten Einsatz. Alle Koordinaten sind Felder, Norden ist y = 0. Die Karte ist seit dem 2026-11-12 auf 30 × 30 gewachsen („Der lange Rückweg“, Entscheidung des Nutzers). Der Kern von 20 × 20 liegt unverändert oben links. Was die größere Karte ändert, steht in Abschnitt 8 und geht den Abschnitten 2 bis 4 vor. Der gebaute Grundriss steht in `../einsatz_02_grundriss.md` und geht bei Abweichungen vor. Diese Vorlage ist am 2026-11-11 daran angeglichen: Die Wachstube steht am Wall, der Arresthof liegt südlich davor, weil die Schrägansicht sonst Hof und Zellen verdeckt hätte.
 
 ## 1. Geschichte
 
@@ -25,6 +25,11 @@ Stand 2026-11-12. Bauvorlage der Story-Session für Level, Mechanik, Grafik, Ton
 ### Was der Trupp erfährt
 
 Paul sagt am Wagen: Beim Verhör saß einer vom Werkschutz mit am Tisch und stellte die Fragen. Die Wache arbeitet also schon für Brandt. Das Wort „Notstand“ fällt in diesem Einsatz nicht. Wer Sperling ist, weiß weiter niemand (`wissen.md`).
+
+Dazu eine Andeutung, vom Nutzer am 2026-11-14 bestätigt („wie empfohlen“, gemeint ist die Empfehlung in `wissen.md`): Gretas alte Kollegen reden über etwas, das kommt, ohne es zu benennen. Gewissheit gibt erst Einsatz 4. Zwei Sätze für die Gespräche der Wachen, ohne Spielhinweis:
+
+- „Im Spind liegen neue Armbinden. Für uns und für die vom Werk dieselben.“
+- „Pieper sagt, nach dem Streik gilt hier ein anderes Recht.“
 
 ### Wie es weitergeht
 
@@ -133,14 +138,14 @@ Der Rückweg ist der schwere Teil: Die Gefangenen sind langsam, und der Wagen st
 | Otto, Schlosser | Drei Schlösser auf dem leisen Weg. Ohne ihn braucht jede Tür einen Dietrich und 4 s |
 | Emil, Buchhalter | Hundeführer, Schließer und Bote sind käuflich, für 550 ist der leise Weg fast frei. Türposten und Schließer geben dabei ihre Schlüssel her, zusammen 400 |
 | Hanna, Kurierin | Fängt den Boten ab, lockt eine Wallstreife weg, ist als Erste am Wagen. Paul ist ihr Bruder |
-| Greta, Truppführerin | Kennt die Wache. Vorschlag für die Mechanik: Schließer und Hundeführer nehmen von ihrem Trupp nur die Hälfte, wenn Greta dabei ist |
+| Greta, Truppführerin | Kennt die Wache. Ist sie in Rufweite, kostet Bestechen die Hälfte (gebaut). Dazu ihr Passierschein, siehe `faehigkeiten.md` |
 | Dietrich | Macht den Einsatz ohne Schlosser möglich |
 | Totschläger | Schließer, Türposten und Wallstreifen gehen lautlos zu Boden. Nicht der Mann vom Werk |
 | Rauchtopf | Deckt die Wallstraße auf dem Rückweg oder das Hoftor vor dem Schützen |
 
 ### Befreien als Regel
 
-Empfohlen ist die volle Fassung. Die kleine Fassung kommt ohne neue Regel aus und passt zu allen Texten.
+Gebaut ist die volle Fassung. Die kleine Fassung steht hier nur noch als Herkunft.
 
 **Volle Fassung, neu für die Mechanik:**
 

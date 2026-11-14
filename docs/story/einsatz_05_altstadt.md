@@ -1,6 +1,6 @@
 # Einsatz 5: Die Falle (Altstadt, Ausschalten)
 
-Stand 2026-11-11. Bauvorlage in derselben Form wie `einsatz_02_nordwall.md`. Rahmen ist KANON: Altstadt, Ausschalten, Rehm verrät das Versteck, der Werkschutz riegelt ab, sein Führer Gustav Rademacher steht am Fischmarkt, in derselben Nacht wird der Notstand ausgerufen. Karte, Gegner, Regeln und Texte sind VORSCHLAG der Story. Karte 20 × 20, Norden ist y = 0. Für die Schrägansicht gilt die Regel aus `../einsatz_02_grundriss.md`: Ein hohes Haus verdeckt drei Felder nördlich und westlich von sich. Deshalb stehen die hohen Giebelhäuser und die Kapelle am Nordrand, und alles südlich und östlich des Fischmarkts ist niedrig. Die Karte ist am 2026-11-11 danach neu geordnet.
+Stand 2026-11-14. Bauvorlage in derselben Form wie `einsatz_02_nordwall.md`. Rahmen ist KANON: Altstadt, Ausschalten, Rehm verrät das Versteck, der Werkschutz riegelt ab, sein Führer Gustav Rademacher steht am Fischmarkt, in derselben Nacht wird der Notstand ausgerufen. Texte, Namen und Orte hat der Nutzer am 2026-11-14 freigegeben („ja“). Lesart der Hauptsession: Die Vorschläge gelten, abgenommen wird weiter am gebauten Einsatz. Zahlen zu Karte, Gegnern und Balance bleiben Richtwerte für Level und Mechanik. Die neue Regel wird in der vollen Fassung gebaut (Nutzer, 2026-11-14: „volle Fassung“). Die neue Gegnerart Werkschutzführer ist freigegeben (Nutzer, 2026-11-14: „ja“). Karte 20 × 20, Norden ist y = 0. Für die Schrägansicht gilt die Regel aus `../einsatz_02_grundriss.md`: Ein hohes Haus verdeckt drei Felder nördlich und westlich von sich. Deshalb stehen die hohen Giebelhäuser und die Kapelle am Nordrand, und alles südlich und östlich des Fischmarkts ist niedrig. Die Karte ist am 2026-11-11 danach neu geordnet.
 
 ## 1. Geschichte
 
@@ -93,7 +93,9 @@ Zehn Gegner und ein Hund, sechs davon nicht käuflich. Der schwerste Einsatz vor
 
 ### Werkschutzführer, neue Art
 
-| Wert | Vorschlag |
+Freigegeben vom Nutzer am 2026-11-14. Die Werte sind Richtwerte für die Gegner-Session.
+
+| Wert | Richtwert |
 |---|---|
 | Lebenspunkte | 90 |
 | Waffe | Pistole, 7 Felder, 12 Schaden |
@@ -129,7 +131,7 @@ Gibt es die Art nicht, tut es ein gewöhnlicher Werkschützer mit seinem Namen. 
 
 | Wer | Beitrag |
 |---|---|
-| Greta, Truppführerin | Kennt die Wachleute an der Südsperre. Gilt der Vorschlag aus Einsatz 2, nehmen sie die Hälfte |
+| Greta, Truppführerin | Kennt die Wachleute an der Südsperre. Ist sie in Rufweite, nehmen sie die Hälfte (gebaut) |
 | Emil, Buchhalter | Kauft die Südsperre und den Hundeführer, zusammen 900. Den Werkschutz kauft niemand |
 | Otto, Schlosser | Hier ohne Schloss. Er ist der Zäheste, wenn es laut wird |
 | Hanna, Kurierin | Schnellste auf den langen Wegen um den Markt. Kann den Scharfschützen auf sich ziehen, während ein anderer zuschlägt |
@@ -139,19 +141,13 @@ Gibt es die Art nicht, tut es ein gewöhnlicher Werkschützer mit seinem Namen. 
 
 ### Ausschalten als Regel
 
-**Volle Fassung, neu für die Mechanik:**
+Vom Nutzer gewählt am 2026-11-14 („volle Fassung“), neu für die Mechanik:
 
 - Die Mission nennt eine Zielperson unter den Gegnern.
 - Sie gilt als ausgeschaltet, wenn sie tot oder niedergeschlagen ist. Die Kampagne merkt sich, welches von beiden.
 - Danach: keine Verstärkung mehr, Gegner mit der Marke „geht ab“ verlassen die Karte, die Zielzone zählt.
 - Gewonnen ist, wenn die Zielperson ausgeschaltet ist und ein Agent 1 s in der Zielzone steht.
 - Offene Hofdurchgänge: Türen, die jeder Agent in 1 s öffnet und die Wachen nicht benutzen.
-
-**Kleine Fassung, ohne neue Regel:**
-
-- Das Ziel der Mission ist ein Gegenstand: `itemName` „Marschbefehl“, `item` (10,5, 3,5) auf dem Befehlstisch, ein Feld hinter Rademacher. Aufnehmen 3 s, dann zum Westtor. Ohne Befehl keine Sperre.
-- Die Torwache entfällt, die Hofdurchgänge sind gewöhnliche Türen.
-- Die Auftragsart auf dem Stadtplan stimmt dann nur halb: Man holt, statt auszuschalten.
 
 ## 5. Texte
 
@@ -173,7 +169,6 @@ Gibt es die Art nicht, tut es ein gewöhnlicher Werkschützer mit seinem Namen. 
 | Rademacher kämpft | `RADEMACHER HAT EUCH GESEHEN STOP JETZT ODER NIE STOP` |
 | Ausgeschaltet | `RADEMACHER FÄLLT AUS STOP SPERRE LÖST SICH STOP ZUM WESTTOR STOP` |
 | Am Tor | `DURCH DAS TOR STOP STEHEN BLEIBEN STOP` |
-| Kleine Fassung | `MARSCHBEFEHL WIRD GESICHERT STOP STEHEN BLEIBEN STOP` und `MARSCHBEFEHL GESICHERT STOP ZUM WESTTOR STOP` |
 
 ### Rufe des Werkschutzes
 
@@ -265,7 +260,7 @@ Kolbs Kästen:
 | Bereich | Was |
 |---|---|
 | Level | Karte, Gegner, Türen, Start und Ziel nach Abschnitt 2 bis 4. Lohn steht im Stadtplan |
-| Mechanik | Zielperson ausschalten mit Folgen (volle Fassung) oder Entscheidung für die kleine. Offene Hofdurchgänge. Neue Art Werkschutzführer |
+| Mechanik | Zielperson ausschalten mit Folgen. Offene Hofdurchgänge. Neue Art Werkschutzführer |
 | Gegner | Werkschutzführer nach der Tabelle oben. Schütze, der in dieser Mission nicht käuflich ist |
 | Kampagne | Merker: Rademacher tot oder bewusstlos |
 | Grafik | Fischmarkt mit Brunnen und Ständen, Lastwagen mit Scheinwerfer, Kapelle mit Kirchhof, Giebelhäuser, Fischhalle, niedrige Wäscherei, Wohnblock, Barrikade, Torbogen. Figur Rademacher. Thema in `grafikthemen.md` |
