@@ -1,0 +1,92 @@
+# Sequenzen je Einsatz: nach dem ersten Sieg in Einsatz 1 „Das Buch“, vor dem ersten Antreten in Einsatz 2 „Vor sechs“, beim zweiten Anlauf nur der Übergang
+# Aufruf mit --menu --fresh --intro in einem eigenen leeren APPDATA-Ordner.
+wait 20
+click Neues Spiel
+wait 10
+expect sequence prolog
+key Escape
+wait 10
+click Einsatz annehmen
+click Zum Einsatz
+wait 10
+expect sequence einstieg_nach_prolog
+key Escape
+wait 10
+expect state Running
+# Gekaufte Wachen: In dieser Nacht stirbt niemand, die Seite bleibt leer
+calm
+place item
+waitfor item True
+place exit
+waitfor state Won
+wait 20
+expect sequence sieg
+key Escape
+wait 10
+# Nach der Zeitung: zwei Bilder, dann die Seite des Totenbuchs. Das Ergebnis wartet.
+expect sequence nach_01
+expect panel False
+expect beat 0
+# Bild: n1_1
+key Space
+key Space
+expect beat 1
+# Bild: n1_2
+key Space
+key Space
+expect beat 2
+# Bild: buch_leer
+key Space
+key Space
+wait 5
+expect sequence 
+expect panel True
+wait 60
+click Nächster Einsatz
+wait 5
+key Down
+click Einsatz annehmen
+click Zum Einsatz
+waitfor mission mission_02
+wait 40
+# Erstes Antreten: Kolbs vier Bilder, dann Kamerafahrt und Auftrag
+expect sequence vor_02
+expect hud False
+expect beat 0
+# Bild: v2_1
+key Space
+key Space
+expect beat 1
+# Bild: v2_2
+key Space
+key Space
+expect beat 2
+# Bild: v2_3
+key Space
+key Space
+expect beat 3
+# Bild: v2_4
+key Escape
+wait 10
+expect sequence einstieg_nach_prolog
+key Escape
+wait 10
+expect sequence 
+expect hud True
+expect state Running
+# Rückzug ohne Schuss und neuer Anlauf: Die Sequenz läuft nicht noch einmal
+key R
+wait 10
+click Abbrechen
+wait 10
+expect sequence rueckzug
+key Escape
+wait 5
+click Einsatz annehmen
+click Zum Einsatz
+wait 20
+expect sequence uebergang
+key Escape
+wait 10
+expect sequence 
+expect hud True

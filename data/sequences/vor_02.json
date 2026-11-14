@@ -1,0 +1,9 @@
+{
+  "id": "vor_02",
+  "beats": [
+    {"show": "image", "image": "sequences/einsatz_02/v2_1.jpg", "body": "Am Tag nach dem Buch holte die Wache Anton Weiß von seiner Presse. Die Farbe war noch nass.", "zoom": [1.0, 1.05], "seconds": 3.0, "fade": [1, 0], "fadeSeconds": 1.4, "sounds": [{"at": 0.2, "name": "door_open_0", "volume": -12}]},
+    {"show": "image", "image": "sequences/einsatz_02/v2_2.jpg", "body": "Den jungen Roth hatten sie schon länger. Ich hatte die Tage gezählt.", "zoom": [1.04, 1.0], "seconds": 2.8, "sounds": [{"at": 0.0, "name": "cell_door", "volume": -12}]},
+    {"show": "image", "image": "sequences/einsatz_02/v2_3.jpg", "body": "Am Morgen sollte der Werkschutz beide übernehmen. Ein Gesetz dafür gab es nicht. Es gab Pieper, und Pieper unterschrieb.", "zoom": [1.0, 1.05], "seconds": 3.0},
+    {"show": "image", "image": "sequences/einsatz_02/v2_4.jpg", "body": "Ich schickte den Trupp um vier. Um sechs wäre es zu spät gewesen.", "zoom": [1.0, 1.06], "seconds": 3.2, "sounds": [{"at": 0.0, "name": "rain", "volume": -16}, {"at": 0.8, "name": "church_bell", "volume": -14}], "fade": [0, 1], "fadeStart": 4.0, "fadeSeconds": 1.0}
+  ]
+}
