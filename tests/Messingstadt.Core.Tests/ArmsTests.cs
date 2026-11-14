@@ -203,7 +203,7 @@ namespace Messingstadt.Core.Tests
             c.TryUpgrade("Otto", Upgrade.Arms);
             var loaded = Campaign.Load(c.ToJson(), out var status);
             Assert.Equal(SaveStatus.Loaded, status);
-            Assert.Equal(7, loaded.Version);
+            Assert.Equal(Campaign.CurrentVersion, loaded.Version);
             Assert.Equal(2, loaded.Agent("Otto").Arms);
             Assert.Contains("\"Arms\":2", c.ToJson());
         }
@@ -228,7 +228,7 @@ namespace Messingstadt.Core.Tests
         [Fact]
         public void BrokenArmsValuesAreRepaired()
         {
-            var c = Campaign.Load("{\"Version\":7,\"Agents\":[{\"Name\":\"Greta\",\"Arms\":9},{\"Name\":\"Otto\",\"Arms\":-1}]}", out var status);
+            var c = Campaign.Load("{\"Version\":8,\"Agents\":[{\"Name\":\"Greta\",\"Arms\":9},{\"Name\":\"Otto\",\"Arms\":-1}]}", out var status);
             Assert.Equal(SaveStatus.Loaded, status);
             Assert.Equal(Campaign.MaxLevel, c.Agent("Greta").Arms);
             Assert.Equal(1, c.Agent("Otto").Arms);

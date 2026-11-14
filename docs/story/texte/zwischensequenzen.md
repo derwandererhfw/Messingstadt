@@ -47,6 +47,17 @@ Für die Bilder. VORSCHLAG, bisher gab es zu keinem der drei eine Beschreibung a
 
 Pieper tritt im Spiel bisher nicht auf. In V2 unterschreibt er nur. Ein Bild von seiner Hand mit dem Füllfederhalter reicht und hält ihn für später frei.
 
+## Durchsicht des Szenenplans zu Einsatz 1 und 2
+
+Durchgesehen am 2026-11-14, Plan der Sequenzen-Session (`sequenzen_einsatz_1_2.md` in ihrem Branch). Ergebnis:
+
+- N1: passt. Der kleine Vogel am Rand der Spalte ist gut, als schneller Federstrich des Buchhalters, nicht als Zeichnung. Er kann in Einsatz 4 im Zweitbuch neben dem Klarnamen wiederkehren.
+- V2, Panel 4: Der Wagen steht seit dem 2026-11-12 im Kohlenhof, nicht an der Wallstraße. Die Kerze im Fenster brennt im Spiel nur, wenn die Stadt hilft. Ein Bild mit Kerze verspricht sonst etwas, das der Einsatz nicht hält. Vorschlag: ohne Kerze, Akzent auf der Uhr am Amtsgericht kurz nach vier.
+- N2, Panel 2a: Kolb sitzt nicht mit Paul am Tisch. Niemand im Trupp kennt ihr Gesicht. Vorschlag: Paul allein am Küchentisch, Decke um die Schultern. Kolbs Hände mit dem Heft höchstens als eigenes kleines Bild.
+- Die Andeutung zum Notstand steht nicht in N2. Sie fällt im Einsatz, in zwei Sätzen der Wachen (Armbinden, „anderes Recht“). Stirbt Paul, fehlt sie also nicht.
+- Was fehlt, wenn Paul stirbt, ist die Tatsache, dass einer vom Werk beim Verhör saß. Laut Vorlage erfährt der Trupp sie dann von Weiß. Neuer Satz für diesen Fall, VORSCHLAG, er ergänzt einen freigegebenen Text: „Weiß stand am Abend wieder an der Presse. Er sagte, beim Verhör habe einer vom Werk am Tisch gesessen. Mehr sagte er nicht.“
+- Buch-Panel: Ein gestorbener Gefangener gehört aus Sicht der Geschichte auf die Seite „Unsere“.
+
 ## Bildregel
 
 Bestätigt, mit einer Verschärfung: Die Panels zeigen die vier Agenten nicht erkennbar, und zwar schon ab N1, nicht erst ab Einsatz 2. Nach einer Niederlage und einem zweiten Versuch kann ein Agent schon in Einsatz 1 endgültig tot sein. Ausnahmen sind der Prolog (vor dem ersten Schuss leben alle) und die Schlusssequenz (die Zeilen zu den vieren haben je Figur eine Fassung).

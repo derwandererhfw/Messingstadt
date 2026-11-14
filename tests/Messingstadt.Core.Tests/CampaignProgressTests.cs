@@ -338,7 +338,7 @@ namespace Messingstadt.Core.Tests
         [Fact]
         public void LoadedValuesAreKeptInBounds()
         {
-            var c = Campaign.Load("{\"Version\":7,\"Money\":-5,\"Heat\":9,\"Support\":-1,\"Agents\":null,\"Records\":null}", out var status);
+            var c = Campaign.Load("{\"Version\":8,\"Money\":-5,\"Heat\":9,\"Support\":-1,\"Agents\":null,\"Records\":null}", out var status);
             Assert.Equal(SaveStatus.Loaded, status);
             Assert.Equal(0, c.Money);
             Assert.Equal(Campaign.MaxHeat, c.Heat);
