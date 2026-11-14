@@ -7,6 +7,9 @@ wait 10
 expect citymap viertel_1: brandt brandt brandt brandt brandt
 click Einsatz annehmen
 expect armory Greta:None:
+# Jeder Gegenstand und jede Ausbaustufe hat ein Aktenbild. In der Kammer tragen die 7 Katalogknöpfe und die 4 Pistolen der Agenten eins
+expect picturesmissing
+expect armorypictures 11
 click Zum Einsatz
 wait 20
 expect hud True
