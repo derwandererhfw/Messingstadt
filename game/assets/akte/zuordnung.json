@@ -1,0 +1,27 @@
+{
+  "size": [
+    256,
+    192
+  ],
+  "items": {
+    "pistole": "gegenstand_pistole.png",
+    "schrotflinte": "gegenstand_schrotflinte.png",
+    "maschinenpistole": "gegenstand_maschinenpistole.png",
+    "totschlaeger": "gegenstand_totschlaeger.png",
+    "dietrich": "gegenstand_dietrich.png",
+    "rauchtopf": "gegenstand_rauchtopf.png",
+    "verbandszeug": "gegenstand_verbandszeug.png"
+  },
+  "upgrades": {
+    "legs": {
+      "1": "ausbau_beine_1.png",
+      "2": "ausbau_beine_2.png",
+      "3": "ausbau_beine_3.png"
+    },
+    "heart": {
+      "1": "ausbau_herz_1.png",
+      "2": "ausbau_herz_2.png",
+      "3": "ausbau_herz_3.png"
+    }
+  }
+}
