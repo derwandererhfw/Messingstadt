@@ -90,6 +90,9 @@ namespace Messingstadt.Core
         public bool Sidestepping;
         public int AnchorX, AnchorY;
         public int Legs = 1, Heart = 1;
+
+        /// <summary>Ausbaustufe 1 bis 3: die ruhige Hand, siehe World.AimBonus, World.ReloadTicksFor und World.SwitchTicksFor.</summary>
+        public int Arms = 1;
         public int Stamina;
         public bool Sprinting;
         public string Skill = "";
@@ -356,6 +359,7 @@ namespace Messingstadt.Core
             u.NoBribe = d.NoBribe;
             u.Legs = Math.Clamp(d.Legs, 1, 3);
             u.Heart = Math.Clamp(d.Heart, 1, 3);
+            u.Arms = Math.Clamp(d.Arms, 1, 3);
             u.Stamina = MaxStamina(u);
             u.AnchorX = u.TileX;
             u.AnchorY = u.TileY;
@@ -1537,6 +1541,7 @@ namespace Messingstadt.Core
             {
                 chance -= MovingPenalty;
             }
+            chance += AimBonus(shooter);
             return Math.Max(chance, MinHitChance);
         }
 

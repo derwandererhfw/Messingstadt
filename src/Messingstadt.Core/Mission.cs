@@ -98,6 +98,9 @@ namespace Messingstadt.Core
 
         /// <summary>Ausbaustufe 1 bis 3: bestimmt, wie lange die Puste reicht und wie schnell sie zurückkommt.</summary>
         public int Heart { get; set; } = 1;
+
+        /// <summary>Ausbaustufe 1 bis 3: die ruhige Hand. Bestimmt, wie genau der Agent schießt und wie schnell er nachlädt und die Waffe wechselt.</summary>
+        public int Arms { get; set; } = 1;
     }
 
     public sealed class ZoneData
