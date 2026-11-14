@@ -222,6 +222,73 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void MissionSequencesRunOncePerCampaign()
+        {
+            Assert.Equal(new[] { "vor_02", "einstieg_nach_prolog" }, SequenceEntry.For(false, null, "vor_02", false));
+            Assert.Equal(new[] { "uebergang" }, SequenceEntry.For(false, null, "vor_02", true));
+            Assert.Equal(new[] { "uebergang" }, SequenceEntry.For(false, null, "", false));
+            Assert.Equal(new[] { "prolog", "einstieg_nach_prolog" }, SequenceEntry.For(true, null, "vor_02", false));
+            Assert.Equal(new[] { "sieg", "nach_02" }, SequenceEntry.AfterMission(true, "nach_02", false));
+            Assert.Equal(new[] { "sieg" }, SequenceEntry.AfterMission(true, "nach_02", true));
+            Assert.Equal(new[] { "sieg" }, SequenceEntry.AfterMission(true, "", false));
+            Assert.Equal(new[] { "niederlage" }, SequenceEntry.AfterMission(false, "nach_02", false));
+        }
+
+        [Fact]
+        public void BeatsWithConditionsOnlyRunWhenTheyHold()
+        {
+            var data = Data(
+                new SequenceBeat { Seconds = 1 },
+                new SequenceBeat { Seconds = 1, When = "lebt:Anton Weiß, lebt:Paul Roth" },
+                new SequenceBeat { Seconds = 1, When = "!lebt:Anton Weiß" },
+                new SequenceBeat { Seconds = 1, When = " keine_toten " });
+            var both = data.For(new HashSet<string> { "lebt:Anton Weiß", "lebt:Paul Roth", "nur_wachen" });
+            Assert.Equal(2, both.Beats.Count);
+            Assert.Equal("probe", both.Id);
+            var none = data.For(new HashSet<string> { "keine_toten" });
+            Assert.Equal(new[] { "", "!lebt:Anton Weiß", " keine_toten " }, none.Beats.Select(b => b.When));
+        }
+
+        [Fact]
+        public void FlagsAndLedgerPageComeFromTheLastNight()
+        {
+            var w = NewWorld();
+            var campaign = new Campaign { Nights = 2 };
+            Assert.Contains(SequenceFlags.NoDead, SequenceFlags.For(campaign, w));
+            Assert.Contains(SequenceFlags.NoDead, SequenceFlags.For(null, w));
+            Assert.Equal("", SequenceTexts.Ledger(campaign, LedgerSide.Guard));
+            campaign.Ledger.Add(new LedgerEntry { Name = "Alt", Side = LedgerSide.Guard, Kind = "offizier", Night = 1 });
+            Assert.Contains(SequenceFlags.NoDead, SequenceFlags.For(campaign, w));
+            campaign.Ledger.Add(new LedgerEntry { Name = "Karl Mertens", Side = LedgerSide.Guard, Kind = "offizier", Night = 2 });
+            Assert.Contains(SequenceFlags.GuardsOnly, SequenceFlags.For(campaign, w));
+            campaign.Ledger.Add(new LedgerEntry { Name = "Otto Brenner", Side = LedgerSide.Squad, Kind = "Schlosser", Night = 2 });
+            var flags = SequenceFlags.For(campaign, w);
+            Assert.Contains(SequenceFlags.BothSides, flags);
+            Assert.DoesNotContain(SequenceFlags.GuardsOnly, flags);
+            campaign.Ledger.RemoveAt(1);
+            Assert.Contains(SequenceFlags.OwnOnly, SequenceFlags.For(campaign, w));
+            campaign.Ledger.Insert(1, new LedgerEntry { Name = "Karl Mertens", Side = LedgerSide.Guard, Kind = "offizier", Night = 2 });
+            Assert.Equal("Schlosser Otto Brenner", SequenceTexts.Ledger(campaign, LedgerSide.Squad));
+            Assert.Equal("Wachtmeister Karl Mertens", SequenceTexts.For(Mission(), w, false, campaign)["totenbuch_wache"]);
+            Assert.Equal("2", SequenceTexts.For(Mission(), w, false, campaign)["nacht"]);
+        }
+
+        [Fact]
+        public void LedgerBeatsAreTypedAndNeedNoImage()
+        {
+            Assert.Empty(Data(new SequenceBeat { Show = "ledger", Body = "x" }).Problems());
+            Assert.True(new SequenceBeat { Show = "ledger" }.Typed);
+        }
+
+        [Fact]
+        public void SeenSequencesSurviveSavingAndOldSavesHaveNone()
+        {
+            var campaign = new Campaign();
+            campaign.SeenSequences.Add("vor_02");
+            Assert.Contains("vor_02", Campaign.FromJson(campaign.ToJson()).SeenSequences);
+        }
+
+        [Fact]
         public void ImageBeatsTypeTheNarration()
         {
             var run = new SequenceRun(Data(new SequenceBeat { Show = "image", Image = "a.jpg", Body = "{briefing}", Seconds = 1 }), Texts);

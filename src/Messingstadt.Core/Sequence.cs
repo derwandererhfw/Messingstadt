@@ -26,9 +26,10 @@ namespace Messingstadt.Core
     }
 
     /// <summary>
-    /// Ein Abschnitt einer Sequenz. Show sagt, was auf dem Bild liegt: title, card, paper, telegram, newspaper, image oder nichts.
-    /// Bei card, paper, telegram und image tippt die Schreibmaschine den Body, die Dauer zählt erst danach.
-    /// Bei image ist der Body Kolbs Erzählkasten (docs/story/NOIR_STYLE_GUIDE.md).
+    /// Ein Abschnitt einer Sequenz. Show sagt, was auf dem Bild liegt: title, card, paper, telegram, newspaper, image, ledger oder nichts.
+    /// Bei card, paper, telegram, image und ledger tippt die Schreibmaschine den Body, die Dauer zählt erst danach.
+    /// Bei image und ledger ist der Body Kolbs Erzählkasten (docs/story/NOIR_STYLE_GUIDE.md).
+    /// ledger zeigt die Seite des Totenbuchs für die letzte Nacht, links die eigenen Toten, rechts die der Wache.
     /// </summary>
     public sealed class SequenceBeat
     {
@@ -69,13 +70,24 @@ namespace Messingstadt.Core
         /// <summary>Beschriftungen nebeneinander am unteren Bildrand, etwa Namen unter Silhouetten.</summary>
         public List<string> Captions { get; set; } = new();
 
-        public bool Typed => Show is "card" or "paper" or "telegram" or "image";
+        /// <summary>
+        /// Bedingung, unter der der Abschnitt läuft: Merker aus SequenceFlags, mit Komma getrennt, alle müssen gelten.
+        /// Ein Ausrufezeichen davor verneint, etwa "lebt:Anton Weiß, !lebt:Paul Roth". Leer heißt immer.
+        /// </summary>
+        public string When { get; set; } = "";
+
+        public bool Typed => Show is "card" or "paper" or "telegram" or "image" or "ledger";
+
+        /// <summary>Gilt die Bedingung bei diesen Merkern?</summary>
+        public bool Holds(IReadOnlySet<string> flags) =>
+            When.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .All(f => f.StartsWith('!') ? !flags.Contains(f[1..].Trim()) : flags.Contains(f));
     }
 
     /// <summary>Eine Zwischensequenz aus data/sequences. Sie läuft in der Spielgrafik und lässt sich jederzeit überspringen.</summary>
     public sealed class SequenceData
     {
-        public static readonly string[] Shows = { "", "title", "card", "paper", "telegram", "newspaper", "image" };
+        public static readonly string[] Shows = { "", "title", "card", "paper", "telegram", "newspaper", "image", "ledger" };
         public static readonly string[] Anchors = { "@start", "@trupp", "@ziel", "@ausgang", "@beute", "@gefallen" };
 
         private static readonly JsonSerializerOptions Options = new() { PropertyNameCaseInsensitive = true };
@@ -84,6 +96,9 @@ namespace Messingstadt.Core
         public List<SequenceBeat> Beats { get; set; } = new();
 
         public static SequenceData Parse(string json) => JsonSerializer.Deserialize<SequenceData>(json, Options)!;
+
+        /// <summary>Die Sequenz mit nur den Abschnitten, deren Bedingung bei diesen Merkern gilt.</summary>
+        public SequenceData For(IReadOnlySet<string> flags) => new() { Id = Id, Beats = Beats.Where(b => b.Holds(flags)).ToList() };
 
         /// <summary>Fehler in den Daten, für Tests und Prüfläufe. Leer heißt: abspielbar.</summary>
         public IEnumerable<string> Problems()
@@ -289,10 +304,58 @@ namespace Messingstadt.Core
         /// Jedes neue Spiel beginnt mit Kolbs Prolog, danach Kamerafahrt und Auftrag.
         /// Fortsetzen, Neustart und nächster Einsatz zeigen nur den Übergang. forced kommt aus --seq.
         /// </summary>
-        public static string[] For(bool newCampaign, string? forced) =>
+        public static string[] For(bool newCampaign, string? forced) => For(newCampaign, forced, "", false);
+
+        /// <summary>
+        /// Hat der Einsatz eine eigene Sequenz davor (before) und hat diese Akte sie noch nicht gesehen, läuft sie
+        /// und danach Kamerafahrt und Auftrag. Jeder weitere Anlauf zeigt nur den Übergang.
+        /// </summary>
+        public static string[] For(bool newCampaign, string? forced, string before, bool seen) =>
             forced != null ? new[] { forced }
             : newCampaign ? new[] { "prolog", "einstieg_nach_prolog" }
+            : before.Length > 0 && !seen ? new[] { before, "einstieg_nach_prolog" }
             : new[] { "uebergang" };
+
+        /// <summary>Nach dem Ende eines Einsatzes: Zeitung, nach einem Sieg dazu einmal je Akte die Sequenz danach.</summary>
+        public static string[] AfterMission(bool won, string after, bool seen) =>
+            !won ? new[] { "niederlage" }
+            : after.Length > 0 && !seen ? new[] { "sieg", after }
+            : new[] { "sieg" };
+    }
+
+    /// <summary>Merker für die Bedingungen der Abschnitte, aus dem verbuchten Einsatz.</summary>
+    public static class SequenceFlags
+    {
+        public const string NoDead = "keine_toten";
+        public const string GuardsOnly = "nur_wachen";
+        public const string OwnOnly = "nur_eigene";
+        public const string BothSides = "beide_seiten";
+        public const string Quiet = "leise";
+        public const string Loud = "laut";
+
+        /// <summary>
+        /// Wer in der letzten Nacht starb (keine_toten, nur_wachen, nur_eigene, beide_seiten), ob geschossen wurde (leise, laut)
+        /// und je Befreitem, der lebend herauskam, "lebt:Voller Name".
+        /// </summary>
+        public static HashSet<string> For(Campaign? campaign, World world)
+        {
+            var dead = campaign?.DeadLastNight() ?? new List<LedgerEntry>();
+            bool own = dead.Exists(e => e.Side == LedgerSide.Squad);
+            bool guards = dead.Exists(e => e.Side == LedgerSide.Guard);
+            var flags = new HashSet<string>
+            {
+                own && guards ? BothSides : own ? OwnOnly : guards ? GuardsOnly : NoDead,
+                world.Rating == MissionRating.Loud ? Loud : Quiet,
+            };
+            foreach (var (name, alive) in campaign?.LastPrisoners ?? new Dictionary<string, bool>())
+            {
+                if (alive)
+                {
+                    flags.Add("lebt:" + name);
+                }
+            }
+            return flags;
+        }
     }
 
     /// <summary>Texte für die Platzhalter einer Sequenz, aus Mission und Ausgang des Einsatzes.</summary>
@@ -327,8 +390,15 @@ namespace Messingstadt.Core
                 ["headline"] = head,
                 ["line"] = line,
                 ["telegram"] = Telegram(mission.Telegrams, world, abandoned, campaign),
+                ["totenbuch_eigene"] = Ledger(campaign, LedgerSide.Squad),
+                ["totenbuch_wache"] = Ledger(campaign, LedgerSide.Guard),
+                ["nacht"] = (campaign?.Nights ?? 0).ToString(),
             };
         }
+
+        /// <summary>Eine Spalte des Totenbuchs für die letzte Nacht: je Zeile Anrede und Name. Leer ohne Tote auf dieser Seite.</summary>
+        public static string Ledger(Campaign? campaign, LedgerSide side) =>
+            string.Join("\n", (campaign?.DeadLastNight() ?? new List<LedgerEntry>()).Where(e => e.Side == side).Select(e => $"{e.Title} {e.Name}".Trim()));
 
         /// <summary>
         /// Was K. nach einem verlorenen oder abgebrochenen Einsatz telegrafiert. Ist dabei jemand zum zweiten Mal gefallen,
