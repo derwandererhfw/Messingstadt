@@ -2,7 +2,7 @@
 
 Stand 2026-11-20, Schritt 1 von 2. Quelle für Regeln, Story und Grafik ist `data/scene_03.json`, erzeugt von `python tools/level/build_gleisviertel.py`. `python tools/level/scene_to_map.py 03` schreibt daraus die Regelkarte `data/map_03.json` und zeigt je Feld, was die Kamera verdeckt. Vorlage der Story: `docs/story/einsatz_03_gleisviertel.md`, dort für 20 × 20 geschrieben. Kartenordner für die Bilder: `game/assets/maps/gleisviertel/`.
 
-Noch nicht gebaut: Mission, Regeln für Sabotieren, Uhr, Schotter, Messung. Das ist Schritt 2. Posten, Zeiten und Preise unten sind der Plan, gemessen ist davon nichts. `data/light_03.json` ist ein vorläufiges Licht nur aus den Laternen (`provisional`), bis die Grafik die Karte backt.
+Schritt 2 ist gebaut: Mission `data/mission_03.json`, Regeln für Sabotieren, Uhr und Schotter, Messung. Regeln und Zahlen stehen in `konzept.md` unter „Auftragsart Sabotieren“. Der Einsatz ist noch nicht im Stadtplan eingetragen, er startet nur mit `--mission=mission_03`. `data/light_03.json` ist ein vorläufiges Licht nur aus den Laternen (`provisional`), bis die Grafik die Karte backt.
 
 ## Karte
 

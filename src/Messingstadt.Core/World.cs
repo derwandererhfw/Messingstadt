@@ -1676,7 +1676,8 @@ namespace Messingstadt.Core
             int x = tileX * TileUnits + TileUnits / 2, y = tileY * TileUnits + TileUnits / 2;
             foreach (var g in Units)
             {
-                int close = Math.Max(GuardCloseRange, g.Type.HearRange);
+                // Auf Schotter rechnet der Lageplan mit einem Schritt: Wer dort geht, wird weiter gehört.
+                int close = Math.Max(OnGravel(x, y) ? GravelHeardRange : GuardCloseRange, g.Type.HearRange);
                 if (g.Alive && g.Faction == Faction.Guard && !g.Bribed && DistanceTo(g, x, y) <= Math.Max(NoticeRangeAt(x, y), close)
                     && HasSight(g.TileX, g.TileY, tileX, tileY)
                     && (DistanceTo(g, x, y) <= close || (InCone(g, x, y) && DistanceTo(g, x, y) <= NoticeRangeAt(x, y))))

@@ -1,0 +1,37 @@
+# Einsatz 3, Ablauf der Auftragsart Sabotieren: Die Wachen sind gekauft (calm), geprüft werden Regel, Telegramm und Uhr, nicht das Schleichen.
+# Aufruf mit --fresh --mission=mission_03. Otto öffnet das Stellwerk und legt die Hebelbank lahm, Hanna die Weiche, dann zum Bahnübergang.
+wait 40
+expect mission mission_03
+expect guards 9
+expect targets Stellwerk:offen, Weiche:offen
+expect clockline ZUG IN 5 MINUTEN
+waitcontains telegram STELLWERK UND EINFAHRWEICHE LAHMLEGEN
+calm
+# Die Hebelbank steht hinter der Tür: Der Befehl greift erst, wenn sie offen ist
+key Key2
+rclickdoor Stellwerk
+key Key4
+rclicktarget Weiche
+waitcontains targets Weiche:Arbeit
+waitcontains telegram WEICHE WIRD LAHMGELEGT STOP STEHEN BLEIBEN STOP
+waitcontains targets Weiche:erledigt
+waitcontains telegram WEICHE STEHT STOP STELLWERK FEHLT NOCH STOP
+waitcontains doors Stellwerk
+key Key2
+rclicktarget Stellwerk
+waitcontains targets Stellwerk:Arbeit
+# Ein anderer Befehl bricht ab, die Arbeit beginnt von vorn
+clickfield 21 8
+waitcontains targets Stellwerk:offen
+rclicktarget Stellwerk
+waitcontains targets Stellwerk:erledigt
+waitcontains telegram BEIDES STEHT STOP ZUM BAHNÜBERGANG STOP
+# Die Uhr steht, sobald beides erledigt ist
+expect clock -1
+expect clockline 
+key Key4
+clickfield 1 7
+waitfor state Won
+expect rating Unseen
+expect down 0
+print
