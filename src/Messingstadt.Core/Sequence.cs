@@ -316,6 +316,21 @@ namespace Messingstadt.Core
             : before.Length > 0 && !seen ? new[] { before, "einstieg_nach_prolog" }
             : new[] { "uebergang" };
 
+        /// <summary>
+        /// Die Sequenz eines Einsatzes: die in der Missionsdatei genannte, sonst nach der Nummer der Mission,
+        /// etwa "vor_03" für mission_03, wenn es diese Datei gibt. So greifen fertige Sequenzen, sobald ihr Einsatz gebaut ist.
+        /// </summary>
+        public static string ForMission(string named, string prefix, string missionId, Func<string, bool> exists)
+        {
+            if (named.Length > 0)
+            {
+                return named;
+            }
+            int cut = missionId.LastIndexOf('_');
+            string id = cut < 0 ? "" : prefix + missionId[cut..];
+            return id.Length > 0 && exists(id) ? id : "";
+        }
+
         /// <summary>Nach dem Ende eines Einsatzes: Zeitung, nach einem Sieg dazu einmal je Akte die Sequenz danach.</summary>
         public static string[] AfterMission(bool won, string after, bool seen) =>
             !won ? new[] { "niederlage" }
@@ -335,7 +350,7 @@ namespace Messingstadt.Core
 
         /// <summary>
         /// Wer in der letzten Nacht starb (keine_toten, nur_wachen, nur_eigene, beide_seiten), ob geschossen wurde (leise, laut)
-        /// und je Befreitem, der lebend herauskam, "lebt:Voller Name".
+        /// je Befreitem, der lebend herauskam, "lebt:Voller Name", und je toter Wache dieses Einsatzes "tot:Name".
         /// </summary>
         public static HashSet<string> For(Campaign? campaign, World world)
         {
@@ -352,6 +367,14 @@ namespace Messingstadt.Core
                 if (alive)
                 {
                     flags.Add("lebt:" + name);
+                }
+            }
+            // Wachen dieses Einsatzes, die im Gedächtnis der Kampagne tot sind, etwa "tot:Gustav Rademacher"
+            foreach (var guard in campaign?.Guards ?? new List<GuardMemory>())
+            {
+                if (guard.Mission == campaign!.Current && guard.Fate == GuardFate.Dead)
+                {
+                    flags.Add("tot:" + guard.Name);
                 }
             }
             return flags;

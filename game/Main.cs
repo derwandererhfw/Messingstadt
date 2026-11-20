@@ -898,7 +898,7 @@ void fragment() {
         /// </summary>
         private string[] EntrySequences()
         {
-            string before = _mission.SequenceBefore;
+            string before = SequenceBefore;
             string[] ids = SequenceEntry.For(_newCampaign, _forceSequence, before, _campaign.SeenSequences.Contains(before));
             _newCampaign = false;
             _forceSequence = null;
@@ -906,11 +906,14 @@ void fragment() {
             return ids;
         }
 
+        private string SequenceBefore => SequenceEntry.ForMission(_mission.SequenceBefore, "vor", MissionId, SequencePlayer.Exists);
+        private string SequenceAfter => SequenceEntry.ForMission(_mission.SequenceAfter, "nach", MissionId, SequencePlayer.Exists);
+
         private void MarkSeen(string[] ids)
         {
             foreach (string id in ids)
             {
-                if ((id == _mission.SequenceBefore || id == _mission.SequenceAfter) && !_campaign.SeenSequences.Contains(id))
+                if ((id == SequenceBefore || id == SequenceAfter) && !_campaign.SeenSequences.Contains(id))
                 {
                     _campaign.SeenSequences.Add(id);
                     SaveCampaign();
@@ -1723,7 +1726,7 @@ void fragment() {
             _lastReward = World.State == MissionState.Won ? Campaign.Reward(World.Rating, district?.Reward ?? Campaign.BaseReward) : 0;
             _campaign.Finish(World, district);
             SaveCampaign();
-            string after = _mission.SequenceAfter;
+            string after = SequenceAfter;
             string[] ids = SequenceEntry.AfterMission(World.State == MissionState.Won, after, _campaign.SeenSequences.Contains(after));
             MarkSeen(ids);
             PlaySequences(ids, ShowResult);

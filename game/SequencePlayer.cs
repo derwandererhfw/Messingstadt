@@ -44,11 +44,12 @@ namespace Messingstadt
         public string Id => Data.Id;
         public int Beat => _run.Beat;
 
-        public static SequenceData Load(string id)
-        {
-            string path = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data", "sequences", id + ".json"));
-            return SequenceData.Parse(File.ReadAllText(path));
-        }
+        private static string PathOf(string id) =>
+            Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data", "sequences", id + ".json"));
+
+        public static bool Exists(string id) => File.Exists(PathOf(id));
+
+        public static SequenceData Load(string id) => SequenceData.Parse(File.ReadAllText(PathOf(id)));
 
         public override void _Ready()
         {

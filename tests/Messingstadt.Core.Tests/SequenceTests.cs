@@ -277,6 +277,28 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void FinishedSequencesApplyOnceTheirMissionExists()
+        {
+            bool Has(string id) => id is "vor_03" or "nach_03";
+            Assert.Equal("vor_03", SequenceEntry.ForMission("", "vor", "mission_03", Has));
+            Assert.Equal("nach_03", SequenceEntry.ForMission("", "nach", "mission_03", Has));
+            Assert.Equal("", SequenceEntry.ForMission("", "vor", "mission_07", Has));
+            Assert.Equal("eigene", SequenceEntry.ForMission("eigene", "vor", "mission_03", Has));
+            Assert.Equal("", SequenceEntry.ForMission("", "vor", "probe", Has));
+        }
+
+        [Fact]
+        public void DeadGuardsOfTheMissionBecomeFlags()
+        {
+            var campaign = new Campaign { Current = "mission_05" };
+            campaign.Guards.Add(new GuardMemory { Name = "Gustav Rademacher", Mission = "mission_05", Fate = GuardFate.Dead });
+            campaign.Guards.Add(new GuardMemory { Name = "Anderer", Mission = "mission_02", Fate = GuardFate.Dead });
+            var flags = SequenceFlags.For(campaign, NewWorld());
+            Assert.Contains("tot:Gustav Rademacher", flags);
+            Assert.DoesNotContain("tot:Anderer", flags);
+        }
+
+        [Fact]
         public void BeatsWithConditionsOnlyRunWhenTheyHold()
         {
             var data = Data(
