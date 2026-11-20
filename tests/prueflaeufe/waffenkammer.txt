@@ -33,7 +33,7 @@ expect focus » GRETA   geht mit
 key Down
 expect focus Pistole
 # Totschläger für Greta, mit Tastatur: Katalog anklicken, Enter kauft für die gewählte Akte
-click Totschläger   120
+click Totschläger   120 Gr
 expect focus Kaufen für Greta
 remember menusounds
 key Enter
@@ -43,7 +43,7 @@ expect menusound shop_buy
 expect money 480
 expect gear Greta:pistole+totschlaeger, Otto:pistole, Emil:pistole, Hanna:pistole
 # Rauchtopf in die Kiste, dann aus der Kiste zu Greta
-click Rauchtopf   60
+click Rauchtopf   60 Gr
 click In die Kiste kaufen
 expect money 420
 expect stash rauchtopf
@@ -53,7 +53,7 @@ expect stash
 expect gear Greta:pistole+totschlaeger+rauchtopf, Otto:pistole, Emil:pistole, Hanna:pistole
 # Gretas Pistole verkaufen bringt die Hälfte
 click Pistole
-click Verkaufen (+50)
+click Verkaufen (+50 Gr)
 expect money 470
 expect gear Greta:totschlaeger+rauchtopf, Otto:pistole, Emil:pistole, Hanna:pistole
 # Esc führt zurück zum Stadtplan, noch einmal Esc zum Bericht. Nochmal führt wieder hinein

@@ -8,8 +8,8 @@ expect mission mission_02
 expect cash 600
 expect guards 15
 # Am Start steht Greta neben Emil: Der Nachlass gilt, der Text am Mauszeiger sagt es
-waitcontains prices Hundeführer: käuflich für 150, Greta ist dabei
-waitcontains prices Wachhabender: käuflich für 200, Greta ist dabei
+waitcontains prices Hundeführer: käuflich für 150 Gr, Greta ist dabei
+waitcontains prices Wachhabender: käuflich für 200 Gr, Greta ist dabei
 key Key1
 clickfield 7 16
 # In den Durchgang zwischen den Beamtenhäusern

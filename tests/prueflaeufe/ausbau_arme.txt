@@ -22,11 +22,11 @@ expect levels Greta 221, Otto 131, Emil 111, Hanna 311
 expect upgradetip
 # Kauf mit der Maus: Gretas Arme auf Stufe 2. Die Wahl bleibt auf dem Knopf, das große Bild zeigt die nächste Stufe
 remember money
-click Arme + (150)
+click Arme + (150 Gr)
 wait 5
 changed money
 expect levels Greta 222, Otto 131, Emil 111, Hanna 311
-expect focus Arme + (300)
+expect focus Arme + (300 Gr)
 expect upgradetip Arme Stufe 3: +6 Treffer, lädt und wechselt die Waffe 20 % schneller.
 # Kauf mit Enter: Stufe 3, mehr geht nicht
 key Enter

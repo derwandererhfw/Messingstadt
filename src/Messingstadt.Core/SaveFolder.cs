@@ -68,6 +68,6 @@ namespace Messingstadt.Core
                 .ToList();
 
         public static string Describe(Campaign campaign) =>
-            $"Kasse {campaign.Money}, {campaign.Missions} {(campaign.Missions == 1 ? "Einsatz" : "Einsätze")}";
+            $"Kasse {campaign.Money} Groschen, {campaign.Missions} {(campaign.Missions == 1 ? "Einsatz" : "Einsätze")}";
     }
 }

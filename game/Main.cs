@@ -1836,9 +1836,9 @@ void fragment() {
             result.AddThemeConstantOverride("separation", 18);
             string verdict = won ? $"Einsatz geglückt: {RatingText()}" : _abandoned ? "Einsatz aufgegeben" : "Trupp verloren";
             result.AddChild(PaperUi.Text(verdict, 17, PaperUi.StampRed, PaperUi.Serif));
-            string loot = won && World.LootTaken ? $" + {World.LootName} {World.LootValue}" : "";
-            string pay = won ? $"Lohn {_lastReward}{loot}   " : "";
-            result.AddChild(PanelLabel($"{pay}Kasse {_campaign.Money}   Einsätze {_campaign.Missions}"));
+            string loot = won && World.LootTaken ? $" + {World.LootName} {PaperUi.Groschen(World.LootValue)}" : "";
+            string pay = won ? $"Lohn {PaperUi.Groschen(_lastReward)}{loot}   " : "";
+            result.AddChild(PanelLabel($"{pay}Kasse {PaperUi.Groschen(_campaign.Money)}   Einsätze {_campaign.Missions}"));
             _panelBody.AddChild(result);
             if (won && _campaign.LastPrisoners.Count > 0)
             {
@@ -1857,7 +1857,7 @@ void fragment() {
             {
                 _panelBody.AddChild(PanelLabel(CampaignTexts.RuleHint, 13));
             }
-            _panelBody.AddChild(PanelLabel($"Fahndung {_campaign.Heat}/{Campaign.MaxHeat}   Rückhalt {_campaign.Support}/{Campaign.MaxSupport}, Beitrag {_campaign.Dues} je Einsatz"));
+            _panelBody.AddChild(PanelLabel($"Fahndung {_campaign.Heat}/{Campaign.MaxHeat}   Rückhalt {_campaign.Support}/{Campaign.MaxSupport}, Beitrag {PaperUi.Groschen(_campaign.Dues)} je Einsatz"));
             foreach (var record in _campaign.Roster())
             {
                 // Name und Zustand stehen über den Ausbauten: Drei Ausbauten mit Bildern passen in 1280 nicht neben den Namen.
@@ -1870,12 +1870,12 @@ void fragment() {
                 _panelBody.AddChild(row);
                 if (record.Dead)
                 {
-                    row.AddChild(CampaignButton($"Anwerben ({Campaign.RecruitCost})", _campaign.Money >= Campaign.RecruitCost, () => _campaign.TryRecruit(record.Slot)));
+                    row.AddChild(CampaignButton($"Anwerben ({PaperUi.Gr(Campaign.RecruitCost)})", _campaign.Money >= Campaign.RecruitCost, () => _campaign.TryRecruit(record.Slot)));
                     continue;
                 }
                 if (record.Rest > 0)
                 {
-                    row.AddChild(CampaignButton($"Arzt ({Campaign.DoctorCost})", _campaign.Money >= Campaign.DoctorCost, () => _campaign.TryDoctor(record.Name)));
+                    row.AddChild(CampaignButton($"Arzt ({PaperUi.Gr(Campaign.DoctorCost)})", _campaign.Money >= Campaign.DoctorCost, () => _campaign.TryDoctor(record.Name)));
                 }
                 var upgrades = new HBoxContainer();
                 upgrades.AddThemeConstantOverride("separation", 10);
@@ -2083,7 +2083,7 @@ void fragment() {
             int cost = Campaign.UpgradeCost(level);
             var button = new Button
             {
-                Text = full ? $"{label} voll" : $"{label} + ({cost})",
+                Text = full ? $"{label} voll" : $"{label} + ({PaperUi.Gr(cost)})",
                 Disabled = full || _campaign.Money < cost,
                 CustomMinimumSize = new Vector2(124, 0), SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
             };
@@ -2537,12 +2537,12 @@ void fragment() {
             var leader = World.Units.Find(u => u.Alive && u.Faction == Faction.Agent && u.Skill == World.SkillLeader);
             if (payer == null || leader == null || World.LeaderDiscountPercent <= 0)
             {
-                return $"käuflich für {full}";
+                return $"käuflich für {PaperUi.Gr(full)}";
             }
             int now = World.BribePrice(guard, payer);
             int with = World.BribePriceWithLeader(guard);
-            return now < full ? $"käuflich für {now}, {leader.Name} ist dabei"
-                : World.LeaderBacksLater ? $"käuflich für {full}, mit {leader.Name} {with}" : $"käuflich für {full}";
+            return now < full ? $"käuflich für {PaperUi.Gr(now)}, {leader.Name} ist dabei"
+                : World.LeaderBacksLater ? $"käuflich für {PaperUi.Gr(full)}, mit {leader.Name} {PaperUi.Gr(with)}" : $"käuflich für {PaperUi.Gr(full)}";
         }
 
         public Unit? HoveredGuard()
@@ -2772,7 +2772,7 @@ void fragment() {
             PlaceUpgradeTip();
             telegram = PhoneNote() ?? telegram;
             int guards = World.Units.Count(u => u.Faction == Faction.Guard && u.Alive);
-            string info = $"WACHEN {guards}   ZEIT {World.Tick / World.TickRate} S   KASSE {World.Money}";
+            string info = $"WACHEN {guards}   ZEIT {World.Tick / World.TickRate} S   KASSE {World.Money} GR";
             if (clock.Length > 0 && !_finished)
             {
                 // Die Uhr steht vorn in der zweiten Zeile, damit sie nie abgeschnitten wird.

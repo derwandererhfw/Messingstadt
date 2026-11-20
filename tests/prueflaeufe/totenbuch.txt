@@ -13,12 +13,12 @@ expect hud True
 key Key1
 wait 3
 expect trait In Rufweite: Bestechen halber Preis
-expect helpline Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen (mit Greta halber Preis), Otto: Tür   Q halten: Lageplan   1-4 Leertaste   WASD F P M   Esc: Menü
+expect helpline Links: wählen/gehen   Doppelklick: rennen   Rechts: angreifen, Emil: bestechen (mit Greta halber Preis), Otto: Tür, Greta: Passierschein   Q halten: Lageplan   1-4 Leertaste   WASD F P M   Esc: Menü
 key Key2
 wait 3
 expect trait
 # Am Mauszeiger steht der Name der Wache vorn
-expect guardline Hermann Krüger, Wachmann, käuflich für 100, Greta ist dabei
+expect guardline Hermann Krüger, Wachmann, käuflich für 100 Gr, Greta ist dabei
 # Vor dem ersten Toten ist das Buch leer
 key Escape
 expect screen Pausenmappe

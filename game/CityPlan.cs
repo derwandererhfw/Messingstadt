@@ -92,7 +92,7 @@ namespace Messingstadt
                     d.Time = data.Time;
                     d.Text = data.Briefing;
                     d.Stakes = data.Stakes;
-                    d.Reward = $"{Campaign.Reward(MissionRating.Loud, data.Reward)} bis {Campaign.Reward(MissionRating.Unseen, data.Reward)}, je leiser, desto mehr";
+                    d.Reward = $"{Campaign.Reward(MissionRating.Loud, data.Reward)} bis {PaperUi.Groschen(Campaign.Reward(MissionRating.Unseen, data.Reward))}, je leiser, desto mehr";
                 }
                 d.Note = state switch
                 {
