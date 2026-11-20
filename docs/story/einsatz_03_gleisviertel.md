@@ -1,6 +1,6 @@
 # Einsatz 3: Der Güterbahnhof (Gleisviertel, Sabotieren)
 
-Stand 2026-11-20. Bauvorlage in derselben Form wie `einsatz_02_nordwall.md`. Rahmen (Viertel, Auftragsart, Zug mit Streikbrechern, Hinweis von Rehm, vorbereitete Wachen) ist KANON. Texte, Namen und Orte hat der Nutzer am 2026-11-14 freigegeben („ja“). Lesart der Hauptsession: Die Vorschläge gelten, abgenommen wird weiter am gebauten Einsatz. Zahlen zu Karte, Gegnern und Balance bleiben Richtwerte für Level und Mechanik. Die neue Regel wird in der vollen Fassung gebaut (Nutzer, 2026-11-14: „volle Fassung“). Karte 20 × 20, Norden ist y = 0. Für die Schrägansicht gilt die Regel aus `../einsatz_02_grundriss.md`: Ein hohes Haus verdeckt drei Felder nördlich und westlich von sich. Zielorte, Türen und Hauptwege liegen deshalb nie dort, wichtige Türen zeigen nach Süden oder Osten, hohe Gebäude stehen am Nordrand.
+Stand 2026-11-20. Bauvorlage in derselben Form wie `einsatz_02_nordwall.md`. Rahmen (Viertel, Auftragsart, Zug mit Streikbrechern, Hinweis von Rehm, vorbereitete Wachen) ist KANON. Texte, Namen und Orte hat der Nutzer am 2026-11-14 freigegeben („ja“). Lesart der Hauptsession: Die Vorschläge gelten, abgenommen wird weiter am gebauten Einsatz. Zahlen zu Karte, Gegnern und Balance bleiben Richtwerte für Level und Mechanik. Die neue Regel wird in der vollen Fassung gebaut (Nutzer, 2026-11-14: „volle Fassung“). Die Abschnitte 2 bis 4 beschreiben den Kern auf 20 × 20, Norden ist y = 0. Gebaut wird auf 30 × 30: Der Grundriss steht in `../einsatz_03_grundriss.md` und geht bei Abweichungen vor. Was er für die Geschichte ändert, steht in Abschnitt 8. Für die Schrägansicht gilt die Regel aus `../einsatz_02_grundriss.md`: Ein hohes Haus verdeckt drei Felder nördlich und westlich von sich. Zielorte, Türen und Hauptwege liegen deshalb nie dort, wichtige Türen zeigen nach Süden oder Osten, hohe Gebäude stehen am Nordrand.
 
 ## 1. Geschichte
 
@@ -138,7 +138,7 @@ Vom Nutzer gewählt am 2026-11-14 („volle Fassung“), neu für die Mechanik:
 
 | Zustand | Text |
 |---|---|
-| Beginn | `STELLWERK UND EINFAHRWEICHE LAHMLEGEN STOP WAGEN ALS DECKUNG STOP DANN ZUM BAHNÜBERGANG STOP` |
+| Beginn | `STELLWERK UND EINFAHRWEICHE LAHMLEGEN STOP GÜTERWAGEN ALS DECKUNG STOP DANN ZUM BAHNÜBERGANG STOP` |
 | Arbeit am Ziel | `{ZIEL} WIRD LAHMGELEGT STOP STEHEN BLEIBEN STOP` |
 | Eins erledigt | `{ZIEL} STEHT STOP {REST} FEHLT NOCH STOP` |
 | Beide erledigt | `BEIDES STEHT STOP ZUM BAHNÜBERGANG STOP` |
@@ -241,16 +241,92 @@ Kolbs Kästen:
 | Welt | Wachleute zweifeln, der Werkschutz nicht. Brandt tritt nicht auf |
 | Offen gelassen | Rückfall eines Viertels und Notstand auf dem Plan bleiben unberührt |
 
-## 8. Größere Karte und Leitbild
+## 8. Der Güterbahnhof auf 30 × 30
 
-Stand 2026-11-20. Der Nutzer hat entschieden, dass Einsatz 3 gebaut wird, auf 30 × 30 („wie empfohlen“). Der Grundriss der Level-Session steht aus (`../einsatz_03_grundriss.md`). Sobald er da ist, stehen hier die Orte, die Wege und die Sätze mit Spielhinweis, wie in Abschnitt 8 von `einsatz_02_nordwall.md`. Bis dahin gelten die Abschnitte 2 bis 4 als Kern.
+Stand 2026-11-20. Der Nutzer hat entschieden, dass Einsatz 3 auf 30 × 30 gebaut wird. Der Grundriss der Level-Session steht in `../einsatz_03_grundriss.md` und geht bei Abweichungen vor. Dort stehen Orte, Türen, Posten und Wege mit Feldern. Hier steht, was sie für die Geschichte bedeuten, und die Texte dazu. Alle neuen Texte sind VORSCHLAG. Die Story hat sich in diesem Abschnitt an den Grundriss angepasst, die Karte muss sich nicht ändern.
 
-Schon fertig, ohne Grundriss:
+### Was anders ist als in Abschnitt 2 bis 4
 
-- Namen der Wachen, Wiederkehrer und Verstärkung: `texte/wachen.md`, Abschnitt „Einsatz 3, Güterbahnhof“.
-- Helfer in den Baracken mit Bedingung und Sätzen, Rufe je Stufe der Blutschuld: ebenda.
-- Telegrammstreifen mit `{n}`: Abschnitt 5.
+| Was | Kern, 20 × 20 | Gebaut, 30 × 30 | Für die Geschichte |
+|---|---|---|---|
+| Gleise | vier | sieben, Gleis 3 ganz frei | Passt. Auf dem freien Gleis läuft der Hund |
+| Zielzone | im Westen | im Westen, am Bahnübergang | Passt. Der Rückweg führt die ganze Länge des Bahnhofs zurück |
+| Start | zwischen Kohlenlager und Baracken | Südrand vor dem Kohlenweg | Passt. Der Auftrag sagt „hinter dem Kohlenlager“ |
+| Baracken | zwei, nur Bild | Baracke A, Baracke B, Speisebaracke, Wärterbude, dazu ein Bretterzaun mit zwei Pforten | Neu. Daraus werden die Türen der Stadt |
+| Boden | Schotter lauter | Schotter lauter, zwei leise Übergänge aus Bohlen | Neu. Beide haben einen Haken |
+| Verstärkung | Ostrand | Ostende der Gleise | Passt |
+| Schlüssel | nicht vorgesehen | Der Stellwerksposten trägt den Schlüssel zum Stellwerk | Passt. Er ist vom Werk und gibt ihn nicht her |
 
-Was die Level-Session für die Helfer im Grundriss braucht: eine Baracke mit zwei Türen als Durchgang, eine Küchenbaracke mit einer Lampe davor, eine Pforte im Zaun am Kohlenlager. Dazu drei Fenster für die Kerze.
+### Das Viertel
 
-Fähigkeiten in diesem Einsatz (freigegeben 2026-11-20, `faehigkeiten.md`): Hanna hat hier nichts zu tragen. Gretas Passierschein wirkt auf Jeschke, Ullrich, Wiegand und Lohse, nicht auf Tesch und nicht auf den Werkschutz.
+Das Gleisviertel gehört den Leuten, die hier arbeiten. In den Baracken schlafen Rangierer, Heizer und Putzer, viele von ihnen im Streik. Sie stehen auf der Seite des Hammers, anders als die Leute am Nordwall. Wer zur Bahn selbst gehört, hält zur Bahn.
+
+| Ort | Was er erzählt |
+|---|---|
+| Baracke A | Rangierer. Hier wohnt Ferdinand Stoll, der Barackenälteste |
+| Baracke B | Heizer und Putzer. Hier wohnt Jan Piontek, der mit Paul Roth am Feuerfass stand |
+| Speisebaracke | Dunkel in dieser Nacht. Die Köchin Luise Harms schläft nebenan |
+| Wärterbude | Der Streckenwärter Benno Fuchs. Angestellt bei der Bahn, fürchtet um die Stelle |
+| Güterschuppen, Westgiebel | Der Bahnmeister Claus Reimers. In seinem Schuppen liegen die Lohngelder |
+| Bretterzaun | Trennt die, die hier schlafen, von dem, was sie nicht sehen sollen |
+
+### Helfer
+
+Zwei Helfer, nicht drei: Der Grundriss hat zwei Zaunpforten, und mehr braucht der Einsatz nicht. Das Zeichen ist die Kerze im Südfenster der Baracke.
+
+| Kennung im Grundriss | Wer | Tür | Hilft, wenn | Satz, wenn der Trupp durchgeht |
+|---|---|---|---|---|
+| `rangierer` | Ferdinand Stoll | Zaunpforte der Rangierer [16, 17] | Die Stadt hilft | „Die Pforte ist auf. Macht sie hinter euch zu.“ |
+| `heizer` | Jan Piontek | Zaunpforte der Heizer [25, 17] | Die Stadt hilft. Lebt Paul Roth, auch wenn die Stadt schweigt | „Die Pforte klemmt. Fest drücken.“ Mit Paul, wenn die Stadt schweigt: „Für den jungen Roth. Geht.“ |
+
+Pionteks Ausnahme ist ein Wunsch der Story an Kampagne und Level, nach dem Muster der Wirtin im Nordwall. Ohne sie gilt für beide dieselbe Bedingung.
+
+Stufe „schweigt“, Pforte zu, höchstens ein Satz aus der Baracke:
+
+- Stoll: „Hier wird geschlafen.“
+- Piontek: „Ich hab Kinder. Geht außen rum.“
+
+Stufe „gegen den Trupp“: Die Arbeiter rufen nicht nach der Wache. Sie jagen den Trupp weg, und das ist laut genug, dass die nächste Wache nachsehen kommt.
+
+- Stoll: „Haut ab! Wegen euch schießen sie auf uns!“
+- Piontek: „Ihr bringt uns die Wache ins Haus!“
+- Aus der Speisebaracke, Harms: „Weg von meiner Tür!“
+- Aus einer Baracke: „Die haben {toter} auf dem Gewissen!“ / „Das sind keine von uns!“
+
+Luise Harms ist keine Helferin mehr. In der ersten Fassung löschte sie eine Lampe an der Küche. Der Grundriss hat dort kein Licht, und der Hof ist ohnehin dunkel. Sie bleibt als Stimme.
+
+### Die nie helfen
+
+Im Grundriss heißen sie `streckenwaerter` und `bahnmeister`. Die Story hatte einen Schrankenwärter und einen Lademeister. Geeinigt auf die Berufe des Grundrisses mit den Namen der Story. Sie rufen, sobald die Stadt schweigt.
+
+| Kennung | Wer | Wo | Ruf |
+|---|---|---|---|
+| `streckenwaerter` | Benno Fuchs | Wärterbude, Fenster nach Westen | „Wache! An der Pforte sind Leute!“ |
+| `bahnmeister` | Claus Reimers | Westgiebel des Schuppens | „Wache! Am Schuppen ist wer!“ |
+
+### Hinweise der Wachen auf die neue Karte
+
+Mit Spielhinweis, gegen den Grundriss geprüft, noch nicht gegen eine Messung. Namen aus `texte/wachen.md`.
+
+- „Gleis drei ist frei. Da geht Lohse mit dem Hund, von einem Ende zum andern.“ (Gleisstreife auf dem freien Gleis)
+- „Über die Bohlen am Stellwerk hört dich keiner. Kessin sieht dich trotzdem.“ (Bohlenweg x 20, im Blick des Stellwerkspostens)
+- „Am Übergang liegen Bohlen. Da knirscht nichts, aber da steht auch nichts.“ (Bahnübergang, leise, ohne Deckung)
+- „Den Schlüssel zum Stellwerk hat Kessin. Der gibt nichts her.“ (Schlüssel beim Stellwerksposten, nicht käuflich)
+- „Südlich von Gleis vier sieht man die Hand nicht vor Augen.“ (dunkel)
+- „Der Junge füllt seine Lampen jetzt hinterm Zaun, bei den Baracken.“ (Lampenjunge im Barackenhof)
+- „Im Zaun sind zwei Pforten. Die Rangierer lassen ihre gern offen.“ (Helfertür, nur wenn die Stadt hilft)
+- „Bei den Heizern brennt noch eine Kerze.“ (Helferfenster, nur wenn die Kerze brennt)
+
+Die sechs Sätze aus Abschnitt 5 hat die Level-Session gegen den Grundriss geprüft, sie stimmen. Offen bleibt bis zur Messung, ob der Schütze wirklich bis zur Weiche sieht.
+
+### Was bleibt
+
+Auftrag, Schlagzeilen, Telegramme, Gespräche ohne Spielhinweis und Kolbs Kästen stimmen weiter. Geändert ist im Telegrammstreifen ein Wort: „GÜTERWAGEN ALS DECKUNG“ statt „WAGEN ALS DECKUNG“, damit niemand an den Fluchtwagen denkt (Vorschlag der Level-Session).
+
+### Fähigkeiten in diesem Einsatz
+
+Freigegeben am 2026-11-20, `faehigkeiten.md`.
+
+- Hanna trägt die Lohngelder der Bahnmeisterei, ohne langsamer zu werden. Der Weg vom Schuppen zum Bahnübergang ist kurz, aber hell.
+- Gretas Passierschein wirkt auf Jeschke, Ullrich, Wiegand und Lohse. Er wirkt nicht auf Tesch und nicht auf den Werkschutz.
+- Otto halbiert die Zeit an der Hebelbank und öffnet die Zaunpforten, wenn die Stadt nicht hilft.

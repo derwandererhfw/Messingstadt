@@ -64,7 +64,7 @@ Wo das zählt:
 |---|---|
 | 1 | Kontobuch, Lohnkasse |
 | 2 | Bußgeldkasse. Die Gefangenen macht sie nicht schneller |
-| 3 | Nichts. Hier zählt, dass sie zwischen Stellwerk und Weiche am schnellsten ist |
+| 3 | Lohngelder der Bahnmeisterei. Dazu zählt, dass sie zwischen Stellwerk und Weiche am schnellsten ist |
 | 4 | Zweitbuch |
 | 5 | Rademachers Mappe |
 | 6 | Nichts zu tragen |

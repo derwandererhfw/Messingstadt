@@ -100,41 +100,15 @@ Stand 2026-11-20, VORSCHLAG der Story. Felder für die Missionsdatei: `person` t
 
 ### Bewohner des Gleisviertels
 
-In den Baracken schlafen Bahnarbeiter und Streikende. Anders als am Nordwall stehen sie auf der Seite des Hammers. Das Zeichen bleibt die Kerze im Fenster, damit der Spieler es wiedererkennt.
+Am 2026-11-20 an den Grundriss angepasst (`../../einsatz_03_grundriss.md`). Sätze und Rufe stehen in `../einsatz_03_gleisviertel.md`, Abschnitt 8.
 
-| Wer | Name | Was er tut | Hilft, wenn |
-|---|---|---|---|
-| Rangierer, Barackenältester | Ferdinand Stoll | Lässt beide Türen seiner Baracke offen, der Trupp geht hindurch | Die Stadt hilft |
-| Köchin der Barackenküche | Luise Harms | Löscht die Funzel an der Küchenbaracke, der Weg davor wird dunkel | Die Stadt hilft |
-| Lokheizer | Jan Piontek | Lässt die Pforte im Zaun am Kohlenlager offen | Die Stadt hilft. Lebt Paul Roth, auch wenn die Stadt schweigt |
-| Schrankenwärter | Benno Fuchs | Nie. Er ist bei der Bahn angestellt und fürchtet um die Stelle | |
-| Lademeister im Güterschuppen | Claus Reimers | Nie. Das Werk zahlt ihm die Nachtschicht | |
-
-Warum Piontek länger hilft: Paul Roth stand mit ihm am Feuerfass, bevor die Wache ihn holte. ABLEITUNG aus Pauls Zeit als Streikposten.
-
-Sätze, wenn der Trupp durchgeht:
-
-- Stoll: „Durch die Baracke. Hier schläft jeder fest, wenn ich es sage.“
-- Harms: „Ich mach das Licht aus. Lauft.“
-- Piontek: „Die Pforte klemmt. Fest drücken.“ Lebt Paul Roth und schweigt die Stadt: „Für den jungen Roth. Geht.“
-
-Stufe „schweigt“, Tür zu, höchstens ein Satz dahinter:
-
-- Stoll: „Hier wird geschlafen.“
-- Harms: „Die Küche ist zu.“
-- Piontek: „Ich hab Kinder. Geht außen rum.“
-
-Stufe „gegen den Trupp“: Die Arbeiter rufen nicht nach der Wache. Sie jagen den Trupp weg, und das ist laut genug, dass die nächste Wache nachsehen kommt.
-
-- Stoll: „Haut ab! Wegen euch schießen sie auf uns!“
-- Harms: „Weg von meiner Tür!“
-- Piontek: „Ihr bringt uns die Wache ins Haus!“
-- Aus einer Baracke: „Die haben {toter} auf dem Gewissen!“ / „Das sind keine von uns!“
-
-Die nie helfen, rufen einmal:
-
-- Fuchs: „Wache! Am Übergang sind Leute!“
-- Reimers: „He! Weg von der Rampe!“
+| Kennung | Wer | Name | Wo | Rolle |
+|---|---|---|---|---|
+| `rangierer` | Rangierer, Barackenältester | Ferdinand Stoll | Baracke A | Helfer, Zaunpforte der Rangierer |
+| `heizer` | Lokheizer | Jan Piontek | Baracke B | Helfer, Zaunpforte der Heizer. Hilft mit lebendem Paul Roth auch, wenn die Stadt schweigt |
+| | Köchin | Luise Harms | Speisebaracke | Nur Stimme, keine Tür |
+| `streckenwaerter` | Streckenwärter | Benno Fuchs | Wärterbude | Hilft nie, ruft |
+| `bahnmeister` | Bahnmeister | Claus Reimers | Westgiebel des Güterschuppens | Hilft nie, ruft |
 
 ## Rufe
 
