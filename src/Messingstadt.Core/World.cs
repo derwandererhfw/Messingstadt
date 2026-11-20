@@ -266,7 +266,7 @@ namespace Messingstadt.Core
             Stance = mission.Stance;
             if (Stance != CityStance.Helps)
             {
-                _residents.AddRange(mission.Residents);
+                _residents.AddRange(mission.Residents.FindAll(r => !r.OnlyAgainst || Stance == CityStance.Against));
             }
             foreach (var d in mission.Doors)
             {

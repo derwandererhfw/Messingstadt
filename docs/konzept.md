@@ -367,9 +367,23 @@ Einsatz 3, Güterbahnhof Ost. Regeln in `World.Sabotage.cs`, Daten in `data/miss
 | Hinter einer Tür | Die Hebelbank steht hinter der Stellwerkstür. Solange die zu ist, gibt es kein freies Feld, der Befehl greift nicht |
 | Sieg | Alle Ziele erledigt, dann steht ein Agent 1 s in der Zielzone. Vorher gewinnt die Zone nichts |
 | Uhr | `timeLimit` in Sekunden, hier 300. Läuft sie ab, bevor alle Ziele erledigt sind, ist der Einsatz verloren (`World.TimeUp`). Sobald das letzte Ziel steht, bleibt die Uhr stehen: Der Zug kann nicht mehr einfahren |
-| Anzeige | Telegramm aus `sabotageTexts` ({ZIEL}, {REST}). Die Uhr steht vorn in der zweiten Zeile: „ZUG IN {n} MINUTEN“, aufgerundet, in der letzten Minute „ZUG IN {n} SEKUNDEN“ |
+| Anzeige | Telegramm aus `sabotageTexts` ({ZIEL}, {REST}). Die Uhr steht vorn in der zweiten Zeile: „ZUG IN {n} MINUTEN STOP“, auf die nächste Minute gerundet, von 1:29 bis 1:00 „ZUG IN EINER MINUTE STOP“, darunter „ZUG IN {n} SEKUNDEN STOP“. Nach Ablauf „ZUG IST DA STOP“ |
 | Schotter | Flächen unter `gravel`. Wer dort geht, wird auf 3 statt 2 Felder gehört, auch im Rücken der Wache. Wer steht, ist so leise wie überall. Flächen unter `planks` (Bohlen) gehen vor und sind leise. Der Lageplan rechnet auf Schotter mit dem Schritt |
 | Kurierin | Neue Berufskennung `kurierin` (Hanna). Wer das Ziel des Einsatzes trägt, geht 100 statt 120, die Kurierin nicht. In Einsatz 1 mit dem Kontobuch zu sehen. Beute wird nicht getragen, sie zählt beim Berühren, darum ändert sich dort nichts |
+
+Helfer und Bewohner im Gleisviertel, Namen aus `story/texte/wachen.md`:
+
+| Kennung | Wer | Stadt hilft | Stadt schweigt | Stadt gegen den Trupp |
+|---|---|---|---|---|
+| `rangierer` | Ferdinand Stoll, Baracke A | Zaunpforte offen | Pforte zu | jagt den Trupp laut weg |
+| `heizer` | Jan Piontek, Baracke B | Zaunpforte offen | Pforte zu. Lebt Paul Roth aus Einsatz 2, bleibt sie offen (`Campaign.HouseHelps`, Entscheidung der Hauptsession vom 2026-11-20) | jagt weg |
+| `koechin` | Luise Harms, Speisebaracke | still | still | jagt weg |
+| `streckenwaerter` | Benno Fuchs, Wärterbude | still | ruft die Wache | ruft |
+| `bahnmeister` | Claus Reimers, Westgiebel des Schuppens | still | ruft die Wache | ruft |
+
+Wegjagen und Rufen sind für die Regel dasselbe: Lärm, kein Alarm. Wer nah vorbeikommt, löst ihn einmal aus, die nächste ahnungslose Wache in Hörweite geht nachsehen, bei „gegen den Trupp“ die zwei nächsten. In den Daten trägt, wer erst bei „gegen den Trupp“ laut wird, `onlyAgainst`.
+
+Namen: `person` trägt in allen drei Einsätzen den vollen Namen. Ältere Spielstände kennen nur Nachnamen, darum gilt beim Wiedererkennen derselbe Nachname als derselbe Mensch (`World.SamePerson`).
 
 Für Bild und Ton: `World.Targets` (Ort, `Progress`, `Ticks`, `Done`), `World.IsSabotaging(agent)`, `World.TicksLeft`, `World.AllDoneTick`, `World.TimeUp`, `World.OnGravel(x, y)`.
 

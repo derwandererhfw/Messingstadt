@@ -99,15 +99,17 @@ Wie die Türen der Stadt im Nordwall: Hilft die Stadt (`Campaign.Stance`, Blutsc
 
 | Helfer | Kerze | Tür |
 |---|---|---|
-| `rangierer` | Baracke A, Südfenster (13,0, 22,0) | Zaunpforte der Rangierer |
-| `heizer` | Baracke B, Südfenster (21,5, 22,0) | Zaunpforte der Heizer |
+| `rangierer`, Ferdinand Stoll | Baracke A, Südfenster (13,0, 22,0) | Zaunpforte der Rangierer |
+| `heizer`, Jan Piontek | Baracke B, Südfenster (21,5, 22,0) | Zaunpforte der Heizer. Lebt Paul Roth, bleibt sie auch offen, wenn die Stadt schweigt |
 
 Zwei Bewohner helfen nie und rufen, sobald die Stadt schweigt (Regel wie im Nordwall):
 
 | Wer | Wo | Trifft |
 |---|---|---|
-| `streckenwaerter` | Wärterbude, Fenster nach Westen (28,0, 19,0) | den Weg durch die Zaunpforte der Heizer |
-| `bahnmeister` | Westgiebel des Schuppens (5,0, 4,5) | den Hof nördlich der Zielzone |
+| `streckenwaerter`, Benno Fuchs | Wärterbude, Fenster nach Westen (28,0, 19,0) | den Weg durch die Zaunpforte der Heizer |
+| `bahnmeister`, Claus Reimers | Westgiebel des Schuppens (5,0, 4,5) | den Hof nördlich der Zielzone |
+
+Steht die Stadt gegen den Trupp, jagen auch Stoll, Piontek und die Köchin Luise Harms (Speisebaracke, Nordseite bei (17,0, 24,8)) den Trupp laut weg. Für die Regel ist das ein Ruf.
 
 ## Schotter
 
@@ -134,7 +136,7 @@ Hell sind die Ladestraße und die nördlichen Gleise. Südlich von Gleis 4 ist e
 
 ## Posten und Streifen
 
-Acht Gegner und ein Hund, zwei davon Werkschutz. Namen liefert die Story.
+Acht Gegner und ein Hund, zwei davon Werkschutz. Namen aus `story/texte/wachen.md`: Kessin (Stellwerksposten), Brock (Runde), Wiegand oder Henke (Rampe), Lohse mit Harras (Gleis 3), Jeschke oder Mertens (Südstreife), Ullrich (Weiche), Tesch (Aufsicht), Peter Hagen (Lampenjunge).
 
 | Posten | Art | Wo | Verhalten | Käuflich |
 |---|---|---|---|---|

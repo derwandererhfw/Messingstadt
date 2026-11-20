@@ -151,17 +151,25 @@ namespace Messingstadt.Core.Tests
         {
             var w = Make(timeLimit: 300);
             Assert.Equal("ZIELE LAHMLEGEN STOP DANN ZUM WAGEN STOP", w.SabotageLine());
-            Assert.Equal("ZUG IN 5 MINUTEN", w.ClockLine());
+            Assert.Equal("ZUG IN 5 MINUTEN STOP", w.ClockLine());
             Arrive(w, 0);
             w.Step();
             Assert.Equal("STELLWERK WIRD LAHMGELEGT STOP STEHEN BLEIBEN STOP", w.SabotageLine());
             StepUntil(w, () => w.Targets[0].Done);
             Assert.Equal("STELLWERK STEHT STOP WEICHE FEHLT NOCH STOP", w.SabotageLine());
-            StepUntil(w, () => w.TicksLeft <= 61 * World.TickRate, 7000);
-            Assert.Equal("ZUG IN 2 MINUTEN", w.ClockLine());
-            w.Step();
+            // Gerundet auf die nächste Minute, unter einer Minute in Sekunden.
+            StepUntil(w, () => w.TicksLeft <= 150 * World.TickRate, 7000);
+            Assert.Equal("ZUG IN 3 MINUTEN STOP", w.ClockLine());
+            StepUntil(w, () => w.TicksLeft <= 149 * World.TickRate, 7000);
+            Assert.Equal("ZUG IN 2 MINUTEN STOP", w.ClockLine());
+            StepUntil(w, () => w.TicksLeft <= 89 * World.TickRate, 7000);
+            Assert.Equal("ZUG IN EINER MINUTE STOP", w.ClockLine());
             StepUntil(w, () => w.TicksLeft <= 60 * World.TickRate, 7000);
-            Assert.Equal("ZUG IN 60 SEKUNDEN", w.ClockLine());
+            Assert.Equal("ZUG IN EINER MINUTE STOP", w.ClockLine());
+            StepUntil(w, () => w.TicksLeft <= 59 * World.TickRate, 7000);
+            Assert.Equal("ZUG IN 59 SEKUNDEN STOP", w.ClockLine());
+            StepUntil(w, () => false, 7000);
+            Assert.Equal("ZUG IST DA STOP", w.SabotageLine());
         }
 
         private static List<UnitData> GuardLookingAway() =>
@@ -210,6 +218,90 @@ namespace Messingstadt.Core.Tests
             var courier = new Unit { Faction = Faction.Agent, CarriesItem = true, Skill = World.SkillCourier };
             Assert.True(World.WalkSpeed(loaded) < World.WalkSpeed(plain));
             Assert.Equal(World.WalkSpeed(plain), World.WalkSpeed(courier));
+        }
+
+        [Fact]
+        public void WorkersOnlyTurnLoudWhenTheCityIsAgainstTheSquad()
+        {
+            World Yard(CityStance stance)
+            {
+                var mission = new MissionData
+                {
+                    Seed = 7, Stance = stance, Item = new[] { 20.5, 5.5 }, Exit = new ZoneData { X0 = 0, Y0 = 0, X1 = 2, Y1 = 12 },
+                    Agents = new List<UnitData> { new() { Name = "Greta", Sprite = "Agent", X = 6.5, Y = 5.5 } },
+                    Guards = new List<UnitData> { new() { Name = "W", Sprite = "Wachmann", X = 12.5, Y = 5.5, Facing = new[] { 1.0, 0.0 } } },
+                    Residents = new List<ResidentData> { new() { Id = "heizer", X = 5.5, Y = 5.5, OnlyAgainst = true } },
+                };
+                var w = new World(new MapData { Width = 30, Height = 12 }, mission);
+                w.Step();
+                return w;
+            }
+            Assert.Empty(Yard(CityStance.Helps).ResidentCalls);
+            Assert.Empty(Yard(CityStance.Silent).ResidentCalls);
+            var against = Yard(CityStance.Against);
+            Assert.Equal("heizer", Assert.Single(against.ResidentCalls).Resident);
+            // Lärm, kein Alarm: Die Wache geht nachsehen, geschossen hat niemand.
+            Assert.Equal(GuardState.Investigate, against.Units[1].GuardState);
+            Assert.Equal(MissionRating.Quiet, against.Rating);
+        }
+
+        [Fact]
+        public void TheStokerStillHelpsASilentCityWhilePaulRothLives()
+        {
+            Campaign With(bool? paul, int debt)
+            {
+                var c = new Campaign { BloodDebt = debt };
+                if (paul is { } alive)
+                {
+                    c.Records["mission_02"] = new MissionRecord { Won = true, Prisoners = { ["Paul Roth"] = alive } };
+                }
+                return c;
+            }
+            Assert.True(With(null, 0).HouseHelps(Campaign.HelperStoker));
+            Assert.True(With(true, Campaign.SilentFrom).HouseHelps(Campaign.HelperStoker));
+            Assert.False(With(false, Campaign.SilentFrom).HouseHelps(Campaign.HelperStoker));
+            Assert.False(With(null, Campaign.SilentFrom).HouseHelps(Campaign.HelperStoker));
+            Assert.False(With(true, Campaign.AgainstFrom).HouseHelps(Campaign.HelperStoker));
+            // Der Rangierer hat keine solche Ausnahme.
+            Assert.False(With(true, Campaign.SilentFrom).HouseHelps("rangierer"));
+
+            // Mit lebendem Roth steht die Pforte der Heizer im schweigenden Gleisviertel offen, die der Rangierer nicht.
+            var (map, mission) = Loader.LoadMission(DataDir(), "mission_03");
+            With(true, Campaign.SilentFrom).Prepare(mission, "mission_03");
+            var w = new World(map, mission);
+            Assert.True(w.Doors.First(d => d.Name == "Zaunpforte der Heizer").Open);
+            Assert.False(w.Doors.First(d => d.Name == "Zaunpforte der Rangierer").Open);
+        }
+
+        [Fact]
+        public void FullNamesMatchOldSavesThatOnlyKnowTheSurname()
+        {
+            Assert.True(World.SamePerson("Fritz Bartels", "Bartels"));
+            Assert.True(World.SamePerson("Bartels", "Fritz Bartels"));
+            Assert.True(World.SamePerson("Fritz Bartels", "Fritz Bartels"));
+            Assert.False(World.SamePerson("Fritz Bartels", "Hans Olbrich"));
+            Assert.False(World.SamePerson("", ""));
+        }
+
+        [Fact]
+        public void EveryGuardCarriesAFullNameAndReturnersExistInAnEarlierMission()
+        {
+            var earlier = new HashSet<string>();
+            foreach (string id in new[] { "mission_01", "mission_02", "mission_03" })
+            {
+                var mission = Loader.LoadMission(DataDir(), id).Mission;
+                foreach (var g in mission.Guards)
+                {
+                    Assert.True(g.Person.Length > 0, $"{id}: {g.Name} ohne Namen");
+                    Assert.True(g.Type == "hund" || g.Person.Contains(' '), $"{id}: {g.Name} trägt nur „{g.Person}“");
+                    if (g.Returning.Length > 0)
+                    {
+                        Assert.Contains(g.Returning, earlier);
+                    }
+                }
+                Assert.All(mission.Reinforcements!.Persons, p => Assert.Contains(' ', p));
+                earlier.UnionWith(mission.Guards.Select(g => g.Person));
+            }
         }
 
         private static string DataDir()

@@ -17,7 +17,7 @@
     "firstDelay": 8, "interval": 5, "count": 3,
     "phone": "Wachhabender", "phoneAt": [14.5, 9.5], "phoneDelay": 1,
     "lateDelay": 16, "lateCount": 1, "beds": 3,
-    "persons": ["Kasten", "Dreyer", "Proske", "Hinz", "Wendt", "Rogge"]
+    "persons": ["Rudolf Kasten", "Heinz Dreyer", "Ludwig Proske", "Paulus Hinz", "Kaspar Wendt", "Anselm Rogge"]
   },
   "doors": [
     { "name": "Pforte zur Gerichtsgasse", "tiles": [[7, 7]], "mark": [6.5, 7.5] },
@@ -125,20 +125,20 @@
     { "name": "Hanna", "role": "Kurierin", "skill": "kurierin", "sprite": "Agent", "x": 12.5, "y": 29.5, "legs": 3, "heart": 1 }
   ],
   "guards": [
-    { "name": "Wallstreife 1", "person": "Jahnke", "sprite": "Wachmann", "x": 0.5, "y": 11.5, "patrol": [[13, 11], [0, 11]] },
-    { "name": "Wallstreife 2", "person": "Olbrich", "returning": "Bartels", "sprite": "Wachmann", "x": 13.5, "y": 12.5, "patrol": [[0, 12], [13, 12]] },
-    { "name": "Türposten", "person": "Kempe", "atEase": true, "sprite": "Wachmann", "x": 11.5, "y": 10.5, "facing": [0, 1], "keys": ["Pforte zur Gerichtsgasse"] },
-    { "name": "Wachhabender", "person": "Seidel", "rank": "Wachtmeister", "sprite": "Offizier", "type": "offizier", "x": 14.5, "y": 9.5, "facing": [0, 1] },
-    { "name": "Schließer", "person": "Nowak", "sprite": "Wachmann", "x": 8.5, "y": 7.5, "patrol": [[12, 7], [8, 7]], "keys": ["Zelle 1", "Zelle 2"] },
-    { "name": "Hundeführer", "person": "Rieck", "sprite": "Hundefuehrer", "type": "hundefuehrer", "x": 5.5, "y": 9.5, "patrol": [[5, 2], [1, 2], [6, 2], [6, 9], [5, 9]] },
+    { "name": "Wallstreife 1", "person": "Wilhelm Jahnke", "sprite": "Wachmann", "x": 0.5, "y": 11.5, "patrol": [[13, 11], [0, 11]] },
+    { "name": "Wallstreife 2", "person": "Hans Olbrich", "returning": "Fritz Bartels", "sprite": "Wachmann", "x": 13.5, "y": 12.5, "patrol": [[0, 12], [13, 12]] },
+    { "name": "Türposten", "person": "Friedrich Kempe", "atEase": true, "sprite": "Wachmann", "x": 11.5, "y": 10.5, "facing": [0, 1], "keys": ["Pforte zur Gerichtsgasse"] },
+    { "name": "Wachhabender", "person": "Arthur Seidel", "rank": "Wachtmeister", "sprite": "Offizier", "type": "offizier", "x": 14.5, "y": 9.5, "facing": [0, 1] },
+    { "name": "Schließer", "person": "Josef Nowak", "sprite": "Wachmann", "x": 8.5, "y": 7.5, "patrol": [[12, 7], [8, 7]], "keys": ["Zelle 1", "Zelle 2"] },
+    { "name": "Hundeführer", "person": "Theodor Rieck", "sprite": "Hundefuehrer", "type": "hundefuehrer", "x": 5.5, "y": 9.5, "patrol": [[5, 2], [1, 2], [6, 2], [6, 9], [5, 9]] },
     { "name": "Hund", "person": "Greif", "sprite": "Hund", "type": "hund", "handler": "Hundeführer", "x": 5.5, "y": 8.5 },
-    { "name": "Wallposten", "person": "Engel", "sprite": "Schuetze", "type": "schuetze", "x": 14.5, "y": 2.5, "patrol": [[19, 2], [14, 2]] },
+    { "name": "Wallposten", "person": "Martin Engel", "sprite": "Schuetze", "type": "schuetze", "x": 14.5, "y": 2.5, "patrol": [[19, 2], [14, 2]] },
     { "name": "Bote", "person": "Jakob Pagel", "call": "Jakob", "age": 13, "sprite": "Laufbursche", "type": "laufbursche", "x": 16.5, "y": 12.5, "patrol": [[6, 12], [16, 12]] },
-    { "name": "Mann vom Werk", "person": "Grabow", "sprite": "Werkschutz", "type": "werkschutz", "x": 14.5, "y": 7.5, "facing": [0, 1] },
-    { "name": "Friedhofsstreife", "person": "Buchholz", "returning": "Thiele", "atEase": true, "sprite": "Wachmann", "x": 3.5, "y": 14.5, "facing": [0, -1] },
-    { "name": "Posten am Fahnenmast", "person": "Lindner", "sprite": "Wachmann", "x": 24.5, "y": 6.5, "facing": [0, 1], "noBribe": true },
-    { "name": "Posten an der Remise", "person": "Roloff", "sprite": "Wachmann", "x": 26.5, "y": 18.5, "facing": [0, 1], "noBribe": true },
-    { "name": "Nachtwächter", "person": "Fenske", "sprite": "Wachmann", "x": 14.5, "y": 14.5, "patrol": [[14, 17], [14, 13], [23, 13], [14, 13]] },
-    { "name": "Südstreife", "person": "Zander", "sprite": "Wachmann", "x": 23.5, "y": 26.5, "patrol": [[3, 26], [23, 26]] }
+    { "name": "Mann vom Werk", "person": "Viktor Grabow", "sprite": "Werkschutz", "type": "werkschutz", "x": 14.5, "y": 7.5, "facing": [0, 1] },
+    { "name": "Friedhofsstreife", "person": "Eduard Buchholz", "returning": "August Thiele", "atEase": true, "sprite": "Wachmann", "x": 3.5, "y": 14.5, "facing": [0, -1] },
+    { "name": "Posten am Fahnenmast", "person": "Oskar Lindner", "sprite": "Wachmann", "x": 24.5, "y": 6.5, "facing": [0, 1], "noBribe": true },
+    { "name": "Posten an der Remise", "person": "Bernhard Roloff", "sprite": "Wachmann", "x": 26.5, "y": 18.5, "facing": [0, 1], "noBribe": true },
+    { "name": "Nachtwächter", "person": "Erich Fenske", "sprite": "Wachmann", "x": 14.5, "y": 14.5, "patrol": [[14, 17], [14, 13], [23, 13], [14, 13]] },
+    { "name": "Südstreife", "person": "Alfred Zander", "sprite": "Wachmann", "x": 23.5, "y": 26.5, "patrol": [[3, 26], [23, 26]] }
   ]
 }

@@ -4,7 +4,7 @@ wait 40
 expect mission mission_03
 expect guards 9
 expect targets Stellwerk:offen, Weiche:offen
-expect clockline ZUG IN 5 MINUTEN
+expect clockline ZUG IN 5 MINUTEN STOP
 waitcontains telegram STELLWERK UND EINFAHRWEICHE LAHMLEGEN
 calm
 # Die Hebelbank steht hinter der Tür: Der Befehl greift erst, wenn sie offen ist

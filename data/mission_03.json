@@ -42,9 +42,10 @@
     "oneDone": "{ZIEL} STEHT STOP {REST} FEHLT NOCH STOP",
     "allDone": "BEIDES STEHT STOP ZUM BAHNÜBERGANG STOP",
     "boarding": "EINSTEIGEN STOP STEHEN BLEIBEN STOP",
-    "minutes": "ZUG IN {n} MINUTEN",
-    "seconds": "ZUG IN {n} SEKUNDEN",
-    "timeUp": "DER ZUG IST DA STOP"
+    "minutes": "ZUG IN {n} MINUTEN STOP",
+    "oneMinute": "ZUG IN EINER MINUTE STOP",
+    "seconds": "ZUG IN {n} SEKUNDEN STOP",
+    "timeUp": "ZUG IST DA STOP"
   },
   "gravel": [
     {
@@ -75,7 +76,13 @@
     "type": "werkschutz",
     "firstDelay": 6,
     "interval": 4,
-    "count": 4
+    "count": 4,
+    "persons": [
+      "Egon Marek",
+      "Kuno Thamm",
+      "Rolf Beyer",
+      "Ewald Stock"
+    ]
   },
   "doors": [
     {
@@ -192,7 +199,13 @@
       "Der Hund läuft von einem Ende zum andern.",
       "An der Weiche steht einer allein. Der friert und rechnet.",
       "Auf dem Schotter hört man jeden Schritt.",
-      "Der Junge mit der Lampe meldet alles dem Erstbesten."
+      "Der Junge mit der Lampe meldet alles dem Erstbesten.",
+      "Gleis drei ist frei. Da geht Lohse mit dem Hund, von einem Ende zum andern.",
+      "Über die Bohlen am Stellwerk hört dich keiner. Kessin sieht dich trotzdem.",
+      "Am Übergang liegen Bohlen. Da knirscht nichts, aber da steht auch nichts.",
+      "Den Schlüssel zum Stellwerk hat Kessin. Der gibt nichts her.",
+      "Südlich von Gleis vier sieht man die Hand nicht vor Augen.",
+      "Der Junge füllt seine Lampen jetzt hinterm Zaun, bei den Baracken."
     ],
     "others": [
       "Lasst den Zug nicht rein. Mehr sag ich nicht.",
@@ -215,6 +228,24 @@
       "id": "bahnmeister",
       "x": 5.0,
       "y": 4.5
+    },
+    {
+      "id": "rangierer",
+      "x": 13.0,
+      "y": 22.2,
+      "onlyAgainst": true
+    },
+    {
+      "id": "heizer",
+      "x": 21.5,
+      "y": 22.2,
+      "onlyAgainst": true
+    },
+    {
+      "id": "koechin",
+      "x": 17.0,
+      "y": 24.8,
+      "onlyAgainst": true
     }
   ],
   "lamps": [
@@ -284,6 +315,7 @@
   "guards": [
     {
       "name": "Stellwerksposten",
+      "person": "Arnold Kessin",
       "sprite": "Werkschutz",
       "type": "werkschutz",
       "x": 21.5,
@@ -298,6 +330,7 @@
     },
     {
       "name": "Stellwerksrunde",
+      "person": "Detlef Brock",
       "sprite": "Werkschutz",
       "type": "werkschutz",
       "x": 18.5,
@@ -323,6 +356,8 @@
     },
     {
       "name": "Rampenschütze",
+      "person": "Lothar Wiegand",
+      "returning": "Walter Henke",
       "sprite": "Schuetze",
       "type": "schuetze",
       "x": 7.5,
@@ -340,6 +375,7 @@
     },
     {
       "name": "Gleisstreife",
+      "person": "Siegfried Lohse",
       "sprite": "Hundefuehrer",
       "type": "hundefuehrer",
       "x": 2.5,
@@ -357,6 +393,7 @@
     },
     {
       "name": "Hund",
+      "person": "Harras",
       "sprite": "Hund",
       "type": "hund",
       "handler": "Gleisstreife",
@@ -365,6 +402,8 @@
     },
     {
       "name": "Südstreife",
+      "person": "Franz Jeschke",
+      "returning": "Richard Mertens",
       "sprite": "Wachmann",
       "x": 27.5,
       "y": 16.5,
@@ -381,6 +420,7 @@
     },
     {
       "name": "Weichenposten",
+      "person": "Gerhard Ullrich",
       "sprite": "Wachmann",
       "x": 27.5,
       "y": 9.5,
@@ -391,6 +431,7 @@
     },
     {
       "name": "Aufsicht",
+      "person": "Reinhold Tesch",
       "sprite": "Offizier",
       "type": "offizier",
       "x": 16.5,
@@ -402,6 +443,10 @@
     },
     {
       "name": "Lampenjunge",
+      "person": "Peter Hagen",
+      "rank": "Lampenjunge",
+      "age": 12,
+      "call": "Peter",
       "sprite": "Laufbursche",
       "type": "laufbursche",
       "x": 24.5,

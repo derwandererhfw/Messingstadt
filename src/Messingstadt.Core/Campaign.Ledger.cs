@@ -138,6 +138,9 @@ namespace Messingstadt.Core
         public const string HelperWidow = "witwe";
         public const string HelperGravedigger = "totengraeber";
         public const string HelperLandlady = "wirtin";
+
+        /// <summary>Der Heizer im Gleisviertel, Jan Piontek. Siehe HouseHelps.</summary>
+        public const string HelperStoker = "heizer";
         public const int MaxBloodDebt = 6;
 
         /// <summary>Um mehr als so viel steigt die Schuld in einer Nacht nicht, auch wenn mehr Wachen sterben.</summary>
@@ -241,7 +244,10 @@ namespace Messingstadt.Core
         /// Das Viertel spielt dabei keine Rolle mehr, die Blutschuld gilt für die ganze Stadt.
         /// </summary>
         public bool HouseHelps(string helper, string districtId = "") =>
-            Stance == CityStance.Helps || (helper == HelperLandlady && Stance == CityStance.Silent && !IsDead("Greta"));
+            Stance == CityStance.Helps || (helper == HelperLandlady && Stance == CityStance.Silent && !IsDead("Greta"))
+            // Entscheidung der Hauptsession vom 2026-11-20: Der Heizer Piontek stand mit Paul Roth am Feuerfass.
+            // Lebt Roth nach Einsatz 2, hilft er auch dann noch, wenn die Stadt schweigt.
+            || (helper == HelperStoker && Stance == CityStance.Silent && PrisonerAlive("Paul Roth") == true);
 
         // ---- Schreiben ----
 

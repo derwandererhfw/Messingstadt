@@ -178,6 +178,12 @@ namespace Messingstadt.Core
     {
         /// <summary>Kennung, etwa "gerichtsdiener". Für Darstellung und Ton.</summary>
         public string Id { get; set; } = "";
+
+        /// <summary>
+        /// True für Leute, die dem Trupp sonst helfen oder still bleiben: Sie werden erst laut, wenn die Stadt gegen den Trupp steht.
+        /// Dann jagen sie ihn weg, und das hört die Wache wie einen Ruf.
+        /// </summary>
+        public bool OnlyAgainst { get; set; }
         public double X { get; set; }
         public double Y { get; set; }
     }
@@ -237,9 +243,10 @@ namespace Messingstadt.Core
         public string OneDone { get; set; } = "{ZIEL} STEHT STOP {REST} FEHLT NOCH STOP";
         public string AllDone { get; set; } = "ALLES STEHT STOP ZUM WAGEN STOP";
         public string Boarding { get; set; } = "EINSTEIGEN STOP STEHEN BLEIBEN STOP";
-        public string Minutes { get; set; } = "ZUG IN {n} MINUTEN";
-        public string Seconds { get; set; } = "ZUG IN {n} SEKUNDEN";
-        public string TimeUp { get; set; } = "DER ZUG IST DA STOP";
+        public string Minutes { get; set; } = "ZUG IN {n} MINUTEN STOP";
+        public string OneMinute { get; set; } = "ZUG IN EINER MINUTE STOP";
+        public string Seconds { get; set; } = "ZUG IN {n} SEKUNDEN STOP";
+        public string TimeUp { get; set; } = "ZUG IST DA STOP";
     }
 
     /// <summary>Beute, die Geld bringt, wenn ein Agent sie erreicht und der Trupp entkommt.</summary>

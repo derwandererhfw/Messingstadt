@@ -90,6 +90,12 @@ namespace Messingstadt.Core
             }
         }
 
+        /// <summary>
+        /// Derselbe Mensch? Die Missionen tragen volle Namen, ältere Spielstände nur Nachnamen: Stimmt der Nachname, gilt er als derselbe.
+        /// </summary>
+        public static bool SamePerson(string a, string b) =>
+            a.Length > 0 && b.Length > 0 && (a == b || a[(a.LastIndexOf(' ') + 1)..] == b[(b.LastIndexOf(' ') + 1)..]);
+
         /// <summary>Liegt dieser Punkt auf Schotter? Bohlen gehen vor.</summary>
         public bool OnGravel(int x, int y)
         {
@@ -254,7 +260,7 @@ namespace Messingstadt.Core
             return _sabotageTexts.Start;
         }
 
-        /// <summary>Zusatz zur Uhr für die zweite Zeile: Minuten aufgerundet, in der letzten Minute Sekunden. Leer ohne Uhr oder wenn alles steht.</summary>
+        /// <summary>Zusatz zur Uhr für die zweite Zeile: Minuten gerundet, unter einer Minute Sekunden. Leer ohne Uhr oder wenn alles steht.</summary>
         public string ClockLine()
         {
             int left = TicksLeft;
@@ -263,9 +269,14 @@ namespace Messingstadt.Core
                 return "";
             }
             int seconds = (left + TickRate - 1) / TickRate;
-            return seconds > 60
-                ? _sabotageTexts.Minutes.Replace("{n}", ((seconds + 59) / 60).ToString()).Replace("{N}", ((seconds + 59) / 60).ToString())
-                : _sabotageTexts.Seconds.Replace("{n}", seconds.ToString()).Replace("{N}", seconds.ToString());
+            if (seconds < 60)
+            {
+                return _sabotageTexts.Seconds.Replace("{n}", seconds.ToString()).Replace("{N}", seconds.ToString());
+            }
+            // Auf die nächste volle Minute gerundet: 5 bis 4:30, dann 4, zuletzt "einer Minute" von 1:29 bis 1:00.
+            int minutes = (seconds + 30) / 60;
+            return minutes <= 1 ? _sabotageTexts.OneMinute
+                : _sabotageTexts.Minutes.Replace("{n}", minutes.ToString()).Replace("{N}", minutes.ToString());
         }
     }
 }
