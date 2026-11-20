@@ -33,10 +33,18 @@ MAP_LAMPS = {
     # scale: Stärke im Bild gegenüber den Regeln. cut: Bei so vielen Feldern Abstand endet das Licht im Bild weich, 0 = nie.
     "": dict(color=LAMP_COLOR, kind="elektrisch", reach=4.2, scale=1.6, cut=4.2),
     "nordwall": dict(color=(0.90, 0.95, 0.56), kind="gas", reach=5.0, scale=1.3, cut=5.0),  # Gasglühlicht: grünlich-gelb und etwas schwächer im Umkreis
+    "gleisviertel": dict(color=(1.0, 0.70, 0.38), kind="elektrisch", reach=4.0, scale=1.2, cut=4.0),  # schwache Glühbirne unter Blechschirm
 }
 FIRE_REACH = 3.0
 # Laternen, die von der üblichen ihrer Karte abweichen (lightKinds im Manifest). Fürs Schleichen zählen sie wie alle anderen.
-LAMP_KINDS = {"bogen": dict(color=(0.80, 0.90, 1.0), kind="bogen", reach=7.5, scale=2.6, cut=7.5)}
+LAMP_KINDS = {"bogen": dict(color=(0.80, 0.90, 1.0), kind="bogen", reach=7.5, scale=2.6, cut=7.5),
+              # Signallichter des Gleisviertels: im Bild kleine farbige Punkte mit kurzem Schein
+              "signal": dict(color=(1.0, 0.16, 0.10), kind="signal", reach=2.4, scale=0.55, cut=2.6),
+              "schranke": dict(color=(1.0, 0.16, 0.10), kind="signal", reach=2.4, scale=0.55, cut=2.6),
+              "weiche": dict(color=(1.0, 0.93, 0.76), kind="weiche", reach=2.8, scale=0.7, cut=3.0)}
+# Stärke einzelner Laternenarten im Schleichlicht, je Karte. Ohne Eintrag zählt jede Laterne gleich (Kesselviertel, Nordwall).
+# Gleisviertel nach docs/einsatz_03_grundriss.md: Die Bogenlampe über der Rampe ist hell und reicht weit, die Schrankenlampe ist schwach.
+MAP_RULES = {"gleisviertel": {"bogen": 3.0, "schranke": 0.5}}
 MOON_SPEC = 6.0  # Nässeglanz auf Dächern: Der Mond spiegelt sich in Flecken, wo die Fläche zur Kamera vermittelt
 RIM_LIGHT = 2.6  # Kantenlicht: Die obere Umrisskante von Häusern und Aufbauten fängt den Mond, so stark wie das Mondlicht mal diesem Wert
 # Lichtteppiche: Hinter jedem erleuchteten Fenster der unteren Geschosse hängt eine Lampe, ihr Licht fällt durch die Öffnung
@@ -56,7 +64,8 @@ PICTURE_LIGHTS = {
 }
 RAIL_GLOSS = 1.5  # Schienenköpfe sind blank: Sie werfen das Licht, das sie trifft, um diesen Faktor stärker zurück
 RAIL_GLOSS_CAP = 0.85  # aber nie über diesen Lichtwert hinaus: Eine Schiene leuchtet nicht heller als das Pflaster unter der Laterne
-MAP_RAILS = {"": ("x", (8.42, 8.58, 9.42, 9.58)), "nordwall": ("y", (10.8, 11.2))}
+MAP_RAILS = {"": ("x", (8.42, 8.58, 9.42, 9.58)), "nordwall": ("y", (10.8, 11.2)),
+             "gleisviertel": ("y", tuple(c + 0.5 + r for c in range(9, 16) for r in (-0.21, 0.21)))}  # sieben Gleise in Richtung x
 RIM_KINDS = ("", "prop", "gate", "boiler")
 FIRE_COLOR = (1.0, 0.45, 0.15)
 LAMP_POWER = 4.2
@@ -460,14 +469,16 @@ def main():
     # Für Lichtkegel, Dunst und Flackern im Spiel: jede Quelle mit Ort, Höhe in Bildpunkten, Farbe, Art und Reichweite in Feldern.
     manifest["lampColor"] = list(lamp["color"])
     lamp_of = [LAMP_KINDS.get(k, lamp) for k in manifest.get("lightKinds", [])] or [lamp] * len(manifest["lights"])
+    rules_of = [MAP_RULES.get(args.get("map", ""), {}).get(k, 1.0) for k in manifest.get("lightKinds", [])] or [1.0] * len(manifest["lights"])
     manifest["sources"] = [{"x": x, "y": y, "z": z, "kind": l["kind"], "color": list(l["color"]), "reach": l["reach"]} for (x, y, z), l in zip(manifest["lights"], lamp_of)]
     manifest["sources"] += [{"x": x, "y": y, "z": z, "kind": "feuer", "color": list(FIRE_COLOR), "reach": FIRE_REACH} for x, y, z in manifest["fireLights"]]
     (ASSETS / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     lights = []
-    for (x, y, z), own in zip(manifest["lights"], lamp_of):
+    for (x, y, z), own, rules_scale in zip(manifest["lights"], lamp_of, rules_of):
         stutter = abs(x - STUTTER_LAMP[0]) < 0.01 and abs(y - STUTTER_LAMP[1]) < 0.01
         lights.append({"x": x, "y": y, "z": z, "color": "lamp", "power": LAMP_POWER, "layer": 1 if stutter else 0, "hooded": True,
-                       "rgb": list(own["color"]), "scale": trial("LAMP", own["scale"]), "cut": float(os.environ.get("MS_CUT", own["cut"]))})
+                       "rgb": list(own["color"]), "scale": trial("LAMP", own["scale"]), "cut": float(os.environ.get("MS_CUT", own["cut"])),
+                       **({"rulesScale": rules_scale} if rules_scale != 1.0 else {})})
     for x, y, z in manifest["fireLights"]:
         lights.append({"x": x, "y": y, "z": z, "color": "fire", "power": FIRE_POWER, "layer": 2, "hooded": False})
 

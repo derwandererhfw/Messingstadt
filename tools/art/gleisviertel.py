@@ -3,10 +3,12 @@
 Gebaut wird aus data/scene_03.json über build_map.py, das dieses Modul für die Karte "gleisviertel" aufruft.
 Die Höhen sind Vorgaben der Regeln: Güterwagen höchstens 52, Baracken und Bansen höchstens 38.
 """
+import json
 import math
+from pathlib import Path
 
 import numpy as np
-from PIL import ImageDraw
+from PIL import Image, ImageDraw
 
 import generate_concept as g
 import roofs as R
@@ -21,7 +23,7 @@ PALETTE = {
     "wood_d": (40, 34, 30), "wood": (60, 50, 40), "iron": (50, 52, 56), "soot": (34, 34, 38),
     "wagon_d": (66, 36, 30), "wagon": (96, 52, 40), "wagon_l": (120, 70, 52),
     "board_d": (50, 54, 48), "board": (70, 76, 66), "tarp": (84, 82, 66), "tarp_d": (58, 58, 48),
-    "ballast_d": (52, 48, 46), "ballast": (84, 78, 72), "cinder": (44, 42, 46), "coal": (26, 26, 30), "mud": (52, 44, 38),
+    "ballast_d": (52, 48, 46), "ballast": (84, 78, 72), "cinder": (62, 60, 64), "coal": (26, 26, 30), "mud": (74, 64, 54),
     "signal_r": (196, 44, 32), "signal_g": (60, 150, 96),
 }
 THEME = {
@@ -30,6 +32,10 @@ THEME = {
     "backdrop_keep": lambda x, y, w, d: y + d > 0.5,  # nördlich des Damms liegt freies Feld
     "perches": [(6.0, 5.95, 70), (11.4, 5.95, 70), (20.0, 5.95, 90), (12.0, 21.95, 37), (22.0, 21.95, 37)],
 }
+
+
+SITE = Path(__file__).resolve().parents[2] / "game" / "assets" / "sites" / "gleisviertel.json"
+DAM_SIGNALS = [tuple(q[:3]) for q in json.loads(SITE.read_text(encoding="utf-8")).get("signals", ()) if q[3] == "strecke"] if SITE.exists() else []
 
 
 def col(name):
@@ -209,7 +215,7 @@ def small_window(tex, d, u, v, w=9, h=9, lit=False, fixed=None):
     d.fine_line((u + w // 2, v, u + w // 2, v + h - 1), fill=g.C["wood_d"])
     d.fine_line((u, v + h // 2, u + w - 1, v + h // 2), fill=g.C["wood_d"])
     if lit:
-        tex.info.setdefault("panes", []).append((u, v, w, h) + ((fixed,) if fixed else ()))
+        tex.info.setdefault("panes", []).append((u, v, w, h, fixed or "funzel"))  # im Bahnhof brennen nur Funzeln
 
 
 def iron_door(d, u, base, w=20, h=38):
@@ -365,6 +371,10 @@ def building(b, s, things, B):
         right, dr = g.wall(wr, h, ("brick",))
         dr.rectangle((0, 0, wr, 3), fill=g.C["stone"])
         roof = lambda x0, y0, x1, y1, hh: [R.Prism(x0, y0, x1, y1, hh, [R.flat(hh + 2)], mat_track, "flat")]  # noqa: E731
+        if b.get("id") == "bahndamm":  # Maste der Streckensignale: Ihr Licht schaltet das Spiel (game/assets/sites/gleisviertel.json, signals)
+            iron = lambda f: g._c("iron")[None, :] * np.ones((len(f.fx), 1))  # noqa: E731
+            for mx, my, mz in DAM_SIGNALS:
+                items.append(g.roof_block(0.1, mz - h + 2, iron)((mx - 0.05 - b["x0"]) / w, (my - 0.05 - b["y0"]) / depth))
     elif kind == "gueterschuppen":
         h -= 18  # die Wand endet an der Traufe, darüber das Satteldach
         left = B.planks(wl, h)
@@ -376,7 +386,8 @@ def building(b, s, things, B):
         door_u = int((gate["x0"] - b["x0"] + 0.5) * HW) if gate else wl // 2
         for u in sorted({door_u, door_u - 96, door_u + 96}):
             if 20 < u < wl - 20:
-                d.rectangle((u - 17, h - 44, u + 17, h - 10), fill=g.C["wood_d"])
+                d.rectangle((u - 18, h - 45, u + 18, h - 10), fill=g.C["iron"])
+                d.rectangle((u - 17, h - 44, u + 17, h - 10), fill=g.blend(g.C["wagon"], 0.9))
                 for k in range(u - 17, u + 18, 5):
                     d.fine_line((k, h - 44, k, h - 10), fill=g.C["black"])
                 d.line((u - 17, h - 44, u + 17, h - 10), fill=g.C["iron"])
@@ -413,8 +424,11 @@ def building(b, s, things, B):
         d.shade((wl // 2 + 14, 20, wl // 2 + 17, shaft), 0.7, g.C["rust"], 0.5)  # Fallrohr zum Wasserkran
 
         def roof(x0, y0, x1, y1, hh):
-            cap = [R.rise_from(e, {"x0": x0, "x1": x1, "y0": y0, "y1": y1}[e], hh + 40, 12) for e in ("x0", "x1", "y0", "y1")]
-            return [R.block(x0, y0, x1, y1, hh, hh + 40, mat_tank, "tank"), R.Prism(x0, y0, x1, y1, hh + 40, cap, mat_tank, "cap")]
+            i = 0.2  # der Behälter steht eingerückt auf dem Schaft, ringsum bleibt ein Umgang
+            a0, b0, a1, b1 = x0 + i, y0 + i, x1 - i, y1 - i
+            cap = [R.rise_from(e, {"x0": a0, "x1": a1, "y0": b0, "y1": b1}[e], hh + 38, 20) for e in ("x0", "x1", "y0", "y1")]
+            return [R.Prism(x0, y0, x1, y1, hh, [R.flat(hh + 2)], mat_tank, "flat"), R.block(a0, b0, a1, b1, hh + 2, hh + 38, mat_tank, "tank"),
+                    R.Prism(a0, b0, a1, b1, hh + 38, cap, mat_tank, "cap")]
         h = shaft
     elif kind == "stellwerk":
         h -= 20
@@ -457,7 +471,7 @@ def building(b, s, things, B):
                 face.rectangle((u, 0, u + 2, h), fill=g.C["rust_d"])
             face.shade((0, 0, width, 4), 0.6, g.C["coal"], 0.6)
         left, right = tex_l, tex_r
-        roof = lambda x0, y0, x1, y1, hh: [R.hip(x0, y0, x1, y1, hh - 3, 13, 12, material=mat_coal)]  # noqa: E731
+        roof = lambda x0, y0, x1, y1, hh: [R.hip(x0, y0, x1, y1, hh - 3, 22, 9, material=mat_coal)]  # noqa: E731
     elif kind in ("baracke", "huette"):
         h = 30 if kind == "baracke" else 26
         left, d = boards(wl, h)
@@ -507,9 +521,10 @@ def P(dr, c):
 def paint_signal(dr, px, py, k):
     """Formsignal: Gittermast, roter Flügel mit weißem Rand, darunter die Laterne mit roter Blende."""
     dr.rectangle((px - 3 * k, py - 3 * k, px + 3 * k - 1, py), fill=P(dr, "stone_d"))
-    dr.rectangle((px - k, py - 74 * k, px + k - 1, py - 3 * k), fill=P(dr, "iron"))
+    dr.rectangle((px - 2 * k, py - 74 * k, px + 2 * k - 1, py - 3 * k), fill=P(dr, "iron"))
+    dr.rectangle((px - 2 * k, py - 74 * k, px - k - 1, py - 3 * k), fill=P(dr, "steel"))
     for v in range(8, 70, 7):
-        dr.line((px - k, py - v * k, px + k - 1, py - (v + 5) * k), fill=P(dr, "black"))
+        dr.line((px - 2 * k, py - v * k, px + 2 * k - 1, py - (v + 5) * k), fill=P(dr, "black"), width=max(1, k // 2))
     dr.polygon([(px, py - 72 * k), (px + 20 * k, py - 78 * k), (px + 20 * k, py - 73 * k), (px, py - 67 * k)], fill=P(dr, "signal_r"))
     dr.line((px + 15 * k, py - 76 * k, px + 15 * k, py - 72 * k), fill=P(dr, "paper"), width=max(1, k))
     dr.ellipse((px + 17 * k, py - 79 * k, px + 22 * k, py - 72 * k), fill=P(dr, "signal_r"), outline=P(dr, "paper"))
@@ -643,7 +658,7 @@ def furnish(scene, s, things, glows, B):
         elif group == "signal":
             lamp_glass(lamp["x"] - 0.05, lamp["y"] + 0.05, 59, "signal", s, things, B, (255, 120, 90))
         elif group == "schranke":
-            lamp_glass(lamp["x"] - 0.05, lamp["y"] + 0.05, 21, "signal", s, things, B, (255, 120, 90))
+            lamp_glass(lamp["x"] - 0.05, lamp["y"] + 0.05, 21, "schranke", s, things, B, (255, 120, 90))
         elif group == "weiche":
             lamp_glass(lamp["x"], lamp["y"] + 0.05, 13, "weiche", s, things, B, (255, 244, 214))
         else:
@@ -654,8 +669,9 @@ def furnish(scene, s, things, glows, B):
     for prop in scene["props"]:
         kind = prop["kind"]
         if kind == "fluchtwagen":
-            B.laundry_van(prop["x"] - 0.4, prop["y"] - 0.7, s, things)
+            B.laundry_van(prop["x"] - 0.4, prop["y"] - 0.7, s, things, sign=None)
             things[-1].solid, things[-1].opaque = prop["solid"], prop["opaque"]
+            B.storm_lantern(prop["x"] + 0.47, prop["y"] - 0.25, 27, s, things)  # das Ziel des Rückwegs muss von weitem zu finden sein
         elif kind == "kiste":
             g.crate(int(prop["x"]) + 0.3, int(prop["y"]) + 0.3, s, things)
             things[-1].solid, things[-1].opaque = prop["solid"], prop["opaque"]
@@ -668,3 +684,76 @@ def furnish(scene, s, things, glows, B):
     for gate in scene.get("gates", ()):
         if not inside(gate):  # Türen in einer Hauswand sind auf die Fassade gemalt
             B.sheet_gate(gate, s, things, scene)
+
+
+# ---------- Kulisse ----------
+
+BACKDROP_REACH = 13  # so viele Felder weit läuft der Bahnhof über den Kartenrand, bevor er im Dunst verschwindet
+
+
+def export_backdrop(assets, tiles, B):
+    """Der Bahnhof jenseits der Karte: Gleise, Damm und Schuppen laufen weiter, fern im Westen und Norden die Stadt.
+
+    Reine Kulisse ohne Lichtberechnung und ohne Einfluss aufs Spiel. Vor der Karte (Süden, Osten) bleibt alles flach.
+    """
+    g.DUAL = False
+    s = g.Scene(tiles)
+    s.w, s.h = g.backdrop_size(tiles)
+    s.ox, s.oy = s.w // 2, s.h // 2 - tiles * g.HH
+    s.img = Image.new("RGBA", (s.w, s.h), g.C["sky"] + (255,))
+    s.px = s.img.load()
+    ys, xs = np.mgrid[0:s.h, 0:s.w]
+    a, b = (xs + 0.5 - s.ox) / HW, (ys + 0.5 - s.oy) / g.HH
+    fx, fy = (a + b) / 2, (b - a) / 2
+    dist = np.maximum.reduce([-fx, fx - tiles, -fy, fy - tiles])
+    near = (dist >= 0) & (dist < BACKDROP_REACH)
+    paving = np.floor(g.ground_np(fx[near], fy[near]) * 0.9)
+    haze = ((dist[near] / BACKDROP_REACH) ** 1.3)[:, None]
+    arr = np.asarray(s.img).copy()
+    arr[near, :3] = (paving + (np.array(g.C["sky"], np.float64) - paving) * haze).astype(np.uint8)
+    s.img = Image.fromarray(arr, "RGBA")
+    s.px = s.img.load()
+    canvas = s.img
+    things = []
+
+    def put(kind, x0, y0, x1, y1, height, **more):
+        building(dict(kind=kind, x0=x0, y0=y0, x1=x1, y1=y1, height=height, **more), s, things, B)
+
+    put("bahndamm", -24, 0, 0, 2, 56)
+    put("bahndamm", tiles, 0, tiles + 24, 2, 56)
+    for x0, x1, y in ((-13, -3, 10), (-9, -2, 12), (-15, -5, 13), (-8, -2, 15),
+                      (tiles + 3, tiles + 11, 9), (tiles + 5, tiles + 15, 11), (tiles + 3, tiles + 9, 14)):
+        put("gueterwagen", x0, y, x1, y + 1, 52)
+    put("gueterschuppen", -13, 2, -3, 6, 78)
+    put("gueterschuppen", tiles + 4, 2, tiles + 13, 6, 70)
+    put("wasserturm", -5, -6, -3, -4, 132)
+    for x in (-12, -5):
+        put("baracke", x, 19, x + 5, 22, 38)
+        put("kohlenbansen", x, 24, x + 4, 27, 34)
+    for x in (3, 11, 22):  # südlich der Karte: Baracken und Kohlenlager, flach
+        put("baracke", x, tiles + 3, x + 5, tiles + 6, 38)
+    put("kohlenbansen", 16, tiles + 3, 20, tiles + 6, 34)
+    for y in (19, 24):
+        put("baracke", tiles + 3, y, tiles + 8, y + 3, 38)
+    # Fern die Stadt: Mietshäuser im Westen und jenseits des Damms im Norden
+    blocks = [(x, y, 6, 6, 170 if ring else 128) for ring, x in ((0, -21), (1, -29)) for y in (-15, -7, 1, 9, 17, 25)]
+    blocks += [(x, y, 6, 6, 170 if ring else 128) for ring, y in ((0, -13), (1, -21)) for x in (-12, -4, 4, 12, 20, 28)]
+    for x, y, w, d, h in blocks:
+        material = ("stone",) if g.hash01(int(x), int(y), 4) < 0.3 else ("brick",)
+        left = g.tenement(int(w * HW), h, material=material, lit_rate=0.1)
+        right = g.tenement(int(d * HW), h, material=material, lit_rate=0.1)
+        g.building(x, y, w, d, h, left, right, s, things, [g.chimney(0.2, 0.3, 24, False)], roof=g.roof_gable(34, "x" if g.hash01(int(x), int(y), 6) < 0.5 else "y", 1.0))
+    for t in g.sort_things(things):
+        s.img = Image.new("RGBA", (s.w, s.h), (0, 0, 0, 0))
+        s.px = s.img.load()
+        t.draw()
+        bbox = s.img.getbbox()
+        if not bbox:
+            continue
+        part = s.img.crop(bbox)
+        away = max(-t.x1, t.x0 - tiles, -t.y1, t.y0 - tiles)
+        haze = min(0.8, 0.12 + away / 26)
+        dimmed = Image.blend(part, Image.new("RGBA", part.size, (0, 0, 0, 255)), 0.15)
+        fogged = Image.blend(dimmed, Image.new("RGBA", part.size, g.C["sky"] + (255,)), haze)
+        canvas.paste(fogged, bbox[:2], part.getchannel("A"))
+    canvas.save(assets / "backdrop.png", optimize=True)
