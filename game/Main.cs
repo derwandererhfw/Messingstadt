@@ -2430,6 +2430,16 @@ void fragment() {
         public IEnumerable<string> FigureVariants(string name) => _animator.Variants(name);
 
         /// <summary>Färbt einen Figuren-Sprite über eine andere Palettenzeile um. Ein leerer Name stellt die Grundfarbe wieder her.</summary>
+        /// <summary>Mund einer Einheit im Bild, gerechnet vom Fuß (UnitPos). hidden: Rückenansicht, der Mund ist verdeckt.</summary>
+        public Vector2 MouthOffset(Unit u, out bool hidden)
+        {
+            var (lookX, lookY) = _animator.Look(World, u, Time.GetTicksMsec() / 1000f);
+            return _animator.Mouth(_animator.SpriteName(u), lookX - lookY, lookX + lookY, out hidden);
+        }
+
+        /// <summary>Mund einer Figur aus dem Blatt für Kulisse ohne Einheit. across und toward wie beim Blick der Einheiten.</summary>
+        public Vector2 MouthOffset(string name, float across, float toward, out bool hidden) => _animator.Mouth(name, across, toward, out hidden);
+
         public void SetFigureVariant(Sprite2D sprite, string name, string variant) =>
             sprite.SetInstanceShaderParameter("palette_row", (float)_animator.PaletteRow(name, variant));
 

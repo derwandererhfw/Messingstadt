@@ -425,7 +425,7 @@ namespace Messingstadt
             // Glut an der Zigarette: Beim Zug wird sie hell, und etwas Rauch steigt auf.
             float phase = _time % DragPeriodSeconds;
             float drag = phase < DragSeconds ? Mathf.Sin(phase / DragSeconds * Mathf.Pi) : 0f;
-            var mouth = foot + new Vector2(0, -38);
+            var mouth = foot + Game.MouthOffset("Arbeiter", _workerLeaving ? -1f : 0f, _workerLeaving ? 0f : 1f, out _);
             _ember.Position = mouth;
             _ember.ZIndex = z + 1;
             float glow = 0.55f + 0.45f * drag;

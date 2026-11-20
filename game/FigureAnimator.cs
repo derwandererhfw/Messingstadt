@@ -46,6 +46,10 @@ namespace Messingstadt
         private readonly List<string> _civilians = new();
         private readonly Dictionary<string, (int Start, int Count)> _prisonerColumns = new();
         private readonly HashSet<string> _prisoners = new();
+        private readonly Dictionary<string, (float Forward, float Height)> _mouths = new();
+        private const float DefaultMouthForward = 3.5f;
+        private const float DefaultMouthHeight = 37f;
+        private const int FirstBackView = 3;
 
         /// <summary>Zeilen der Passanten im Figurenblatt, etwa Zivil_Arbeiter.</summary>
         public IReadOnlyList<string> Civilians => _civilians;
@@ -142,6 +146,13 @@ namespace Messingstadt
                 foreach (var c in prisoner.GetProperty("columns").EnumerateObject())
                 {
                     _prisonerColumns[c.Name] = (c.Value[0].GetInt32(), c.Value[1].GetInt32());
+                }
+            }
+            if (root.TryGetProperty("mouth", out var mouths))
+            {
+                foreach (var m in mouths.EnumerateObject())
+                {
+                    _mouths[m.Name] = (m.Value[0].GetSingle(), m.Value[1].GetSingle());
                 }
             }
             (IdleFirst, IdleCount) = _columns["idle"];
@@ -297,6 +308,21 @@ namespace Messingstadt
                 return Loop(motion, s.Distance / Stride(u, motion) * _prisonerColumns[motion].Count);
             }
             return u.Waiting ? Loop("wait", now * WaitFramesPerSecond + u.Id * 1.7f) : Loop("idle", now * IdleFramesPerSecond + u.Id * 2.7f);
+        }
+
+        /// <summary>
+        /// Wo der Mund der Figur im Bild sitzt, gerechnet vom Fuß. across und toward sind der Blick am Boden (x - y und x + y).
+        /// Der Punkt folgt dem gezeichneten Bild, also einer der fünf Blickrichtungen. hidden: Die Figur zeigt den Rücken,
+        /// der Mund liegt hinter dem Kopf. Dort gehört keine Glut hin.
+        /// </summary>
+        public Vector2 Mouth(string name, float across, float toward, out bool hidden)
+        {
+            var (forward, height) = _mouths.TryGetValue(name, out var m) ? m : (DefaultMouthForward, DefaultMouthHeight);
+            float angle = Mathf.RadToDeg(Mathf.Atan2(toward, Mathf.Abs(across)));
+            int view = Mathf.Clamp(Mathf.RoundToInt((90f - angle) / 45f), 0, 4);
+            float shown = Mathf.DegToRad(90f - view * 45f);
+            hidden = view >= FirstBackView;
+            return new Vector2(Mathf.Cos(shown) * forward * (across < 0f ? -1f : 1f), Mathf.Sin(shown) * forward * 0.5f - height);
         }
 
         /// <summary>Weg seit dem letzten Bild aufsummieren, in Spieleinheiten. foot ist die geglättete Lage im Bild.</summary>
