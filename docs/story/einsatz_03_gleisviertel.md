@@ -1,6 +1,6 @@
 # Einsatz 3: Der Güterbahnhof (Gleisviertel, Sabotieren)
 
-Stand 2026-11-14. Bauvorlage in derselben Form wie `einsatz_02_nordwall.md`. Rahmen (Viertel, Auftragsart, Zug mit Streikbrechern, Hinweis von Rehm, vorbereitete Wachen) ist KANON. Texte, Namen und Orte hat der Nutzer am 2026-11-14 freigegeben („ja“). Lesart der Hauptsession: Die Vorschläge gelten, abgenommen wird weiter am gebauten Einsatz. Zahlen zu Karte, Gegnern und Balance bleiben Richtwerte für Level und Mechanik. Die neue Regel wird in der vollen Fassung gebaut (Nutzer, 2026-11-14: „volle Fassung“). Karte 20 × 20, Norden ist y = 0. Für die Schrägansicht gilt die Regel aus `../einsatz_02_grundriss.md`: Ein hohes Haus verdeckt drei Felder nördlich und westlich von sich. Zielorte, Türen und Hauptwege liegen deshalb nie dort, wichtige Türen zeigen nach Süden oder Osten, hohe Gebäude stehen am Nordrand.
+Stand 2026-11-20. Bauvorlage in derselben Form wie `einsatz_02_nordwall.md`. Rahmen (Viertel, Auftragsart, Zug mit Streikbrechern, Hinweis von Rehm, vorbereitete Wachen) ist KANON. Texte, Namen und Orte hat der Nutzer am 2026-11-14 freigegeben („ja“). Lesart der Hauptsession: Die Vorschläge gelten, abgenommen wird weiter am gebauten Einsatz. Zahlen zu Karte, Gegnern und Balance bleiben Richtwerte für Level und Mechanik. Die neue Regel wird in der vollen Fassung gebaut (Nutzer, 2026-11-14: „volle Fassung“). Karte 20 × 20, Norden ist y = 0. Für die Schrägansicht gilt die Regel aus `../einsatz_02_grundriss.md`: Ein hohes Haus verdeckt drei Felder nördlich und westlich von sich. Zielorte, Türen und Hauptwege liegen deshalb nie dort, wichtige Türen zeigen nach Süden oder Osten, hohe Gebäude stehen am Nordrand.
 
 ## 1. Geschichte
 
@@ -38,7 +38,7 @@ Güterbahnhof Ost. Vier Gleise laufen von Ost nach West quer durch das Bild.
 |---|---|---|
 | Güterschuppen | x 2–9, y 2–6 | Lang, aus Teerholz, mit Laderampe nach Süden (y 6). Bogenlampe über der Rampe |
 | Stellwerk | x 13–16, y 3–6 | Ziegelsockel, oben Glaskanzel. Tür nach Süden |
-| Gleise | y 8–12, ganze Breite | Vier Gleise bei y 8, 9, 10, 11. Schotter: Schritte sind lauter (Vorschlag: Hörweite 3 statt 2 Felder) |
+| Gleise | y 8–12, ganze Breite | Vier Gleise bei y 8, 9, 10, 11. Schotter: Schritte sind lauter (freigegeben vom Nutzer am 2026-11-20, Richtwert: Hörweite 3 statt 2 Felder) |
 | Abgestellte Wagen | x 3–7, y 8 · x 9–13, y 10 · x 4–8, y 11 | Güterwagen, sperren Weg und Sicht. Dazwischen und darunter ist es schwarz |
 | Einfahrweiche | (18,5, 9,5) | Weichenbock mit Laterne am Ostende, frei im Licht |
 | Wasserturm | x 10–12, y 2–5 | Hoch, deshalb am Nordrand zwischen Schuppen und Stellwerk. Auf vier Beinen, unten offen |
@@ -106,7 +106,7 @@ Die Reihenfolge von 2 und 3 ist frei. Beides zusammen hält den Zug auf: Das Sig
 
 | Wer | Beitrag |
 |---|---|
-| Otto, Schlosser | Stellwerkstür und Schuppentor. Macht die Hebelbank doppelt so schnell unbrauchbar (Vorschlag: 3 statt 6 s) |
+| Otto, Schlosser | Stellwerkstür und Schuppentor. Macht die Hebelbank doppelt so schnell unbrauchbar (freigegeben vom Nutzer am 2026-11-20, Richtwert: 3 statt 6 s) |
 | Emil, Buchhalter | Schütze, Hundeführer, Weichenposten und Lampenjunge sind käuflich, zusammen 750 |
 | Hanna, Kurierin | Lockt die Stellwerksrunde weg und ist vor ihr wieder in der Deckung. Schnellster Weg zur Weiche |
 | Greta, Truppführerin | Erkennt als Erste, dass die Wachen gewarnt sind. In der Mechanik keine Sonderrolle |
@@ -142,7 +142,10 @@ Vom Nutzer gewählt am 2026-11-14 („volle Fassung“), neu für die Mechanik:
 | Arbeit am Ziel | `{ZIEL} WIRD LAHMGELEGT STOP STEHEN BLEIBEN STOP` |
 | Eins erledigt | `{ZIEL} STEHT STOP {REST} FEHLT NOCH STOP` |
 | Beide erledigt | `BEIDES STEHT STOP ZUM BAHNÜBERGANG STOP` |
-| Zeit | `ZUG IN {N} MINUTEN` als Zusatz in der zweiten Zeile, in der letzten Minute in Sekunden |
+| Zeit, mehr als eine Minute | `ZUG IN {n} MINUTEN STOP` als Zusatz in der zweiten Zeile. `{n}` ist die Zahl der vollen Minuten |
+| Zeit, eine Minute | `ZUG IN EINER MINUTE STOP` |
+| Zeit, letzte Minute | `ZUG IN {n} SEKUNDEN STOP`. `{n}` ist die Zahl der Sekunden |
+| Zeit abgelaufen | `ZUG IST DA STOP` |
 | Am Wagen | `EINSTEIGEN STOP STEHEN BLEIBEN STOP` |
 
 `{ZIEL}` und `{REST}` sind STELLWERK oder WEICHE.
@@ -221,7 +224,7 @@ Kolbs Kästen:
 | Bereich | Was |
 |---|---|
 | Level | Karte, Gegner, Türen, Start und Ziel nach Abschnitt 2 bis 4. Lohn 400 steht im Stadtplan |
-| Mechanik | Sabotageziele und Zeitdruck. Lautere Schritte auf Schotter als Vorschlag |
+| Mechanik | Sabotageziele und Zeitdruck. Lautere Schritte auf Schotter, Otto halbiert die Zeit an der Hebelbank (beides freigegeben 2026-11-20) |
 | Grafik | Gleise, Güterwagen, Stellwerk mit Glaskanzel, Güterschuppen mit Rampe, Wasserturm, Kohlenbansen, Baracken, Weichenbock, Schranke. Thema in `grafikthemen.md` |
 | Ton | Rangierstöße, Pfeife, Signalglocke, Schritte auf Schotter, ferner Zug, der näher kommt, wenn die Zeit knapp wird |
 | Atmosphäre | Rangierlok, die ab und zu auf einem Gleis vorbeizieht, als Darstellung. Arbeiter vor den Baracken |
@@ -237,3 +240,17 @@ Kolbs Kästen:
 | Spiel | Alle Gegner aus dem Bestand. Neue Regel nur für Sabotageziele und Zeit |
 | Welt | Wachleute zweifeln, der Werkschutz nicht. Brandt tritt nicht auf |
 | Offen gelassen | Rückfall eines Viertels und Notstand auf dem Plan bleiben unberührt |
+
+## 8. Größere Karte und Leitbild
+
+Stand 2026-11-20. Der Nutzer hat entschieden, dass Einsatz 3 gebaut wird, auf 30 × 30 („wie empfohlen“). Der Grundriss der Level-Session steht aus (`../einsatz_03_grundriss.md`). Sobald er da ist, stehen hier die Orte, die Wege und die Sätze mit Spielhinweis, wie in Abschnitt 8 von `einsatz_02_nordwall.md`. Bis dahin gelten die Abschnitte 2 bis 4 als Kern.
+
+Schon fertig, ohne Grundriss:
+
+- Namen der Wachen, Wiederkehrer und Verstärkung: `texte/wachen.md`, Abschnitt „Einsatz 3, Güterbahnhof“.
+- Helfer in den Baracken mit Bedingung und Sätzen, Rufe je Stufe der Blutschuld: ebenda.
+- Telegrammstreifen mit `{n}`: Abschnitt 5.
+
+Was die Level-Session für die Helfer im Grundriss braucht: eine Baracke mit zwei Türen als Durchgang, eine Küchenbaracke mit einer Lampe davor, eine Pforte im Zaun am Kohlenlager. Dazu drei Fenster für die Kerze.
+
+Fähigkeiten in diesem Einsatz (freigegeben 2026-11-20, `faehigkeiten.md`): Hanna hat hier nichts zu tragen. Gretas Passierschein wirkt auf Jeschke, Ullrich, Wiegand und Lohse, nicht auf Tesch und nicht auf den Werkschutz.

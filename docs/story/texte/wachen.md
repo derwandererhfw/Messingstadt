@@ -74,6 +74,68 @@ Man liest die Namen nicht. Zeichen im Spiel ist eine Kerze im Fenster.
 
 Die Türen hängen an der Blutschuld (Nutzer, 2026-11-13): offen bei „hilft“, zu bei „schweigt“, bei „gegen den Trupp“ rufen die Bewohner nach der Wache. Sätze dazu in `../einsatz_02_nordwall.md`, Abschnitt 8.
 
+## Einsatz 3, Güterbahnhof
+
+Stand 2026-11-20, VORSCHLAG der Story. Felder für die Missionsdatei: `person` trägt den vollen Namen, `rank`, `age` und `call` nur, wo sie hier stehen.
+
+| Posten in der Vorlage | Art | Name | Felder | Hintergrund |
+|---|---|---|---|---|
+| Stellwerksposten | Werkschutz | Arnold Kessin, 34 | | War bei der Bahnpolizei, kennt jedes Signal. Nicht käuflich |
+| Stellwerksrunde | Werkschutz | Detlef Brock, 29 | | Sein Bruder ist Vorarbeiter im Werk. Nicht käuflich |
+| Rampenschütze | Schütze | Lothar Wiegand, 36 | `returning`: Walter Henke | Jäger aus dem Umland, kennt einige der Männer im Zug. Nimmt Geld |
+| Gleisstreife | Hundeführer | Siegfried Lohse, 42 | | Zwanzig Jahre Bahnwache, hasst den Schotter. Nimmt Geld |
+| Hund | Wachhund | Harras | | |
+| Südstreife | Wachmann | Franz Jeschke, 38 | `returning`: Richard Mertens | War Rangierer, die Bahn hat ihn entlassen, drei Kinder. Nimmt Geld |
+| Weichenposten | Wachmann | Gerhard Ullrich, 23 | | Zweites Dienstjahr, steht zum ersten Mal allein. Nimmt Geld |
+| Aufsicht | Offizier | Reinhold Tesch, 51 | Anrede aus der Art: Wachtmeister | Führt die Wache am Bahnhof, hat den Befehl schriftlich vom Werk. Teuer, aber käuflich |
+| Lampenjunge | Laufbursche | Peter Hagen, 12 | `rank`: Lampenjunge, `age`: 12, `call`: Peter | Sohn eines Rangierers, füllt die Signallampen für ein Abendbrot |
+| Verstärkung | Werkschutz | Egon Marek, Kuno Thamm, Rolf Beyer, Ewald Stock | | Die Mannschaft, die in Einsatz 2 die Gefangenen holen sollte. Nicht käuflich |
+
+### Wiederkehrer
+
+- Walter Henke, der Schütze aus Einsatz 1, steht auf der Rampe, wenn er lebt. Sonst Wiegand.
+- Richard Mertens aus Einsatz 1 läuft die Südstreife, wenn er lebt. Sein Bruder streikt und schläft in den Baracken, an denen er vorbeigeht. Sonst Jeschke.
+- Aus Einsatz 2 kehrt niemand zurück. Die Wache vom Nordwall hat nach dem Ausbruch andere Sorgen.
+- Marek, Thamm und Beyer waren in Einsatz 2 als Verstärkung vorgesehen und treten dort nicht mehr auf. Hier kommen sie zum ersten Mal.
+
+### Bewohner des Gleisviertels
+
+In den Baracken schlafen Bahnarbeiter und Streikende. Anders als am Nordwall stehen sie auf der Seite des Hammers. Das Zeichen bleibt die Kerze im Fenster, damit der Spieler es wiedererkennt.
+
+| Wer | Name | Was er tut | Hilft, wenn |
+|---|---|---|---|
+| Rangierer, Barackenältester | Ferdinand Stoll | Lässt beide Türen seiner Baracke offen, der Trupp geht hindurch | Die Stadt hilft |
+| Köchin der Barackenküche | Luise Harms | Löscht die Funzel an der Küchenbaracke, der Weg davor wird dunkel | Die Stadt hilft |
+| Lokheizer | Jan Piontek | Lässt die Pforte im Zaun am Kohlenlager offen | Die Stadt hilft. Lebt Paul Roth, auch wenn die Stadt schweigt |
+| Schrankenwärter | Benno Fuchs | Nie. Er ist bei der Bahn angestellt und fürchtet um die Stelle | |
+| Lademeister im Güterschuppen | Claus Reimers | Nie. Das Werk zahlt ihm die Nachtschicht | |
+
+Warum Piontek länger hilft: Paul Roth stand mit ihm am Feuerfass, bevor die Wache ihn holte. ABLEITUNG aus Pauls Zeit als Streikposten.
+
+Sätze, wenn der Trupp durchgeht:
+
+- Stoll: „Durch die Baracke. Hier schläft jeder fest, wenn ich es sage.“
+- Harms: „Ich mach das Licht aus. Lauft.“
+- Piontek: „Die Pforte klemmt. Fest drücken.“ Lebt Paul Roth und schweigt die Stadt: „Für den jungen Roth. Geht.“
+
+Stufe „schweigt“, Tür zu, höchstens ein Satz dahinter:
+
+- Stoll: „Hier wird geschlafen.“
+- Harms: „Die Küche ist zu.“
+- Piontek: „Ich hab Kinder. Geht außen rum.“
+
+Stufe „gegen den Trupp“: Die Arbeiter rufen nicht nach der Wache. Sie jagen den Trupp weg, und das ist laut genug, dass die nächste Wache nachsehen kommt.
+
+- Stoll: „Haut ab! Wegen euch schießen sie auf uns!“
+- Harms: „Weg von meiner Tür!“
+- Piontek: „Ihr bringt uns die Wache ins Haus!“
+- Aus einer Baracke: „Die haben {toter} auf dem Gewissen!“ / „Das sind keine von uns!“
+
+Die nie helfen, rufen einmal:
+
+- Fuchs: „Wache! Am Übergang sind Leute!“
+- Reimers: „He! Weg von der Rampe!“
+
 ## Rufe
 
 Zum Hören gedacht, wenige Wörter. `{name}` ist der Rufname des Angesprochenen oder Gefallenen, `{toter}` ein Name aus dem Totenbuch.
