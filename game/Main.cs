@@ -619,6 +619,9 @@ void fragment() {
         /// </summary>
         public bool WorldCovered => Briefing || (_panel != null && _panel.Visible) || _sequence != null || (_menus != null && _menus.IsOpen);
 
+        /// <summary>Die laufende Sequenz, sonst null. Der Ton senkt sich in Bild-Sequenzen ab.</summary>
+        public SequenceData? SequenceNow => _sequence?.Data;
+
         /// <summary>Ein Einzelklang der Kulisse an einem Ort der Stadt: Schritte, Tauben, Ratten, Dampf. Stumm, solange die Stadt verdeckt ist.</summary>
         public void PlayScenery(string name, Vector2 position, float volume, float reach, float pitchSpread = 0.06f)
         {

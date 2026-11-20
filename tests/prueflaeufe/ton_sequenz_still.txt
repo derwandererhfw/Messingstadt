@@ -1,0 +1,7 @@
+# Ton in Bild-Sequenzen, Gegenprobe: Bis zum Ende des Prologs ist nichts aus dem Einsatz zu hören, nur die Schreibmaschine.
+# Aufruf mit --intro --fresh --sound-log --fixed-fps 60. Der Lauf endet noch in der Bild-Sequenz.
+wait 20
+expect sequence prolog
+wait 400
+expect sequence prolog
+print
