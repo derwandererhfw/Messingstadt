@@ -46,6 +46,10 @@ namespace Messingstadt
         private const float TramHumReach = 260f;
         private const int CalmLayer = 0, DarkLayer = 1, SuspectLayer = 2, FightLayer = 3;
         private const float LayerFadePerSecond = 0.35f;
+        // Bild-Sequenz: Die Musik geht auf die dünne dunkle Lage zurück und sinkt dazu um diesen Betrag.
+        private const float PanelDuckDb = -6f;
+        private const float PanelFadePerSecond = 0.6f;
+        private const float EverywhereReach = 100000f;
         private const float TitleDb = MusicDb;
         private const float StingerDb = MusicDb + 3f;
         private const float BeatSeconds = 0.5f;
@@ -73,6 +77,8 @@ namespace Messingstadt
         private const float HeartFallPerSecond = 0.5f;
         private const string MusicBus = "Musik";
         private const string EffectsBus = "Geräusche";
+        // Alles, was zum Einsatz gehört: Wetter, Ortsklänge, Dauergeräusche. In Bild-Sequenzen blendet dieser Bus weg.
+        private const string MissionBus = "Einsatz";
         private const string WeatherBus = "Wetter";
         private const string WorldBus = "Welt";
         private static readonly (int X, int Y)[] RoomRays = { (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1) };
@@ -112,6 +118,9 @@ namespace Messingstadt
         private AudioStreamPlayer _heart = null!;
         private AudioStreamPlayer _title = null!;
         private bool _titleWanted;
+        private bool _panelWanted;
+        private float _panelLevel;
+        private int _panelLogged = -1;
         private float _titleLevel;
         private readonly List<AudioStreamPlayer2D> _gutters = new();
         private readonly List<(AudioStreamPlayer2D Player, float Db)> _hushable = new();
@@ -163,8 +172,9 @@ namespace Messingstadt
         {
             AddBus(MusicBus, "Master");
             AddBus(EffectsBus, "Master");
-            AddBus(WeatherBus, EffectsBus);
-            AddBus(WorldBus, EffectsBus);
+            AddBus(MissionBus, EffectsBus);
+            AddBus(WeatherBus, MissionBus);
+            AddBus(WorldBus, MissionBus);
             AudioServer.AddBusEffect(0, new AudioEffectHardLimiter { CeilingDb = LimiterCeilingDb });
             _reverb = new AudioEffectReverb { Dry = 1f, Wet = OpenWet, RoomSize = OpenRoomSize, Damping = 0.7f, Spread = 1f, Hipass = 0.1f, PredelayMsec = 40f, PredelayFeedback = 0.3f };
             AudioServer.AddBusEffect(AudioServer.GetBusIndex(WorldBus), _reverb);
@@ -291,6 +301,13 @@ namespace Messingstadt
                 dark = _heldMusic == "dunkel";
                 suspicious = _heldMusic == "verdacht";
             }
+            if (_panelWanted)
+            {
+                // Bild-Sequenz: nur die dünne dunkle Lage als Bett, abgesenkt.
+                alarmed = suspicious = false;
+                dark = true;
+            }
+            float duck = PanelDuckDb * _panelLevel;
             UpdateTitle(dt);
             UpdateStinger(world, alarmed);
             float fade = LayerFadePerSecond * dt;
@@ -298,12 +315,12 @@ namespace Messingstadt
             _darkLevel = Mathf.MoveToward(_darkLevel, alarmed ? DarkUnderFight : dark ? 1f : 0f, fade);
             _fightLevel = Mathf.MoveToward(_fightLevel, alarmed ? 1f : 0f, fade);
             _suspectLevel = Mathf.MoveToward(_suspectLevel, suspicious ? 1f : 0f, suspicious ? SuspectRisePerSecond * dt : fade);
-            SetLayer(CalmLayer, MusicDb, _calmLevel);
-            SetLayer(DarkLayer, DarkLayerDb, _darkLevel);
-            SetLayer(SuspectLayer, MusicDb, _suspectLevel);
-            SetLayer(FightLayer, MusicDb, _fightLevel);
+            SetLayer(CalmLayer, MusicDb + duck, _calmLevel);
+            SetLayer(DarkLayer, DarkLayerDb + duck, _darkLevel);
+            SetLayer(SuspectLayer, MusicDb + duck, _suspectLevel);
+            SetLayer(FightLayer, MusicDb + duck, _fightLevel);
             // Herzschlag, solange eine Wache gerade etwas bemerkt und noch nicht schießt.
-            bool noticed = world.Units.Exists(u => u.Alive && u.Faction == Faction.Guard && u.GuardState == GuardState.Noticing);
+            bool noticed = !_panelWanted && world.Units.Exists(u => u.Alive && u.Faction == Faction.Guard && u.GuardState == GuardState.Noticing);
             _heartLevel = Mathf.MoveToward(_heartLevel, noticed ? 1f : 0f, (noticed ? HeartRisePerSecond : HeartFallPerSecond) * dt);
             _heart.VolumeDb = Faded(HeartDb, _heartLevel);
         }
@@ -317,7 +334,7 @@ namespace Messingstadt
             if (alarmed != _wasAlarmed)
             {
                 _wasAlarmed = alarmed;
-                if (world.State == MissionState.Running && !_titleWanted && _time >= _nextStinger)
+                if (world.State == MissionState.Running && !_titleWanted && !_panelWanted && _time >= _nextStinger)
                 {
                     _stinger = alarmed ? "music_in_fight" : "music_to_calm";
                     float position = _musicPlayer.GetPlaybackPosition();
@@ -334,6 +351,40 @@ namespace Messingstadt
                 _stinger = null;
             }
         }
+
+        /// <summary>
+        /// Bild-Sequenz (Prolog, Bilder vor und nach den Einsätzen): Die Stadt ist nicht zu sehen, also schweigen Regen, Wind,
+        /// Dauergeräusche und Ortsklänge. Das blendet weich weg und am Ende weich zurück. Kamerafahrten durch die Stadt zählen nicht.
+        /// </summary>
+        private void UpdatePanel(float dt)
+        {
+            _panelWanted = Game.SequenceNow is { } data && data.Beats.Exists(b => b.Show is "image" or "ledger");
+            // Beginnt das Spiel mit dem Prolog, ist die Stadt von Anfang an still.
+            _panelLevel = _panelWanted && _time < 0.3f ? 1f : Mathf.MoveToward(_panelLevel, _panelWanted ? 1f : 0f, PanelFadePerSecond * dt);
+            float open = Mathf.Cos(_panelLevel * Mathf.Pi / 2f);
+            AudioServer.SetBusVolumeDb(AudioServer.GetBusIndex(MissionBus), _panelLevel >= 1f ? SilentDb * 2f : Mathf.LinearToDb(Mathf.Max(open, 0.001f)));
+        }
+
+        /// <summary>Für --sound-log: die Pegel der Musiklagen und des Einsatz-Busses vor, in und nach einer Bild-Sequenz.</summary>
+        private void LogPanel()
+        {
+            int state = _panelLevel <= 0f ? 0 : _panelLevel >= 1f ? 1 : -1;
+            // Die Lagen blenden langsamer als die Absenkung: erst melden, wenn sie angekommen sind.
+            bool settled = state == 1 ? _darkLevel >= 1f && _calmLevel <= 0f : _calmLevel >= 1f || _darkLevel >= 1f || _fightLevel >= 1f;
+            if (state < 0 || state == _panelLogged || !settled)
+            {
+                return;
+            }
+            _panelLogged = state;
+            string label = state == 1 ? "in der Bild-Sequenz" : _heardPanel ? "nach der Bild-Sequenz" : "vor der Bild-Sequenz";
+            _heardPanel |= state == 1;
+            float bus = AudioServer.GetBusVolumeDb(AudioServer.GetBusIndex(MissionBus));
+            GD.Print($"PEGEL {label}: Ruhe {_layers.GetSyncStreamVolume(CalmLayer):0.0} dB, Dunkel {_layers.GetSyncStreamVolume(DarkLayer):0.0} dB, "
+                + $"Verdacht {_layers.GetSyncStreamVolume(SuspectLayer):0.0} dB, Gefecht {_layers.GetSyncStreamVolume(FightLayer):0.0} dB, "
+                + $"Einsatz-Bus {bus:0.0} dB, Regen {_rain.VolumeDb:0.0} dB");
+        }
+
+        private bool _heardPanel;
 
         private void UpdateTitle(float dt)
         {
@@ -422,7 +473,7 @@ namespace Messingstadt
             {
                 return;
             }
-            var player = new AudioStreamPlayer2D { Stream = Looping("gutter"), Position = position, VolumeDb = SilentDb, MaxDistance = GutterReach, Attenuation = 1.6f, Bus = EffectsBus };
+            var player = new AudioStreamPlayer2D { Stream = Looping("gutter"), Position = position, VolumeDb = SilentDb, MaxDistance = GutterReach, Attenuation = 1.6f, Bus = MissionBus };
             AddChild(player);
             player.Play((float)_rng.NextDouble() * (float)player.Stream.GetLength());
             _gutters.Add(player);
@@ -435,7 +486,7 @@ namespace Messingstadt
             var player = new AudioStreamPlayer2D
             {
                 Stream = Looping(name), Position = position, VolumeDb = volume, MaxDistance = reach,
-                Attenuation = 1.6f, Autoplay = true, Bus = EffectsBus,
+                Attenuation = 1.6f, Autoplay = true, Bus = MissionBus,
             };
             AddChild(player);
             if (hushable)
@@ -450,7 +501,7 @@ namespace Messingstadt
             var player = new AudioStreamPlayer2D
             {
                 Stream = Looping("tram_hum"), Position = position, VolumeDb = TramHumDb, MaxDistance = TramHumReach,
-                Attenuation = 1.6f, Autoplay = true, Bus = EffectsBus,
+                Attenuation = 1.6f, Autoplay = true, Bus = MissionBus,
             };
             AddChild(player);
             return player;
@@ -461,14 +512,18 @@ namespace Messingstadt
         /// <summary>Ein Dauergeräusch, das mit etwas mitfliegt. Der Aufrufer startet es und setzt die Lage selbst.</summary>
         public AudioStreamPlayer2D AddMovingLoop(string name, float volume, float reach)
         {
-            var player = new AudioStreamPlayer2D { Stream = Looping(name), VolumeDb = volume, MaxDistance = reach, Attenuation = 1.2f, Bus = EffectsBus };
+            var player = new AudioStreamPlayer2D { Stream = Looping(name), VolumeDb = volume, MaxDistance = reach, Attenuation = 1.2f, Bus = MissionBus };
             AddChild(player);
             return player;
         }
 
-        /// <summary>Überall gleich laut, etwa Donner.</summary>
-        public void PlayEverywhere(string name, float volume)
+        /// <summary>
+        /// Überall gleich laut, etwa Donner. Mit outdoors gehört der Klang zum Einsatz und schweigt in Bild-Sequenzen.
+        /// Ohne outdoors läuft er immer: Bedienung und die Geräusche, die eine Sequenz selbst nennt.
+        /// </summary>
+        public void PlayEverywhere(string name, float volume, bool outdoors = false)
         {
+            outdoors |= name == PeilPing;
             float pitch = 1f;
             UiPlayCount += System.Array.Exists(WorldEverywhere, w => name.StartsWith(w)) ? 0 : 1;
             if (name == PeilPing)
@@ -483,7 +538,7 @@ namespace Messingstadt
                 LastMenuSound = name;
             }
             name = Variant(name);
-            var player = new AudioStreamPlayer { Stream = _sounds[name], VolumeDb = volume, PitchScale = pitch, Autoplay = true, Bus = EffectsBus };
+            var player = new AudioStreamPlayer { Stream = _sounds[name], VolumeDb = volume, PitchScale = pitch, Autoplay = true, Bus = outdoors ? MissionBus : EffectsBus };
             player.Finished += player.QueueFree;
             AddChild(player);
             PlayCount++;
@@ -505,6 +560,8 @@ namespace Messingstadt
             player.MaxDistance = reach;
             player.Attenuation = 1.4f;
             player.PitchScale = pitch * (1f + (float)(_rng.NextDouble() * 2 - 1) * pitchSpread);
+            // Die Schreibmaschine einer Bild-Sequenz hat keinen Ort in der Stadt und bleibt hörbar, wenn der Einsatz schweigt.
+            player.Bus = _panelWanted && reach >= EverywhereReach ? EffectsBus : WorldBus;
             player.Play();
             PlayCount++;
             string group = name.Split('_')[0] + (name.StartsWith("step_") ? "_" + name.Split('_')[1] : "");
@@ -538,7 +595,9 @@ namespace Messingstadt
                 {
                     continue;
                 }
-                float db = player.VolumeDb + Mathf.LinearToDb(Mathf.Pow(1f - distance / player.MaxDistance, player.Attenuation));
+                // Was über den Einsatz-Bus läuft, ist in Bild-Sequenzen weggeblendet.
+                float bus = player.Bus == EffectsBus ? 0f : AudioServer.GetBusVolumeDb(AudioServer.GetBusIndex(MissionBus));
+                float db = player.VolumeDb + bus + Mathf.LinearToDb(Mathf.Pow(1f - distance / player.MaxDistance, player.Attenuation));
                 if (db < SilentDb)
                 {
                     continue;
@@ -594,12 +653,14 @@ namespace Messingstadt
             ListenToDroppedKeys(world);
             ListenToPhone(world);
             ListenToMission(world);
+            UpdatePanel((float)delta);
             UpdateMusic(world, (float)delta);
             UpdateRoom(world, (float)delta);
             UpdateWeather();
             UpdateHush((float)delta);
             if (_logAtExit)
             {
+                LogPanel();
                 LogHeard((float)delta);
             }
         }

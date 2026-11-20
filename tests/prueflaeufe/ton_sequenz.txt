@@ -1,0 +1,14 @@
+# Ton in Bild-Sequenzen: Im Prolog sinkt die Musik auf die dunkle Lage, Regen und Einsatzgeräusche schweigen. Danach kommt alles zurück.
+# Aufruf mit --intro --fresh --sound-log --fixed-fps 60. Die Zeilen PEGEL zeigen die Lautstärken vor, in und nach der Bild-Sequenz.
+wait 20
+expect sequence prolog
+wait 300
+expect sequence prolog
+key Escape
+wait 10
+expect sequence einstieg_nach_prolog
+key Escape
+wait 10
+expect sequence 
+wait 400
+print

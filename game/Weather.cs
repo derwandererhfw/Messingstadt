@@ -510,14 +510,14 @@ void fragment() {
             if (_time > _nextRumble)
             {
                 _nextRumble = _time + Rand(MinRumblePause, MaxRumblePause);
-                Game.Sound.PlayEverywhere($"thunder_{_rng.Next(3)}", Rand(RumbleQuietDb, RumbleLoudDb));
+                Game.Sound.PlayEverywhere($"thunder_{_rng.Next(3)}", Rand(RumbleQuietDb, RumbleLoudDb), outdoors: true);
             }
             // Die Stadt hinter den Häusern: Hund, Sirene, Güterzug, jeweils leise aus der Ferne.
             if (_time > _nextCity)
             {
                 _nextCity = _time + Rand(MinCityPause, MaxCityPause);
                 var (sound, volume) = CitySounds[_rng.Next(CitySounds.Length)];
-                Game.Sound.PlayEverywhere(sound, volume);
+                Game.Sound.PlayEverywhere(sound, volume, outdoors: true);
             }
             for (int i = _strokes.Count - 1; i >= 0; i--)
             {
@@ -555,7 +555,7 @@ void fragment() {
             if (_thunderAt >= 0f && _time >= _thunderAt)
             {
                 _thunderAt = -1f;
-                Game.Sound.PlayEverywhere(_thunderSound, _thunderVolume);
+                Game.Sound.PlayEverywhere(_thunderSound, _thunderVolume, outdoors: true);
                 Game.ShakeCamera(Mathf.Clamp((_thunderVolume + 22f) / 16f, 0.15f, 0.6f));
             }
             var seen = ViewCull.Seen(this, ConeRadius * 2f);
