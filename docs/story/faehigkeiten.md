@@ -56,17 +56,19 @@ Texte, wenn die Regel steht (ein Satz je Fall):
 
 Hanna war Kurierin. Sie hat ihr Leben lang Dinge durch die Stadt getragen, die niemand sehen sollte.
 
-**Die Regel (neu).** Wer das Ziel des Einsatzes oder Beute trägt, ist langsam. Hanna nicht. Sie läuft mit dem Kontobuch, der Kasse oder dem Zweitbuch so schnell wie ohne.
+**Die Regel (neu).** Wer das Ziel des Einsatzes trägt, ist langsam. Hanna nicht. Sie läuft mit dem Kontobuch oder dem Zweitbuch so schnell wie ohne.
+
+Berichtigt am 2026-11-20 nach Auskunft der Level-Session: Beute wird im Spiel nicht getragen. Sie zählt in dem Augenblick, in dem ein Agent sie berührt. Hannas Fähigkeit wirkt darum nur auf das Ziel eines Einsatzes.
 
 Wo das zählt:
 
 | Einsatz | Was Hanna trägt |
 |---|---|
-| 1 | Kontobuch, Lohnkasse |
-| 2 | Bußgeldkasse. Die Gefangenen macht sie nicht schneller |
-| 3 | Lohngelder der Bahnmeisterei. Dazu zählt, dass sie zwischen Stellwerk und Weiche am schnellsten ist |
+| 1 | Kontobuch |
+| 2 | Nichts. Die Gefangenen macht sie nicht schneller |
+| 3 | Nichts. Hier zählt, dass sie zwischen Stellwerk und Weiche am schnellsten ist |
 | 4 | Zweitbuch |
-| 5 | Rademachers Mappe |
+| 5 | Nichts, solange die Mappe nicht getragen wird. Das klärt der Bau von Einsatz 5 |
 | 6 | Nichts zu tragen |
 
 Grenzen aus der Geschichte:
@@ -89,6 +91,8 @@ Beide Fähigkeiten hängen am Beruf, nicht an der Person. Wer Gretas oder Hannas
 - Kein Einsatz setzt eine der beiden Fähigkeiten voraus. Jeder bleibt ohne sie lösbar.
 
 ## Offen für den Nutzer
+
+- Hannas Fähigkeit wirkt so nur in Einsatz 1 und 4. Das ist wenig. Zwei Wege: Beute wird künftig getragen (neue Regel für die Mechanik), oder Hanna bekommt etwas Zweites, etwa leisere Schritte auf Schotter und Kies.
 
 - Soll eine neue Truppführerin den halben Preis haben oder nicht?
 - Ein Passierschein je Einsatz, oder kaufbar wie ein Gegenstand?

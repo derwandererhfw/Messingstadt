@@ -279,7 +279,7 @@ Zwei Helfer, nicht drei: Der Grundriss hat zwei Zaunpforten, und mehr braucht de
 | `rangierer` | Ferdinand Stoll | Zaunpforte der Rangierer [16, 17] | Die Stadt hilft | „Die Pforte ist auf. Macht sie hinter euch zu.“ |
 | `heizer` | Jan Piontek | Zaunpforte der Heizer [25, 17] | Die Stadt hilft. Lebt Paul Roth, auch wenn die Stadt schweigt | „Die Pforte klemmt. Fest drücken.“ Mit Paul, wenn die Stadt schweigt: „Für den jungen Roth. Geht.“ |
 
-Pionteks Ausnahme ist ein Wunsch der Story an Kampagne und Level, nach dem Muster der Wirtin im Nordwall. Ohne sie gilt für beide dieselbe Bedingung.
+Pionteks Ausnahme folgt dem Muster der Wirtin im Nordwall und ist gebaut.
 
 Stufe „schweigt“, Pforte zu, höchstens ein Satz aus der Baracke:
 
@@ -314,10 +314,13 @@ Mit Spielhinweis, gegen den Grundriss geprüft, noch nicht gegen eine Messung. N
 - „Den Schlüssel zum Stellwerk hat Kessin. Der gibt nichts her.“ (Schlüssel beim Stellwerksposten, nicht käuflich)
 - „Südlich von Gleis vier sieht man die Hand nicht vor Augen.“ (dunkel)
 - „Der Junge füllt seine Lampen jetzt hinterm Zaun, bei den Baracken.“ (Lampenjunge im Barackenhof)
-- „Im Zaun sind zwei Pforten. Die Rangierer lassen ihre gern offen.“ (Helfertür, nur wenn die Stadt hilft)
-- „Bei den Heizern brennt noch eine Kerze.“ (Helferfenster, nur wenn die Kerze brennt)
+- „Im Zaun sind zwei Pforten. Eine bei den Rangierern, eine bei den Heizern.“ (stimmt immer, ob offen oder zu)
 
-Die sechs Sätze aus Abschnitt 5 hat die Level-Session gegen den Grundriss geprüft, sie stimmen. Offen bleibt bis zur Messung, ob der Schütze wirklich bis zur Weiche sieht.
+Gestrichen am 2026-11-20: zwei Sätze, die nur bei offener Pforte oder brennender Kerze stimmen. Die Gespräche der Wachen kennen keine Bedingung. Die Kerze soll ohnehin ohne Text verstanden werden.
+
+Die sechs Sätze aus Abschnitt 5 hat die Level-Session gegen den Grundriss geprüft, sie stimmen. Offen bleibt bis zur Messung, ob der Schütze wirklich bis zur Weiche sieht. Stimmt er nicht, heißt der Satz: „Der auf der Rampe sieht weit. Nur nicht durch die Wagen.“
+
+Gebaut laut Level-Session (2026-11-20, `data/mission_03.json`): Namen, Wiederkehrer, Telegrammstreifen mit Uhr, Pionteks Ausnahme für Paul Roth. Kessins Schlüssel liegt nach seinem Tod am Boden und wird aufgehoben. Bei „gegen den Trupp“ gehen die zwei nächsten Wachen nachsehen, es gibt keinen Alarm.
 
 ### Was bleibt
 
@@ -327,6 +330,6 @@ Auftrag, Schlagzeilen, Telegramme, Gespräche ohne Spielhinweis und Kolbs Käste
 
 Freigegeben am 2026-11-20, `faehigkeiten.md`.
 
-- Hanna trägt die Lohngelder der Bahnmeisterei, ohne langsamer zu werden. Der Weg vom Schuppen zum Bahnübergang ist kurz, aber hell.
+- Hanna hat hier nichts zu tragen. Beute wird im Spiel nicht getragen, sie zählt, sobald ein Agent sie berührt. Hannas Fähigkeit wirkt nur auf das Ziel eines Einsatzes.
 - Gretas Passierschein wirkt auf Jeschke, Ullrich, Wiegand und Lohse. Er wirkt nicht auf Tesch und nicht auf den Werkschutz.
 - Otto halbiert die Zeit an der Hebelbank und öffnet die Zaunpforten, wenn die Stadt nicht hilft.
