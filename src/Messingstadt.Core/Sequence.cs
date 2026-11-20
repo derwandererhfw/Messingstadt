@@ -316,6 +316,21 @@ namespace Messingstadt.Core
             : before.Length > 0 && !seen ? new[] { before, "einstieg_nach_prolog" }
             : new[] { "uebergang" };
 
+        /// <summary>
+        /// Die Sequenz eines Einsatzes: die in der Missionsdatei genannte, sonst nach der Nummer der Mission,
+        /// etwa "vor_03" für mission_03, wenn es diese Datei gibt. So greifen fertige Sequenzen, sobald ihr Einsatz gebaut ist.
+        /// </summary>
+        public static string ForMission(string named, string prefix, string missionId, Func<string, bool> exists)
+        {
+            if (named.Length > 0)
+            {
+                return named;
+            }
+            int cut = missionId.LastIndexOf('_');
+            string id = cut < 0 ? "" : prefix + missionId[cut..];
+            return id.Length > 0 && exists(id) ? id : "";
+        }
+
         /// <summary>Nach dem Ende eines Einsatzes: Zeitung, nach einem Sieg dazu einmal je Akte die Sequenz danach.</summary>
         public static string[] AfterMission(bool won, string after, bool seen) =>
             !won ? new[] { "niederlage" }
@@ -330,12 +345,14 @@ namespace Messingstadt.Core
         public const string GuardsOnly = "nur_wachen";
         public const string OwnOnly = "nur_eigene";
         public const string BothSides = "beide_seiten";
+        public const string OneGuardEver = "wache_tot_bisher:eine";
+        public const string SeveralGuardsEver = "wache_tot_bisher:mehrere";
         public const string Quiet = "leise";
         public const string Loud = "laut";
 
         /// <summary>
         /// Wer in der letzten Nacht starb (keine_toten, nur_wachen, nur_eigene, beide_seiten), ob geschossen wurde (leise, laut)
-        /// und je Befreitem, der lebend herauskam, "lebt:Voller Name".
+        /// je Befreitem, der lebend herauskam, "lebt:Voller Name", und je toter Wache dieses Einsatzes "tot:Name".
         /// </summary>
         public static HashSet<string> For(Campaign? campaign, World world)
         {
@@ -352,6 +369,20 @@ namespace Messingstadt.Core
                 if (alive)
                 {
                     flags.Add("lebt:" + name);
+                }
+            }
+            // Tote Wachen der ganzen Kampagne bisher, für das Kreuz auf dem Friedhof der Namenlosen
+            int fallen = campaign?.Dead(LedgerSide.Guard).Count ?? 0;
+            if (fallen > 0)
+            {
+                flags.Add(fallen == 1 ? OneGuardEver : SeveralGuardsEver);
+            }
+            // Wachen dieses Einsatzes, die im Gedächtnis der Kampagne tot sind, etwa "tot:Gustav Rademacher"
+            foreach (var guard in campaign?.Guards ?? new List<GuardMemory>())
+            {
+                if (guard.Mission == campaign!.Current && guard.Fate == GuardFate.Dead)
+                {
+                    flags.Add("tot:" + guard.Name);
                 }
             }
             return flags;
@@ -398,7 +429,20 @@ namespace Messingstadt.Core
 
         /// <summary>Eine Spalte des Totenbuchs für die letzte Nacht: je Zeile Anrede und Name. Leer ohne Tote auf dieser Seite.</summary>
         public static string Ledger(Campaign? campaign, LedgerSide side) =>
-            string.Join("\n", (campaign?.DeadLastNight() ?? new List<LedgerEntry>()).Where(e => side == LedgerSide.Guard ? !e.Ours : e.Ours).Select(e => $"{e.Title} {e.Name}".Trim()));
+            LedgerLines((campaign?.DeadLastNight() ?? new List<LedgerEntry>()).Where(e => side == LedgerSide.Guard ? !e.Ours : e.Ours).Select(e => $"{e.Title} {e.Name}".Trim()).ToList());
+
+        /// <summary>So viele Zeilen passen auf eine Seite des Buchs. Stehen mehr an, zeigt die letzte Zeile, wie viele fehlen.</summary>
+        public const int LedgerLinesPerPage = 8;
+
+        public static string LedgerLines(IReadOnlyList<string> names)
+        {
+            if (names.Count <= LedgerLinesPerPage)
+            {
+                return string.Join("\n", names);
+            }
+            int shown = LedgerLinesPerPage - 1;
+            return string.Join("\n", names.Take(shown)) + $"\nund {names.Count - shown} weitere";
+        }
 
         /// <summary>
         /// Was K. nach einem verlorenen oder abgebrochenen Einsatz telegrafiert. Ist dabei jemand zum zweiten Mal gefallen,

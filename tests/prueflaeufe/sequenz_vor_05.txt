@@ -1,0 +1,23 @@
+# Prüfstand V5 „Die Hausnummer“
+# Aufruf mit --fresh --seq=vor_05 in einem eigenen leeren APPDATA-Ordner. Der Einsatz ist noch nicht gebaut, die Sequenz läuft hier vor Einsatz 1.
+wait 20
+expect sequence vor_05
+expect beat 0
+# Bild: v5_1
+key Space
+key Space
+expect beat 1
+# Bild: v5_2
+key Space
+key Space
+expect beat 2
+# Bild: v5_3
+key Space
+key Space
+expect beat 3
+# Bild: v5_4
+key Space
+key Space
+wait 10
+expect sequence 
+expect hud True

@@ -68,7 +68,7 @@ namespace Messingstadt.Core.Tests
         [Fact]
         public void SequencesUsedByTheGameExist()
         {
-            foreach (string id in new[] { "prolog", "einstieg_nach_prolog", "einstieg", "uebergang", "sieg", "niederlage", "rueckzug", "nach_01", "vor_02", "nach_02" })
+            foreach (string id in new[] { "prolog", "einstieg_nach_prolog", "einstieg", "uebergang", "sieg", "niederlage", "rueckzug", "nach_01", "vor_02", "nach_02", "vor_03", "nach_03", "vor_04", "nach_04", "vor_05", "nach_05" })
             {
                 Assert.True(File.Exists(Path.Combine(RepoRoot(), "data", "sequences", id + ".json")), id);
             }
@@ -94,7 +94,7 @@ namespace Messingstadt.Core.Tests
         [Fact]
         public void EveryCaseOfTheLedgerPageHasExactlyOneBeat()
         {
-            foreach (string id in new[] { "nach_01", "nach_02" })
+            foreach (string id in new[] { "nach_01", "nach_02", "nach_03", "nach_04", "nach_05" })
             {
                 var data = SequenceData.Parse(File.ReadAllText(Path.Combine(RepoRoot(), "data", "sequences", id + ".json")));
                 foreach (string flag in new[] { SequenceFlags.NoDead, SequenceFlags.GuardsOnly, SequenceFlags.OwnOnly, SequenceFlags.BothSides })
@@ -103,6 +103,18 @@ namespace Messingstadt.Core.Tests
                     Assert.Single(data.For(flags).Beats, b => b.Show == "ledger");
                 }
             }
+        }
+
+        [Fact]
+        public void TheEmptyTableShowsOneOpeningPictureDeadOrAlive()
+        {
+            var data = SequenceData.Parse(File.ReadAllText(Path.Combine(RepoRoot(), "data", "sequences", "nach_05.json")));
+            var dead = data.For(new HashSet<string> { "tot:Gustav Rademacher", SequenceFlags.NoDead });
+            var alive = data.For(new HashSet<string> { SequenceFlags.NoDead });
+            Assert.Equal(3, dead.Beats.Count(b => b.Show == "image"));
+            Assert.Equal(3, alive.Beats.Count(b => b.Show == "image"));
+            Assert.Contains("leerer Tisch", dead.Beats[0].Body);
+            Assert.Contains("verbundenem Kopf", alive.Beats[0].Body);
         }
 
         [Fact]
@@ -274,6 +286,56 @@ namespace Messingstadt.Core.Tests
             Assert.Equal(new[] { "sieg" }, SequenceEntry.AfterMission(true, "nach_02", true));
             Assert.Equal(new[] { "sieg" }, SequenceEntry.AfterMission(true, "", false));
             Assert.Equal(new[] { "niederlage" }, SequenceEntry.AfterMission(false, "nach_02", false));
+        }
+
+        [Fact]
+        public void FinishedSequencesApplyOnceTheirMissionExists()
+        {
+            bool Has(string id) => id is "vor_03" or "nach_03";
+            Assert.Equal("vor_03", SequenceEntry.ForMission("", "vor", "mission_03", Has));
+            Assert.Equal("nach_03", SequenceEntry.ForMission("", "nach", "mission_03", Has));
+            Assert.Equal("", SequenceEntry.ForMission("", "vor", "mission_07", Has));
+            Assert.Equal("eigene", SequenceEntry.ForMission("eigene", "vor", "mission_03", Has));
+            Assert.Equal("", SequenceEntry.ForMission("", "vor", "probe", Has));
+        }
+
+        [Fact]
+        public void DeadGuardsOfTheMissionBecomeFlags()
+        {
+            var campaign = new Campaign { Current = "mission_05" };
+            campaign.Guards.Add(new GuardMemory { Name = "Gustav Rademacher", Mission = "mission_05", Fate = GuardFate.Dead });
+            campaign.Guards.Add(new GuardMemory { Name = "Anderer", Mission = "mission_02", Fate = GuardFate.Dead });
+            var flags = SequenceFlags.For(campaign, NewWorld());
+            Assert.Contains("tot:Gustav Rademacher", flags);
+            Assert.DoesNotContain("tot:Anderer", flags);
+        }
+
+        [Fact]
+        public void ALongLedgerPageEndsWithTheNumberLeftOut()
+        {
+            var names = Enumerable.Range(1, 12).Select(i => "Wachmann " + i).ToList();
+            Assert.Equal(8, SequenceTexts.LedgerLines(names.Take(8).ToList()).Split('\n').Length);
+            string[] page = SequenceTexts.LedgerLines(names).Split('\n');
+            Assert.Equal(SequenceTexts.LedgerLinesPerPage, page.Length);
+            Assert.Equal("Wachmann 7", page[6]);
+            Assert.Equal("und 5 weitere", page[7]);
+            Assert.Equal("", SequenceTexts.LedgerLines(new List<string>()));
+        }
+
+        [Fact]
+        public void TheGraveyardKnowsOneOrSeveralDeadGuardsSoFar()
+        {
+            var w = NewWorld();
+            var campaign = new Campaign { Nights = 2 };
+            Assert.DoesNotContain(SequenceFlags.OneGuardEver, SequenceFlags.For(campaign, w));
+            campaign.Ledger.Add(new LedgerEntry { Name = "Krüger", Side = LedgerSide.Guard, Night = 1 });
+            Assert.Contains(SequenceFlags.OneGuardEver, SequenceFlags.For(campaign, w));
+            campaign.Ledger.Add(new LedgerEntry { Name = "Otto Brenner", Side = LedgerSide.Squad, Night = 1 });
+            Assert.Contains(SequenceFlags.OneGuardEver, SequenceFlags.For(campaign, w));
+            campaign.Ledger.Add(new LedgerEntry { Name = "Jahnke", Side = LedgerSide.Guard, Night = 2 });
+            var flags = SequenceFlags.For(campaign, w);
+            Assert.Contains(SequenceFlags.SeveralGuardsEver, flags);
+            Assert.DoesNotContain(SequenceFlags.OneGuardEver, flags);
         }
 
         [Fact]

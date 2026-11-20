@@ -1,0 +1,31 @@
+# Prüfstand V3 mit dem Friedhof der Namenlosen, eine Wache starb bisher
+# Aufruf mit --fresh --seq=vor_03 --seq-flags=wache_tot_bisher:eine in einem eigenen leeren APPDATA-Ordner.
+wait 20
+expect sequence vor_03
+expect beat 0
+# Bild: f_v3_1
+key Space
+key Space
+expect beat 1
+# Bild: friedhof_eine
+key Space
+key Space
+expect beat 2
+# Bild: friedhof_zweiter
+key Space
+key Space
+expect beat 3
+# Bild: f_v3_2
+key Space
+key Space
+expect beat 4
+# Bild: f_v3_3
+key Space
+key Space
+expect beat 5
+# Bild: f_v3_4
+key Space
+key Space
+wait 10
+expect sequence 
+expect hud True

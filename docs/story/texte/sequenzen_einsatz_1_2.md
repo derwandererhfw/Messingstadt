@@ -74,3 +74,7 @@ Letztes Panel jeder N-Sequenz. Das Bild zeigt ein aufgeschlagenes Buch auf Kolbs
 | Ablauf, Bedingungen, Buch-Panel mit zwei Spalten | IM SPIEL: `src/Messingstadt.Core/Sequence.cs`, `data/sequences/nach_01.json`, `vor_02.json`, `nach_02.json` |
 
 Geprüft gegen den Styleguide: Kolb aus dem Off im Präteritum, kein Gesicht von Kolb, kein erkennbarer Agent, kein Text setzt einen lebenden Agenten voraus, höchstens ein Akzent je Bild, kein Rot. Je Sequenz eine neue Tatsache: N1 der Sperling, V2 die Übergabe an den Werkschutz, N2 der Mann vom Werk beim Verhör. Abweichungen der Bilder vom Plan: Der Vogel in N1 ist eine kleine saubere Zeichnung, kein schneller Federstrich. In V2 Panel 1 stehen hinter dem Fenster Türme im Dunkeln, es wirkt eher wie Abend als wie Nachmittag.
+
+## Zusatz vom 2026-11-20: Namen auf der Buchseite
+
+Vom Nutzer über die Hauptsession freigegeben („2. ja“). Das Buch-Panel zeigt jetzt ein großes aufgeschlagenes Buch, die Namen der Nacht stehen auf den Seiten selbst: links „Unsere“ mit Nacht und Ort als Kopfzeile, rechts „Ihre“. Ohne Tote bleibt die Seite bis auf die Kopfzeilen leer. Auf eine Seite passen acht Zeilen. Sterben mehr, stehen sieben Namen da und darunter „und N weitere“. Kolbs Sätze sind unverändert. Die Schrift ist die vorhandene Serifenschrift, schräg gestellt, keine Handschrift.

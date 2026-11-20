@@ -84,3 +84,7 @@ Die drei Proben vom 2026-11-06 dienen als Stilvorlage. Probe 1 und 2 können mit
 1. Panel 4: von Story geprüft, Ok. Nicht schärfer formulieren, „selten“ deckt das Ende.
 2. Nicht wiederholbar, wegen des Dauertods (Story). Soll er es doch werden, braucht er eine Fassung ohne Namen und ohne die vier Zuschreibungen.
 3. Kolbs Kellerzimmer bleibt ohne Akzent (mit dem Plan freigegeben).
+
+## Zusatz vom 2026-11-20: der Wachmann mit Namen
+
+Vom Nutzer über die Hauptsession freigegeben („3. ja“), Inhalt VORSCHLAG der Story, bis der Nutzer das Bild abnimmt. Zwischen Panel 7 und der Ortskarte steht ein neues Bild: Hermann Krüger, Wache 1 in Einsatz 1, unter einer Laterne im Regen, er zündet sich ein Streichholz an. Akzent Bernstein: das Streichholz. Kein Kasten von Kolb. Darunter setzt das Spiel eine Zeile wie in Panel 6: „HERMANN KRÜGER“ und „Wachmann. Drei Kinder.“ Dauer 4 s. Die Schwarzblende vor der Ortskarte liegt jetzt auf diesem Bild. IM SPIEL: `data/sequences/prolog.json`, Bild `game/assets/sequences/prolog/p8.jpg`.

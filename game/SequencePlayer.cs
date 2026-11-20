@@ -44,11 +44,12 @@ namespace Messingstadt
         public string Id => Data.Id;
         public int Beat => _run.Beat;
 
-        public static SequenceData Load(string id)
-        {
-            string path = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data", "sequences", id + ".json"));
-            return SequenceData.Parse(File.ReadAllText(path));
-        }
+        private static string PathOf(string id) =>
+            Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "data", "sequences", id + ".json"));
+
+        public static bool Exists(string id) => File.Exists(PathOf(id));
+
+        public static SequenceData Load(string id) => SequenceData.Parse(File.ReadAllText(PathOf(id)));
 
         public override void _Ready()
         {
@@ -237,11 +238,10 @@ namespace Messingstadt
             if (beat.Image.Length > 0)
             {
                 BuildImage(beat);
+                BuildLedgerPages();
+                return;
             }
-            else
-            {
-                Narration();
-            }
+            Narration();
             var body = Sheet(PaperUi.PaperColor, 0.68f, 560f);
             body.AddChild(PaperUi.Text(_run.Head.Length > 0 ? _run.Head : "TOTENBUCH", 14, PaperUi.StampRed, PaperUi.Serif));
             if (_run.Title.Length > 0)
@@ -269,6 +269,48 @@ namespace Messingstadt
             }
             var sheet = (Control)body.GetParent();
             sheet.Rotation = 0.012f;
+        }
+
+        // Wo im Bild sequences/buch.jpg die beiden Seiten des aufgeschlagenen Buchs liegen, als Anteil des Bildschirms.
+        private static readonly Rect2 LedgerLeft = new(0.265f, 0.25f, 0.30f, 0.64f);
+        private static readonly Rect2 LedgerRight = new(0.615f, 0.25f, 0.33f, 0.64f);
+        private static readonly Color LedgerInk = new(0.10f, 0.11f, 0.20f);
+
+        /// <summary>
+        /// Die Namen der Nacht stehen auf den Seiten des Buchs im Bild: links die eigenen, rechts die der Wache,
+        /// leicht schräg wie von Hand eingetragen. Eine Seite ohne Tote bleibt bis auf ihre Kopfzeile leer.
+        /// </summary>
+        private void BuildLedgerPages()
+        {
+            var slanted = new FontVariation { BaseFont = PaperUi.Serif, VariationTransform = new Transform2D(1f, 0f, 0.22f, 1f, 0f, 0f) };
+            foreach (var (page, heading, key, tilt) in new[]
+            {
+                (LedgerLeft, "Unsere", "totenbuch_eigene", -0.012f),
+                (LedgerRight, "Ihre", "totenbuch_wache", 0.010f),
+            })
+            {
+                var column = new VBoxContainer
+                {
+                    AnchorLeft = page.Position.X, AnchorRight = page.End.X, AnchorTop = page.Position.Y, AnchorBottom = page.End.Y,
+                    MouseFilter = Control.MouseFilterEnum.Ignore, Rotation = tilt,
+                };
+                column.AddThemeConstantOverride("separation", 6);
+                _sheet.AddChild(column);
+                // Kopfzeile mit Nacht und Ort steht nur auf der linken Seite, die Überschrift der Spalte auf beiden
+                string top = page == LedgerLeft ? _run.Title : " ";
+                var title = PaperUi.Text(top, 15, PaperUi.Ink, PaperUi.Typewriter);
+                title.ClipText = true;
+                column.AddChild(title);
+                column.AddChild(PaperUi.Text(heading, 22, PaperUi.StampRed, PaperUi.Serif));
+                column.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 2), Color = PaperUi.Ink, MouseFilter = Control.MouseFilterEnum.Ignore });
+                string names = Texts.TryGetValue(key, out string? list) ? list : "";
+                foreach (string name in names.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var line = PaperUi.Text(name, 24, LedgerInk, slanted);
+                    line.ClipText = true;
+                    column.AddChild(line);
+                }
+            }
         }
 
         /// <summary>Kolbs Erzählkasten oben links, getippt.</summary>

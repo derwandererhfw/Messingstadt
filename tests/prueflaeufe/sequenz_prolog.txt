@@ -1,4 +1,4 @@
-# Prolog: Leertaste schreibt Kolbs Kasten fertig und schaltet weiter, Esc springt in die Kamerafahrt
+# Prolog: Leertaste schreibt Kolbs Kasten fertig und schaltet weiter, vor der Ortskarte steht der Wachmann mit Namen, Esc springt in die Kamerafahrt
 # Aufruf mit --intro --fresh: Sequenzen an, kein Spielstand, also ein neues Spiel mit Prolog.
 wait 20
 expect sequence prolog
@@ -12,6 +12,22 @@ key Space
 expect beat 2
 key Space
 expect beat 3
+key Space
+key Space
+expect beat 4
+key Space
+key Space
+expect beat 5
+key Space
+key Space
+expect beat 6
+key Space
+key Space
+# Nach der Frage nach der Pistole: der Wachmann mit Namen, ohne Kasten von Kolb
+expect beat 7
+# Bild!: prolog_wachmann
+key Space
+expect beat 8
 key Escape
 wait 10
 expect sequence einstieg_nach_prolog

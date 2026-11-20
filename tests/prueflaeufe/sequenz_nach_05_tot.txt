@@ -1,0 +1,23 @@
+# Prüfstand N5 „Der leere Tisch“, Rademacher tot
+# Aufruf mit "--fresh" "--seq=nach_05" "--seq-flags=tot:Gustav Rademacher;keine_toten" in einem eigenen leeren APPDATA-Ordner. Der Einsatz ist noch nicht gebaut, die Sequenz läuft hier vor Einsatz 1.
+wait 20
+expect sequence nach_05
+expect beat 0
+# Bild: n5_1a
+key Space
+key Space
+expect beat 1
+# Bild: n5_2x
+key Space
+key Space
+expect beat 2
+# Bild: n5_3x
+key Space
+key Space
+expect beat 3
+# Bild: n5_buchx
+key Space
+key Space
+wait 10
+expect sequence 
+expect hud True

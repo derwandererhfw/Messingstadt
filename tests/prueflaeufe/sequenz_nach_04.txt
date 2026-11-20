@@ -1,0 +1,27 @@
+# Prüfstand N4 „Seite neun“
+# Aufruf mit --fresh --seq=nach_04 in einem eigenen leeren APPDATA-Ordner. Der Einsatz ist noch nicht gebaut, die Sequenz läuft hier vor Einsatz 1.
+wait 20
+expect sequence nach_04
+expect beat 0
+# Bild: n4_1
+key Space
+key Space
+expect beat 1
+# Bild: n4_2
+key Space
+key Space
+expect beat 2
+# Bild: n4_3
+key Space
+key Space
+expect beat 3
+# Bild: n4_4
+key Space
+key Space
+expect beat 4
+# Bild: n4_buch
+key Space
+key Space
+wait 10
+expect sequence 
+expect hud True

@@ -286,6 +286,8 @@ void fragment() {
         // Ein Spiel ist begonnen. Solange nur der Startbildschirm offen ist, wird nichts gespeichert und kein Abbruch verbucht.
         private bool _playing;
         private float _sequenceTime;
+        // --seq-flags=a;b ersetzt im Prüflauf die Merker für die Bedingungen der Abschnitte.
+        private string[] _sequenceFlags = Array.Empty<string>();
         private Vector2? _look;
         private int _shotOnFireTick = -1;
         private string? _shotPath;
@@ -970,7 +972,7 @@ void fragment() {
         /// </summary>
         private string[] EntrySequences()
         {
-            string before = _mission.SequenceBefore;
+            string before = SequenceBefore;
             string[] ids = SequenceEntry.For(_newCampaign, _forceSequence, before, _campaign.SeenSequences.Contains(before));
             _newCampaign = false;
             _forceSequence = null;
@@ -978,11 +980,14 @@ void fragment() {
             return ids;
         }
 
+        private string SequenceBefore => SequenceEntry.ForMission(_mission.SequenceBefore, "vor", MissionId, SequencePlayer.Exists);
+        private string SequenceAfter => SequenceEntry.ForMission(_mission.SequenceAfter, "nach", MissionId, SequencePlayer.Exists);
+
         private void MarkSeen(string[] ids)
         {
             foreach (string id in ids)
             {
-                if ((id == _mission.SequenceBefore || id == _mission.SequenceAfter) && !_campaign.SeenSequences.Contains(id))
+                if ((id == SequenceBefore || id == SequenceAfter) && !_campaign.SeenSequences.Contains(id))
                 {
                     _campaign.SeenSequences.Add(id);
                     SaveCampaign();
@@ -1028,7 +1033,13 @@ void fragment() {
                 return;
             }
             // Abschnitte mit Bedingung laufen nur, wenn sie zum Ausgang des Einsatzes passen.
-            data = data.For(SequenceFlags.For(_campaign, World));
+            var flags = SequenceFlags.For(_campaign, World);
+            if (_sequenceFlags.Length > 0)
+            {
+                // Prüfstand: Die Merker kommen vom Aufruf, etwa für Fassungen von Einsätzen, die noch nicht gebaut sind.
+                flags = new HashSet<string>(_sequenceFlags);
+            }
+            data = data.For(flags);
             if (data.Beats.Count == 0)
             {
                 done?.Invoke();
@@ -1335,6 +1346,10 @@ void fragment() {
                 else if (a.StartsWith("--peil="))
                 {
                     _peilSeconds = float.Parse(a["--peil=".Length..], System.Globalization.CultureInfo.InvariantCulture);
+                }
+                else if (a.StartsWith("--seq-flags="))
+                {
+                    _sequenceFlags = a["--seq-flags=".Length..].Split(';', StringSplitOptions.RemoveEmptyEntries);
                 }
                 else if (a.StartsWith("--seq-time="))
                 {
@@ -1797,7 +1812,7 @@ void fragment() {
             _lastReward = World.State == MissionState.Won ? Campaign.Reward(World.Rating, district?.Reward ?? Campaign.BaseReward) : 0;
             _campaign.Finish(World, district);
             SaveCampaign();
-            string after = _mission.SequenceAfter;
+            string after = SequenceAfter;
             string[] ids = SequenceEntry.AfterMission(World.State == MissionState.Won, after, _campaign.SeenSequences.Contains(after));
             MarkSeen(ids);
             PlaySequences(ids, ShowResult);
