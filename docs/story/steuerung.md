@@ -62,6 +62,7 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 | 2026-11-20 | Die Fähigkeiten von Greta und Hanna werden gebaut, wie in `faehigkeiten.md` empfohlen | Nutzer über die Hauptsession („3. wie empfehlung“) |
 | 2026-11-20 | Einsatz 3: Schritte auf Schotter sind lauter, Otto halbiert die Zeit an der Hebelbank | Nutzer über die Hauptsession („4. ja“) |
 | 2026-11-20 | Zwischensequenzen Stufe 1 und 2 freigegeben, Texte in `texte/zwischensequenzen.md`, Szenenpläne durchgesehen | Nutzer über Hauptsession und Sequenzen-Session („Ja, Stufe 1“) |
+| 2026-11-20 | Hanna bekommt als zweite Fähigkeit leise Schritte auf lautem Boden (Schotter, Kies). Grund: Beute wird im Spiel nicht getragen, ihre erste Fähigkeit wirkt nur in Einsatz 1 und 4 | Nutzer („Ja, leisere Schritte“) |
 
 ## Offene Entscheidungen
 

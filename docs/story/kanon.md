@@ -84,6 +84,6 @@ Ergebnisse werden als HISTORISCH mit Quelle eingetragen.
 - Die Währung heißt Groschen (Nutzer, 2026-11-14). Zahlen im Spiel sind Groschen.
 - Ein Viertel, das der Hammer hält, fällt nicht an Brandt zurück (Nutzer, 2026-11-14).
 - Werkschutzführer ist eine eigene Gegnerart, zuerst Rademacher in Einsatz 5 (Nutzer, 2026-11-14).
-- Greta und Hanna haben je eine eigene Fähigkeit (Nutzer, 2026-11-14: „ja“). Inhalt in `faehigkeiten.md`, Regeln baut die Mechanik.
+- Greta und Hanna haben je eine eigene Fähigkeit (Nutzer, 2026-11-14: „ja“). Inhalt in `faehigkeiten.md`, Regeln baut die Mechanik. Hanna ist dazu auf lautem Boden leise (Nutzer, 2026-11-20).
 - Brandt erscheint nie selbst im Einsatz, nur über Werkschutz, Luftschiff und Geld.
 - Die Kampagne läuft vom 22. November bis 5. Dezember 1927 in der Reihenfolge aus `../story.md`.
