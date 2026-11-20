@@ -76,7 +76,7 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 
 ## Nächste Schritte
 
-1. Einsatz 3 „Der Güterbahnhof“ wird gebaut. Sobald der Grundriss da ist, Abschnitt 8 der Vorlage füllen. Danach Sätze mit Spielhinweis gegen Karte und Messung prüfen.
+1. Einsatz 3 „Der Güterbahnhof“ wird gebaut. Abschnitt 8 der Vorlage steht auf dem Grundriss vom 2026-11-20. Nach dem Bau Sätze mit Spielhinweis gegen Karte und Messung prüfen.
 2. Namen für die Wachen der Einsätze 4 bis 6, in der Form von `texte/wachen.md`. Einsatz 3 ist erledigt.
 3. Titelseite des Finales aus dem Totenbuch, wenn Einsatz 6 gebaut wird.
 4. Recherche zum Zeitkolorit für die offenen Fragen in `kanon.md`.
