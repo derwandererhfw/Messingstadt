@@ -204,7 +204,8 @@ Gegen diesen Grundriss geprüft, noch nicht gegen eine Messung:
 | Satz | Stimmt |
 |---|---|
 | „Im Stellwerk sitzen zwei vom Werk.“ | Ja, Posten und Runde |
-| „Der auf der Rampe sieht bis zur Weiche. Nur nicht durch die Wagen.“ | Im Grundsatz ja. Ob er wirklich bis zur Weiche sieht, hängt an seiner Sichtweite, das klärt Schritt 2 |
+| „Der auf der Rampe sieht weit. Nur nicht durch die Wagen.“ | Ja. Die erste Fassung „bis zur Weiche“ stimmte nicht: Der Schütze sieht 11 Felder, vom Ostende der Rampe bis zur Weiche sind es knapp 15. Mit der Story getauscht |
+| „Im Zaun sind zwei Pforten. Eine bei den Rangierern, eine bei den Heizern.“ | Ja |
 | „Der Hund läuft von einem Ende zum andern.“ | Ja, Gleis 3 |
 | „An der Weiche steht einer allein.“ | Ja |
 | „Auf dem Schotter hört man jeden Schritt.“ | Ja, sobald die Regel gebaut ist |
