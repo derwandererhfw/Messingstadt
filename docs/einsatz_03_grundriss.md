@@ -141,7 +141,7 @@ Acht Gegner und ein Hund, zwei davon Werkschutz. Namen aus `story/texte/wachen.m
 | Posten | Art | Wo | Verhalten | Käuflich |
 |---|---|---|---|---|
 | Stellwerksposten | Werkschutz | (21,5, 6,5), Blick Süd | Steht vor der Tür, trägt den Schlüssel. Sieht den Bohlenweg hinunter | nein |
-| Stellwerksrunde | Werkschutz | Osthof | Rundgang (18, 7) – (25, 7) – (25, 4) – (25, 7) | nein |
+| Stellwerksrunde | Werkschutz | Osthof, Nordteil | Rundgang (24, 6) – (28, 6) – (28, 3) – (24, 3). Sie bleibt nördlich der Ladestraße und kommt nie vor die Tür: Mit der ersten Runde (18, 7) – (25, 7) war die Tür praktisch immer im Blick, ein leiser Weg ins Stellwerk fehlte | nein |
 | Rampenschütze | Schütze | Rampe | Rundgang (7, 6) – (13, 6). Sieht über die Gleise, nicht durch Wagen | ja |
 | Gleisstreife mit Hund | Hundeführer, Hund | Gleis 3 | Rundgang (2, 11) – (26, 11), die ganze Länge | ja |
 | Südstreife | Wachmann | Bahnweg | Rundgang (9, 16) – (27, 16) | ja |

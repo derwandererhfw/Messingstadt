@@ -188,7 +188,10 @@ namespace Messingstadt.Core
         /// <summary>Die Truppführerin kennt die Stadtwache: Ist sie dabei, nehmen Wachen weniger, siehe LeaderBacks.</summary>
         public const string SkillLeader = "truppfuehrerin";
 
-        /// <summary>Kurierin: Was sie trägt, hält sie nicht auf. Mit dem Ziel des Einsatzes geht sie so schnell wie ohne.</summary>
+        /// <summary>
+        /// Kurierin: Was sie trägt, hält sie nicht auf, mit dem Ziel des Einsatzes geht sie so schnell wie ohne.
+        /// Und sie geht auf Schotter und Kies, ohne weiter gehört zu werden als auf Pflaster.
+        /// </summary>
         public const string SkillCourier = "kurierin";
         public const int GuardConeRange = 5 * TileUnits;
 

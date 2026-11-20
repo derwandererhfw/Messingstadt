@@ -347,7 +347,9 @@ namespace Messingstadt.Core
         {
             string skill = Agents.First(a => a.Slot == slot).Skill;
             skill = skill == World.SkillLeader ? "" : skill;
-            var next = Newcomers.FirstOrDefault(n => n.Skill == skill && !Agents.Exists(a => a.Name == n.Name));
+            // Die Kurierin unter den Neuen trägt in der Liste keine Kennung: Sie übernimmt den Platz der Kurierin und damit deren Beruf.
+            var next = Newcomers.FirstOrDefault(n => (n.Skill == skill || (skill == World.SkillCourier && n.Job == "Kurierin"))
+                && !Agents.Exists(a => a.Name == n.Name));
             var record = next != null
                 ? new AgentRecord { Name = next.Name, Slot = slot, Skill = skill, Job = next.Job }
                 : new AgentRecord { Name = $"Rekrut {Agents.Count + 1}", Slot = slot, Skill = skill, Job = "Rekrut" };
