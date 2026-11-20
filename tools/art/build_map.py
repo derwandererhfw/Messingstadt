@@ -28,6 +28,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 import generate_concept as g
+import gleisviertel
 import roofs as R
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -50,6 +51,7 @@ THEMES = {
                     (18.95, 5.0, 120), (18.95, 5.6, 120), (16.0, 16.95, 56), (4.95, 4.4, 150), (4.95, 5.0, 150)],
     },
 }
+THEMES["gleisviertel"] = gleisviertel.THEME
 
 
 # ---------- Dächer ----------
@@ -987,7 +989,8 @@ def build(scene, theme):
         getattr(g, name).seed(theme["seed"] * 10 + i)
     g.DUAL = True
     g.MANHOLES = ()
-    g.ground_np = ground_from(scene)
+    yard = scene["id"] == "gleisviertel"
+    g.ground_np = gleisviertel.ground_from(scene) if yard else ground_from(scene)
     for points in g.AMBIENT.values():
         points.clear()
     s = g.Scene(scene["width"])
@@ -997,6 +1000,16 @@ def build(scene, theme):
     HELPERS.update({m["helper"]: (m["x"], m["y"]) for m in scene.get("marks", ()) if m["kind"] == "helferfenster"})
     LAMP_KINDS.clear()
     PICTURE_LIGHTS.clear()
+    if yard:  # Güterbahnhof: eigene Bausteine, was er nicht kennt (Bretterzaun), kommt aus dem Nordwall
+        me = sys.modules[__name__]
+        for b in scene["buildings"] + scene["walls"]:
+            if not gleisviertel.building(b, s, things, me):
+                nordwall_building(b, s, things)
+        gleisviertel.furnish(scene, s, things, glows, me)
+        solids = [(b["x0"], b["y0"], b["x1"], b["y1"]) for b in scene["buildings"] + scene["walls"]]
+        s.dirt = g.draw_ground(s, solids, glows)
+        s.solids, s.glows = solids, glows
+        return s, g.sort_things(things)
     for b in scene["buildings"] + scene["walls"]:
         nordwall_building(b, s, things)
     for gate in scene.get("gates", ()):

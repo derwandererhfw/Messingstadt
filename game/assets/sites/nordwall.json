@@ -191,15 +191,21 @@
             3.0,
             9.5
           ],
-          "height": 34
+          "height": 34,
+          "lines": {
+            "call": "Wache! Am Gericht sind Leute!"
+          }
         },
         {
-          "id": "wachmannsfrau",
+          "id": "frau_des_wachmanns",
           "window": [
             19.0,
             18.2
           ],
-          "height": 30
+          "height": 30,
+          "lines": {
+            "call": "Erich! Im Hof ist wer!"
+          }
         },
         {
           "id": "kasernenkoch",
@@ -207,7 +213,10 @@
             17.0,
             8.3
           ],
-          "height": 30
+          "height": 30,
+          "lines": {
+            "call": "He! Wer schleicht da am Hof?"
+          }
         }
       ],
       "mist": [

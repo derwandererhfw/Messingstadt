@@ -60,13 +60,15 @@ Hanna war Kurierin. Sie hat ihr Leben lang Dinge durch die Stadt getragen, die n
 
 Berichtigt am 2026-11-20 nach Auskunft der Level-Session: Beute wird im Spiel nicht getragen. Sie zählt in dem Augenblick, in dem ein Agent sie berührt. Hannas Fähigkeit wirkt darum nur auf das Ziel eines Einsatzes.
 
+**Leise Schritte (neu, Nutzer am 2026-11-20: „Ja, leisere Schritte“).** Hanna ist auf lautem Boden so leise wie andere auf Pflaster. Schotter und Kies verraten sie nicht. Sie hat als Kurierin gelernt, über Höfe und Bahndämme zu gehen, ohne dass ein Hund anschlägt.
+
 Wo das zählt:
 
 | Einsatz | Was Hanna trägt |
 |---|---|
 | 1 | Kontobuch |
 | 2 | Nichts. Die Gefangenen macht sie nicht schneller |
-| 3 | Nichts. Hier zählt, dass sie zwischen Stellwerk und Weiche am schnellsten ist |
+| 3 | Nichts zu tragen. Dafür ist sie auf dem Schotter leise und kommt als Einzige abseits der Bohlen ungehört über die Gleise |
 | 4 | Zweitbuch |
 | 5 | Nichts, solange die Mappe nicht getragen wird. Das klärt der Bau von Einsatz 5 |
 | 6 | Nichts zu tragen |
@@ -78,7 +80,9 @@ Grenzen aus der Geschichte:
 
 Was die Mechanik bauen müsste:
 
-- Die Bremse beim Tragen gilt nicht für die Kurierin. Sonst nichts.
+- Die Bremse beim Tragen gilt nicht für die Kurierin.
+- Die größere Hörweite auf lautem Boden gilt nicht für die Kurierin. In Einsatz 3 ist das der Schotter (Hörweite 3 statt 2 Felder), später jeder Boden mit derselben Regel, etwa Kies.
+- Der Hund wittert sie weiter wie jeden anderen. Leise heißt nicht unsichtbar.
 - Dafür braucht es eine Kennung für ihren Beruf, wie beim Schlosser und beim Buchhalter. Stirbt Hanna, übernimmt die Neue den Beruf und die Fähigkeit.
 
 Ein Text ändert sich in Einsatz 4: Dort steht bisher, Hanna trage das Buch nicht schneller. Das wird umgekehrt, sobald die Regel steht.
@@ -92,7 +96,6 @@ Beide Fähigkeiten hängen am Beruf, nicht an der Person. Wer Gretas oder Hannas
 
 ## Offen für den Nutzer
 
-- Hannas Fähigkeit wirkt so nur in Einsatz 1 und 4. Das ist wenig. Zwei Wege: Beute wird künftig getragen (neue Regel für die Mechanik), oder Hanna bekommt etwas Zweites, etwa leisere Schritte auf Schotter und Kies.
 
 - Soll eine neue Truppführerin den halben Preis haben oder nicht?
 - Ein Passierschein je Einsatz, oder kaufbar wie ein Gegenstand?

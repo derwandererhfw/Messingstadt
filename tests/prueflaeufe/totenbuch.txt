@@ -18,7 +18,7 @@ key Key2
 wait 3
 expect trait
 # Am Mauszeiger steht der Name der Wache vorn
-expect guardline Krüger, Wachmann, käuflich für 100, Greta ist dabei
+expect guardline Hermann Krüger, Wachmann, käuflich für 100, Greta ist dabei
 # Vor dem ersten Toten ist das Buch leer
 key Escape
 expect screen Pausenmappe
@@ -59,14 +59,14 @@ place exit
 waitfor state Won
 wait 20
 expect panel True
-seetext Tote der Wache: Krüger.
+seetext Tote der Wache: Hermann Krüger.
 key Escape
 click Totenbuch
-expect ledger unsere  | wache Krüger | seite 1/1
+expect ledger unsere  | wache Hermann Krüger | seite 1/1
 seetext UNSERE   0
 seetext Niemand.
 seetext DIE WACHE   1
-seetext Krüger
+seetext Hermann Krüger
 seetext Kesselviertel
 seetext GEFALLEN
 # Zurück auf den Plan: Der erste Tote einer Nacht erhöht die Blutschuld nicht, die Fenster brennen weiter

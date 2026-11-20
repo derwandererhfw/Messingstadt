@@ -8,7 +8,7 @@ stand Greta 4 16
 wait 4
 pointunit Friedhofsstreife
 wait 2
-expect hover Buchholz, Wachmann, käuflich für 100, Greta ist dabei
+expect hover Eduard Buchholz, Wachmann, käuflich für 100, Greta ist dabei
 expect hoverfits True
 # Am rechten Kartenrand dasselbe mit dem Posten an der Remise
 hold D
@@ -18,5 +18,5 @@ stand Greta 26 20
 wait 4
 pointunit Posten an der Remise
 wait 2
-expect hover Roloff, Wachmann, nicht käuflich
+expect hover Bernhard Roloff, Wachmann, nicht käuflich
 expect hoverfits True

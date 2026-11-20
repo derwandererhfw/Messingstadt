@@ -25,7 +25,24 @@ namespace Messingstadt
             var world = Game.World;
             DrawExit(world);
             DrawPhone(world);
-            if (!world.ItemTaken && !world.IsRescue)
+            foreach (var t in world.Targets)
+            {
+                if (t.Done)
+                {
+                    continue;
+                }
+                // Sabotageziel: derselbe Ring wie am Gegenstand, mit Balken, solange jemand daran arbeitet.
+                var at = Game.SabotageMark(t);
+                float beat = 0.5f + 0.5f * Mathf.Sin(Time.GetTicksMsec() / 200f);
+                DrawIsoRing(at, new Color(1f, 0.85f, 0.3f, 0.4f + 0.6f * beat));
+                if (t.Progress > 0)
+                {
+                    float f = (float)t.Progress / t.Ticks;
+                    DrawRect(new Rect2(at + new Vector2(-14, 10), new Vector2(28, 4)), new Color(0, 0, 0, 0.7f));
+                    DrawRect(new Rect2(at + new Vector2(-13, 11), new Vector2(26 * f, 2)), new Color(1f, 0.85f, 0.3f));
+                }
+            }
+            if (!world.ItemTaken && !world.IsRescue && !world.IsSabotage)
             {
                 // Pulsierende Markierung: Das Missionsziel bleibt sichtbar, auch wenn etwas davorsteht.
                 var item = Game.ToScreen(world.ItemX, world.ItemY);
@@ -402,7 +419,7 @@ namespace Messingstadt
         {
             var (x0, y0, x1, y1) = w.Exit;
             var pts = new[] { Game.ToScreen(x0, y0), Game.ToScreen(x1, y0), Game.ToScreen(x1, y1), Game.ToScreen(x0, y1), Game.ToScreen(x0, y0) };
-            DrawPolyline(pts, new Color(0.4f, 1f, 0.5f, w.ItemTaken ? 1f : 0.35f), 1f);
+            DrawPolyline(pts, new Color(0.4f, 1f, 0.5f, w.ItemTaken || w.AllSabotaged ? 1f : 0.35f), 1f);
         }
 
         private void DrawIsoRing(Vector2 p, Color c, float radius = 13f)

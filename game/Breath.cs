@@ -11,8 +11,6 @@ namespace Messingstadt
     /// </summary>
     public partial class Breath : Node2D
     {
-        private const float MouthHeight = 30f;
-        private const float MouthForward = 4f;
         private const float RestSeconds = 3.4f;
         private const float WalkSeconds = 2.4f;
         private const float WindedSeconds = 1f;
@@ -54,6 +52,7 @@ namespace Messingstadt
             private float _time;
             private Vector2 _mouth;
             private bool _drewLast;
+            private bool _mouthHidden;
 
             public Main Game = null!;
             public Unit Unit = null!;
@@ -85,7 +84,8 @@ namespace Messingstadt
                 ZIndex = Game.DepthZ(tile.X, tile.Y) + 1;
                 float across = Unit.FacingX - Unit.FacingY, toward = Unit.FacingX + Unit.FacingY;
                 var facing = new Vector2(across, toward * 0.5f).Normalized();
-                _mouth = foot + new Vector2(0f, -MouthHeight) + facing * MouthForward;
+                // Der Mund sitzt je Figur anders hoch und folgt dem gezeichneten Blick, siehe figures.json unter mouth.
+                _mouth = foot + Game.MouthOffset(Unit, out _mouthHidden);
                 if (Unit.Sprinting)
                 {
                     _winded = WindedAfterSprint;
@@ -130,7 +130,7 @@ namespace Messingstadt
 
             private void UpdateSmoking(float dt)
             {
-                bool calm = Unit.Faction == Faction.Guard && !Unit.Bribed && Unit.GuardState == GuardState.Patrol;
+                bool calm = Unit.Faction == Faction.Guard && !Unit.Bribed && Unit.GuardState == GuardState.Patrol && !Unit.Type.Bites;
                 if (!calm)
                 {
                     _smokeLeft = 0f;
@@ -157,7 +157,8 @@ namespace Messingstadt
                 float drag = phase < DragSeconds ? Mathf.Sin(phase / DragSeconds * Mathf.Pi) : 0f;
                 float flare = _flareLeft / FlareSeconds;
                 var night = Game.NightColor;
-                _flare.Visible = _smokeLeft > 0f;
+                // Von hinten sieht man keine Glut, nur das Aufflammen des Streichholzes als Schein um den Kopf.
+                _flare.Visible = _smokeLeft > 0f && (!_mouthHidden || _flareLeft > 0f);
                 _flare.Position = _mouth;
                 _flare.Scale = Vector2.One * (0.022f + 0.012f * drag + 0.13f * flare);
                 _flare.Modulate = new Color(1f / night.R, (0.5f + 0.35f * flare) / night.G, (0.16f + 0.4f * flare) / night.B, 0.55f + 0.2f * drag + 0.25f * flare);
@@ -172,7 +173,7 @@ namespace Messingstadt
                     DrawTextureRect(Disc, new Rect2(ToLocal(p.Pos) - new Vector2(size, size), new Vector2(size * 2f, size * 2f)), false,
                         new Color(p.Light.R, p.Light.G, p.Light.B, PuffAlpha * (1f - f)));
                 }
-                if (_smokeLeft > 0f)
+                if (_smokeLeft > 0f && !_mouthHidden)
                 {
                     DrawRect(new Rect2(ToLocal(_mouth), new Vector2(1f, 1f)), new Color(3.2f, 1.2f, 0.4f));
                 }

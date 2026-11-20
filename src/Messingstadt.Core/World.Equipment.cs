@@ -155,6 +155,7 @@ namespace Messingstadt.Core
             u.Path.Clear();
             u.TargetId = -1;
             u.DoorTarget = -1;
+            u.SabotageTarget = -1;
             u.BribeTarget = -1;
             u.Sprinting = false;
             u.BandageTicks = Math.Max(1, u.Items[slot].Def.DurationTicks);

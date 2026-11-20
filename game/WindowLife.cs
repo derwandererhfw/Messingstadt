@@ -173,7 +173,7 @@ namespace Messingstadt
         private float Rand(float min, float max) => min + (float)_rng.NextDouble() * (max - min);
 
         /// <summary>Meldet ein Fenster oder einen Buchstaben an. kind: window, tv oder sign.</summary>
-        public void AddPane(int id, string kind, Vector2 center)
+        public void AddPane(int id, string kind, Vector2 center, string helper = "")
         {
             PaneSpots.Add((kind, center));
             var pane = new Pane
@@ -195,6 +195,11 @@ namespace Messingstadt
             };
             _panes.Add(pane);
             _byId[pane.Id] = pane;
+            if (helper.Length > 0)
+            {
+                // Die Karte nennt das Fenster eines Helfers selbst. Das geht der Suche nach dem nächsten Fenster vor.
+                _namedHelperPanes[helper] = pane;
+            }
         }
 
         public override void _Ready()
@@ -304,6 +309,7 @@ namespace Messingstadt
         private readonly List<Pane> _watchers = new();
         private readonly List<(Pane Pane, Vector2 Tile)> _dimmers = new();
         private readonly Dictionary<string, Pane> _helperPanes = new();
+        private readonly Dictionary<string, Pane> _namedHelperPanes = new();
         private readonly HashSet<int> _mourned = new();
         private int _testMournFrame = -1;
         private int _frames;
@@ -359,7 +365,7 @@ namespace Messingstadt
             }
             foreach (var house in MapSite.Current.Houses)
             {
-                var pane = NearestPane(house.Window, house.Height);
+                var pane = _namedHelperPanes.GetValueOrDefault(house.Id) ?? NearestPane(house.Window, house.Height);
                 bool helps = house.Helper && CityMood.HouseHelps(Game!, house.Id);
                 if (pane != null)
                 {

@@ -10,7 +10,8 @@ using Messingstadt.Core;
 // Dritter Ausbau Arme je Stufe: -- --arme
 // Anderer Einsatz: --mission=mission_02 vorweg. Einsätze der Art Befreien messen dann ihre eigenen Spielweisen.
 
-const int Runs = 300;
+// MS_LAEUFE=1 für einen einzelnen Lauf, etwa mit MS_SPUR.
+int Runs = int.TryParse(Environment.GetEnvironmentVariable("MS_LAEUFE"), out int runsWanted) ? runsWanted : 300;
 const int MaxTicks = 20 * 300;
 const int SearchTicks = 400;
 const int MinWindowTicks = 30;
@@ -1077,6 +1078,7 @@ Func<Action<World, Unit, List<Unit>>> HomeRun = () =>
 // des Lageplans, Emil kauft Hundeführer und Schließer, beide öffnen je eine Zelle und führen die Gefangenen im nächsten Fenster zurück.
 // lag: Der Klick kommt zufällig bis zu so viele Takte zu spät.
 int quietRun = 0;
+int passShown = 0;
 Func<Action<World>> QuietWithMoney(int lag, string[]? club = null, bool withGreta = false, bool gretaWatches = false) => () =>
 {
     var watch = quietWatch ??= WatchMap.Measure(Loader.ParseMap(mapJson), LitMission());
@@ -1244,11 +1246,15 @@ Func<Action<World>> QuietWithMoney(int lag, string[]? club = null, bool withGret
 
 // Der leise Weg ohne Geld: Otto allein mit Totschläger. Er passt Hund und Streifen nach dem Lageplan ab, öffnet die Pforte,
 // schlägt den Schließer nieder, holt beide und wartet im Hof auf das Fenster für den Rückweg.
-Func<Action<World>> QuietLocksmith(int lag, string[]? buy = null) => () =>
+// Mit escort wartet die Truppführerin am Wartepunkt vor der Pforte und geht am Ende zurück. Mit pass zeigt sie den Passierschein
+// der ersten einfachen Wache, die jemanden bemerkt: so, wie ein Spieler das Papier als Rettung aus der Hand zieht.
+// Mit ahead zeigt sie es vorab der Wallstreife 1, sobald die nah genug ist, und Otto geht los, solange die Wache wegschaut.
+Func<Action<World>> QuietLocksmith(int lag, string[]? buy = null, bool escort = false, bool pass = false, bool ahead = false) => () =>
 {
     var watch = quietWatch ??= WatchMap.Measure(Loader.ParseMap(mapJson), LitMission());
     var rng = new Random(4711 + quietRun++);
     int stage = 0, goAt = -1;
+    bool gretaHome = false;
     var home = HomeRun();
     return w =>
     {
@@ -1259,6 +1265,30 @@ Func<Action<World>> QuietLocksmith(int lag, string[]? buy = null) => () =>
         }
         int pforte = w.Doors.FindIndex(d => d.Name == "Pforte zur Gerichtsgasse");
         var emil = buy == null ? null : w.Units.Find(u => u.Skill == World.SkillBookkeeper && u.Alive);
+        var greta = escort ? w.Units.Find(u => World.CarriesPass(u) && u.Alive) : null;
+        if (greta != null)
+        {
+            if (stage == 0)
+            {
+                w.OrderMove(greta.Id, 6, 15);
+            }
+            else if (stage == 7 && !gretaHome && !greta.ShowsPass)
+            {
+                gretaHome = w.OrderMove(greta.Id, 9, 29);
+            }
+            if (pass && w.PassAvailable && !greta.ShowsPass)
+            {
+                var threat = ahead
+                    ? w.Units.Find(g => stage == 1 && g.Name == "Wallstreife 1" && otto.Path.Count == 0 && greta.Path.Count == 0
+                        && World.Distance(g, greta) <= 7 * World.TileUnits && w.PassCheck(greta, g) == PassAnswer.Works)
+                    : w.Units.Where(g => g.Alive && g.Faction == Faction.Guard && g.GuardState == GuardState.Noticing
+                    && w.PassCheck(greta, g) == PassAnswer.Works).OrderBy(g => World.Distance(g, greta)).FirstOrDefault();
+                if (threat != null && w.OrderShowPass(greta.Id, threat.Id))
+                {
+                    passShown++;
+                }
+            }
+        }
         bool At(int x, int y) => otto.Path.Count == 0 && otto.TileX == x && otto.TileY == y;
         bool Clear(int x, int y, int speed, int hold)
         {
@@ -1290,7 +1320,7 @@ Func<Action<World>> QuietLocksmith(int lag, string[]? buy = null) => () =>
                 break;
             case 1:
                 int doorTicks = w.HasItem(otto, ItemKind.Lockpick) ? World.DoorTicks / 2 : World.DoorTicks;
-                if (At(7, 15) && (emil == null || emil.Path.Count == 0) && Go(Clear(6, 7, World.WalkSpeed(otto), doorTicks + (emil == null ? 10 : 40))))
+                if (At(7, 15) && (emil == null || emil.Path.Count == 0) && Go(Clear(6, 7, World.WalkSpeed(otto), doorTicks + (emil == null ? 10 : 40)) || (ahead && w.Pass == PassState.Away)))
                 {
                     w.OrderOpenDoor(otto.Id, pforte);
                     if (emil != null)
@@ -1449,6 +1479,37 @@ void ReportRescue(string name, Func<Action<World>> make, int money = 600)
 }
 
 // Die drei Rückwege und die Abkürzung durch den Friedhofsgang: --wege. Mit zugesperrten Türen (Rückhalt 0) und mit offenen Helfertüren (Rückhalt 5).
+// Der Passierschein der Truppführerin: --passierschein. Leise ohne Geld mit Otto allein, mit Greta als Begleitung ohne Papier
+// und mit Papier, je mit genauem und verspätetem Klick, dazu kürzere Dauern des Wegschauens.
+if (args.Length > 0 && args[0] == "--passierschein")
+{
+    var p0 = new[] { "pistole" };
+    Console.WriteLine($"{missionId}, je {Runs} Läufe, Kasse 0");
+    foreach (var (label, kit) in new[] { ("Totschläger", new[] { "pistole", "totschlaeger" }), ("Totschl. + Dietrich", new[] { "pistole", "totschlaeger", "dietrich" }) })
+    {
+        loadout = new[] { p0, kit, p0, p0 };
+        foreach (int lag in new[] { 0, 10, 20 })
+        {
+            string late = $"{label}, {lag / 20.0:0.0#} s";
+            ReportRescue($"Otto allein, {late}", QuietLocksmith(lag), 0);
+            ReportRescue($"  mit Greta, ohne Papier", QuietLocksmith(lag, escort: true), 0);
+            foreach (int seconds in new[] { 20, 10 })
+            {
+                tune = w => w.PassAwaySeconds = seconds;
+                passShown = 0;
+                ReportRescue($"  mit Greta, Papier {seconds} s", QuietLocksmith(lag, escort: true, pass: true), 0);
+                Console.WriteLine($"    gezeigt in {100 * passShown / Runs}% der Läufe");
+                passShown = 0;
+                ReportRescue($"  Papier vorab, {seconds} s", QuietLocksmith(lag, escort: true, pass: true, ahead: true), 0);
+                Console.WriteLine($"    gezeigt in {100 * passShown / Runs}% der Läufe");
+            }
+            tune = null;
+        }
+    }
+    loadout = null;
+    return;
+}
+
 if (args.Length > 0 && (args[0] == "--wege" || args[0] == "--laut"))
 {
     bool loudOnly = args[0] == "--laut";
@@ -1488,6 +1549,459 @@ if (args.Length > 0 && (args[0] == "--wege" || args[0] == "--laut"))
         }
     }
     variant = null;
+    return;
+}
+
+// ---------- Einsatz 3, Güterbahnhof: Sabotieren ----------
+
+// Ein Plan für den Bahnhof: Jeder Agent hat eine eigene Liste von Schritten und arbeitet sie für sich ab.
+// geh: Weg nach Lageplan, wartet an Ort und Stelle, bis er frei ist, höchstens 30 s. lauf: ohne Warten. kauf, schlag: eine Wache.
+// tuer, ziel: Tür öffnen, Sabotageziel. rauch: Rauchtopf auf ein Feld. bought: Diese Wachen kauft der Plan, danach zählt der Lageplan sie nicht mehr.
+Func<Action<World>> YardPlan(Dictionary<string, (string What, int X, int Y, string Name)[]> plan, int lag, string[]? bought = null) => () =>
+{
+    var full = WatchMap.Measure(Loader.ParseMap(mapJson), LitMission());
+    WatchMap? reduced = null;
+    if (bought != null)
+    {
+        var m = LitMission();
+        m.Guards.RemoveAll(g => bought.Contains(g.Name) || bought.Contains(g.Handler));
+        reduced = WatchMap.Measure(Loader.ParseMap(mapJson), m);
+    }
+    var rng = new Random(1927 + quietRun++);
+    var at = plan.Keys.ToDictionary(k => k, _ => 0);
+    var since = plan.Keys.ToDictionary(k => k, _ => 0);
+    var goAt = plan.Keys.ToDictionary(k => k, _ => -1);
+    bool trace = Environment.GetEnvironmentVariable("MS_SPUR") != null;
+    var noted = new HashSet<string>();
+    var without = new Dictionary<string, WatchMap>();
+    return w =>
+    {
+        if (trace)
+        {
+            foreach (var g in w.Units.Where(u => u.Faction == Faction.Guard && u.Alive && (u.NoticeTicks > 0 || u.GuardState != GuardState.Patrol) && noted.Add(u.Name + u.GuardState)))
+            {
+                Console.WriteLine($"  {w.Tick / 20.0,5:0.0}s {g.Name} {g.GuardState} bei {g.TileX},{g.TileY}  Trupp: {string.Join(" ", w.Units.Where(u => u.Faction == Faction.Agent && u.Alive).Select(u => $"{u.Name[..2]}{u.TileX},{u.TileY}"))}");
+            }
+        }
+        bool allBought = bought != null && bought.All(n => w.Units.Any(u => u.Name == n && (u.Bribed || !u.Alive)));
+        var watch = allBought ? reduced! : full;
+        foreach (var (who, steps) in plan)
+        {
+            if (steps.Length == 0)
+            {
+                continue;
+            }
+            var a = w.Units.Find(u => u.Name == who && u.Faction == Faction.Agent);
+            if (a == null || !a.Alive || at[who] >= steps.Length)
+            {
+                continue;
+            }
+            var (what, x, y, name) = steps[at[who]];
+            since[who]++;
+            void Next()
+            {
+                if (trace)
+                {
+                    Console.WriteLine($"  {w.Tick / 20.0,5:0.0}s {who} fertig: {what} {name} {x},{y}  bei {a.TileX},{a.TileY}  {w.Rating}");
+                }
+                at[who]++;
+                since[who] = 0;
+                goAt[who] = -1;
+            }
+            var guard = w.Units.Find(u => u.Name == name && u.Faction == Faction.Guard);
+            bool ClearTo(Unit g)
+            {
+                if (!without.TryGetValue(g.Name, out var alone))
+                {
+                    var m = LitMission();
+                    m.Guards.RemoveAll(x => x.Name == g.Name || (bought != null && bought.Contains(x.Name) && w.Units.Any(u => u.Name == x.Name && u.Bribed)));
+                    without[g.Name] = alone = WatchMap.Measure(Loader.ParseMap(mapJson), m);
+                }
+                var way = w.Map.FindPath(a.TileX, a.TileY, g.TileX, g.TileY + 1);
+                return way != null && alone.FirstRisk(way, a.X, a.Y, World.WalkSpeed(a), w.Tick + lag, 60) < 0;
+            }
+            switch (what)
+            {
+                case "geh":
+                case "lauf":
+                    if (a.TileX == x && a.TileY == y && a.Path.Count == 0)
+                    {
+                        Next();
+                        break;
+                    }
+                    if (a.Path.Count > 0 && a.Path[^1] == (x, y))
+                    {
+                        break;
+                    }
+                    var path = w.Map.FindPath(a.TileX, a.TileY, x, y);
+                    if (path == null)
+                    {
+                        Next();
+                        break;
+                    }
+                    // Das Feld, auf dem er steht, zählt mit: Auf Schotter ist schon der erste Schritt lauter als das Stehen.
+                    var whole = new List<(int X, int Y)> { (a.TileX, a.TileY) };
+                    whole.AddRange(path);
+                    // Steht eine Zahl im Namen, wartet er höchstens so viele halbe Sekunden, etwa im Rauch.
+                    bool free = what == "lauf" || w.Rating == MissionRating.Loud || since[who] > (int.TryParse(name, out int patience) ? patience : 80)
+                        || (watch.FirstRisk(whole, a.X, a.Y, World.WalkSpeed(a), w.Tick + lag, 20) < 0
+                            && watch.FirstRisk(whole, a.X, a.Y, World.WalkSpeed(a), w.Tick + lag + 10, 20) < 0);
+                    if (free && goAt[who] < 0)
+                    {
+                        goAt[who] = w.Tick + (lag > 0 ? rng.Next(lag + 1) : 0);
+                    }
+                    if (goAt[who] >= 0 && w.Tick >= goAt[who])
+                    {
+                        w.OrderMove(a.Id, x, y);
+                    }
+                    break;
+                case "kauf":
+                    if (guard == null || guard.Bribed || !guard.Alive || guard.GuardState == GuardState.Combat || w.Money < w.BribePrice(guard, a) || since[who] > 60)
+                    {
+                        Next();
+                    }
+                    else if (a.BribeTarget != guard.Id && (x == 0 || World.Distance(a, guard) <= x * World.TileUnits) && (y == 0 || ClearTo(guard)))
+                    {
+                        // x ist die Entfernung, ab der er losgeht: Er läuft der Wache nicht über den halben Bahnhof nach.
+                        // y = 1: erst, wenn außer dieser Wache niemand den Weg zu ihr sieht.
+                        w.OrderBribe(a.Id, guard.Id);
+                    }
+                    else if (a.BribeTarget != guard.Id)
+                    {
+                        since[who] = 0;
+                    }
+                    break;
+                case "schlag":
+                    if (guard == null || !guard.Alive || since[who] > 100)
+                    {
+                        Next();
+                        break;
+                    }
+                    if (a.TargetId != guard.Id && w.Rating != MissionRating.Loud && since[who] <= 60)
+                    {
+                        // Erst losgehen, wenn außer dem Opfer niemand den Weg zu ihm und die Arbeit danach sieht. x, y ist das Feld hinter ihm.
+                        if (!without.TryGetValue(name, out var alone))
+                        {
+                            var m = LitMission();
+                            m.Guards.RemoveAll(g => g.Name == name);
+                            without[name] = alone = WatchMap.Measure(Loader.ParseMap(mapJson), m);
+                        }
+                        var behind = w.Map.FindPath(a.TileX, a.TileY, x, y);
+                        if (behind == null || alone.FirstRisk(behind, a.X, a.Y, World.WalkSpeed(a), w.Tick + lag, 100) >= 0)
+                        {
+                            break;
+                        }
+                    }
+                    int slot = a.Items.FindIndex(i => i.Def.Kind == ItemKind.Melee);
+                    if (slot >= 0 && a.Weapon != slot)
+                    {
+                        w.SelectWeapon(a.Id, slot);
+                    }
+                    if (a.TargetId != guard.Id)
+                    {
+                        w.OrderAttack(a.Id, guard.Id);
+                    }
+                    break;
+                case "tuer":
+                    int door = w.Doors.FindIndex(d => d.Name == name);
+                    if (door < 0 || w.Doors[door].Open || since[who] > 40)
+                    {
+                        Next();
+                    }
+                    else if (a.DoorTarget != door)
+                    {
+                        // x, y ist das Feld vor der Tür: erst gehen, wenn der Weg dorthin und die Arbeit frei sind. 0, 0 heißt sofort.
+                        var toDoor = x > 0 ? w.Map.FindPath(a.TileX, a.TileY, x, y) : null;
+                        if (toDoor == null || w.Rating == MissionRating.Loud || since[who] > 80
+                            || watch.FirstRisk(toDoor, a.X, a.Y, World.WalkSpeed(a), w.Tick + lag, 60) < 0)
+                        {
+                            w.OrderOpenDoor(a.Id, door);
+                        }
+                    }
+                    break;
+                case "ziel":
+                    if (w.Targets[x].Done || since[who] > 160)
+                    {
+                        Next();
+                    }
+                    else if (a.SabotageTarget != x)
+                    {
+                        // y = 1: erst gehen, wenn der Weg ans Ziel und die Dauer der Arbeit dort frei sind.
+                        var t = w.Targets[x];
+                        var toTarget = y == 1 ? w.Map.FindPath(a.TileX, a.TileY, t.X / World.TileUnits, t.Y / World.TileUnits + 1) : null;
+                        if (toTarget == null || w.Rating == MissionRating.Loud || since[who] > 120
+                            || watch.FirstRisk(toTarget, a.X, a.Y, World.WalkSpeed(a), w.Tick + lag, t.Ticks + 20) < 0)
+                        {
+                            w.OrderSabotage(a.Id, x);
+                        }
+                    }
+                    break;
+                case "rauch":
+                    if (w.OrderThrowSmoke(a.Id, x, y) || since[who] > 10)
+                    {
+                        Next();
+                    }
+                    break;
+                case "fenster":
+                    // Wartet, bis ein späterer Weg frei sein wird: von x, y nach "zx,zy", Beginn in "takte" Takten. Die Wache "ohne" zählt nicht,
+                    // etwa der Posten, der dann im Rauch steht. Höchstens 60 s.
+                    var parts = name.Split(',');
+                    var later = w.Map.FindPath(x, y, int.Parse(parts[0]), int.Parse(parts[1]));
+                    if (!without.TryGetValue(parts[3], out var blind))
+                    {
+                        var m = LitMission();
+                        m.Guards.RemoveAll(g => g.Name == parts[3]);
+                        without[parts[3]] = blind = WatchMap.Measure(Loader.ParseMap(mapJson), m);
+                    }
+                    int start = w.Tick + int.Parse(parts[2]) + lag;
+                    if (later == null || since[who] > 120 || w.Rating == MissionRating.Loud
+                        || (blind.FirstRisk(later, x * 1000 + 500, y * 1000 + 500, World.WalkSpeed(a), start, 20) < 0
+                            && blind.FirstRisk(later, x * 1000 + 500, y * 1000 + 500, World.WalkSpeed(a), start + 20, 20) < 0))
+                    {
+                        Next();
+                    }
+                    break;
+                case "folge":
+                    // Bleibt beim Kollegen, bis der auf Otto wartet oder am Ende seines Plans ist.
+                    var lead = w.Units.Find(u => u.Name == name && u.Faction == Faction.Agent);
+                    if (lead == null || !lead.Alive || at[name] >= plan[name].Length || plan[name][at[name]] is ("warte", _, _, "Otto"))
+                    {
+                        Next();
+                    }
+                    else if (World.Distance(a, lead) > 2 * World.TileUnits && (a.Path.Count == 0 || since[who] % 4 == 0))
+                    {
+                        w.OrderMove(a.Id, lead.TileX, lead.TileY);
+                    }
+                    break;
+                case "warte":
+                    // Bis der Kollege mit diesem Namen seinen Plan zu Ende hat.
+                    if (name == "Tür" ? w.Doors.Exists(d => d.Name == "Zaunpforte der Heizer" && d.Open) || since[who] > 400
+                        : !plan.ContainsKey(name) || at[name] >= plan[name].Length || plan[name][at[name]] is ("warte", _, _, "Otto") || since[who] > 400)
+                    {
+                        Next();
+                    }
+                    break;
+            }
+        }
+    };
+};
+
+// Laut am Bahnhof: Stellung beziehen, das Feuer eröffnen, die Wachen kommen lassen. Ist es still, öffnet der Schlosser das Stellwerk
+// und legt die Hebelbank lahm, die Kurierin die Weiche, dann alle zum Bahnübergang.
+Func<Action<World>> LoudYard((int X, int Y) post) => () =>
+{
+    int stage = 0, calm = 0;
+    return w =>
+    {
+        var squad = w.Units.Where(u => u.Faction == Faction.Agent && u.Alive).ToList();
+        if (squad.Count == 0)
+        {
+            return;
+        }
+        var ids = squad.Select(a => a.Id).ToList();
+        var armed = w.Units.Where(u => u.Faction == Faction.Guard && u.Alive && !u.Bribed && !u.Type.OrderOnly).ToList();
+        var seen = armed.Where(g => squad.Any(a => w.CanSee(a, g, 10 * World.TileUnits))).ToList();
+        int px = post.X * World.TileUnits + World.TileUnits / 2, py = post.Y * World.TileUnits + World.TileUnits / 2;
+        long Far(Unit u) => Math.Abs(u.X - px) + Math.Abs(u.Y - py);
+        void Fire(List<Unit> targets)
+        {
+            var target = targets.OrderBy(g => World.Distance(squad[0], g)).First();
+            foreach (var a in squad.Where(a => a.TargetId < 0 || !w.Units[a.TargetId].Alive || !seen.Contains(w.Units[a.TargetId])))
+            {
+                w.OrderAttack(a.Id, target.Id);
+            }
+        }
+        if (seen.Count > 0 && (stage > 0 || w.Rating == MissionRating.Loud))
+        {
+            calm = 0;
+            Fire(seen);
+            return;
+        }
+        switch (stage)
+        {
+            case 0:
+                if (w.Rating == MissionRating.Loud || squad.All(a => Far(a) <= 2 * World.TileUnits))
+                {
+                    stage = 1;
+                }
+                else if (squad.Any(a => a.Path.Count == 0 && Far(a) > 2 * World.TileUnits))
+                {
+                    w.OrderGroupMove(ids, post.X, post.Y);
+                }
+                break;
+            case 1:
+                if (w.Rating != MissionRating.Loud && armed.Count > 0)
+                {
+                    Fire(armed);
+                    break;
+                }
+                var away = squad.Where(a => Far(a) > 2 * World.TileUnits && a.Path.Count == 0).Select(a => a.Id).ToList();
+                foreach (var a in squad)
+                {
+                    a.TargetId = -1;
+                }
+                if (away.Count > 0)
+                {
+                    w.OrderGroupMove(away, post.X, post.Y);
+                }
+                if (++calm >= 20 || armed.Count == 0)
+                {
+                    stage = 2;
+                }
+                break;
+            case 2:
+                foreach (var a in squad)
+                {
+                    a.TargetId = -1;
+                }
+                if (w.AllSabotaged)
+                {
+                    if (squad.Any(a => a.Path.Count == 0 && !(a.X < w.Exit.X1 && a.Y >= w.Exit.Y0 && a.Y < w.Exit.Y1)))
+                    {
+                        w.OrderGroupMove(ids, 1, 7);
+                    }
+                    break;
+                }
+                var smith = squad.Find(a => a.Skill == World.SkillLocksmith) ?? squad[0];
+                var runner = squad.Find(a => a.Skill == World.SkillCourier && a != smith) ?? squad.Find(a => a != smith) ?? smith;
+                int gate = w.Doors.FindIndex(d => d.Name == "Stellwerk");
+                if (!w.Targets[0].Done && smith.SabotageTarget != 0 && smith.DoorTarget != gate && !w.OrderSabotage(smith.Id, 0))
+                {
+                    w.OrderOpenDoor(smith.Id, gate);
+                }
+                var second = w.Targets[0].Done || runner != smith ? runner : null;
+                if (!w.Targets[1].Done && second != null && second.SabotageTarget != 1)
+                {
+                    w.OrderSabotage(second.Id, 1);
+                }
+                // Die übrigen bleiben beim Schlosser.
+                foreach (var a in squad.Where(a => a != smith && a != second && a.Path.Count == 0 && World.Distance(a, smith) > 4 * World.TileUnits))
+                {
+                    w.OrderMove(a.Id, smith.TileX, smith.TileY + 2);
+                }
+                break;
+        }
+    };
+};
+
+void ReportYard(string name, Func<Action<World>> make, int money = 600)
+{
+    int wins = 0, dead = 0, unseen = 0, quiet = 0, late = 0, ticks = 0, left = 0, paid = 0, done = 0, doneQuiet = 0, doneAt = 0;
+    for (int seed = 1; seed <= Runs; seed++)
+    {
+        var mission = LitMission();
+        mission.Seed = seed * 7919;
+        mission.Money = money;
+        var w = new World(Loader.ParseMap(mapJson), mission);
+        tune?.Invoke(w);
+        var strategy = make();
+        for (int i = 0; i < MaxTicks && w.State == MissionState.Running; i++)
+        {
+            if (i % 10 == 0)
+            {
+                strategy(w);
+            }
+            w.Step();
+            if (w.AllDoneTick == w.Tick - 1 && w.AllDoneTick >= 0)
+            {
+                // Stand in dem Augenblick, in dem das zweite Ziel erledigt ist.
+                doneQuiet += w.Rating != MissionRating.Loud ? 1 : 0;
+            }
+        }
+        bool won = w.State == MissionState.Won;
+        done += w.AllSabotaged ? 1 : 0;
+        doneAt += w.AllSabotaged ? w.AllDoneTick / 20 : 0;
+        wins += won ? 1 : 0;
+        unseen += won && w.Rating == MissionRating.Unseen ? 1 : 0;
+        quiet += won && w.Rating != MissionRating.Loud ? 1 : 0;
+        late += w.TimeUp ? 1 : 0;
+        dead += w.Units.Count(u => u.Faction == Faction.Agent && !u.Alive);
+        ticks += w.Tick;
+        left += won && w.AllDoneTick >= 0 ? (w.TimeLimitTicks - w.AllDoneTick) / 20 : 0;
+        paid += money - w.Money;
+    }
+    Console.WriteLine($"{name,-44} Sieg {100 * wins / Runs,3}%  leise {100 * quiet / Runs,3}%  unentdeckt {100 * unseen / Runs,3}%  beide Ziele {100 * done / Runs,3}% (ohne Schuss {100 * doneQuiet / Runs,3}%, nach {(done > 0 ? doneAt / done : 0),3}s)  Uhr abgelaufen {100 * late / Runs,3}%  tote Agenten {(double)dead / Runs:0.00}  Dauer {ticks / Runs / 20,3}s  Rest auf der Uhr {(wins > 0 ? left / wins : 0),3}s  bezahlt {paid / Runs,3}");
+}
+
+Dictionary<string, (string, int, int, string)[]> YardSteps(bool money)
+{
+    var p1 = "";
+    // Der leise Weg führt durch den Barackenhof, dort liegt kein Schotter: Kohlenweg, hinter den Baracken nach Osten, durch die
+    // Zaunpforte der Heizer und über den Bahnweg zwischen die Wagen von Gleis 4 und 6. Wartepunkte sind Felder, die der Lageplan
+    // nie im Blick zeigt. Hanna legt die Weiche lahm, Otto das Stellwerk im Rauch.
+    // Mit Geld kauft Emil vorher Südstreife und Weichenposten, Greta steht dabei.
+    var hanna = new List<(string, int, int, string)> { ("geh", 8, 22, p1), ("geh", 27, 22, p1) };
+    var otto = new List<(string, int, int, string)> { ("geh", 8, 21, p1), ("geh", 27, 21, p1) };
+    var plan = new Dictionary<string, (string, int, int, string)[]>();
+    if (money)
+    {
+        // Emil kauft Südstreife und Weichenposten zum vollen Preis, Greta wartet im Barackenhof. Den Hundeführer kauft er nicht:
+        // Der Hund greift an, bevor Emil beim Führer ist. Zur Weiche geht es östlich am Wendepunkt des Hundes vorbei.
+        plan["Emil"] = new[] { ("geh", 9, 21, p1), ("geh", 26, 21, p1), ("warte", 0, 0, "Tür"), ("geh", 25, 14, p1), ("kauf", 5, 0, "Südstreife"), ("geh", 28, 14, p1), ("kauf", 0, 1, "Weichenposten"), ("geh", 28, 14, "6") };
+        plan["Greta"] = new[] { ("geh", 9, 22, p1), ("geh", 26, 22, p1), ("warte", 0, 0, "Emil") };
+        plan["Tür"] = Array.Empty<(string, int, int, string)>();
+        otto.Add(("tuer", 25, 18, "Zaunpforte der Heizer"));
+        otto.Add(("lauf", 27, 21, p1));
+        otto.Add(("warte", 0, 0, "Emil"));
+        hanna.Add(("warte", 0, 0, "Emil"));
+        hanna.AddRange(new[] { ("geh", 25, 13, p1), ("geh", 27, 14, p1), ("ziel", 1, 1, p1) });
+        otto.Add(("geh", 24, 13, p1));
+    }
+    else
+    {
+        otto.AddRange(new[] { ("tuer", 25, 18, "Zaunpforte der Heizer"), ("lauf", 27, 21, p1), ("geh", 24, 13, p1) });
+        hanna.AddRange(new[] { ("warte", 0, 0, "Tür"), ("geh", 25, 13, p1), ("geh", 28, 14, p1), ("schlag", 28, 10, "Weichenposten"), ("ziel", 1, 0, p1) });
+    }
+    hanna.AddRange(new[] { ("lauf", 28, 14, p1), ("warte", 0, 0, "Otto") });
+    otto.AddRange(new[] { ("geh", 20, 10, p1), ("rauch", 21, 6, p1), ("tuer", 0, 0, "Stellwerk"), ("ziel", 0, 0, p1), ("geh", 24, 13, "8") });
+    var home = new[] { ("geh", 27, 21, p1), ("geh", 8, 21, p1), ("geh", 8, 14, p1), ("geh", 3, 15, p1), ("geh", 1, 7, p1) };
+    otto.AddRange(home);
+    hanna.AddRange(home);
+    plan["Otto"] = otto.ToArray();
+    plan["Hanna"] = hanna.ToArray();
+    if (money)
+    {
+        plan["Emil"] = plan["Emil"].Concat(new[] { ("warte", 0, 0, "Otto") }).Concat(home).ToArray();
+        plan["Greta"] = plan["Greta"].Concat(new[] { ("warte", 0, 0, "Otto") }).Concat(home.Skip(1)).ToArray();
+    }
+    return plan;
+}
+
+// Güterbahnhof: --bahnhof misst leise ohne Geld, leise mit Geld und laut, jeweils gegen die Uhr.
+if (args.Length > 0 && args[0] == "--bahnhof")
+{
+    var pistol = new[] { "pistole" };
+    bool only(string k) => args.Length < 2 || args[1] == k;
+    Console.WriteLine($"{missionId}, je {Runs} Läufe, Uhr {LitMission().TimeLimit} s");
+    if (only("leise"))
+    {
+        loadout = new[] { pistol, new[] { "pistole", "dietrich", "rauchtopf" }, pistol, new[] { "pistole", "totschlaeger" } };
+        foreach (int lag in new[] { 0, 10, 20 })
+        {
+            ReportYard($"Leise ohne Geld, Rauch und Totschläger, {lag / 20.0:0.0#} s", YardPlan(YardSteps(false), lag), 0);
+        }
+    }
+    if (only("geld"))
+    {
+        loadout = new[] { pistol, new[] { "pistole", "dietrich", "rauchtopf" }, pistol, pistol };
+        foreach (int lag in new[] { 0, 10, 20 })
+        {
+            ReportYard($"Leise mit Geld, zwei gekauft, Rauch, {lag / 20.0:0.0#} s", YardPlan(YardSteps(true), lag, new[] { "Südstreife", "Weichenposten" }));
+        }
+    }
+    if (only("laut"))
+    {
+        var posts = new (string Name, (int, int) At)[] { ("Kohlenweg", (8, 19)), ("hinter Wagen Gleis 7", (11, 16)), ("Wagen Gleis 5", (16, 14)), ("Barackenhof", (17, 20)) };
+        foreach (var (kitName, kit) in new (string, string[])[] { ("Pistolen", pistol), ("vier MP", new[] { "maschinenpistole" }), ("vier MP + Verband", new[] { "maschinenpistole", "verbandszeug" }) })
+        {
+            loadout = new[] { kit };
+            foreach (var (postName, post) in posts)
+            {
+                ReportYard($"Laut, {postName}, {kitName}", Bandaged(LoudYard(post)));
+            }
+        }
+    }
+    loadout = null;
     return;
 }
 

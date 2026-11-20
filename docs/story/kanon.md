@@ -30,7 +30,7 @@ Was in der Welt von Messingstadt gilt, mit Kennzeichen und Quelle. Kennzeichen s
 | Färbergasse, Druckgasse, Kapelle, Fischhalle, Westtor, Papierhof | Orte in der Altstadt, Einsatz 5 und 6 | KANON, freigegeben 2026-11-14 | `einsatz_05_altstadt.md`, `einsatz_06_anzeiger.md` |
 | Lehrling des Druckers, ohne Namen | Ersatz für Weiß im Finale | KANON, freigegeben 2026-11-14 | `einsatz_06_anzeiger.md` |
 | Namen der Wachen in Einsatz 1 und 2, Hunde Hasso und Greif, Bewohner des Nordwalls | Rufnamen im Spiel, Totenbuch | KANON, freigegeben 2026-11-14 | `texte/wachen.md` |
-| Friedhof der Namenlosen, Beamtenhöfe, Exerzierplatz, Kasernenhof | Neue Orte im größeren Nordwall | Vom Nutzer gewählt über die Hauptsession 2026-11-12, Grundriss steht aus | `einsatz_02_nordwall.md` |
+| Friedhof der Namenlosen, Beamtenhöfe, Exerzierplatz, Kasernenhof | Neue Orte im größeren Nordwall. Der Friedhof ist der Armenfriedhof: Dort liegen auch Wachleute ohne Geld für ein Grab (VORSCHLAG Story 2026-11-20) | Vom Nutzer gewählt über die Hauptsession 2026-11-12, Grundriss steht aus | `einsatz_02_nordwall.md` |
 | Messingstädter Anzeiger | Zeitung, druckt die Sicht der Wache | KANON | `src/Messingstadt.Core/Headlines.cs` |
 | Hotel Adler | Hotel an der Querstraße | IM SPIEL | `tools/art/generate_concept.py` (Dachschild) |
 | Kurt | Laufbursche der Wache, in einem Arbeiter-Satz | IM SPIEL | `game/Chatter.cs` |
@@ -81,9 +81,9 @@ Ergebnisse werden als HISTORISCH mit Quelle eingetragen.
 - Blutschuld, eine Zahl von 0 bis 6 für die ganze Stadt (Nutzer, 2026-11-13: „Ja, so bauen“): Der erste Tote einer Nacht ist frei, jeder weitere erhöht sie um 1, höchstens um 3 je Nacht. Eine Nacht ohne tote Wache tilgt 2. Diese Staffel hat die Kampagne am 2026-11-13 geglättet (Hauptsession). Freigegeben hatte der Nutzer: je Toter 1, höchstens 3. Stufen: hilft (0 bis 1), schweigt (2 bis 3), gegen den Trupp (4 bis 6). Im Spiel ohne Zahl und ohne Erklärtext.
 - Die Zeitung nennt tote Wachen mit Namen. Von den eigenen Toten schreibt sie nur Blutspuren: Die Wache gibt die Namen der Täter nicht heraus, solange sie die anderen sucht (Hauptsession, 2026-11-13).
 - Bewohner wissen nur, was in der Zeitung stand. Niemand ruft „Hammer“ oder „Abteilung K“.
-- Die Währung heißt Groschen (Nutzer, 2026-11-14). Zahlen im Spiel sind Groschen.
+- Die Währung heißt Groschen (Nutzer, 2026-11-14), auch in der Anzeige im Spiel (Nutzer, 2026-11-20). In Messingstadt wird nur in Groschen gerechnet. Kein Text nennt Mark oder Pfennig. Schreibweise: „600 Groschen“, in Einzahl und Mehrzahl gleich. Im Telegrammstreifen und wo es eng ist „600 GR“ ohne Punkt.
 - Ein Viertel, das der Hammer hält, fällt nicht an Brandt zurück (Nutzer, 2026-11-14).
 - Werkschutzführer ist eine eigene Gegnerart, zuerst Rademacher in Einsatz 5 (Nutzer, 2026-11-14).
-- Greta und Hanna haben je eine eigene Fähigkeit (Nutzer, 2026-11-14: „ja“). Inhalt in `faehigkeiten.md`, Regeln baut die Mechanik.
+- Greta und Hanna haben je eine eigene Fähigkeit (Nutzer, 2026-11-14: „ja“). Inhalt in `faehigkeiten.md`, Regeln baut die Mechanik. Hanna ist dazu auf lautem Boden leise (Nutzer, 2026-11-20).
 - Brandt erscheint nie selbst im Einsatz, nur über Werkschutz, Luftschiff und Geld.
 - Die Kampagne läuft vom 22. November bis 5. Dezember 1927 in der Reihenfolge aus `../story.md`.

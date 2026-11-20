@@ -150,7 +150,7 @@ namespace Messingstadt.Core
         {
             g.Reinforcement = true;
             // Wer im Totenbuch steht, rückt nicht mehr an: Der Nächste auf der Liste kommt.
-            var persons = _reinforcements!.Persons.FindAll(p => _memory?.Known.Exists(k => k.Person == p && k.Fate == GuardFate.Dead) != true);
+            var persons = _reinforcements!.Persons.FindAll(p => _memory?.Known.Exists(k => SamePerson(k.Person, p) && k.Fate == GuardFate.Dead) != true);
             if (_reinforcedCount <= persons.Count)
             {
                 g.Person = persons[_reinforcedCount - 1];

@@ -621,6 +621,9 @@ void fragment() {
         /// </summary>
         public bool WorldCovered => Briefing || (_panel != null && _panel.Visible) || _sequence != null || (_menus != null && _menus.IsOpen);
 
+        /// <summary>Die laufende Sequenz, sonst null. Der Ton senkt sich in Bild-Sequenzen ab.</summary>
+        public SequenceData? SequenceNow => _sequence?.Data;
+
         /// <summary>Ein Einzelklang der Kulisse an einem Ort der Stadt: Schritte, Tauben, Ratten, Dampf. Stumm, solange die Stadt verdeckt ist.</summary>
         public void PlayScenery(string name, Vector2 position, float volume, float reach, float pitchSpread = 0.06f)
         {
@@ -737,6 +740,9 @@ void fragment() {
             ["telegram"] = _paper.TelegramText,
             ["state"] = World.State.ToString(),
             ["prisoners"] = string.Join(", ", World.Prisoners.Select(p => $"{p.Name}:{(!p.Alive ? "tot" : p.Captive ? "Zelle" : p.Waiting ? "wartet" : "folgt " + (p.FollowId >= 0 ? World.Units[p.FollowId].Name : "niemandem"))}")),
+            ["targets"] = string.Join(", ", World.Targets.Select(t => $"{t.Name}:{(t.Done ? "erledigt" : t.Progress > 0 ? "Arbeit" : "offen")}")),
+            ["clock"] = (World.TicksLeft < 0 ? -1 : (World.TicksLeft + World.TickRate - 1) / World.TickRate).ToString(),
+            ["clockline"] = World.IsSabotage ? World.ClockLine() : "",
             ["doors"] = string.Join(", ", World.Doors.Where(d => d.Open).Select(d => d.Name)),
             ["keys"] = string.Join(", ", World.Units.Where(u => u.Keys.Count > 0).Select(u => $"{u.Name}:{u.Keys.Count}")),
             ["armory"] = _armory.State,
@@ -1201,6 +1207,7 @@ void fragment() {
             AddChild(new Haze { Game = this });
             AddChild(new Drains { Game = this });
             AddChild(new Yards { Game = this, Glow = glow });
+            AddChild(new RailYard { Game = this, Glow = glow });
             AddChild(new LightExtras { Game = this, Windows = _windowLife, Glow = glow, TramOf = () => _puddleMirror.Tram, ManifestPath = Globalize("res://assets/manifest.json") });
             if (MapSite.Current.Passersby || MapSite.Current.Walks.Count > 0)
             {
@@ -1521,7 +1528,8 @@ void fragment() {
                 foreach (var p in panes.RootElement.EnumerateArray())
                 {
                     _windowLife.AddPane(p.GetProperty("id").GetInt32(), p.GetProperty("kind").GetString()!,
-                        new Vector2(p.GetProperty("x").GetSingle(), p.GetProperty("y").GetSingle()));
+                        new Vector2(p.GetProperty("x").GetSingle(), p.GetProperty("y").GetSingle()),
+                        p.TryGetProperty("helper", out var helper) ? helper.GetString() ?? "" : "");
                 }
             }
             _ambience.Fires = ReadPoints(manifest.RootElement, "fires");
@@ -2360,7 +2368,7 @@ void fragment() {
                 s.ZIndex = u.Alive ? depth + rank + 2 : depth + 1;
             }
             UpdateOcclusion();
-            _book.Visible = !World.ItemTaken && !World.IsRescue;
+            _book.Visible = !World.ItemTaken && !World.IsRescue && !World.IsSabotage;
             _book.Position = ToScreen(World.ItemX, World.ItemY);
             _book.ZIndex = 1;
             _book.Modulate = LightFor(LightAt(World.ItemX, World.ItemY), BookMinLight);
@@ -2442,6 +2450,16 @@ void fragment() {
         public IEnumerable<string> FigureVariants(string name) => _animator.Variants(name);
 
         /// <summary>Färbt einen Figuren-Sprite über eine andere Palettenzeile um. Ein leerer Name stellt die Grundfarbe wieder her.</summary>
+        /// <summary>Mund einer Einheit im Bild, gerechnet vom Fuß (UnitPos). hidden: Rückenansicht, der Mund ist verdeckt.</summary>
+        public Vector2 MouthOffset(Unit u, out bool hidden)
+        {
+            var (lookX, lookY) = _animator.Look(World, u, Time.GetTicksMsec() / 1000f);
+            return _animator.Mouth(_animator.SpriteName(u), lookX - lookY, lookX + lookY, out hidden);
+        }
+
+        /// <summary>Mund einer Figur aus dem Blatt für Kulisse ohne Einheit. across und toward wie beim Blick der Einheiten.</summary>
+        public Vector2 MouthOffset(string name, float across, float toward, out bool hidden) => _animator.Mouth(name, across, toward, out hidden);
+
         public void SetFigureVariant(Sprite2D sprite, string name, string variant) =>
             sprite.SetInstanceShaderParameter("palette_row", (float)_animator.PaletteRow(name, variant));
 
@@ -2690,7 +2708,8 @@ void fragment() {
         private void UpdateUi()
         {
             string name = World.ItemName.ToUpperInvariant();
-            string telegram = World.IsRescue ? World.RescueLine() : World.ItemTaken
+            string clock = World.IsSabotage ? World.ClockLine() : "";
+            string telegram = World.IsSabotage ? World.SabotageLine() : World.IsRescue ? World.RescueLine() : World.ItemTaken
                 ? (World.EscapeProgress > 0 ? "EINSTEIGEN STOP STEHEN BLEIBEN STOP" : $"{name} GESICHERT STOP ZUM FLUCHTWAGEN IM OSTEN STOP")
                 : World.ItemProgress > 0 ? $"{name} WIRD GESICHERT STOP STEHEN BLEIBEN STOP"
                 : $"{name} AM MIETSHAUS HOLEN STOP GASSE NUTZEN STOP DANN ZUM FLUCHTWAGEN IM OSTEN STOP";
@@ -2704,6 +2723,11 @@ void fragment() {
             telegram = PhoneNote() ?? telegram;
             int guards = World.Units.Count(u => u.Faction == Faction.Guard && u.Alive);
             string info = $"WACHEN {guards}   ZEIT {World.Tick / World.TickRate} S   KASSE {World.Money}";
+            if (clock.Length > 0 && !_finished)
+            {
+                // Die Uhr steht vorn in der zweiten Zeile, damit sie nie abgeschnitten wird.
+                info = clock + "   " + info;
+            }
             if (World.TicksUntilReinforcement >= 0 && !_finished)
             {
                 info += $"   ALARM: VERSTÄRKUNG IN {World.TicksUntilReinforcement / World.TickRate + 1} S";
@@ -2870,8 +2894,17 @@ void fragment() {
                     {
                         foreach (int id in Selected) opening |= World.OrderOpenDoor(id, marked);
                     }
+                    int target = marked >= 0 ? -1 : SabotageUnderCursor(worldPos);
                     if (opening)
                     {
+                    }
+                    else if (target >= 0)
+                    {
+                        // Einer reicht für die Arbeit. Wer sie schneller kann, geht vor, die anderen bleiben, wo sie sind.
+                        foreach (int id in Selected.OrderBy(id => World.Targets[target].Locksmith && World.Units[id].Skill == World.SkillLocksmith ? 0 : 1).ThenBy(id => id))
+                        {
+                            if (World.OrderSabotage(id, target)) break;
+                        }
                     }
                     else if (prisoner != null && Selected.Count > 0)
                     {
@@ -2919,6 +2952,22 @@ void fragment() {
             if (!add) Selected.Clear();
             Selected.Add(index);
         }
+
+        /// <summary>Sabotageziel unter dem Mauszeiger, -1 ohne. Erledigte zählen nicht.</summary>
+        private int SabotageUnderCursor(Vector2 p)
+        {
+            for (int t = 0; t < World.Targets.Count; t++)
+            {
+                if (!World.Targets[t].Done && SabotageMark(World.Targets[t]).DistanceTo(p) < 22f)
+                {
+                    return t;
+                }
+            }
+            return -1;
+        }
+
+        /// <summary>Wo die Marke eines Sabotageziels im Bild sitzt.</summary>
+        public Vector2 SabotageMark(SabotageTarget target) => ToScreen(target.X, target.Y) + new Vector2(0, -12);
 
         private int DoorUnderCursor(Vector2 p)
         {

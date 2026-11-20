@@ -9,7 +9,7 @@ Das Figurenblatt entsteht mit `python tools/art/figures3d.py` (rund 25 Minuten) 
 - `figures.png`: je Bildpunkt eine Palettennummer. Nie roh zeichnen, sondern über `Main.NewFigureSprite()`.
 - `figures_palette.png`: je Zeile 256 Farben. Erst eine Zeile je Figur, dahinter die Farbvarianten.
 - `figures_mirror.png`: farbig und viermal kleiner, für Spiegelungen (`Main.FigureMirror`). Ohne Varianten.
-- `figures.json`: `names` (Zeilen), `columns` (Bewegungen der Einheiten), `stride`, `has`, `variants`, `civil`, `prisoner`.
+- `figures.json`: `names` (Zeilen), `columns` (Bewegungen der Einheiten), `stride`, `has`, `variants`, `civil`, `prisoner`, `mouth`.
 
 ## Zeichnen
 
@@ -74,3 +74,11 @@ Die Spalten stehen in `figures.json` unter `prisoner`. Gehen, Rennen, Warten und
 `Wachmann`, `Hundefuehrer`, `Schuetze` und `Offizier` haben die Farbvariante `stadtwache` (dunkelblau statt feldgrau).
 Das Spiel setzt sie für alle Wachen, wenn die Mission `"scene": "nordwall"` hat (`Main.UpdateUnits`). `Werkschutz`, `Hund` und
 `Laufbursche` haben keine solche Variante und bleiben, wie sie sind.
+
+## Mund: Atem und Zigarette
+
+`figures.json` nennt unter `mouth` je Figur, wie weit vor und wie hoch über dem Fuß der Mund sitzt (beim Hund die Schnauze).
+Wer Atem, Glut oder Rauch zeichnet, fragt `Main.MouthOffset(unit, out hidden)` oder für Kulisse ohne Einheit
+`Main.MouthOffset(name, across, toward, out hidden)` und addiert das Ergebnis zum Fußpunkt. `hidden` heißt Rückenansicht:
+Dort wird keine Glut gezeichnet. Feste Höhen im Code passen nicht, weil Hanna, der Laufbursche und die Kinder kleiner sind.
+Passanten haben die Zigarette im Blatt selbst (`smoke`): Sie hängt in der Hand und geht mit ihr zum Mund.

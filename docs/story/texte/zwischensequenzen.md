@@ -77,6 +77,38 @@ VORSCHLAG. Rademachers Kleidung steht schon in `../einsatz_05_altstadt.md`.
 | Gustav Rademacher, Werkschutzführer | Um die vierzig, breit, kurzgeschoren. Grüner Mantel des Werkschutzes, Schirmmütze statt Helm, Lederhandschuhe. Merkmal: die Mappe unter dem Arm |
 | Julius Rehm, Vorsitzender | Ende fünfzig, groß, breite Schultern, Rednerfigur. Schwerer dunkler Mantel, darunter Weste. Nie ein Gesicht. Merkmal: beide Hände fest am Pult |
 
+## Zusatzpanel im Prolog: der Wachmann mit Namen
+
+Vom Nutzer am 2026-11-20 freigegeben („3. ja“). Der Prolog „Drei Wochen“ war schon freigegeben, die Änderung ist damit erlaubt. Inhalt hier ist VORSCHLAG, bis der Nutzer das Bild abnimmt.
+
+| Frage | Antwort |
+|---|---|
+| Welche Wache | Hermann Krüger, Wache 1 in Einsatz 1. Er läuft die Streife vor dem Mietshaus und ist meist der erste Wachmann, den der Spieler sieht |
+| Wo im Prolog | Zwischen Panel 7 und Panel 8. Erst die Frage nach der Pistole, dann der Mann, den sie treffen kann, dann die Ortskarte |
+| Bild | Ein Wachmann halbnah unter einer Laterne im Regen, Kragen hoch, er zündet sich im hohlen Handschuh ein Streichholz an. Kein Feindbild, ein müder Mann. Akzent Bernstein: das Streichholz |
+| Text | Kein Kasten von Kolb. Unter dem Bild eine Zeile in der Art von Panel 6, vom Spiel gesetzt, nicht gemalt: „Hermann Krüger. Wachmann. Drei Kinder.“ |
+| Dauer | 4 s |
+
+Warum ohne Kasten: Panel 6 stellt die vier mit Namen und Beruf unter dem Bild vor. Dieselbe Zeile unter einem Wachmann ist der Leitsatz als Bild, „weder deine noch ihre“. Ein Kasten von Kolb würde es erklären.
+
+Ganz ohne Schrift geht es nicht: Ohne den Namen ist es nur ein Wachmann. Gemalte Schrift bleibt in den Bildern unlesbar, darum setzt das Spiel die Zeile.
+
+## Friedhof der Namenlosen vor Einsatz 3
+
+Vom Nutzer am 2026-11-20 freigegeben („3. ja“). Ein Panel in V3, nur wenn in Einsatz 1 oder 2 eine Wache gestorben ist. Bild: der Friedhof an der Wallmauer im Regen, ein frisches Holzkreuz mit einer Nummer, daneben der Spaten des Totengräbers. Keine Farbe.
+
+| Fall | Kolbs Kasten |
+|---|---|
+| Eine Wache tot | „Die Zeitung druckte seinen Namen. Auf dem Kreuz am Wall stand nur eine Nummer.“ |
+| Mehrere tot | „Die Zeitung druckte ihre Namen. Auf den Kreuzen am Wall standen nur Nummern.“ |
+| Zweiter Kasten, in beiden Fällen | „Ein Grab mit Namen zahlte die Wache ihren Leuten nicht.“ |
+
+Stelle in V3: nach Panel 1 (die Flugblätter), vor dem Zug. Erst das, was der Trupp erreicht hat, dann das, was es gekostet hat.
+
+Neu für die Geschichte, VORSCHLAG: Der Friedhof der Namenlosen ist der Armenfriedhof der Stadt. Dort liegt, wen das Werk bringt, und dort liegen auch Wachleute, deren Familien kein Grab bezahlen können. Das passt zu den Sätzen „Für {toter} hat keiner gesammelt“ und zur Witwe Töpfer, deren Mann ohne Rente starb.
+
+Die Zeitung nennt Namen nur, wenn die Missionsdatei einen trägt. Fällt eine Wache ohne Namen, stimmt „druckte seinen Namen“ nicht. Für Einsatz 1 und 2 sind alle Namen eingetragen oder vorgesehen.
+
 ## Bildregel
 
 Bestätigt, mit einer Verschärfung: Die Panels zeigen die vier Agenten nicht erkennbar, und zwar schon ab N1, nicht erst ab Einsatz 2. Nach einer Niederlage und einem zweiten Versuch kann ein Agent schon in Einsatz 1 endgültig tot sein. Ausnahmen sind der Prolog (vor dem ersten Schuss leben alle) und die Schlusssequenz (die Zeilen zu den vieren haben je Figur eine Fassung).
