@@ -63,6 +63,10 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 | 2026-11-20 | Einsatz 3: Schritte auf Schotter sind lauter, Otto halbiert die Zeit an der Hebelbank | Nutzer über die Hauptsession („4. ja“) |
 | 2026-11-20 | Zwischensequenzen Stufe 1 und 2 freigegeben, Texte in `texte/zwischensequenzen.md`, Szenenpläne durchgesehen | Nutzer über Hauptsession und Sequenzen-Session („Ja, Stufe 1“) |
 | 2026-11-20 | Hanna bekommt als zweite Fähigkeit leise Schritte auf lautem Boden (Schotter, Kies). Grund: Beute wird im Spiel nicht getragen, ihre erste Fähigkeit wirkt nur in Einsatz 1 und 4 | Nutzer („Ja, leisere Schritte“) |
+| 2026-11-20 | Die Grafik baut das ganze Gleisviertel | Nutzer über die Hauptsession („1. ja“) |
+| 2026-11-20 | Totenbuch-Seite in den Sequenzen: Namen auf der Buchseite statt auf einem Zettel | Nutzer über die Hauptsession („2. ja“) |
+| 2026-11-20 | Zusatzpanel im Prolog mit einem Wachmann mit Namen, und Friedhofsbild vor Einsatz 3. Inhalt in `texte/zwischensequenzen.md` | Nutzer über die Hauptsession („3. ja“) |
+| 2026-11-20 | Groschen auch in der Anzeige im Spiel. Schreibweise in `kanon.md` | Nutzer über die Hauptsession („4. ja“) |
 
 ## Offene Entscheidungen
 
@@ -73,7 +77,6 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 | Eigene Tote in der Zeitung nur als Blutspuren | Nutzer | Entscheidung der Hauptsession, Sätze mit Namen liegen als Reserve in `einsatz_02_nordwall.md` |
 | Tote werden außerhalb von Erzähltexten genannt | Nutzer | Entscheidung der Hauptsession auf Grundlage des Leitbilds |
 | Werte und Grenzen der Fähigkeiten von Greta und Hanna | Nutzer mit Mechanik | `faehigkeiten.md` |
-| Zahlen im Spiel ohne Währung: Soll „Groschen“ angezeigt werden? | Nutzer mit Menüs | Fundstellen unter Nächste Schritte |
 
 ## Nächste Schritte
 
