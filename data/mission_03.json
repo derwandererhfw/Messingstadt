@@ -1,0 +1,421 @@
+{
+  "title": "Der Güterbahnhof",
+  "briefing": "Um Mitternacht rollt ein Zug mit dreihundert Streikbrechern in den Güterbahnhof Ost. Die Nachricht kommt aus dem Vorstand, sie stimmt. Macht das Stellwerk unbrauchbar und verkeilt die Einfahrweiche, dann bleibt der Zug vor der Stadt. Wagen am Bahnübergang. K.",
+  "place": "Güterbahnhof Ost, hinter dem Kohlenlager",
+  "time": "Sonntag, 27. November 1927, 23:15 Uhr",
+  "seed": 1927,
+  "mapId": "map_03",
+  "lightId": "light_03",
+  "scene": "gleisviertel",
+  "itemName": "Stellwerk und Weiche",
+  "item": [
+    21.5,
+    4.5
+  ],
+  "exit": {
+    "x0": 0,
+    "y0": 6,
+    "x1": 3,
+    "y1": 9
+  },
+  "timeLimit": 300,
+  "sabotage": [
+    {
+      "name": "Stellwerk",
+      "short": "STELLWERK",
+      "x": 21.5,
+      "y": 4.5,
+      "seconds": 6,
+      "locksmith": true
+    },
+    {
+      "name": "Weiche",
+      "short": "WEICHE",
+      "x": 27.5,
+      "y": 10.5,
+      "seconds": 4
+    }
+  ],
+  "sabotageTexts": {
+    "start": "STELLWERK UND EINFAHRWEICHE LAHMLEGEN STOP GÜTERWAGEN ALS DECKUNG STOP DANN ZUM BAHNÜBERGANG STOP",
+    "working": "{ZIEL} WIRD LAHMGELEGT STOP STEHEN BLEIBEN STOP",
+    "oneDone": "{ZIEL} STEHT STOP {REST} FEHLT NOCH STOP",
+    "allDone": "BEIDES STEHT STOP ZUM BAHNÜBERGANG STOP",
+    "boarding": "EINSTEIGEN STOP STEHEN BLEIBEN STOP",
+    "minutes": "ZUG IN {n} MINUTEN",
+    "seconds": "ZUG IN {n} SEKUNDEN",
+    "timeUp": "DER ZUG IST DA STOP"
+  },
+  "gravel": [
+    {
+      "x0": 0,
+      "y0": 9,
+      "x1": 30,
+      "y1": 16
+    }
+  ],
+  "planks": [
+    {
+      "x0": 0,
+      "y0": 9,
+      "x1": 3,
+      "y1": 16
+    },
+    {
+      "x0": 20,
+      "y0": 9,
+      "x1": 21,
+      "y1": 16
+    }
+  ],
+  "reinforcements": {
+    "x": 29.5,
+    "y": 12.5,
+    "sprite": "Werkschutz",
+    "type": "werkschutz",
+    "firstDelay": 6,
+    "interval": 4,
+    "count": 4
+  },
+  "doors": [
+    {
+      "name": "Stellwerk",
+      "tiles": [
+        [
+          21,
+          5
+        ],
+        [
+          21,
+          4
+        ]
+      ],
+      "mark": [
+        21.5,
+        6.5
+      ]
+    },
+    {
+      "name": "Schuppentor",
+      "tiles": [
+        [
+          9,
+          5
+        ],
+        [
+          9,
+          4
+        ]
+      ],
+      "mark": [
+        9.5,
+        6.5
+      ]
+    },
+    {
+      "name": "Zaunpforte der Rangierer",
+      "tiles": [
+        [
+          16,
+          17
+        ]
+      ],
+      "mark": [
+        16.5,
+        18.5
+      ],
+      "helper": "rangierer"
+    },
+    {
+      "name": "Zaunpforte der Heizer",
+      "tiles": [
+        [
+          25,
+          17
+        ]
+      ],
+      "mark": [
+        25.5,
+        18.5
+      ],
+      "helper": "heizer"
+    }
+  ],
+  "loot": {
+    "name": "Lohngelder der Bahnmeisterei",
+    "x": 9.5,
+    "y": 4.5,
+    "value": 300
+  },
+  "headlines": {
+    "unseen": {
+      "head": "Zug mit Arbeitswilligen bleibt vor der Stadt liegen",
+      "line": "Am Güterbahnhof Ost versagten in der Nacht Stellwerk und Einfahrweiche. Die Bahnmeisterei spricht von einem Defekt, die Brandt-Werke von Sabotage. Gesehen hat niemand etwas.{loot}{paid}"
+    },
+    "quiet": {
+      "head": "Sabotage am Güterbahnhof Ost",
+      "line": "Ein Posten will Gestalten zwischen den Wagen gesehen haben. Stellwerk und Einfahrweiche sind unbrauchbar, der Zug mit den Arbeitswilligen kam nicht an.{loot}{paid}"
+    },
+    "loud": {
+      "head": "Gefecht am Güterbahnhof",
+      "line": "Bewaffnete haben in der Nacht Stellwerk und Einfahrweiche zerstört.{dead} Der Zug mit dreihundert Arbeitswilligen steht vor der Stadt.{fallen}{loot}{paid}"
+    },
+    "lost": {
+      "head": "Dreihundert Arbeitswillige treffen ein",
+      "line": "Ein Anschlag auf den Güterbahnhof Ost wurde abgewehrt. Der Zug fuhr planmäßig ein. Ein zweiter ist für die kommende Nacht gemeldet.{dead}"
+    },
+    "abandoned": {
+      "head": "Schüsse am Güterbahnhof, Zug fährt ein",
+      "line": "Bewaffnete griffen den Güterbahnhof Ost an und zogen sich zurück. Der Zug fuhr ein. Ein zweiter ist für die kommende Nacht gemeldet.{dead}"
+    },
+    "retreat": {
+      "head": "Unruhe im Gleisviertel",
+      "line": "Rangierer meldeten Gestalten am Kohlenlager. Die Wache fand nichts."
+    },
+    "loot": "Auch die Lohngelder der Bahnmeisterei fehlen."
+  },
+  "telegrams": {
+    "lost": "AN ABTEILUNG K STOP ZUG IST DRIN STOP MORGEN NACHT KOMMT DER NAECHSTE STOP DEN HALTEN WIR AUF STOP K",
+    "abandoned": "AN ABTEILUNG K STOP ABGEBROCHEN STOP ZUG IST DRIN STOP MORGEN NOCH EINER STOP K",
+    "retreat": "AN ABTEILUNG K STOP SIE HABEN GEWARTET STOP RICHTIG SO STOP NEUER VERSUCH VOR MITTERNACHT STOP K"
+  },
+  "chatter": {
+    "guards": [
+      "Die sagen, heute Nacht kommt wer. Woher die das wissen, sagt keiner.",
+      "Dreihundert Mann im Viehwagen. Und wir sollen sie beschützen.",
+      "Mein Vater war Rangierer. Der würde mich ohrfeigen.",
+      "Schotter in den Stiefeln, Ruß im Hals.",
+      "Seit wann sitzt der Werkschutz im Stellwerk? Der Stellwerker durfte heimgehen.",
+      "Wenn der Zug steht, steht auch mein Lohn.",
+      "Im Stellwerk sitzen zwei vom Werk. Mit denen kann man nicht reden.",
+      "Der auf der Rampe sieht weit über die Gleise. Nur nicht durch die Wagen.",
+      "Der Hund läuft von einem Ende zum andern.",
+      "An der Weiche steht einer allein. Der friert und rechnet.",
+      "Auf dem Schotter hört man jeden Schritt.",
+      "Der Junge mit der Lampe meldet alles dem Erstbesten."
+    ],
+    "others": [
+      "Lasst den Zug nicht rein. Mehr sag ich nicht.",
+      "Ich hab nichts gesehen und meine Frau auch nicht.",
+      "Von uns fährt heute keiner eine Lok."
+    ],
+    "bribed": {
+      "Rampenschütze": "Ich putz mein Gewehr. Das dauert.",
+      "Weichenposten": "Ich geh mal bis zum Prellbock.",
+      "Lampenjunge": "Meine Lampe ist aus. Ich seh nichts."
+    }
+  },
+  "residents": [
+    {
+      "id": "streckenwaerter",
+      "x": 28.0,
+      "y": 19.0
+    },
+    {
+      "id": "bahnmeister",
+      "x": 5.0,
+      "y": 4.5
+    }
+  ],
+  "lamps": [
+    [
+      9.5,
+      6.6
+    ],
+    [
+      21.5,
+      6.8
+    ],
+    [
+      27.5,
+      10.5
+    ],
+    [
+      16.5,
+      8.2
+    ],
+    [
+      3.5,
+      8.5
+    ]
+  ],
+  "agents": [
+    {
+      "name": "Greta",
+      "role": "Truppführerin",
+      "skill": "truppfuehrerin",
+      "sprite": "Agent",
+      "x": 5.5,
+      "y": 29.5,
+      "legs": 2,
+      "heart": 2
+    },
+    {
+      "name": "Otto",
+      "role": "Schlosser",
+      "sprite": "Agent",
+      "x": 6.5,
+      "y": 29.5,
+      "legs": 1,
+      "heart": 3,
+      "skill": "schlosser"
+    },
+    {
+      "name": "Emil",
+      "role": "Buchhalter",
+      "sprite": "Agent",
+      "x": 7.5,
+      "y": 29.5,
+      "legs": 1,
+      "heart": 1,
+      "skill": "buchhalter"
+    },
+    {
+      "name": "Hanna",
+      "role": "Kurierin",
+      "skill": "kurierin",
+      "sprite": "Agent",
+      "x": 8.5,
+      "y": 29.5,
+      "legs": 3,
+      "heart": 1
+    }
+  ],
+  "guards": [
+    {
+      "name": "Stellwerksposten",
+      "sprite": "Werkschutz",
+      "type": "werkschutz",
+      "x": 21.5,
+      "y": 6.5,
+      "facing": [
+        0,
+        1
+      ],
+      "keys": [
+        "Stellwerk"
+      ]
+    },
+    {
+      "name": "Stellwerksrunde",
+      "sprite": "Werkschutz",
+      "type": "werkschutz",
+      "x": 18.5,
+      "y": 7.5,
+      "patrol": [
+        [
+          25,
+          7
+        ],
+        [
+          25,
+          4
+        ],
+        [
+          25,
+          7
+        ],
+        [
+          18,
+          7
+        ]
+      ]
+    },
+    {
+      "name": "Rampenschütze",
+      "sprite": "Schuetze",
+      "type": "schuetze",
+      "x": 7.5,
+      "y": 6.5,
+      "patrol": [
+        [
+          13,
+          6
+        ],
+        [
+          7,
+          6
+        ]
+      ]
+    },
+    {
+      "name": "Gleisstreife",
+      "sprite": "Hundefuehrer",
+      "type": "hundefuehrer",
+      "x": 2.5,
+      "y": 11.5,
+      "patrol": [
+        [
+          26,
+          11
+        ],
+        [
+          2,
+          11
+        ]
+      ]
+    },
+    {
+      "name": "Hund",
+      "sprite": "Hund",
+      "type": "hund",
+      "handler": "Gleisstreife",
+      "x": 3.5,
+      "y": 11.5
+    },
+    {
+      "name": "Südstreife",
+      "sprite": "Wachmann",
+      "x": 27.5,
+      "y": 16.5,
+      "patrol": [
+        [
+          9,
+          16
+        ],
+        [
+          27,
+          16
+        ]
+      ]
+    },
+    {
+      "name": "Weichenposten",
+      "sprite": "Wachmann",
+      "x": 27.5,
+      "y": 9.5,
+      "facing": [
+        -1,
+        0
+      ]
+    },
+    {
+      "name": "Aufsicht",
+      "sprite": "Offizier",
+      "type": "offizier",
+      "x": 16.5,
+      "y": 7.5,
+      "facing": [
+        0,
+        1
+      ]
+    },
+    {
+      "name": "Lampenjunge",
+      "sprite": "Laufbursche",
+      "type": "laufbursche",
+      "x": 24.5,
+      "y": 18.5,
+      "patrol": [
+        [
+          10,
+          18
+        ],
+        [
+          24,
+          18
+        ]
+      ]
+    }
+  ]
+}

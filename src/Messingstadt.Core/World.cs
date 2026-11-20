@@ -100,6 +100,9 @@ namespace Messingstadt.Core
         /// <summary>Diese Wache nimmt kein Geld, gleich welcher Art sie ist.</summary>
         public bool NoBribe;
         public int DoorTarget = -1;
+
+        /// <summary>Sabotageziel, an dem dieser Agent arbeitet oder zu dem er geht, -1 ohne. Jeder andere Befehl setzt es zurück.</summary>
+        public int SabotageTarget = -1;
         public int BribeTarget = -1;
         public bool Bribed;
 
@@ -184,6 +187,9 @@ namespace Messingstadt.Core
 
         /// <summary>Die Truppführerin kennt die Stadtwache: Ist sie dabei, nehmen Wachen weniger, siehe LeaderBacks.</summary>
         public const string SkillLeader = "truppfuehrerin";
+
+        /// <summary>Kurierin: Was sie trägt, hält sie nicht auf. Mit dem Ziel des Einsatzes geht sie so schnell wie ohne.</summary>
+        public const string SkillCourier = "kurierin";
         public const int GuardConeRange = 5 * TileUnits;
 
         // Licht beim Schleichen: Im Dunkeln wird man später bemerkt, unter der Laterne schneller.
@@ -324,6 +330,7 @@ namespace Messingstadt.Core
             IsRescue = mission.Prisoners.Count > 0;
             GiveKeys(mission);
             AddPrisoners(mission);
+            SetUpSabotage(mission);
             ApplyMemory(mission);
             SetUpPhone();
         }
@@ -394,6 +401,7 @@ namespace Messingstadt.Core
             u.Path.AddRange(path);
             u.TargetId = -1;
             u.DoorTarget = -1;
+            u.SabotageTarget = -1;
             u.BribeTarget = -1;
             u.BandageTicks = 0;
             u.Sprinting = sprint && u.Stamina >= MinSprintStamina && path.Count > 0;
@@ -436,6 +444,7 @@ namespace Messingstadt.Core
             u.BribeTarget = -1;
             u.Sprinting = false;
             u.DoorTarget = doorId;
+            u.SabotageTarget = -1;
             return true;
         }
 
@@ -451,6 +460,7 @@ namespace Messingstadt.Core
             }
             u.TargetId = -1;
             u.DoorTarget = -1;
+            u.SabotageTarget = -1;
             // Einem Laufburschen auf der Flucht läuft nur nach, wer rennt.
             u.Sprinting = g.GuardState == GuardState.Report && u.Stamina >= MinSprintStamina;
             u.BribeTarget = guardId;
@@ -505,6 +515,7 @@ namespace Messingstadt.Core
             }
             u.TargetId = targetId;
             u.DoorTarget = -1;
+            u.SabotageTarget = -1;
             u.BribeTarget = -1;
             u.BandageTicks = 0;
             u.Sprinting = false;
@@ -552,6 +563,7 @@ namespace Messingstadt.Core
             {
                 ResidentsWatch();
             }
+            StepSabotage();
             CheckMission();
         }
 
@@ -643,6 +655,11 @@ namespace Messingstadt.Core
             if (a.DoorTarget >= 0)
             {
                 WorkOnDoor(a);
+                return;
+            }
+            if (a.SabotageTarget >= 0)
+            {
+                // Die Arbeit selbst zählt StepSabotage, einmal je Takt für alle.
                 return;
             }
             if (a.BribeTarget >= 0)
@@ -1210,7 +1227,7 @@ namespace Messingstadt.Core
 
         /// <summary>Tempo beim Gehen in Einheiten pro Takt.</summary>
         public static int WalkSpeed(Unit u) => u.Faction == Faction.Agent
-            ? (u.CarriesItem ? CarrierSpeed : AgentSpeed)
+            ? (u.CarriesItem && u.Skill != SkillCourier ? CarrierSpeed : AgentSpeed)
             : u.IsPrisoner ? PrisonerSpeed
             : (u.Alerted ? u.Type.AlertSpeed : u.Type.PatrolSpeed);
 
@@ -1490,6 +1507,14 @@ namespace Messingstadt.Core
                 }
                 return;
             }
+            if (IsSabotage)
+            {
+                if (State == MissionState.Running && _hasAgents)
+                {
+                    CheckSabotage();
+                }
+                return;
+            }
             // Einsteigen braucht Zeit im Stand: Es reicht nicht, die Zone unter Feuer kurz zu berühren.
             EscapeProgress = boarding ? EscapeProgress + 1 : 0;
             if (EscapeProgress >= EscapeTicks)
@@ -1623,7 +1648,7 @@ namespace Messingstadt.Core
             int bestDist = int.MaxValue;
             foreach (var o in Units)
             {
-                int close = Math.Max(o.Sprinting ? SprintHeardRange : GuardCloseRange, g.Type.HearRange);
+                int close = Math.Max(o.Sprinting ? SprintHeardRange : StepHeardRange(o), g.Type.HearRange);
                 if (o.Alive && Hostile(g, o) && Distance(g, o) < bestDist
                     && CanSee(g, o, Math.Max(NoticeRangeAt(o.X, o.Y), close))
                     && (Distance(g, o) <= close || (InCone(g, o) && Distance(g, o) <= NoticeRangeAt(o.X, o.Y))))
@@ -1675,6 +1700,11 @@ namespace Messingstadt.Core
             Mix(_rng);
             Mix((long)State);
             Mix(ItemProgress);
+            foreach (var t in Targets)
+            {
+                Mix(t.Progress);
+                Mix(t.Done ? 1 : 0);
+            }
             Mix(EscapeProgress);
             Mix(Money);
             Mix(_reinforceTick);

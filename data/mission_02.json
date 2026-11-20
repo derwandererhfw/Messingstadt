@@ -122,7 +122,7 @@
     { "name": "Greta", "role": "Truppführerin", "skill": "truppfuehrerin", "sprite": "Agent", "x": 9.5, "y": 29.5, "legs": 2, "heart": 2 },
     { "name": "Otto", "role": "Schlosser", "sprite": "Agent", "x": 10.5, "y": 29.5, "legs": 1, "heart": 3, "skill": "schlosser" },
     { "name": "Emil", "role": "Buchhalter", "sprite": "Agent", "x": 11.5, "y": 29.5, "legs": 1, "heart": 1, "skill": "buchhalter" },
-    { "name": "Hanna", "role": "Kurierin", "sprite": "Agent", "x": 12.5, "y": 29.5, "legs": 3, "heart": 1 }
+    { "name": "Hanna", "role": "Kurierin", "skill": "kurierin", "sprite": "Agent", "x": 12.5, "y": 29.5, "legs": 3, "heart": 1 }
   ],
   "guards": [
     { "name": "Wallstreife 1", "person": "Jahnke", "sprite": "Wachmann", "x": 0.5, "y": 11.5, "patrol": [[13, 11], [0, 11]] },
