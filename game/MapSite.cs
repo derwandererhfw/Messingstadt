@@ -52,7 +52,11 @@ namespace Messingstadt
             /// <summary>Mitte der Tür, hinter der dieses Haus hilft oder schweigt. Null: Es gilt das Fenster.</summary>
             public Vector2? Door { get; init; }
 
-            /// <summary>Sätze der Bewohner: pass (Trupp geht durch), passGreta (mit Greta im Trupp), shut (Tür zu, Agent davor), spare (ruft nicht, obwohl die Stadt gegen den Trupp steht).</summary>
+            /// <summary>
+            /// Sätze der Bewohner: pass (Trupp geht durch), passGreta (mit Greta im Trupp), passSilent (hilft, obwohl die Stadt schweigt),
+            /// shut (Tür zu, Agent davor), spare (ruft nicht, obwohl die Stadt gegen den Trupp steht), call (ruft nach der Wache),
+            /// chase (jagt den Trupp laut weg), chaseEcho (eine zweite Stimme aus dem Haus dazu). Mehrere Fassungen trennt ein Zeilenumbruch.
+            /// </summary>
             public Dictionary<string, string> Lines { get; init; } = new();
         }
 
@@ -133,6 +137,12 @@ namespace Messingstadt
 
         /// <summary>Fahnen (flags): Feld des Masts und Höhe des Tuchs in Bildpunkten.</summary>
         public List<(Vector2 Tile, float Height)> Flags { get; } = new();
+
+        /// <summary>Signallichter (signals): Feld, Höhe in Bildpunkten, Art rot, gruen, weiss oder strecke (schaltet mit dem fernen Zug). Nur Bild.</summary>
+        public List<(Vector2 Tile, float Height, string Kind)> Signals { get; } = new();
+
+        /// <summary>Ein Güterzug, der fern über den Damm zieht (farTrain): Zeile y, Höhe des Damms in Bildpunkten, Pause in Sekunden von bis.</summary>
+        public (float Y, float Height, Vector2 Pause)? FarTrain { get; private set; }
 
         /// <summary>Die eine Laterne, die flackert und aussetzt. Null: Auf dieser Karte brennen alle ruhig.</summary>
         public Vector2? StutterLamp { get; private set; }
@@ -268,7 +278,10 @@ namespace Messingstadt
                     {
                         foreach (var line in said.EnumerateObject())
                         {
-                            lines[line.Name] = line.Value.GetString() ?? "";
+                            // Mehrere Fassungen eines Satzes stehen als Liste da, gesagt wird eine davon.
+                            lines[line.Name] = line.Value.ValueKind == JsonValueKind.Array
+                                ? string.Join("\n", System.Linq.Enumerable.Select(line.Value.EnumerateArray(), v => v.GetString() ?? ""))
+                                : line.Value.GetString() ?? "";
                         }
                     }
                     Houses.Add(new House(
@@ -302,6 +315,18 @@ namespace Messingstadt
                 {
                     Laundry.Add((new Vector2(l[0].GetSingle(), l[1].GetSingle()), new Vector2(l[2].GetSingle(), l[3].GetSingle()), l[4].GetSingle()));
                 }
+            }
+            if (root.TryGetProperty("signals", out var signals))
+            {
+                Signals.Clear();
+                foreach (var s in signals.EnumerateArray())
+                {
+                    Signals.Add((Pair(s), s[2].GetSingle(), s[3].GetString() ?? "rot"));
+                }
+            }
+            if (root.TryGetProperty("farTrain", out var far))
+            {
+                FarTrain = far.ValueKind == JsonValueKind.Array ? (far[0].GetSingle(), far[1].GetSingle(), new Vector2(far[2].GetSingle(), far[3].GetSingle())) : null;
             }
             if (root.TryGetProperty("flags", out var flags))
             {

@@ -73,6 +73,9 @@ namespace Messingstadt
         private static readonly Color ShoutColor = new(1f, 0.82f, 0.6f);
         private readonly HashSet<(int Tick, int Speaker, int Subject)> _callsHeard = new();
         private readonly HashSet<string> _housesSpoken = new();
+        private readonly HashSet<string> _residentsHeard = new();
+        private readonly List<(float At, Func<Vector2?> Where, string Text)> _later = new();
+        private bool _echoSaid;
         private CityMood.Stance _stance;
         private const float HouseGreetTiles = 2.2f;
         private const float HouseDoorTiles = 1.3f;
@@ -169,10 +172,14 @@ namespace Messingstadt
                 _callsHeard.Clear();
                 _fallenCallAt.Clear();
                 _housesSpoken.Clear();
+                _residentsHeard.Clear();
+                _later.Clear();
+                _echoSaid = false;
                 _stance = CityMood.Of(Game);
             }
             ListenToCalls(world);
             ListenToTown(world);
+            ListenToResidents(world);
             ListenToPrisoners(world);
             foreach (var u in world.Units)
             {
@@ -397,7 +404,8 @@ namespace Messingstadt
                     }
                 }
                 bool helps = house.Helper && CityMood.HouseHelps(Game, house.Id);
-                string key = helps ? (greta && house.Lines.ContainsKey("passGreta") ? "passGreta" : "pass")
+                string key = helps ? (greta && house.Lines.ContainsKey("passGreta") ? "passGreta"
+                        : _stance == CityMood.Stance.Silent && house.Lines.ContainsKey("passSilent") ? "passSilent" : "pass")
                     : _stance == CityMood.Stance.Silent ? "shut"
                     : _stance == CityMood.Stance.Against && greta ? "spare" : "";
                 float reach = helps ? HouseGreetTiles : HouseDoorTiles;
@@ -407,7 +415,75 @@ namespace Messingstadt
                 }
                 _housesSpoken.Add(house.Id);
                 var at = Game.ToScreen((int)(house.Window.X * World.TileUnits), (int)(house.Window.Y * World.TileUnits)) - new Vector2(0, house.Height - 40f);
-                Say(() => at, text, SpeechSeconds, helps ? HelperColor : ShutColor);
+                Say(() => at, OneOf(text), SpeechSeconds, helps ? HelperColor : ShutColor);
+            }
+        }
+
+        private string OneOf(string lines) => Pick(_rng, lines.Split('\n'));
+
+        /// <summary>Nachname der Wache, die zuletzt ins Totenbuch kam. Leer, wenn dort keine mit Namen steht.</summary>
+        private string LastDeadGuard()
+        {
+            var ledger = Game.Campaign.Ledger;
+            for (int i = ledger.Count - 1; i >= 0; i--)
+            {
+                if (ledger[i].Side == LedgerSide.Guard && ledger[i].Name.Contains(' '))
+                {
+                    string name = ledger[i].Name;
+                    int cut = name.IndexOf(" (", StringComparison.Ordinal);
+                    name = cut > 0 ? name[..cut] : name;
+                    return name[(name.LastIndexOf(' ') + 1)..];
+                }
+            }
+            return "";
+        }
+
+        /// <summary>
+        /// Bewohner, die nicht helfen, rufen: nach der Wache, oder sie jagen den Trupp laut weg. Wann einer ruft und welche
+        /// Wache darauf nachsehen geht, entscheidet die Welt (ResidentCalls), hier steht nur der Satz. Er ist immer zu
+        /// sehen, auch ohne Sicht auf das Fenster: Der Spieler muss wissen, warum eine Wache kommt.
+        /// </summary>
+        private void ListenToResidents(World world)
+        {
+            foreach (var call in world.ResidentCalls)
+            {
+                if (world.Tick - call.Tick > World.TickRate || !_residentsHeard.Add(call.Resident))
+                {
+                    continue;
+                }
+                var house = MapSite.Current.Houses.Find(h => h.Id == call.Resident);
+                if (house == null)
+                {
+                    continue;
+                }
+                bool against = world.Stance == CityStance.Against;
+                string key = against && house.Lines.ContainsKey("chase") ? "chase" : "call";
+                if (!house.Lines.TryGetValue(key, out string? lines) || lines.Length == 0)
+                {
+                    continue;
+                }
+                var at = Game.ToScreen((int)(house.Window.X * World.TileUnits), (int)(house.Window.Y * World.TileUnits)) - new Vector2(0, house.Height - 40f);
+                Say(() => at, OneOf(lines), ShoutSeconds + 0.8f, ShoutColor);
+                if (key == "chase" && !_echoSaid && house.Lines.TryGetValue("chaseEcho", out string? echo))
+                {
+                    // Eine zweite Stimme aus demselben Haus, einen Atemzug später. Nennt sie einen Toten, muss es einen geben.
+                    string dead = LastDeadGuard();
+                    var fitting = Array.FindAll(echo.Split('\n'), l => dead.Length > 0 || !l.Contains("{toter}"));
+                    if (fitting.Length > 0)
+                    {
+                        _echoSaid = true;
+                        var beside = at + new Vector2(26f, -12f);
+                        _later.Add((_time + 1.4f, () => beside, Pick(_rng, fitting).Replace("{toter}", dead)));
+                    }
+                }
+            }
+            for (int i = _later.Count - 1; i >= 0; i--)
+            {
+                if (_time >= _later[i].At)
+                {
+                    Say(_later[i].Where, _later[i].Text, ShoutSeconds + 0.8f, ShoutColor);
+                    _later.RemoveAt(i);
+                }
             }
         }
 
