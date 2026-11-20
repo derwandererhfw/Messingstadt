@@ -36,7 +36,14 @@ string[][]? loadout = null;
 Action<MissionData>? yardSetup = null;
 // --wagen: Der leise Plan geht nicht durch den Barackenhof, sondern vom Kohlenweg über den Schotter zwischen den Wagen nach Osten.
 bool yardWagons = args.Contains("--wagen");
-args = args.Where(x => x != "--wagen").ToArray();
+// --ohnekurierin: Hanna hat ihren Beruf nicht, sie wird auf Schotter gehört wie jeder andere.
+if (args.Contains("--ohnekurierin"))
+{
+    var before = yardSetup;
+    yardSetup = m => { before?.Invoke(m); foreach (var a in m.Agents.Where(a => a.Skill == World.SkillCourier)) { a.Skill = ""; } };
+    Console.WriteLine("Schalter: ohne Kurierin");
+}
+args = args.Where(x => x != "--wagen" && x != "--ohnekurierin").ToArray();
 {
     string? Arg(string key) => args.FirstOrDefault(x => x.StartsWith(key))?[key.Length..];
     string? clockArg = Arg("--uhr="), stanceArg = Arg("--haltung="), gatesArg = Arg("--pforten=");

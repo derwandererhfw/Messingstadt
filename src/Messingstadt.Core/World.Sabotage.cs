@@ -116,8 +116,12 @@ namespace Messingstadt.Core
             return false;
         }
 
-        /// <summary>Wie weit man diesen Schritt hört, auch im Rücken der Wache: auf Schotter weiter als auf Pflaster.</summary>
-        private int StepHeardRange(Unit o) => o.Moving && _gravel.Count > 0 && OnGravel(o.X, o.Y) ? GravelHeardRange : GuardCloseRange;
+        /// <summary>
+        /// Wie weit man diesen Schritt hört, auch im Rücken der Wache: auf Schotter weiter als auf Pflaster.
+        /// Die Kurierin geht auf lautem Boden so leise wie überall. Der Hund wittert sie wie jeden anderen, das regelt seine eigene Reichweite.
+        /// </summary>
+        private int StepHeardRange(Unit o) =>
+            o.Moving && o.Skill != SkillCourier && _gravel.Count > 0 && OnGravel(o.X, o.Y) ? GravelHeardRange : GuardCloseRange;
 
         /// <summary>
         /// Schickt einen Agenten an ein Sabotageziel. Er geht auf das nächste freie Feld daneben und arbeitet, bis das Ziel erledigt ist

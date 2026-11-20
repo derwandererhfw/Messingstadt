@@ -458,6 +458,7 @@ void fragment() {
         /// <summary>Was ein Agent besonders kann, eine kurze Zeile für das Inventarblatt der Spalte. Leer, wenn es nichts zu sagen gibt.</summary>
         public string AgentTrait(Unit agent) => agent.Skill == World.SkillLeader && World.LeaderDiscountPercent > 0
             ? $"In Rufweite: Bestechen {LeaderCut}"
+            : agent.Skill == World.SkillCourier ? "Geht auf Schotter und Kies, ohne gehört zu werden."
             : "";
 
         // "halber Preis" bei 50 Prozent, sonst die Zahl. Hilfezeile, Spalte und Mauszeiger nennen den Nachlass gleich.

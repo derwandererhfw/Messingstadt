@@ -176,9 +176,9 @@ namespace Messingstadt.Core.Tests
             new() { new UnitData { Name = "W", Sprite = "Wachmann", X = 10.2, Y = 5.5, Facing = new[] { 1.0, 0.0 } } };
 
         /// <summary>Der Agent geht 2,7 Felder hinter der Wache vorbei, von Norden nach Süden.</summary>
-        private static bool HeardBehind(bool gravel, bool planks)
+        private static bool HeardBehind(bool gravel, bool planks, string skill = "", List<UnitData>? guards = null)
         {
-            var w = Make(guards: GuardLookingAway(), gravel: gravel, planks: planks, agentX: 7.5);
+            var w = Make(skill, guards: guards ?? GuardLookingAway(), gravel: gravel, planks: planks, agentX: 7.5);
             // Kurz genug, dass der Posten sich in der Zeit nicht umsieht.
             w.Units[0].Y = 3 * World.TileUnits + World.TileUnits / 2;
             Assert.True(w.OrderMove(0, 7, 7));
@@ -191,6 +191,43 @@ namespace Messingstadt.Core.Tests
         {
             Assert.False(HeardBehind(gravel: false, planks: false));
             Assert.True(HeardBehind(gravel: true, planks: false));
+        }
+
+        [Fact]
+        public void TheCourierCrossesGravelAsQuietlyAsPavement()
+        {
+            Assert.True(HeardBehind(gravel: true, planks: false, World.SkillLocksmith));
+            Assert.False(HeardBehind(gravel: true, planks: false, World.SkillCourier));
+        }
+
+        [Fact]
+        public void TheDogStillScentsTheCourier()
+        {
+            // 2,3 Felder neben dem Hund: Er wittert ringsum 2,5 Felder weit, auf jedem Boden und jeden.
+            var dog = new List<UnitData> { new() { Name = "Hund", Sprite = "Hund", Type = "hund", X = 9.8, Y = 5.5, Facing = new[] { 1.0, 0.0 } } };
+            Assert.True(HeardBehind(gravel: true, planks: false, World.SkillCourier, dog));
+            Assert.True(HeardBehind(gravel: false, planks: false, World.SkillCourier, dog));
+        }
+
+        [Fact]
+        public void WhoTakesTheCouriersPlaceHasHerTrade()
+        {
+            MissionData Mission() => new()
+            {
+                Agents = new()
+                {
+                    new UnitData { Name = "Hanna", Sprite = "Agent", X = 1.5, Y = 1.5, Skill = World.SkillCourier, Role = "Kurierin" },
+                    new UnitData { Name = "Otto", Sprite = "Agent", X = 2.5, Y = 1.5, Skill = World.SkillLocksmith },
+                },
+            };
+            var campaign = new Campaign();
+            campaign.Prepare(Mission());
+            campaign.Agents.First(a => a.Name == "Hanna").Dead = true;
+            var next = Mission();
+            campaign.Prepare(next);
+            Assert.Equal(2, next.Agents.Count);
+            Assert.Contains(next.Agents, a => a.Skill == World.SkillCourier);
+            Assert.Contains(campaign.Agents, a => !a.Dead && a.Name == "Lotte Becker" && a.Skill == World.SkillCourier);
         }
 
         [Fact]
