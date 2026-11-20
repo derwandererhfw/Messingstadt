@@ -330,6 +330,6 @@ Auftrag, Schlagzeilen, Telegramme, Gespräche ohne Spielhinweis und Kolbs Käste
 
 Freigegeben am 2026-11-20, `faehigkeiten.md`.
 
-- Hanna hat hier nichts zu tragen. Beute wird im Spiel nicht getragen, sie zählt, sobald ein Agent sie berührt. Hannas Fähigkeit wirkt nur auf das Ziel eines Einsatzes.
+- Hanna ist auf dem Schotter leise (Nutzer, 2026-11-20). Sie kommt abseits der Bohlen ungehört über die Gleise, der Hund wittert sie trotzdem. Zu tragen hat sie hier nichts: Beute zählt, sobald ein Agent sie berührt.
 - Gretas Passierschein wirkt auf Jeschke, Ullrich, Wiegand und Lohse. Er wirkt nicht auf Tesch und nicht auf den Werkschutz.
 - Otto halbiert die Zeit an der Hebelbank und öffnet die Zaunpforten, wenn die Stadt nicht hilft.
