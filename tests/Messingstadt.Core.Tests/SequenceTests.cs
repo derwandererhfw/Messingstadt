@@ -68,9 +68,51 @@ namespace Messingstadt.Core.Tests
         [Fact]
         public void SequencesUsedByTheGameExist()
         {
-            foreach (string id in new[] { "prolog", "einstieg_nach_prolog", "einstieg", "uebergang", "sieg", "niederlage", "rueckzug" })
+            foreach (string id in new[] { "prolog", "einstieg_nach_prolog", "einstieg", "uebergang", "sieg", "niederlage", "rueckzug", "nach_01", "vor_02", "nach_02" })
             {
                 Assert.True(File.Exists(Path.Combine(RepoRoot(), "data", "sequences", id + ".json")), id);
+            }
+        }
+
+        [Fact]
+        public void MissionsNameSequencesThatExist()
+        {
+            string root = RepoRoot();
+            int named = 0;
+            foreach (string file in Directory.GetFiles(Path.Combine(root, "data"), "mission_*.json"))
+            {
+                var mission = Loader.ParseMission(File.ReadAllText(file));
+                foreach (string id in new[] { mission.SequenceBefore, mission.SequenceAfter }.Where(i => i.Length > 0))
+                {
+                    Assert.True(File.Exists(Path.Combine(root, "data", "sequences", id + ".json")), $"{Path.GetFileName(file)}: {id}");
+                    named++;
+                }
+            }
+            Assert.True(named >= 3);
+        }
+
+        [Fact]
+        public void EveryCaseOfTheLedgerPageHasExactlyOneBeat()
+        {
+            foreach (string id in new[] { "nach_01", "nach_02" })
+            {
+                var data = SequenceData.Parse(File.ReadAllText(Path.Combine(RepoRoot(), "data", "sequences", id + ".json")));
+                foreach (string flag in new[] { SequenceFlags.NoDead, SequenceFlags.GuardsOnly, SequenceFlags.OwnOnly, SequenceFlags.BothSides })
+                {
+                    var flags = new HashSet<string> { flag, "lebt:Anton Weiß", "lebt:Paul Roth" };
+                    Assert.Single(data.For(flags).Beats, b => b.Show == "ledger");
+                }
+            }
+        }
+
+        [Fact]
+        public void ThePressSequenceHasTwoPicturesInEveryCase()
+        {
+            var data = SequenceData.Parse(File.ReadAllText(Path.Combine(RepoRoot(), "data", "sequences", "nach_02.json")));
+            foreach (var alive in new[] { new[] { "lebt:Anton Weiß", "lebt:Paul Roth" }, new[] { "lebt:Anton Weiß" }, new[] { "lebt:Paul Roth" } })
+            {
+                var flags = new HashSet<string>(alive) { SequenceFlags.NoDead };
+                Assert.Equal(2, data.For(flags).Beats.Count(b => b.Show == "image"));
             }
         }
 
@@ -219,6 +261,73 @@ namespace Messingstadt.Core.Tests
             Assert.Equal(new[] { "prolog", "einstieg_nach_prolog" }, SequenceEntry.For(true, null));
             Assert.Equal(new[] { "uebergang" }, SequenceEntry.For(false, null));
             Assert.Equal(new[] { "einstieg" }, SequenceEntry.For(true, "einstieg"));
+        }
+
+        [Fact]
+        public void MissionSequencesRunOncePerCampaign()
+        {
+            Assert.Equal(new[] { "vor_02", "einstieg_nach_prolog" }, SequenceEntry.For(false, null, "vor_02", false));
+            Assert.Equal(new[] { "uebergang" }, SequenceEntry.For(false, null, "vor_02", true));
+            Assert.Equal(new[] { "uebergang" }, SequenceEntry.For(false, null, "", false));
+            Assert.Equal(new[] { "prolog", "einstieg_nach_prolog" }, SequenceEntry.For(true, null, "vor_02", false));
+            Assert.Equal(new[] { "sieg", "nach_02" }, SequenceEntry.AfterMission(true, "nach_02", false));
+            Assert.Equal(new[] { "sieg" }, SequenceEntry.AfterMission(true, "nach_02", true));
+            Assert.Equal(new[] { "sieg" }, SequenceEntry.AfterMission(true, "", false));
+            Assert.Equal(new[] { "niederlage" }, SequenceEntry.AfterMission(false, "nach_02", false));
+        }
+
+        [Fact]
+        public void BeatsWithConditionsOnlyRunWhenTheyHold()
+        {
+            var data = Data(
+                new SequenceBeat { Seconds = 1 },
+                new SequenceBeat { Seconds = 1, When = "lebt:Anton Weiß, lebt:Paul Roth" },
+                new SequenceBeat { Seconds = 1, When = "!lebt:Anton Weiß" },
+                new SequenceBeat { Seconds = 1, When = " keine_toten " });
+            var both = data.For(new HashSet<string> { "lebt:Anton Weiß", "lebt:Paul Roth", "nur_wachen" });
+            Assert.Equal(2, both.Beats.Count);
+            Assert.Equal("probe", both.Id);
+            var none = data.For(new HashSet<string> { "keine_toten" });
+            Assert.Equal(new[] { "", "!lebt:Anton Weiß", " keine_toten " }, none.Beats.Select(b => b.When));
+        }
+
+        [Fact]
+        public void FlagsAndLedgerPageComeFromTheLastNight()
+        {
+            var w = NewWorld();
+            var campaign = new Campaign { Nights = 2 };
+            Assert.Contains(SequenceFlags.NoDead, SequenceFlags.For(campaign, w));
+            Assert.Contains(SequenceFlags.NoDead, SequenceFlags.For(null, w));
+            Assert.Equal("", SequenceTexts.Ledger(campaign, LedgerSide.Guard));
+            campaign.Ledger.Add(new LedgerEntry { Name = "Alt", Side = LedgerSide.Guard, Kind = "offizier", Night = 1 });
+            Assert.Contains(SequenceFlags.NoDead, SequenceFlags.For(campaign, w));
+            campaign.Ledger.Add(new LedgerEntry { Name = "Karl Mertens", Side = LedgerSide.Guard, Kind = "offizier", Night = 2 });
+            Assert.Contains(SequenceFlags.GuardsOnly, SequenceFlags.For(campaign, w));
+            campaign.Ledger.Add(new LedgerEntry { Name = "Otto Brenner", Side = LedgerSide.Squad, Kind = "Schlosser", Night = 2 });
+            var flags = SequenceFlags.For(campaign, w);
+            Assert.Contains(SequenceFlags.BothSides, flags);
+            Assert.DoesNotContain(SequenceFlags.GuardsOnly, flags);
+            campaign.Ledger.RemoveAt(1);
+            Assert.Contains(SequenceFlags.OwnOnly, SequenceFlags.For(campaign, w));
+            campaign.Ledger.Insert(1, new LedgerEntry { Name = "Karl Mertens", Side = LedgerSide.Guard, Kind = "offizier", Night = 2 });
+            Assert.Equal("Schlosser Otto Brenner", SequenceTexts.Ledger(campaign, LedgerSide.Squad));
+            Assert.Equal("Wachtmeister Karl Mertens", SequenceTexts.For(Mission(), w, false, campaign)["totenbuch_wache"]);
+            Assert.Equal("2", SequenceTexts.For(Mission(), w, false, campaign)["nacht"]);
+        }
+
+        [Fact]
+        public void LedgerBeatsAreTypedAndNeedNoImage()
+        {
+            Assert.Empty(Data(new SequenceBeat { Show = "ledger", Body = "x" }).Problems());
+            Assert.True(new SequenceBeat { Show = "ledger" }.Typed);
+        }
+
+        [Fact]
+        public void SeenSequencesSurviveSavingAndOldSavesHaveNone()
+        {
+            var campaign = new Campaign();
+            campaign.SeenSequences.Add("vor_02");
+            Assert.Contains("vor_02", Campaign.FromJson(campaign.ToJson()).SeenSequences);
         }
 
         [Fact]

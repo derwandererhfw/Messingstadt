@@ -160,7 +160,7 @@ namespace Messingstadt
                 _shownChanges = _run.Changes;
                 BuildBeat();
             }
-            bool image = _run.Current.Show == "image";
+            bool image = HasPicture(_run.Current);
             _black.Color = new Color(0f, 0f, 0f, image ? 1f : (float)_run.Fade);
             float light = 1f - (float)_run.Fade;
             _picture.Modulate = new Color(light, light, light);
@@ -203,7 +203,7 @@ namespace Messingstadt
             _speech = null;
             _shownLetters = -1;
             var beat = _run.Current;
-            if (beat.Show != "image")
+            if (!HasPicture(beat))
             {
                 ClearPicture();
             }
@@ -221,7 +221,76 @@ namespace Messingstadt
                 case "telegram": BuildSheet(TelegramColor, 0.5f, 640f, 16); break;
                 case "newspaper": BuildNewspaper(); break;
                 case "image": BuildImage(beat); break;
+                case "ledger": BuildLedger(beat); break;
             }
+        }
+
+        /// <summary>Liegt in diesem Abschnitt ein Bild über der Schwarzblende?</summary>
+        private static bool HasPicture(SequenceBeat beat) => beat.Show == "image" || (beat.Show == "ledger" && beat.Image.Length > 0);
+
+        /// <summary>
+        /// Seite des Totenbuchs für die letzte Nacht: Namen beider Seiten auf einem Blatt, links Kolbs Erzählkasten.
+        /// Mit Bild liegt das Blatt auf diesem Bild, sonst auf Schwarz.
+        /// </summary>
+        private void BuildLedger(SequenceBeat beat)
+        {
+            if (beat.Image.Length > 0)
+            {
+                BuildImage(beat);
+            }
+            else
+            {
+                Narration();
+            }
+            var body = Sheet(PaperUi.PaperColor, 0.68f, 560f);
+            body.AddChild(PaperUi.Text(_run.Head.Length > 0 ? _run.Head : "TOTENBUCH", 14, PaperUi.StampRed, PaperUi.Serif));
+            if (_run.Title.Length > 0)
+            {
+                var title = PaperUi.Text(_run.Title, 22, PaperUi.Ink, PaperUi.Serif);
+                title.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+                title.CustomMinimumSize = new Vector2(520f, 0f);
+                body.AddChild(title);
+            }
+            body.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 2), Color = PaperUi.Ink, MouseFilter = Control.MouseFilterEnum.Ignore });
+            // Zwei Spalten: links die eigenen Toten, rechts die der Wache. Eine leere Spalte bleibt leer stehen.
+            var columns = new HBoxContainer();
+            columns.AddThemeConstantOverride("separation", 24);
+            body.AddChild(columns);
+            foreach (var (heading, key) in new[] { ("UNSERE", "totenbuch_eigene"), ("IHRE", "totenbuch_wache") })
+            {
+                var column = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(240f, 0f) };
+                column.AddChild(PaperUi.Text(heading, 12, PaperUi.StampRed, PaperUi.Serif));
+                string names = Texts.TryGetValue(key, out string? list) ? list : "";
+                var lines = PaperUi.Text(names.Length > 0 ? names : "kein Eintrag", 15, PaperUi.Ink, PaperUi.Typewriter);
+                lines.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+                lines.CustomMinimumSize = new Vector2(240f, 0f);
+                column.AddChild(lines);
+                columns.AddChild(column);
+            }
+            var sheet = (Control)body.GetParent();
+            sheet.Rotation = 0.012f;
+        }
+
+        /// <summary>Kolbs Erzählkasten oben links, getippt.</summary>
+        private void Narration()
+        {
+            if (_run.Body.Length == 0)
+            {
+                return;
+            }
+            var box = new PanelContainer
+            {
+                OffsetLeft = 36f, OffsetTop = BarHeight + 18f, OffsetRight = 36f + 560f,
+                MouseFilter = Control.MouseFilterEnum.Ignore,
+            };
+            box.AddThemeStyleboxOverride("panel", PaperUi.PaperBox(CaptionColor));
+            _sheet.AddChild(box);
+            _typed = PaperUi.Text(_run.Body, 17, PaperUi.Ink, PaperUi.Typewriter);
+            _typed.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            _typed.CustomMinimumSize = new Vector2(530f, 0f);
+            _typed.VisibleCharactersBehavior = TextServer.VisibleCharactersBehavior.CharsAfterShaping;
+            _typed.VisibleCharacters = 0;
+            box.AddChild(_typed);
         }
 
         private void ClearPicture()
@@ -272,22 +341,7 @@ namespace Messingstadt
                 rect.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
                 _zooming = rect;
             }
-            if (_run.Body.Length > 0)
-            {
-                var box = new PanelContainer
-                {
-                    OffsetLeft = 36f, OffsetTop = BarHeight + 18f, OffsetRight = 36f + 560f,
-                    MouseFilter = Control.MouseFilterEnum.Ignore,
-                };
-                box.AddThemeStyleboxOverride("panel", PaperUi.PaperBox(CaptionColor));
-                _sheet.AddChild(box);
-                _typed = PaperUi.Text(_run.Body, 17, PaperUi.Ink, PaperUi.Typewriter);
-                _typed.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-                _typed.CustomMinimumSize = new Vector2(530f, 0f);
-                _typed.VisibleCharactersBehavior = TextServer.VisibleCharactersBehavior.CharsAfterShaping;
-                _typed.VisibleCharacters = 0;
-                box.AddChild(_typed);
-            }
+            Narration();
             if (beat.Speech.Count > 0)
             {
                 var column = new VBoxContainer

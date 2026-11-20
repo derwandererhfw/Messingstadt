@@ -1,0 +1,14 @@
+{
+  "id": "nach_02",
+  "beats": [
+    {"show": "image", "image": "sequences/einsatz_02/n2_1a.jpg", "body": "Weiß stand am Abend wieder an der Presse. Er fragte nicht, was es gekostet hatte.", "when": "lebt:Anton Weiß, lebt:Paul Roth", "zoom": [1.0, 1.05], "seconds": 3.0, "fade": [1, 0], "fadeSeconds": 1.4, "sounds": [{"at": 0.2, "name": "machine", "volume": -18}]},
+    {"show": "image", "image": "sequences/einsatz_02/n2_1a.jpg", "body": "Weiß stand am Abend wieder an der Presse. Er sagte, beim Verhör habe einer vom Werk am Tisch gesessen. Mehr sagte er nicht.", "when": "lebt:Anton Weiß, !lebt:Paul Roth", "zoom": [1.0, 1.05], "seconds": 3.2, "fade": [1, 0], "fadeSeconds": 1.4, "sounds": [{"at": 0.2, "name": "machine", "volume": -18}]},
+    {"show": "image", "image": "sequences/einsatz_02/n2_1b.jpg", "body": "Weiß kam nicht zurück an seine Presse. Sein Lehrling setzte weiter. Langsamer, aber er setzte.", "when": "!lebt:Anton Weiß", "zoom": [1.0, 1.05], "seconds": 3.2, "fade": [1, 0], "fadeSeconds": 1.4},
+    {"show": "image", "image": "sequences/einsatz_02/n2_2a.jpg", "body": "Der Junge sagte, beim Verhör habe einer vom Werk mit am Tisch gesessen. Ich schrieb es auf. Überrascht war ich nicht.", "when": "lebt:Paul Roth", "zoom": [1.04, 1.0], "seconds": 3.2},
+    {"show": "image", "image": "sequences/einsatz_02/n2_2b.jpg", "body": "Den Jungen brachten sie im Wagen zurück. Manche Nachrichten telegrafiert man nicht.", "when": "!lebt:Paul Roth", "zoom": [1.0, 1.04], "seconds": 3.6},
+    {"show": "ledger", "when": "keine_toten", "image": "sequences/buch.jpg", "title": "Nacht {nacht} · {place}", "body": "In dieser Nacht schrieb ich keinen Namen ins Buch.", "seconds": 2.0, "hold": true, "sounds": [{"at": 0.0, "name": "pages_0", "volume": -14}]},
+    {"show": "ledger", "when": "nur_wachen", "image": "sequences/buch.jpg", "title": "Nacht {nacht} · {place}", "body": "Ich schrieb ihre Namen ins Buch. Es waren nicht unsere. Es waren Namen.", "seconds": 2.0, "hold": true, "sounds": [{"at": 0.0, "name": "pages_0", "volume": -14}]},
+    {"show": "ledger", "when": "nur_eigene", "image": "sequences/buch.jpg", "title": "Nacht {nacht} · {place}", "body": "In dieser Nacht stand nur auf unserer Seite etwas. Ich schrieb langsam.", "seconds": 2.0, "hold": true, "sounds": [{"at": 0.0, "name": "pages_0", "volume": -14}]},
+    {"show": "ledger", "when": "beide_seiten", "image": "sequences/buch.jpg", "title": "Nacht {nacht} · {place}", "body": "In dieser Nacht stand auf beiden Seiten etwas. Ich schrieb langsam.", "seconds": 2.0, "hold": true, "sounds": [{"at": 0.0, "name": "pages_0", "volume": -14}]}
+  ]
+}

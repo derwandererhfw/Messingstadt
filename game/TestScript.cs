@@ -183,6 +183,15 @@ namespace Messingstadt
                         fallen.Hp = 0;
                     }
                     break;
+                case "fellprisoner":
+                    // Ein Gefangener stirbt sofort, damit die Fassungen der Sequenz nach dem Einsatz prüfbar sind.
+                    var lost = Game.World.Prisoners.FirstOrDefault(u => u.Alive && u.Name == arg);
+                    Check(line, lost != null, arg);
+                    if (lost != null)
+                    {
+                        lost.Hp = 0;
+                    }
+                    break;
                 case "fellguard":
                     // So viele Wachen sterben sofort, damit das Totenbuch ohne Gefecht prüfbar ist. Hunde zählen nicht.
                     var doomed = Game.World.Units.Where(u => u.Faction == Faction.Guard && u.Alive && u.Type != GuardType.Hund).Take(int.Parse(arg)).ToList();

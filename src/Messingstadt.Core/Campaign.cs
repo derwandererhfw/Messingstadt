@@ -119,7 +119,7 @@ namespace Messingstadt.Core
     /// <summary>Was zwischen den Einsätzen bleibt: Geld, Fahndung, Rückhalt, die Agenten und was in jedem Einsatz geschah.</summary>
     public sealed partial class Campaign
     {
-        public const int CurrentVersion = 7;
+        public const int CurrentVersion = 8;
         public const int StartMoney = 600;
 
         /// <summary>Das Viertel des ersten Einsatzes. Alte Stände mit einem Sieg bekommen es als erobert.</summary>
@@ -180,6 +180,9 @@ namespace Messingstadt.Core
 
         /// <summary>Der allgemeine Hinweis zum Dauertod erscheint einmal je Kampagne. Die Anzeige setzt das, wenn sie ihn gezeigt hat.</summary>
         public bool DeathRuleExplained { get; set; }
+
+        /// <summary>Sequenzen vor und nach Einsätzen, die diese Akte schon gezeigt hat. Jede läuft einmal je Kampagne.</summary>
+        public List<string> SeenSequences { get; set; } = new();
 
         /// <summary>Was der letzte zählende Einsatz mit dem Trupp gemacht hat, für Ergebnisfenster und Telegramme. Prepare leert die Listen.</summary>
         public List<string> LastFirstFalls { get; set; } = new();
@@ -488,6 +491,8 @@ namespace Messingstadt.Core
                 if (entry.Prisoners.Count == 0)
                 {
                     entry.Prisoners = world.Prisoners.ToDictionary(p => p.Name, p => p.Alive);
+                    // Wer bei der Befreiung starb, steht auf der eigenen Seite des Totenbuchs. Nur die erste Befreiung zählt, wie beim Merker.
+                    RememberPrisoners(entry.Prisoners, Current, districtId, Nights);
                 }
             }
             FillRanks(Slots());

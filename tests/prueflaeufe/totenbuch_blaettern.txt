@@ -9,18 +9,21 @@ key Right
 expect focus Totenbuch
 key Enter
 expect screen Totenbuch
-expect ledger trupp Otto, Lene | wache Hermann Krüger, Fritz Bartels, Walter Henke, August Thiele, Oberwachtmeister Ernst Vogt, Wilhelm Jahnke, Hans Olbrich, Friedrich Kempe | seite 1/2
-seetext DER TRUPP   2
+expect ledger unsere Otto, Lene, Anton Weiß | wache Hermann Krüger, Fritz Bartels, Walter Henke, August Thiele, Oberwachtmeister Ernst Vogt, Wilhelm Jahnke, Hans Olbrich, Friedrich Kempe | seite 1/2
+seetext UNSERE   3
 seetext DIE WACHE   8
 seetext Otto
 seetext Kesselviertel
 seetext Viertel nicht vermerkt
+# Der tote Gefangene steht links bei den Unseren, gekennzeichnet und ohne Beruf
+seetext Anton Weiß
+seetext Gefangener, Nordwall
 seetext Oberwachtmeister Ernst Vogt
 seetext GEFALLEN
 expect focus Blättern   Seite 1 von 2
 # Blättern mit Enter, die Wahl bleibt auf dem Knopf. Seite 2 zeigt den Rest der Wache, links steht niemand mehr
 key Enter
-expect ledger trupp Otto, Lene | wache Hermann Krüger, Fritz Bartels, Walter Henke, August Thiele, Oberwachtmeister Ernst Vogt, Wilhelm Jahnke, Hans Olbrich, Friedrich Kempe | seite 2/2
+expect ledger unsere Otto, Lene, Anton Weiß | wache Hermann Krüger, Fritz Bartels, Walter Henke, August Thiele, Oberwachtmeister Ernst Vogt, Wilhelm Jahnke, Hans Olbrich, Friedrich Kempe | seite 2/2
 expect focus Blättern   Seite 2 von 2
 seetext Hans Olbrich
 seetext Nordwall

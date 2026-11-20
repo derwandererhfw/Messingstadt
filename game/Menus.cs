@@ -372,16 +372,17 @@ namespace Messingstadt
         }
 
         private int LedgerPages => _ledgerOf == null ? 1
-            : Math.Max(1, (Math.Max(_ledgerOf.Dead(LedgerSide.Squad).Count, _ledgerOf.Dead(LedgerSide.Guard).Count) + LedgerRows - 1) / LedgerRows);
+            : Math.Max(1, (Math.Max(_ledgerOf.DeadOurs().Count, _ledgerOf.Dead(LedgerSide.Guard).Count) + LedgerRows - 1) / LedgerRows);
 
         /// <summary>Für den Prüflauf: wer auf dem offenen Blatt steht und welche Seite aufgeschlagen ist.</summary>
         public string LedgerProbe => ScreenName != "Totenbuch" || _ledgerOf == null ? ""
-            : $"trupp {string.Join(", ", _ledgerOf.Dead(LedgerSide.Squad).Select(e => e.Name))} | wache {string.Join(", ", _ledgerOf.Dead(LedgerSide.Guard).Select(e => e.Name))} | seite {_ledgerPage + 1}/{LedgerPages}";
+            : $"unsere {string.Join(", ", _ledgerOf.DeadOurs().Select(e => e.Name))} | wache {string.Join(", ", _ledgerOf.Dead(LedgerSide.Guard).Select(e => e.Name))} | seite {_ledgerPage + 1}/{LedgerPages}";
 
         private void BuildLedger()
         {
             var book = _ledgerOf!;
-            var squad = book.Dead(LedgerSide.Squad);
+            // Links stehen unsere Toten: der Trupp und die Gefangenen, die nicht herauskamen, in der Reihenfolge der Tode.
+            var squad = book.DeadOurs();
             var guards = book.Dead(LedgerSide.Guard);
             int pages = LedgerPages;
             _ledgerPage = Math.Clamp(_ledgerPage, 0, pages - 1);
@@ -396,7 +397,7 @@ namespace Messingstadt
             {
                 var columns = new HBoxContainer();
                 columns.AddThemeConstantOverride("separation", 16);
-                columns.AddChild(LedgerColumn("DER TRUPP", squad));
+                columns.AddChild(LedgerColumn("UNSERE", squad));
                 columns.AddChild(new ColorRect { CustomMinimumSize = new Vector2(1, 0), Color = PaperUi.PaperDark, MouseFilter = Control.MouseFilterEnum.Ignore });
                 columns.AddChild(LedgerColumn("DIE WACHE", guards));
                 _body.AddChild(columns);
@@ -432,7 +433,9 @@ namespace Messingstadt
                 name.ClipText = true;
                 name.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
                 row.AddChild(name);
-                var where = PaperUi.Text(Game.DistrictName(entry.District), 12, new Color(PaperUi.Ink, 0.7f), PaperUi.Typewriter);
+                // Ein Gefangener ist kein Agent: Er trägt keinen Beruf, nur den Vermerk vor dem Viertel.
+                string place = Game.DistrictName(entry.District);
+                var where = PaperUi.Text(entry.Side == LedgerSide.Prisoner ? $"{Campaign.PrisonerKind}, {place}" : place, 12, new Color(PaperUi.Ink, 0.7f), PaperUi.Typewriter);
                 where.Position = new Vector2(0, 20);
                 row.AddChild(where);
                 var stamp = PaperUi.Text(LedgerStamp, 13, new Color(PaperUi.StampRed, 0.75f), PaperUi.Serif);

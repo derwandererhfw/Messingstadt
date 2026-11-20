@@ -1,0 +1,42 @@
+# Einsatz 2, Sequenz nach dem Sieg „Die Presse“: Beide leben, niemand starb
+# Aufruf mit --fresh --mission=mission_02 --intro in einem eigenen leeren APPDATA-Ordner.
+wait 40
+expect mission mission_02
+# Ein Direktstart ohne Akte gilt als neues Spiel, deshalb läuft hier der Prolog. „Vor sechs“ prüft sequenz_einsatz.txt
+expect sequence prolog
+key Escape
+wait 10
+expect sequence einstieg_nach_prolog
+key Escape
+wait 10
+expect sequence 
+calm
+key Key2
+rclickdoor Pforte zur Gerichtsgasse
+waitcontains doors Pforte zur Gerichtsgasse
+rclickdoor Zelle 1
+waitcontains prisoners Anton Weiß:folgt Otto
+rclickdoor Zelle 2
+waitcontains prisoners Paul Roth:folgt Otto
+clickfield 28 23
+waitfor state Won
+wait 20
+expect sequence sieg
+key Escape
+wait 10
+expect sequence nach_02
+expect panel False
+expect beat 0
+# Bild: n2_1a_beide
+key Space
+key Space
+expect beat 1
+# Bild: n2_2a
+key Space
+key Space
+expect beat 2
+key Space
+key Space
+wait 5
+expect sequence 
+expect panel True

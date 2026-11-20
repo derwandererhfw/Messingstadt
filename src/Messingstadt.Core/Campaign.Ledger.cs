@@ -8,6 +8,12 @@ namespace Messingstadt.Core
     {
         Squad,
         Guard,
+
+        /// <summary>
+        /// Ein Gefangener, der bei seiner Befreiung starb. Steht auf der eigenen Seite des Buchs, ist aber kein Truppmitglied:
+        /// kein Einfluss auf Blutschuld, Dauertod oder Nachrücken. Entscheidung der Hauptsession vom 14.11.
+        /// </summary>
+        Prisoner,
     }
 
     /// <summary>Wie die Stadt zum Trupp steht, aus der Blutschuld. Die Kulisse, die Türen und die Wachen hängen an dieser Stufe.</summary>
@@ -96,9 +102,13 @@ namespace Messingstadt.Core
         [System.Text.Json.Serialization.JsonIgnore]
         public string Title => TitleFor(Side, Kind, Rank);
 
+        /// <summary>Steht der Eintrag auf der eigenen Seite des Buchs: Trupp oder Gefangener?</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        public bool Ours => Side != LedgerSide.Guard;
+
         public static string TitleFor(LedgerSide side, string kind, string rank) =>
             rank.Length > 0 ? rank
-            : side == LedgerSide.Squad ? kind
+            : side != LedgerSide.Guard ? kind
             : kind switch
             {
                 "offizier" => "Wachtmeister",
@@ -173,11 +183,29 @@ namespace Messingstadt.Core
 
         // ---- Wer ist tot, wer wurde gekauft, wer hat überlebt ----
 
-        /// <summary>Die Toten einer Seite, in der Reihenfolge der Tode.</summary>
+        public const string PrisonerKind = "Gefangener";
+
+        /// <summary>Die Toten einer Seite, in der Reihenfolge der Tode. Squad sind nur Truppmitglieder, tote Gefangene stehen unter Prisoner.</summary>
         public List<LedgerEntry> Dead(LedgerSide side) => Ledger.Where(e => e.Side == side).ToList();
 
-        /// <summary>Die Toten des letzten zählenden Einsatzes, erst der Trupp, dann die Wache.</summary>
-        public List<LedgerEntry> DeadLastNight() => Ledger.Where(e => e.Night == Nights && e.Night > 0).OrderBy(e => e.Side).ToList();
+        /// <summary>Die linke Seite des Buchs, „Unsere“: Truppmitglieder und tote Gefangene, in der Reihenfolge der Tode.</summary>
+        public List<LedgerEntry> DeadOurs() => Ledger.Where(e => e.Ours).ToList();
+
+        /// <summary>Die Toten des letzten zählenden Einsatzes: erst der Trupp, dann tote Gefangene, dann die Wache.</summary>
+        public List<LedgerEntry> DeadLastNight() => Ledger.Where(e => e.Night == Nights && e.Night > 0)
+            .OrderBy(e => e.Side == LedgerSide.Squad ? 0 : e.Side == LedgerSide.Prisoner ? 1 : 2).ToList();
+
+        /// <summary>Trägt Gefangene ein, die bei ihrer Befreiung starben. Kein Einfluss auf Blut, Schuld oder Trupp.</summary>
+        private void RememberPrisoners(IReadOnlyDictionary<string, bool> prisoners, string mission, string districtId, int night)
+        {
+            foreach (string name in prisoners.Where(p => !p.Value).Select(p => p.Key))
+            {
+                if (!Ledger.Exists(e => e.Side == LedgerSide.Prisoner && e.Name == name))
+                {
+                    Ledger.Add(new LedgerEntry { Name = name, Side = LedgerSide.Prisoner, Kind = PrisonerKind, Mission = mission, District = districtId, Night = night });
+                }
+            }
+        }
 
         /// <summary>Steht dieser Name im Totenbuch, als Wache oder als Agent? Mit Mission nur die Wache dieses Einsatzes.</summary>
         public bool IsDead(string name, string? mission = null) =>
@@ -278,6 +306,14 @@ namespace Messingstadt.Core
                 foreach (var a in Agents.Where(a => a.Dead && !Ledger.Exists(e => e.Side == LedgerSide.Squad && e.Name == a.Name)))
                 {
                     Ledger.Add(new LedgerEntry { Name = a.Name, Side = LedgerSide.Squad, Kind = a.Role });
+                }
+            }
+            // Vor Version 8 standen tote Gefangene nur im Merker des Einsatzes. Nacht und Viertel sind dort nicht bekannt.
+            if (version < 8)
+            {
+                foreach (var (mission, record) in Records)
+                {
+                    RememberPrisoners(record.Prisoners, mission, "", 0);
                 }
             }
             // Vor der Blutschuld: aus den Nächten des Totenbuchs nachrechnen.
