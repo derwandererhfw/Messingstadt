@@ -15,7 +15,7 @@ clickat 61 56
 expect selected 0
 expect slots » Pistole  10/10 |   MP  20/20 |   Rauch  x1 |   Verband  x1
 # Platz 2: Maschinenpistole in die Hand, wie E
-clickat 118 312
+clickat 118 324
 expect weapons Greta:MP 20, Otto:Pistole 10, Emil:ohne Waffe, Hanna:Totschläger
 expect slots   Pistole  10/10 | » MP  20/20 |   Rauch  x1 |   Verband  x1
 # Klicks in die Spalte geben keinen Gehbefehl: zwischen die Felder, auf das Brett, auf das Peilgerät
@@ -25,14 +25,14 @@ clickat 118 650
 expect moving 0
 expect selected 0
 # Verband: unverletzt bleibt er liegen, verletzt heilt er
-clickat 118 370
+clickat 118 382
 expect items Greta:pistole+maschinenpistole+rauchtopf+verbandszeug, Otto:pistole+dietrich, Emil:, Hanna:totschlaeger+pistole
 hurt Greta 50
-clickat 118 370
+clickat 118 382
 waitfor hp 90,100,100,100
 expect slots   Pistole  10/10 | » MP  20/20 |   Rauch  x1 | frei
 # Rauchtopf: der Platz wartet auf ein Ziel, der nächste Klick in die Welt wirft und ist kein Gehbefehl
-clickat 118 341
+clickat 118 353
 expect armed 0
 expect slots   Pistole  10/10 | » MP  20/20 |   Rauch: Ziel anklicken | frei
 clicktile Greta 0 -2

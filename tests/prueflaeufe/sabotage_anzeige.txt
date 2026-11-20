@@ -1,0 +1,30 @@
+# Anzeige in Einsatz 3: große Uhr, Marken der Ziele mit Namen und Balken, erledigte Ziele abgehakt, Hilfezeile, Kurierin als Beruf.
+# Aufruf mit --fresh --mission=mission_03 --look=25,11 (Kamera an der Weiche). Die Wachen sind gekauft (calm), geprüft wird die Anzeige.
+wait 40
+expect mission mission_03
+expect targets Stellwerk:offen, Weiche:offen
+# Die Uhr steht groß im Telegramm, noch ruhig
+waitcontains bigclock :
+expect clockalarm False
+waitcontains helpline , Marke: sabotieren
+calm
+# Hanna ist Kurierin, das steht auf ihrem Blatt
+key Key4
+wait 3
+expect role Kurierin
+rclicktarget Weiche
+waitcontains targets Weiche:Arbeit
+waitcontains targets Weiche:erledigt
+wait 10
+# In der letzten Minute ist die Uhr rot
+showclock 47
+wait 5
+expect bigclock 0:47
+expect clockalarm True
+showclock -1
+wait 5
+expect clockalarm False
+# Der Lageplan zeigt die Marken weiter
+hold Q
+wait 20
+release Q

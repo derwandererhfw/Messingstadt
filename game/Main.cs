@@ -452,8 +452,66 @@ void fragment() {
             {
                 text += " samt Hund";
             }
-            return type.OrderOnly ? text + ", Feuer nur auf Befehl" : text;
+            text = type.OrderOnly ? text + ", Feuer nur auf Befehl" : text;
+            string pass = PassWord(guard);
+            return pass.Length > 0 ? $"{text}, {pass}" : text;
         }
+
+        /// <summary>Die Trägerin des Passierscheins, wenn genau sie gewählt ist. Sonst null: Dann geht es am Mauszeiger nicht um das Papier.</summary>
+        private Unit? PassBearerChosen =>
+            Selected.Count == 1 && World.Units.Find(u => u.Id == Selected.First()) is { Alive: true } only && World.CarriesPass(only) ? only : null;
+
+        public const string PassWorksText = "Rechtsklick zeigt den Passierschein";
+
+        /// <summary>
+        /// Zusatz am Mauszeiger, wenn nur die Trägerin des Passierscheins gewählt ist: was der Rechtsklick tut oder warum das Papier
+        /// bei dieser Wache nichts hilft. Der Grund kommt aus World.PassCheck.
+        /// </summary>
+        public string PassWord(Unit guard)
+        {
+            if (PassBearerChosen is not { } bearer)
+            {
+                return "";
+            }
+            if (World.HeldByPass(guard))
+            {
+                return World.Pass == PassState.Showing ? "liest den Passierschein" : $"schaut weg, noch {PassSeconds} s";
+            }
+            return World.PassCheck(bearer, guard) switch
+            {
+                PassAnswer.Works => PassWorksText,
+                PassAnswer.Used => "Passierschein verbraucht",
+                PassAnswer.Officer => "Passierschein: kennt die Unterschrift",
+                PassAnswer.WrongKind => "Passierschein: liest kein Papier",
+                PassAnswer.Alerted => "Passierschein: zu spät, ist aufgeschreckt",
+                PassAnswer.Blood => "Passierschein: glaubt nach dem Blut kein Papier",
+                _ => "",
+            };
+        }
+
+        private int PassSeconds => (World.PassTicksLeft + World.TickRate - 1) / World.TickRate;
+
+        /// <summary>Zeile zum Passierschein für das Inventarblatt seiner Trägerin: bereit, wird gelesen, Wache schaut weg, verbraucht. Leer bei allen anderen.</summary>
+        public string AgentPass(Unit agent)
+        {
+            if (!World.CarriesPass(agent))
+            {
+                return "";
+            }
+            return World.Pass switch
+            {
+                PassState.Showing => "Passierschein: wird gelesen",
+                PassState.Away => $"Passierschein: Wache schaut weg {PassSeconds} s",
+                PassState.Spent => "Passierschein: verbraucht",
+                _ => World.PassBlocked ? "Passierschein: glaubt keiner mehr" : "Passierschein: bereit, einmal",
+            };
+        }
+
+        /// <summary>Die Uhr eines Einsatzes mit Zeitgrenze in Sekunden, -1 ohne Uhr oder wenn sie nicht mehr läuft.</summary>
+        public int ClockSeconds => ClockShown >= 0 ? ClockShown : World.TicksLeft < 0 || _finished ? -1 : (World.TicksLeft + World.TickRate - 1) / World.TickRate;
+
+        /// <summary>Nur für den Prüflauf: zeigt die Uhr mit dieser Sekundenzahl, ohne die Spielzeit zu ändern. -1 zeigt die echte.</summary>
+        public int ClockShown = -1;
 
         /// <summary>Was ein Agent besonders kann, eine kurze Zeile für das Inventarblatt der Spalte. Leer, wenn es nichts zu sagen gibt.</summary>
         public string AgentTrait(Unit agent) => agent.Skill == World.SkillLeader && World.LeaderDiscountPercent > 0
@@ -697,6 +755,13 @@ void fragment() {
             ["panel"] = _panel.Visible.ToString(),
             ["hud"] = _paper.Visible.ToString(),
             ["hover"] = HoveredGuard() is { } hovered ? GuardLine(hovered) : "",
+            ["pass"] = $"{World.Pass}{(World.PassGuardId >= 0 ? " " + World.Units[World.PassGuardId].Name : "")}",
+            ["passline"] = _paper.PassLine,
+            ["password"] = string.Join(" | ", World.Units.Where(u => u.Faction == Faction.Guard && u.Alive && u.Type != GuardType.Hund).Select(u => $"{u.Name}: {PassWord(u)}")),
+            ["bigclock"] = _paper.ClockText,
+            ["clockalarm"] = _paper.ClockAlarm.ToString(),
+            ["role"] = _paper.Role,
+            ["passsaid"] = _chatter.LastPassLine,
             // Liegt die Zeile zur Wache ganz im Spielfeld, rechts der Spalte und links vom rechten Rand?
             ["hoverfits"] = _overlay.GuardLineLeft < 0f ? "" : (_overlay.GuardLineLeft >= HudColumn && _overlay.GuardLineRight <= GetViewportRect().Size.X).ToString(),
             ["phone"] = $"{World.Phone}{(World.WireCut ? " gekappt" : "")}",
@@ -1772,9 +1837,9 @@ void fragment() {
             result.AddThemeConstantOverride("separation", 18);
             string verdict = won ? $"Einsatz geglückt: {RatingText()}" : _abandoned ? "Einsatz aufgegeben" : "Trupp verloren";
             result.AddChild(PaperUi.Text(verdict, 17, PaperUi.StampRed, PaperUi.Serif));
-            string loot = won && World.LootTaken ? $" + {World.LootName} {World.LootValue}" : "";
-            string pay = won ? $"Lohn {_lastReward}{loot}   " : "";
-            result.AddChild(PanelLabel($"{pay}Kasse {_campaign.Money}   Einsätze {_campaign.Missions}"));
+            string loot = won && World.LootTaken ? $" + {World.LootName} {PaperUi.Groschen(World.LootValue)}" : "";
+            string pay = won ? $"Lohn {PaperUi.Groschen(_lastReward)}{loot}   " : "";
+            result.AddChild(PanelLabel($"{pay}Kasse {PaperUi.Groschen(_campaign.Money)}   Einsätze {_campaign.Missions}"));
             _panelBody.AddChild(result);
             if (won && _campaign.LastPrisoners.Count > 0)
             {
@@ -1793,7 +1858,7 @@ void fragment() {
             {
                 _panelBody.AddChild(PanelLabel(CampaignTexts.RuleHint, 13));
             }
-            _panelBody.AddChild(PanelLabel($"Fahndung {_campaign.Heat}/{Campaign.MaxHeat}   Rückhalt {_campaign.Support}/{Campaign.MaxSupport}, Beitrag {_campaign.Dues} je Einsatz"));
+            _panelBody.AddChild(PanelLabel($"Fahndung {_campaign.Heat}/{Campaign.MaxHeat}   Rückhalt {_campaign.Support}/{Campaign.MaxSupport}, Beitrag {PaperUi.Groschen(_campaign.Dues)} je Einsatz"));
             foreach (var record in _campaign.Roster())
             {
                 // Name und Zustand stehen über den Ausbauten: Drei Ausbauten mit Bildern passen in 1280 nicht neben den Namen.
@@ -1806,12 +1871,12 @@ void fragment() {
                 _panelBody.AddChild(row);
                 if (record.Dead)
                 {
-                    row.AddChild(CampaignButton($"Anwerben ({Campaign.RecruitCost})", _campaign.Money >= Campaign.RecruitCost, () => _campaign.TryRecruit(record.Slot)));
+                    row.AddChild(CampaignButton($"Anwerben ({PaperUi.Gr(Campaign.RecruitCost)})", _campaign.Money >= Campaign.RecruitCost, () => _campaign.TryRecruit(record.Slot)));
                     continue;
                 }
                 if (record.Rest > 0)
                 {
-                    row.AddChild(CampaignButton($"Arzt ({Campaign.DoctorCost})", _campaign.Money >= Campaign.DoctorCost, () => _campaign.TryDoctor(record.Name)));
+                    row.AddChild(CampaignButton($"Arzt ({PaperUi.Gr(Campaign.DoctorCost)})", _campaign.Money >= Campaign.DoctorCost, () => _campaign.TryDoctor(record.Name)));
                 }
                 var upgrades = new HBoxContainer();
                 upgrades.AddThemeConstantOverride("separation", 10);
@@ -2019,7 +2084,7 @@ void fragment() {
             int cost = Campaign.UpgradeCost(level);
             var button = new Button
             {
-                Text = full ? $"{label} voll" : $"{label} + ({cost})",
+                Text = full ? $"{label} voll" : $"{label} + ({PaperUi.Gr(cost)})",
                 Disabled = full || _campaign.Money < cost,
                 CustomMinimumSize = new Vector2(124, 0), SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
             };
@@ -2473,12 +2538,12 @@ void fragment() {
             var leader = World.Units.Find(u => u.Alive && u.Faction == Faction.Agent && u.Skill == World.SkillLeader);
             if (payer == null || leader == null || World.LeaderDiscountPercent <= 0)
             {
-                return $"käuflich für {full}";
+                return $"käuflich für {PaperUi.Gr(full)}";
             }
             int now = World.BribePrice(guard, payer);
             int with = World.BribePriceWithLeader(guard);
-            return now < full ? $"käuflich für {now}, {leader.Name} ist dabei"
-                : World.LeaderBacksLater ? $"käuflich für {full}, mit {leader.Name} {with}" : $"käuflich für {full}";
+            return now < full ? $"käuflich für {PaperUi.Gr(now)}, {leader.Name} ist dabei"
+                : World.LeaderBacksLater ? $"käuflich für {PaperUi.Gr(full)}, mit {leader.Name} {PaperUi.Gr(with)}" : $"käuflich für {PaperUi.Gr(full)}";
         }
 
         public Unit? HoveredGuard()
@@ -2708,7 +2773,7 @@ void fragment() {
             PlaceUpgradeTip();
             telegram = PhoneNote() ?? telegram;
             int guards = World.Units.Count(u => u.Faction == Faction.Guard && u.Alive);
-            string info = $"WACHEN {guards}   ZEIT {World.Tick / World.TickRate} S   KASSE {World.Money}";
+            string info = $"WACHEN {guards}   ZEIT {World.Tick / World.TickRate} S   KASSE {World.Money} GR";
             if (clock.Length > 0 && !_finished)
             {
                 // Die Uhr steht vorn in der zweiten Zeile, damit sie nie abgeschnitten wird.
@@ -2723,6 +2788,7 @@ void fragment() {
                 info += "   DRAHT GEKAPPT";
             }
             _paper.Refresh(World, Selected, telegram, info);
+            _paper.ShowClock(ClockSeconds);
             _banner.Text = _paused && !ControlsLocked ? "PAUSE" : "";
             _help.Visible = _paper.Visible && !_finished;
             _helpPlain = HelpLine();
@@ -2742,7 +2808,11 @@ void fragment() {
                 ? $" (mit {leader.Name} {LeaderCut})" : "";
             string right = string.Concat(
                 agents.Where(u => u.Skill == World.SkillBookkeeper).Select(u => $", {u.Name}: bestechen{backed}")
-                .Concat(agents.Where(u => u.Skill == World.SkillLocksmith).Select(u => $", {u.Name}: Tür")));
+                .Concat(agents.Where(u => u.Skill == World.SkillLocksmith).Select(u => $", {u.Name}: Tür"))
+                // Der Passierschein steht da, solange ihn noch jemand zeigen kann.
+                .Concat(agents.Where(u => World.CarriesPass(u) && World.PassAvailable).Take(1).Select(u => $", {u.Name}: Passierschein"))
+                // In einem Einsatz der Art Sabotieren gilt der Rechtsklick auch den Marken der Ziele.
+                .Concat(World.IsSabotage && World.Targets.Exists(t => !t.Done) ? new[] { ", Marke: sabotieren" } : Array.Empty<string>()));
             // Die Zifferntasten wählen die Agenten im Einsatz, auch Gefallene behalten ihre Ziffer.
             int squad = World.Units.Count(u => u.Faction == Faction.Agent);
             string keys = squad <= 1 ? "1" : $"1-{squad}";
@@ -2899,8 +2969,10 @@ void fragment() {
                     }
                     else if (guard != null)
                     {
-                        // Wer nur den Buchhalter gewählt hat, will verhandeln statt schießen.
-                        bool bribed = Selected.Count == 1 && World.OrderBribe(Selected.First(), guard.Id);
+                        // Wer nur den Buchhalter gewählt hat, will verhandeln statt schießen. Wer nur die Trägerin des Passierscheins
+                        // gewählt hat und ihn dieser Wache noch zeigen kann, zeigt ihn. Mit Umschalt wird immer angegriffen.
+                        bool bribed = Selected.Count == 1 && !mouse.ShiftPressed
+                            && (World.OrderBribe(Selected.First(), guard.Id) || World.OrderShowPass(Selected.First(), guard.Id));
                         if (!bribed)
                         {
                             foreach (int id in Selected) World.OrderAttack(id, guard.Id);

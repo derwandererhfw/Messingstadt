@@ -8,7 +8,7 @@ expect hud False
 expect citymap viertel_1: brandt brandt brandt brandt brandt
 expect focus 1  Kesselviertel
 seetext Holen: Das Kontobuch
-seetext Belohnung: 300 bis 600, je leiser, desto mehr
+seetext Belohnung: 300 bis 600 Groschen, je leiser, desto mehr
 # Pfeiltasten wandern durch die Viertel, jede Wahl klingt. Ein gesperrtes zeigt, warum, und lässt sich nicht nehmen
 remember menusounds
 key Down

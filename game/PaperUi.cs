@@ -12,6 +12,12 @@ namespace Messingstadt
     /// </summary>
     public partial class PaperUi : Control
     {
+        /// <summary>Ein Betrag ausgeschrieben, wo Platz ist: "600 Groschen". Einzahl und Mehrzahl sind gleich.</summary>
+        public static string Groschen(int amount) => $"{amount} Groschen";
+
+        /// <summary>Ein Betrag in der kurzen Form für Knöpfe, Listen und den Mauszeiger: "600 Gr", ohne Punkt.</summary>
+        public static string Gr(int amount) => $"{amount} Gr";
+
         public static readonly Color PaperColor = new(0.68f, 0.62f, 0.48f);
         public static readonly Color PaperDark = new(0.5f, 0.45f, 0.34f);
         public static readonly Color Ink = new(0.13f, 0.11f, 0.1f);

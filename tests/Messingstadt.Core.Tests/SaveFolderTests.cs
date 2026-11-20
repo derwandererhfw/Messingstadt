@@ -111,8 +111,8 @@ namespace Messingstadt.Core.Tests
         [Fact]
         public void Describe_CountsMissionsInGerman()
         {
-            Assert.Equal("Kasse 300, 1 Einsatz", SaveFolder.Describe(new Campaign { Money = 300, Missions = 1 }));
-            Assert.Equal("Kasse 20, 0 Einsätze", SaveFolder.Describe(new Campaign { Money = 20 }));
+            Assert.Equal("Kasse 300 Groschen, 1 Einsatz", SaveFolder.Describe(new Campaign { Money = 300, Missions = 1 }));
+            Assert.Equal("Kasse 20 Groschen, 0 Einsätze", SaveFolder.Describe(new Campaign { Money = 20 }));
         }
     }
 }

@@ -101,7 +101,7 @@ namespace Messingstadt
             var title = PaperUi.Text("ROTER HAMMER   WAFFENKAMMER", 14, PaperUi.StampRed, PaperUi.Serif);
             title.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             head.AddChild(title);
-            head.AddChild(PaperUi.Text($"Kasse {Campaign.Money}", 22, PaperUi.Ink, PaperUi.Serif));
+            head.AddChild(PaperUi.Text($"Kasse {PaperUi.Groschen(Campaign.Money)}", 22, PaperUi.Ink, PaperUi.Serif));
             _body.AddChild(head);
             _body.AddChild(Rule(2, PaperUi.Ink));
 
@@ -235,13 +235,14 @@ namespace Messingstadt
             foreach (var def in Game.Catalog.Items)
             {
                 string id = def.Id;
-                var button = MakeButton("catalog:" + id, $"{def.Name}   {def.Price}", () => Choose(Source.Catalog, id), 0);
+                var button = MakeButton("catalog:" + id, $"{def.Name}   {PaperUi.Gr(def.Price)}", () => Choose(Source.Catalog, id), 0);
                 button.SizeFlagsHorizontal = SizeFlags.ExpandFill;
                 button.Alignment = HorizontalAlignment.Left;
                 FilePictures.OnButton(button, id, ListPicture);
                 if (_source == Source.Catalog && _item == id)
                 {
-                    Mark(button);
+                    // Nur die Farbe: Mit dem Pfeil davor passt die längste Zeile samt Bild und Preis nicht mehr in die Spalte.
+                    button.AddThemeColorOverride("font_color", PaperUi.StampRed);
                 }
                 grid.AddChild(button);
             }
@@ -277,7 +278,7 @@ namespace Messingstadt
             sheet.AddChild(facts);
             facts.AddChild(PaperUi.Text(def.Name, 22, PaperUi.Ink, PaperUi.Serif));
             facts.AddChild(Wrapped(Values(def), Small, 0));
-            facts.AddChild(PaperUi.Text($"Preis {def.Price}   Verkauf {Game.Catalog.SellPrice(def.Id)}", Small, new Color(PaperUi.Ink, 0.75f), PaperUi.Typewriter));
+            facts.AddChild(PaperUi.Text($"Preis {PaperUi.Groschen(def.Price)}   Verkauf {PaperUi.Groschen(Game.Catalog.SellPrice(def.Id))}", Small, new Color(PaperUi.Ink, 0.75f), PaperUi.Typewriter));
             facts.AddChild(Wrapped(def.Text, Normal, 0));
             var actions = new HFlowContainer();
             actions.AddThemeConstantOverride("h_separation", 8);
@@ -295,7 +296,7 @@ namespace Messingstadt
                         () => Do(Campaign.TryBuy(Game.Catalog, def.Id), $"{def.Name} gekauft, liegt in der Kiste.", "buystash", BuySound));
                     if (Campaign.Money < def.Price)
                     {
-                        _hint = $"Für {def.Name} fehlen {def.Price - Campaign.Money}.";
+                        _hint = $"Für {def.Name} fehlen {PaperUi.Groschen(def.Price - Campaign.Money)}.";
                     }
                     else if (agent != null && !canCarry)
                     {
@@ -305,14 +306,14 @@ namespace Messingstadt
                 case Source.Stash:
                     Action("equip", agent != null ? $"Ausrüsten: {agent.Name}" : "Ausrüsten", canCarry, actions,
                         () => Do(Campaign.Equip(_agent!, def.Id), $"{_agent} trägt jetzt {def.Name}.", "stash:" + def.Id, EquipSound));
-                    Action("sellstash", $"Verkaufen (+{sell})", true, actions,
-                        () => Do(Campaign.TrySell(Game.Catalog, def.Id), $"{def.Name} verkauft für {sell}.", "stash:" + def.Id, SellSound));
+                    Action("sellstash", $"Verkaufen (+{PaperUi.Gr(sell)})", true, actions,
+                        () => Do(Campaign.TrySell(Game.Catalog, def.Id), $"{def.Name} verkauft für {PaperUi.Groschen(sell)}.", "stash:" + def.Id, SellSound));
                     break;
                 case Source.Slot:
                     Action("unequip", "In die Kiste legen", true, actions,
                         () => Do(Campaign.Unequip(_agent!, _slot), $"{def.Name} liegt jetzt in der Kiste.", $"slot:{_agent}:{_slot}", EquipSound));
-                    Action("sellslot", $"Verkaufen (+{sell})", true, actions,
-                        () => Do(SellSlot(), $"{def.Name} verkauft für {sell}.", $"slot:{_agent}:{_slot}", SellSound));
+                    Action("sellslot", $"Verkaufen (+{PaperUi.Gr(sell)})", true, actions,
+                        () => Do(SellSlot(), $"{def.Name} verkauft für {PaperUi.Groschen(sell)}.", $"slot:{_agent}:{_slot}", SellSound));
                     break;
             }
         }
