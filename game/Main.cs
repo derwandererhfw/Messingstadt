@@ -286,6 +286,8 @@ void fragment() {
         // Ein Spiel ist begonnen. Solange nur der Startbildschirm offen ist, wird nichts gespeichert und kein Abbruch verbucht.
         private bool _playing;
         private float _sequenceTime;
+        // --seq-flags=a;b ersetzt im Prüflauf die Merker für die Bedingungen der Abschnitte.
+        private string[] _sequenceFlags = Array.Empty<string>();
         private Vector2? _look;
         private int _shotOnFireTick = -1;
         private string? _shotPath;
@@ -959,7 +961,13 @@ void fragment() {
                 return;
             }
             // Abschnitte mit Bedingung laufen nur, wenn sie zum Ausgang des Einsatzes passen.
-            data = data.For(SequenceFlags.For(_campaign, World));
+            var flags = SequenceFlags.For(_campaign, World);
+            if (_sequenceFlags.Length > 0)
+            {
+                // Prüfstand: Die Merker kommen vom Aufruf, etwa für Fassungen von Einsätzen, die noch nicht gebaut sind.
+                flags = new HashSet<string>(_sequenceFlags);
+            }
+            data = data.For(flags);
             if (data.Beats.Count == 0)
             {
                 done?.Invoke();
@@ -1265,6 +1273,10 @@ void fragment() {
                 else if (a.StartsWith("--peil="))
                 {
                     _peilSeconds = float.Parse(a["--peil=".Length..], System.Globalization.CultureInfo.InvariantCulture);
+                }
+                else if (a.StartsWith("--seq-flags="))
+                {
+                    _sequenceFlags = a["--seq-flags=".Length..].Split(';', StringSplitOptions.RemoveEmptyEntries);
                 }
                 else if (a.StartsWith("--seq-time="))
                 {

@@ -1,0 +1,9 @@
+{
+  "id": "vor_04",
+  "beats": [
+    {"show": "image", "image": "sequences/einsatz_01/n1_2.jpg", "body": "Im Kontobuch stand ein Sperling. Ein Vogel, der Geld bekam und keinen Namen hatte.", "zoom": [1.12, 1.2], "seconds": 3.0, "sounds": [{"at": 0.2, "name": "pages", "volume": -14}], "fade": [1, 0], "fadeSeconds": 1.4},
+    {"show": "image", "image": "sequences/einsatz_04/v4_2.jpg", "body": "Die Bank schrieb alles zweimal auf. Einmal für die Prüfer, einmal für sich.", "zoom": [1.0, 1.05], "seconds": 3.0},
+    {"show": "image", "image": "sequences/einsatz_04/v4_3.jpg", "body": "Das zweite Buch lag in Valks Fach. Den Schlüssel dazu trug ein Mann, der seine Miete nicht zahlen konnte.", "zoom": [1.04, 1.0], "seconds": 3.2, "sounds": [{"at": 0.2, "name": "keys", "volume": -14}]},
+    {"show": "image", "image": "sequences/einsatz_04/v4_4.jpg", "body": "Ich schickte den Trupp nicht zum Tresor. Ich schickte ihn zu Dorn.", "zoom": [1.0, 1.06], "seconds": 3.2, "sounds": [{"at": 0.2, "name": "match", "volume": -14}], "fade": [0, 1], "fadeStart": 4.0, "fadeSeconds": 1.0}
+  ]
+}

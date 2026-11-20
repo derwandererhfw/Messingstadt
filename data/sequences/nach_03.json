@@ -1,0 +1,12 @@
+{
+  "id": "nach_03",
+  "beats": [
+    {"show": "image", "image": "sequences/einsatz_03/n3_1.jpg", "body": "Der Zug stand bis zum Morgen auf freier Strecke. Die Hälfte der Männer ging zu Fuß nach Hause.", "zoom": [1.0, 1.05], "seconds": 3.0, "sounds": [{"at": 0.2, "name": "steam", "volume": -16}], "fade": [1, 0], "fadeSeconds": 1.4},
+    {"show": "image", "image": "sequences/einsatz_03/n3_2.jpg", "body": "Im Stellwerk hatte der Werkschutz gesessen. Sie hatten uns erwartet.", "zoom": [1.04, 1.0], "seconds": 3.2},
+    {"show": "image", "image": "sequences/einsatz_03/n3_3.jpg", "body": "Die Liste derer, die von dem Zug wussten, war kurz. Ich legte sie in die Schublade.", "zoom": [1.0, 1.04], "seconds": 3.2},
+    {"show": "ledger", "when": "keine_toten", "image": "sequences/buch.jpg", "title": "Nacht {nacht} · {place}", "body": "In dieser Nacht schrieb ich keinen Namen ins Buch.", "seconds": 2.0, "hold": true, "sounds": [{"at": 0.0, "name": "pages_0", "volume": -14}]},
+    {"show": "ledger", "when": "nur_wachen", "image": "sequences/buch.jpg", "title": "Nacht {nacht} · {place}", "body": "Ich schrieb ihre Namen ins Buch. Es waren nicht unsere. Es waren Namen.", "seconds": 2.0, "hold": true, "sounds": [{"at": 0.0, "name": "pages_0", "volume": -14}]},
+    {"show": "ledger", "when": "nur_eigene", "image": "sequences/buch.jpg", "title": "Nacht {nacht} · {place}", "body": "In dieser Nacht stand nur auf unserer Seite etwas. Ich schrieb langsam.", "seconds": 2.0, "hold": true, "sounds": [{"at": 0.0, "name": "pages_0", "volume": -14}]},
+    {"show": "ledger", "when": "beide_seiten", "image": "sequences/buch.jpg", "title": "Nacht {nacht} · {place}", "body": "In dieser Nacht stand auf beiden Seiten etwas. Ich schrieb langsam.", "seconds": 2.0, "hold": true, "sounds": [{"at": 0.0, "name": "pages_0", "volume": -14}]}
+  ]
+}

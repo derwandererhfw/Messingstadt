@@ -68,7 +68,7 @@ namespace Messingstadt.Core.Tests
         [Fact]
         public void SequencesUsedByTheGameExist()
         {
-            foreach (string id in new[] { "prolog", "einstieg_nach_prolog", "einstieg", "uebergang", "sieg", "niederlage", "rueckzug", "nach_01", "vor_02", "nach_02" })
+            foreach (string id in new[] { "prolog", "einstieg_nach_prolog", "einstieg", "uebergang", "sieg", "niederlage", "rueckzug", "nach_01", "vor_02", "nach_02", "vor_03", "nach_03", "vor_04", "nach_04", "vor_05", "nach_05" })
             {
                 Assert.True(File.Exists(Path.Combine(RepoRoot(), "data", "sequences", id + ".json")), id);
             }
@@ -94,7 +94,7 @@ namespace Messingstadt.Core.Tests
         [Fact]
         public void EveryCaseOfTheLedgerPageHasExactlyOneBeat()
         {
-            foreach (string id in new[] { "nach_01", "nach_02" })
+            foreach (string id in new[] { "nach_01", "nach_02", "nach_03", "nach_04", "nach_05" })
             {
                 var data = SequenceData.Parse(File.ReadAllText(Path.Combine(RepoRoot(), "data", "sequences", id + ".json")));
                 foreach (string flag in new[] { SequenceFlags.NoDead, SequenceFlags.GuardsOnly, SequenceFlags.OwnOnly, SequenceFlags.BothSides })
@@ -103,6 +103,18 @@ namespace Messingstadt.Core.Tests
                     Assert.Single(data.For(flags).Beats, b => b.Show == "ledger");
                 }
             }
+        }
+
+        [Fact]
+        public void TheEmptyTableShowsOneOpeningPictureDeadOrAlive()
+        {
+            var data = SequenceData.Parse(File.ReadAllText(Path.Combine(RepoRoot(), "data", "sequences", "nach_05.json")));
+            var dead = data.For(new HashSet<string> { "tot:Gustav Rademacher", SequenceFlags.NoDead });
+            var alive = data.For(new HashSet<string> { SequenceFlags.NoDead });
+            Assert.Equal(3, dead.Beats.Count(b => b.Show == "image"));
+            Assert.Equal(3, alive.Beats.Count(b => b.Show == "image"));
+            Assert.Contains("leerer Tisch", dead.Beats[0].Body);
+            Assert.Contains("verbundenem Kopf", alive.Beats[0].Body);
         }
 
         [Fact]

@@ -1,6 +1,6 @@
 # Sequenzen zu Einsatz 3 bis 5: Szenenplan
 
-Stand 2026-11-20. Entwurf der Sequenzen-Session nach `../NOIR_STYLE_GUIDE.md`. Kolbs Kästen stehen wörtlich in den Bauvorlagen `../einsatz_03_gleisviertel.md` bis `../einsatz_05_altstadt.md` (KANON, freigegeben 2026-11-14) und sind hier nicht geändert. Alle Bildbeschreibungen und Akzentfarben sind VORSCHLAG der Sequenzen-Session. Von Story am 2026-11-20 durchgesehen, ihre Änderungen sind eingearbeitet. Die Bilder gibt es noch nicht, die Einsätze sind noch nicht gebaut.
+Stand 2026-11-20. Entwurf der Sequenzen-Session nach `../NOIR_STYLE_GUIDE.md`. Kolbs Kästen stehen wörtlich in den Bauvorlagen `../einsatz_03_gleisviertel.md` bis `../einsatz_05_altstadt.md` (KANON, freigegeben 2026-11-14) und sind hier nicht geändert. Alle Bildbeschreibungen und Akzentfarben sind VORSCHLAG der Sequenzen-Session. Von Story am 2026-11-20 durchgesehen, ihre Änderungen sind eingearbeitet. Der Nutzer hat am 2026-11-20 das Erzeugen der Bilder freigegeben („Ja, Bilder erzeugen“). Die 22 Bilder sind mit Higgsfield erzeugt (60,5 Credits) und eingebunden, abgenommen sind sie noch nicht. Die Einsätze sind noch nicht gebaut, die Sequenzen laufen bisher nur im Prüfstand.
 
 ## Rahmen
 
@@ -82,7 +82,7 @@ Erwartete Abfrage: Die Wache der Mission mit dem Namen „Gustav Rademacher“ s
 | Bildbeschreibungen, Akzentfarben, Wiederverwendung des Vogelbilds | VORSCHLAG der Sequenzen-Session, 2026-11-20 |
 | Titel der Sequenzen | VORSCHLAG aus `sequenzen-plan-kampagne.md`, mit Stufe 2 freigegeben |
 
-Geprüft gegen den Styleguide: Kolb aus dem Off im Präteritum, kein Gesicht von Kolb und Rehm, kein erkennbarer Agent, höchstens ein Akzent je Bild, kein Rot, eine Bildpause vor der Entscheidung in N4. Je Sequenz eine neue Tatsache: V3 der Zug, N3 der Verrat aus dem eigenen Kreis, V4 das Zweitbuch und Dorn, N4 Rehms Name, V5 der Notstand, N5 die Handschrift. Nicht geprüft: die Wirkung der Bilder.
+Geprüft gegen den Styleguide: Kolb aus dem Off im Präteritum, kein Gesicht von Kolb und Rehm, kein erkennbarer Agent, höchstens ein Akzent je Bild, kein Rot, eine Bildpause vor der Entscheidung in N4. Je Sequenz eine neue Tatsache: V3 der Zug, N3 der Verrat aus dem eigenen Kreis, V4 das Zweitbuch und Dorn, N4 Rehms Name, V5 der Notstand, N5 die Handschrift. Abweichungen der Bilder vom Plan: In V3 Panel 1 trägt das Flugblatt ein Bild. In V4 Panel 2 sieht man den Oberkörper des Buchhalters mit Augenschirm, kein Gesicht. In N4 Panel 3 wirkt der Finger grob und nicht wie Kolbs Hand aus N1. In N5 Panel 2 tragen die Helfer einen Korb, nicht mehrere.
 
 ## Durchsicht der Story
 

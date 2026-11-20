@@ -1,0 +1,23 @@
+# Prüfstand N3 „Die kurze Liste“
+# Aufruf mit --fresh --seq=nach_03 in einem eigenen leeren APPDATA-Ordner. Der Einsatz ist noch nicht gebaut, die Sequenz läuft hier vor Einsatz 1.
+wait 20
+expect sequence nach_03
+expect beat 0
+# Bild: n3_1
+key Space
+key Space
+expect beat 1
+# Bild: n3_2
+key Space
+key Space
+expect beat 2
+# Bild: n3_3
+key Space
+key Space
+expect beat 3
+# Bild: n3_buch
+key Space
+key Space
+wait 10
+expect sequence 
+expect hud True

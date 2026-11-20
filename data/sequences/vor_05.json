@@ -1,0 +1,9 @@
+{
+  "id": "vor_05",
+  "beats": [
+    {"show": "image", "image": "sequences/einsatz_05/v5_1.jpg", "body": "Das Buch lag einen Tag bei mir. Länger brauchte Rehm nicht.", "zoom": [1.0, 1.05], "seconds": 3.0, "fade": [1, 0], "fadeSeconds": 1.4},
+    {"show": "image", "image": "sequences/einsatz_05/v5_2.jpg", "body": "In der Nacht auf Freitag sperrte der Werkschutz jede Gasse aus der Altstadt. Sie suchten nicht. Sie wussten die Hausnummer.", "zoom": [1.04, 1.0], "seconds": 3.0, "sounds": [{"at": 0.2, "name": "step_boot_0", "volume": -12}]},
+    {"show": "image", "image": "sequences/einsatz_05/v5_3.jpg", "body": "Um drei rief der Stadtrat den Notstand aus. Brandt hatte drei Wochen darauf gewartet.", "zoom": [1.0, 1.05], "seconds": 3.2, "sounds": [{"at": 0.2, "name": "church_bell", "volume": -14}]},
+    {"show": "image", "image": "sequences/einsatz_05/v5_4.jpg", "body": "Unter der Wäscherei lagen unsere Verwundeten. Im Hof stand der Trupp. Dazwischen war nur eine Treppe.", "zoom": [1.0, 1.06], "seconds": 3.4, "fade": [0, 1], "fadeStart": 4.0, "fadeSeconds": 1.0}
+  ]
+}

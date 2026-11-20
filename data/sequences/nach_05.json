@@ -1,0 +1,13 @@
+{
+  "id": "nach_05",
+  "beats": [
+    {"show": "image", "image": "sequences/einsatz_05/n5_1a.jpg", "body": "Am Morgen stand am Fischmarkt ein leerer Tisch. Befehle gab dort keiner mehr.", "when": "tot:Gustav Rademacher", "zoom": [1.0, 1.05], "seconds": 3.0, "sounds": [{"at": 0.2, "name": "pigeons", "volume": -16}], "fade": [1, 0], "fadeSeconds": 1.4},
+    {"show": "image", "image": "sequences/einsatz_05/n5_1b.jpg", "body": "Am Morgen trugen sie Rademacher mit verbundenem Kopf vom Fischmarkt. Befehle gab dort keiner mehr.", "when": "!tot:Gustav Rademacher", "zoom": [1.0, 1.05], "seconds": 3.0, "sounds": [{"at": 0.2, "name": "pigeons", "volume": -16}], "fade": [1, 0], "fadeSeconds": 1.4},
+    {"show": "image", "image": "sequences/einsatz_05/n5_2.jpg", "body": "Die Ärztin brachte die Verwundeten in Wäschekörben aus dem Viertel.", "zoom": [1.04, 1.0], "seconds": 3.0},
+    {"show": "image", "image": "sequences/einsatz_05/n5_3.jpg", "body": "In Rademachers Mappe lag ein Zettel mit unserer Hausnummer. Die Handschrift kannte ich aus zwanzig Jahren Protokollen.", "zoom": [1.0, 1.04], "seconds": 3.6, "sounds": [{"at": 0.2, "name": "pages", "volume": -14}]},
+    {"show": "ledger", "when": "keine_toten", "image": "sequences/buch.jpg", "title": "Nacht {nacht} · {place}", "body": "In dieser Nacht schrieb ich keinen Namen ins Buch.", "seconds": 2.0, "hold": true, "sounds": [{"at": 0.0, "name": "pages_0", "volume": -14}]},
+    {"show": "ledger", "when": "nur_wachen", "image": "sequences/buch.jpg", "title": "Nacht {nacht} · {place}", "body": "Ich schrieb ihre Namen ins Buch. Es waren nicht unsere. Es waren Namen.", "seconds": 2.0, "hold": true, "sounds": [{"at": 0.0, "name": "pages_0", "volume": -14}]},
+    {"show": "ledger", "when": "nur_eigene", "image": "sequences/buch.jpg", "title": "Nacht {nacht} · {place}", "body": "In dieser Nacht stand nur auf unserer Seite etwas. Ich schrieb langsam.", "seconds": 2.0, "hold": true, "sounds": [{"at": 0.0, "name": "pages_0", "volume": -14}]},
+    {"show": "ledger", "when": "beide_seiten", "image": "sequences/buch.jpg", "title": "Nacht {nacht} · {place}", "body": "In dieser Nacht stand auf beiden Seiten etwas. Ich schrieb langsam.", "seconds": 2.0, "hold": true, "sounds": [{"at": 0.0, "name": "pages_0", "volume": -14}]}
+  ]
+}
