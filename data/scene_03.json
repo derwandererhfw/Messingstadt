@@ -1,0 +1,779 @@
+{
+ "id": "gleisviertel",
+ "mission": "mission_03",
+ "width": 30,
+ "height": 30,
+ "note": "Grundriss von Einsatz 3, Güterbahnhof Ost, 30 × 30 Felder. Norden ist y = 0. Rechtecke gelten von x0,y0 bis ausschließlich x1,y1. Höhen in Pixeln wie in generate_concept.py. Erzeugt von tools/level/build_gleisviertel.py, Orte und Gründe in docs/einsatz_03_grundriss.md.",
+ "tracks": [
+  9,
+  10,
+  11,
+  12,
+  13,
+  14,
+  15
+ ],
+ "buildings": [
+  {
+   "id": "bahndamm",
+   "kind": "bahndamm",
+   "x0": 0,
+   "y0": 0,
+   "x1": 30,
+   "y1": 2,
+   "height": 56,
+   "roof": "flach",
+   "lit": 0.0,
+   "text": "Stützmauer aus Klinker unter dem Damm der Hauptstrecke, oben ein Geländer und Signalmasten. Schließt das Bild nach Norden"
+  },
+  {
+   "id": "gueterschuppen",
+   "kind": "gueterschuppen",
+   "x0": 5,
+   "y0": 2,
+   "x1": 14,
+   "y1": 6,
+   "height": 70,
+   "roof": "sattel",
+   "name": "GÜTERABFERTIGUNG OST",
+   "lit": 0.1,
+   "text": "Langer Schuppen aus Teerholz, Laderampe nach Süden über die ganze Länge. Das Schuppentor liegt in der Mitte der Rampe"
+  },
+  {
+   "id": "wasserturm",
+   "kind": "wasserturm",
+   "x0": 15,
+   "y0": 2,
+   "x1": 17,
+   "y1": 4,
+   "height": 140,
+   "roof": "kessel",
+   "lit": 0.0,
+   "text": "Wasserturm auf vier Beinen, das Höchste im Bild, deshalb am Nordrand. Unten offen gezeichnet, für die Regeln gesperrt"
+  },
+  {
+   "id": "stellwerk",
+   "kind": "stellwerk",
+   "x0": 19,
+   "y0": 2,
+   "x1": 23,
+   "y1": 6,
+   "height": 90,
+   "roof": "walm",
+   "name": "STELLWERK OST",
+   "lit": 0.6,
+   "text": "Ziegelsockel, oben die Glaskanzel mit Licht. Tür nach Süden, die Hebelbank steht gleich dahinter"
+  },
+  {
+   "id": "kohlenbansen_west",
+   "kind": "kohlenbansen",
+   "x0": 0,
+   "y0": 19,
+   "x1": 3,
+   "y1": 24,
+   "height": 36,
+   "roof": "offen",
+   "lit": 0.0,
+   "text": "Bansen aus Schwellenholz mit Kohlenhaufen, niedrig"
+  },
+  {
+   "id": "kohlenbansen_ost",
+   "kind": "kohlenbansen",
+   "x0": 4,
+   "y0": 19,
+   "x1": 7,
+   "y1": 24,
+   "height": 36,
+   "roof": "offen",
+   "lit": 0.0,
+   "text": "Zweiter Bansen, dazwischen eine Gasse für die Karren"
+  },
+  {
+   "id": "baracke_a",
+   "kind": "baracke",
+   "x0": 11,
+   "y0": 19,
+   "x1": 15,
+   "y1": 22,
+   "height": 38,
+   "roof": "flach",
+   "lit": 0.2,
+   "text": "Schlafbaracke der Rangierer, ein Geschoss, Ofenrohr. Tür und Fenster nach Süden zum Barackenhof"
+  },
+  {
+   "id": "baracke_b",
+   "kind": "baracke",
+   "x0": 19,
+   "y0": 19,
+   "x1": 24,
+   "y1": 22,
+   "height": 38,
+   "roof": "flach",
+   "lit": 0.2,
+   "text": "Schlafbaracke der Heizer und Putzer, ein Geschoss. Tür und Fenster nach Süden"
+  },
+  {
+   "id": "speisebaracke",
+   "kind": "baracke",
+   "x0": 14,
+   "y0": 25,
+   "x1": 20,
+   "y1": 28,
+   "height": 38,
+   "roof": "flach",
+   "lit": 0.0,
+   "text": "Speisebaracke, um diese Zeit dunkel. Schließt den Barackenhof nach Süden"
+  },
+  {
+   "id": "waerterbude",
+   "kind": "huette",
+   "x0": 28,
+   "y0": 18,
+   "x1": 30,
+   "y1": 20,
+   "height": 34,
+   "roof": "pult",
+   "lit": 0.3,
+   "text": "Bude des Streckenwärters am Ostende des Zauns, ein Fenster nach Westen"
+  }
+ ],
+ "walls": [
+  {
+   "id": "wagen_9_5",
+   "kind": "gueterwagen",
+   "x0": 5,
+   "y0": 9,
+   "x1": 10,
+   "y1": 10,
+   "height": 52,
+   "opaque": true
+  },
+  {
+   "id": "wagen_9_13",
+   "kind": "gueterwagen",
+   "x0": 13,
+   "y0": 9,
+   "x1": 15,
+   "y1": 10,
+   "height": 52,
+   "opaque": true
+  },
+  {
+   "id": "wagen_10_16",
+   "kind": "gueterwagen",
+   "x0": 16,
+   "y0": 10,
+   "x1": 19,
+   "y1": 11,
+   "height": 52,
+   "opaque": true
+  },
+  {
+   "id": "wagen_12_7",
+   "kind": "gueterwagen",
+   "x0": 7,
+   "y0": 12,
+   "x1": 11,
+   "y1": 13,
+   "height": 52,
+   "opaque": true
+  },
+  {
+   "id": "wagen_12_23",
+   "kind": "gueterwagen",
+   "x0": 23,
+   "y0": 12,
+   "x1": 26,
+   "y1": 13,
+   "height": 52,
+   "opaque": true
+  },
+  {
+   "id": "wagen_13_14",
+   "kind": "gueterwagen",
+   "x0": 14,
+   "y0": 13,
+   "x1": 18,
+   "y1": 14,
+   "height": 52,
+   "opaque": true
+  },
+  {
+   "id": "wagen_14_3",
+   "kind": "gueterwagen",
+   "x0": 3,
+   "y0": 14,
+   "x1": 6,
+   "y1": 15,
+   "height": 52,
+   "opaque": true
+  },
+  {
+   "id": "wagen_14_21",
+   "kind": "gueterwagen",
+   "x0": 21,
+   "y0": 14,
+   "x1": 24,
+   "y1": 15,
+   "height": 52,
+   "opaque": true
+  },
+  {
+   "id": "wagen_15_9",
+   "kind": "gueterwagen",
+   "x0": 9,
+   "y0": 15,
+   "x1": 13,
+   "y1": 16,
+   "height": 52,
+   "opaque": true
+  },
+  {
+   "id": "wagen_15_26",
+   "kind": "gueterwagen",
+   "x0": 26,
+   "y0": 15,
+   "x1": 28,
+   "y1": 16,
+   "height": 52,
+   "opaque": true
+  },
+  {
+   "id": "zaun_1",
+   "kind": "bretterzaun",
+   "x0": 10,
+   "y0": 17,
+   "x1": 16,
+   "y1": 18,
+   "height": 34,
+   "opaque": true
+  },
+  {
+   "id": "zaun_2",
+   "kind": "bretterzaun",
+   "x0": 17,
+   "y0": 17,
+   "x1": 25,
+   "y1": 18,
+   "height": 34,
+   "opaque": true
+  },
+  {
+   "id": "zaun_3",
+   "kind": "bretterzaun",
+   "x0": 26,
+   "y0": 17,
+   "x1": 30,
+   "y1": 18,
+   "height": 34,
+   "opaque": true
+  },
+  {
+   "id": "zaun_kohle",
+   "kind": "bretterzaun",
+   "x0": 0,
+   "y0": 17,
+   "x1": 7,
+   "y1": 18,
+   "height": 34,
+   "opaque": true
+  },
+  {
+   "id": "holzlege",
+   "kind": "holzstapel",
+   "x0": 4,
+   "y0": 2,
+   "x1": 5,
+   "y1": 5,
+   "height": 24,
+   "opaque": false
+  },
+  {
+   "id": "turmkasten",
+   "kind": "holzstapel",
+   "x0": 14,
+   "y0": 2,
+   "x1": 15,
+   "y1": 3,
+   "height": 24,
+   "opaque": false
+  },
+  {
+   "id": "kohlenkasten",
+   "kind": "kohlenkasten",
+   "x0": 17,
+   "y0": 2,
+   "x1": 19,
+   "y1": 5,
+   "height": 24,
+   "opaque": false
+  }
+ ],
+ "gates": [
+  {
+   "id": "tor_stellwerk",
+   "door": "Stellwerk",
+   "kind": "eisentuer",
+   "x0": 21,
+   "y0": 4,
+   "x1": 22,
+   "y1": 6,
+   "height": 40,
+   "text": "Eisentür im Ziegelsockel, nach Süden"
+  },
+  {
+   "id": "tor_schuppen",
+   "door": "Schuppentor",
+   "kind": "schiebetor",
+   "x0": 9,
+   "y0": 4,
+   "x1": 10,
+   "y1": 6,
+   "height": 44,
+   "text": "Schiebetor aus Brettern in der Mitte der Rampe"
+  },
+  {
+   "id": "tor_rangierer",
+   "door": "Zaunpforte der Rangierer",
+   "kind": "holzpforte",
+   "x0": 16,
+   "y0": 17,
+   "x1": 17,
+   "y1": 18,
+   "height": 24,
+   "text": "Lücke im Bretterzaun mit niedriger Pforte, von oben als Lücke zu erkennen"
+  },
+  {
+   "id": "tor_heizer",
+   "door": "Zaunpforte der Heizer",
+   "kind": "holzpforte",
+   "x0": 25,
+   "y0": 17,
+   "x1": 26,
+   "y1": 18,
+   "height": 24,
+   "text": "Zweite Pforte am Ostende, kurzer Weg zur Einfahrweiche"
+  }
+ ],
+ "props": [
+  {
+   "id": "hebelbank",
+   "kind": "hebelbank",
+   "x": 21.5,
+   "y": 4.5,
+   "solid": false,
+   "opaque": false,
+   "note": "Sabotageziel im Stellwerk, 6 s"
+  },
+  {
+   "id": "weichenbock",
+   "kind": "weichenbock",
+   "x": 27.5,
+   "y": 10.5,
+   "solid": false,
+   "opaque": false,
+   "note": "Sabotageziel am Ostende, 4 s, im Licht der Weichenlaterne"
+  },
+  {
+   "id": "signal",
+   "kind": "signal",
+   "x": 16.5,
+   "y": 8.2,
+   "solid": true,
+   "opaque": false,
+   "note": "Formsignal an der Ladestraße, die Aufsicht steht daneben"
+  },
+  {
+   "id": "schranke",
+   "kind": "schranke",
+   "x": 3.5,
+   "y": 8.5,
+   "solid": false,
+   "opaque": false,
+   "note": "Schrankenbaum oben, hier wartet der Wagen"
+  },
+  {
+   "id": "fluchtwagen",
+   "kind": "fluchtwagen",
+   "x": 1.5,
+   "y": 7.5,
+   "solid": false,
+   "opaque": false,
+   "note": "Lieferwagen am Bahnübergang, Ziel"
+  },
+  {
+   "id": "lohnkasse",
+   "kind": "kasse",
+   "x": 9.5,
+   "y": 4.5,
+   "solid": false,
+   "opaque": false,
+   "note": "Lohngelder der Bahnmeisterei im Schuppen"
+  },
+  {
+   "id": "wasserkran",
+   "kind": "wasserkran",
+   "x": 24.5,
+   "y": 8.5,
+   "solid": true,
+   "opaque": false,
+   "note": "Wasserkran östlich des Stellwerks, Deckung"
+  },
+  {
+   "id": "prellbock_1",
+   "kind": "prellbock",
+   "x": 29.5,
+   "y": 15.5,
+   "solid": true,
+   "opaque": false,
+   "note": "Ende von Gleis 7"
+  },
+  {
+   "id": "prellbock_2",
+   "kind": "prellbock",
+   "x": 0.5,
+   "y": 14.5,
+   "solid": true,
+   "opaque": false,
+   "note": "Stumpfgleis im Westen"
+  },
+  {
+   "id": "schwellenstapel_1",
+   "kind": "schwellenstapel",
+   "x": 8.5,
+   "y": 16.5,
+   "solid": true,
+   "opaque": false,
+   "note": "Deckung am Kohlenweg"
+  },
+  {
+   "id": "schwellenstapel_2",
+   "kind": "schwellenstapel",
+   "x": 26.5,
+   "y": 8.5,
+   "solid": true,
+   "opaque": false,
+   "note": "Deckung auf der Ladestraße vor der Weiche"
+  },
+  {
+   "id": "karren",
+   "kind": "karren",
+   "x": 12.5,
+   "y": 7.5,
+   "solid": true,
+   "opaque": false,
+   "note": "Gepäckkarren auf der Ladestraße"
+  },
+  {
+   "id": "kisten",
+   "kind": "kiste",
+   "x": 6.5,
+   "y": 6.5,
+   "solid": true,
+   "opaque": false,
+   "note": "Kistenstapel auf der Rampe"
+  },
+  {
+   "id": "feuertonne",
+   "kind": "feuertonne",
+   "x": 16.5,
+   "y": 23.5,
+   "solid": true,
+   "opaque": false,
+   "note": "Feuertonne im Barackenhof, nur Glut"
+  },
+  {
+   "id": "pumpe",
+   "kind": "brunnen",
+   "x": 9.5,
+   "y": 24.5,
+   "solid": true,
+   "opaque": false,
+   "note": "Pumpe am Kohlenweg"
+  }
+ ],
+ "doors": [
+  {
+   "name": "Stellwerk",
+   "tiles": [
+    [
+     21,
+     5
+    ],
+    [
+     21,
+     4
+    ]
+   ],
+   "mark": [
+    21.5,
+    6.5
+   ]
+  },
+  {
+   "name": "Schuppentor",
+   "tiles": [
+    [
+     9,
+     5
+    ],
+    [
+     9,
+     4
+    ]
+   ],
+   "mark": [
+    9.5,
+    6.5
+   ]
+  },
+  {
+   "name": "Zaunpforte der Rangierer",
+   "tiles": [
+    [
+     16,
+     17
+    ]
+   ],
+   "mark": [
+    16.5,
+    18.5
+   ],
+   "helper": "rangierer"
+  },
+  {
+   "name": "Zaunpforte der Heizer",
+   "tiles": [
+    [
+     25,
+     17
+    ]
+   ],
+   "mark": [
+    25.5,
+    18.5
+   ],
+   "helper": "heizer"
+  }
+ ],
+ "lamps": [
+  {
+   "x": 9.5,
+   "y": 6.6,
+   "group": "rampe",
+   "kind": "bogenlampe"
+  },
+  {
+   "x": 21.5,
+   "y": 6.8,
+   "group": "stellwerk",
+   "kind": "wandlampe"
+  },
+  {
+   "x": 27.5,
+   "y": 10.5,
+   "group": "weiche"
+  },
+  {
+   "x": 16.5,
+   "y": 8.2,
+   "group": "signal",
+   "kind": "wandlampe"
+  },
+  {
+   "x": 3.5,
+   "y": 8.5,
+   "group": "schranke",
+   "kind": "wandlampe"
+  }
+ ],
+ "streets": [
+  {
+   "id": "gleisfeld",
+   "x0": 0,
+   "y0": 9,
+   "x1": 30,
+   "y1": 16,
+   "kind": "schotter",
+   "rails": true,
+   "note": "Sieben Gleise bei y 9 bis 15. Schotter: Schritte sind lauter"
+  },
+  {
+   "id": "bahnuebergang",
+   "x0": 0,
+   "y0": 9,
+   "x1": 3,
+   "y1": 16,
+   "kind": "bohlen",
+   "note": "Bohlen über alle Gleise am Westrand, leise"
+  },
+  {
+   "id": "bohlenweg",
+   "x0": 20,
+   "y0": 9,
+   "x1": 21,
+   "y1": 16,
+   "kind": "bohlen",
+   "note": "Bohlenweg für die Gepäckkarren, leise, aber gerade auf die Stellwerkstür zu"
+  },
+  {
+   "id": "ladestrasse",
+   "x0": 0,
+   "y0": 7,
+   "x1": 30,
+   "y1": 9,
+   "kind": "kopfsteinpflaster",
+   "note": "Zwischen Rampe und Gleisen, im Licht der Bogenlampe"
+  },
+  {
+   "id": "rampe",
+   "x0": 5,
+   "y0": 6,
+   "x1": 14,
+   "y1": 7,
+   "kind": "holz",
+   "note": "Laderampe, hier geht der Schütze"
+  },
+  {
+   "id": "bahnmeisterhof",
+   "x0": 0,
+   "y0": 2,
+   "x1": 5,
+   "y1": 7,
+   "kind": "hof"
+  },
+  {
+   "id": "turmhof",
+   "x0": 14,
+   "y0": 2,
+   "x1": 19,
+   "y1": 7,
+   "kind": "hof"
+  },
+  {
+   "id": "osthof",
+   "x0": 23,
+   "y0": 2,
+   "x1": 30,
+   "y1": 7,
+   "kind": "schlacke"
+  },
+  {
+   "id": "bahnweg",
+   "x0": 0,
+   "y0": 16,
+   "x1": 30,
+   "y1": 17,
+   "kind": "schlacke",
+   "note": "Dunkler Weg südlich der Gleise"
+  },
+  {
+   "id": "kohlenweg",
+   "x0": 7,
+   "y0": 17,
+   "x1": 10,
+   "y1": 30,
+   "kind": "schlacke",
+   "note": "Vom Start zum Gleisfeld, immer offen"
+  },
+  {
+   "id": "kohlenlager",
+   "x0": 0,
+   "y0": 18,
+   "x1": 7,
+   "y1": 25,
+   "kind": "kohlenstaub"
+  },
+  {
+   "id": "barackenhof",
+   "x0": 10,
+   "y0": 18,
+   "x1": 30,
+   "y1": 25,
+   "kind": "erde"
+  },
+  {
+   "id": "suedrand",
+   "x0": 0,
+   "y0": 25,
+   "x1": 30,
+   "y1": 30,
+   "kind": "erde"
+  }
+ ],
+ "marks": [
+  {
+   "kind": "start",
+   "x0": 5,
+   "y0": 29,
+   "x1": 9,
+   "y1": 30
+  },
+  {
+   "kind": "ziel",
+   "x0": 0,
+   "y0": 6,
+   "x1": 3,
+   "y1": 9,
+   "note": "Wagen am Bahnübergang"
+  },
+  {
+   "kind": "sabotage",
+   "name": "Stellwerk",
+   "x": 21.5,
+   "y": 4.5,
+   "seconds": 6,
+   "note": "Hebelbank. Der Schlosser braucht die halbe Zeit"
+  },
+  {
+   "kind": "sabotage",
+   "name": "Weiche",
+   "x": 27.5,
+   "y": 10.5,
+   "seconds": 4,
+   "note": "Einfahrweiche verkeilen"
+  },
+  {
+   "kind": "beute",
+   "name": "Lohngelder der Bahnmeisterei",
+   "x": 9.5,
+   "y": 4.5
+  },
+  {
+   "kind": "verstaerkung",
+   "x": 29.5,
+   "y": 12.5,
+   "note": "Werkschutz vom Ostende der Gleise"
+  },
+  {
+   "kind": "helferfenster",
+   "helper": "rangierer",
+   "x": 13.0,
+   "y": 22.0,
+   "note": "Baracke A, Fenster nach Süden, Kerze"
+  },
+  {
+   "kind": "helferfenster",
+   "helper": "heizer",
+   "x": 21.5,
+   "y": 22.0,
+   "note": "Baracke B, Fenster nach Süden, Kerze"
+  },
+  {
+   "kind": "bewohner",
+   "who": "streckenwaerter",
+   "x": 28.0,
+   "y": 19.0,
+   "helps": "nie",
+   "note": "Wärterbude, Fenster nach Westen. Er hält zur Bahn"
+  },
+  {
+   "kind": "bewohner",
+   "who": "bahnmeister",
+   "x": 5.0,
+   "y": 4.5,
+   "helps": "nie",
+   "note": "Schreibstube im Westgiebel des Schuppens, Fenster zum Hof am Bahnübergang"
+  }
+ ]
+}
