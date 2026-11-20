@@ -42,7 +42,7 @@ Noch nicht gebaut: Mission, Regeln für Sabotieren, Uhr, Schotter, Messung. Das 
  29 ..............................   Start x 5–9
 ```
 
-Kein freies Feld ist ganz verdeckt. Bei 124 Feldern stehen nur die Füße hinter einer Wagenkante, einem Zaun oder einer Baracke.
+Kein freies Feld ist ganz verdeckt. Bei 125 Feldern stehen nur die Füße hinter einer Wagenkante, einem Zaun oder einer Baracke.
 
 ## Orte
 
