@@ -311,6 +311,34 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void ALongLedgerPageEndsWithTheNumberLeftOut()
+        {
+            var names = Enumerable.Range(1, 12).Select(i => "Wachmann " + i).ToList();
+            Assert.Equal(8, SequenceTexts.LedgerLines(names.Take(8).ToList()).Split('\n').Length);
+            string[] page = SequenceTexts.LedgerLines(names).Split('\n');
+            Assert.Equal(SequenceTexts.LedgerLinesPerPage, page.Length);
+            Assert.Equal("Wachmann 7", page[6]);
+            Assert.Equal("und 5 weitere", page[7]);
+            Assert.Equal("", SequenceTexts.LedgerLines(new List<string>()));
+        }
+
+        [Fact]
+        public void TheGraveyardKnowsOneOrSeveralDeadGuardsSoFar()
+        {
+            var w = NewWorld();
+            var campaign = new Campaign { Nights = 2 };
+            Assert.DoesNotContain(SequenceFlags.OneGuardEver, SequenceFlags.For(campaign, w));
+            campaign.Ledger.Add(new LedgerEntry { Name = "Krüger", Side = LedgerSide.Guard, Night = 1 });
+            Assert.Contains(SequenceFlags.OneGuardEver, SequenceFlags.For(campaign, w));
+            campaign.Ledger.Add(new LedgerEntry { Name = "Otto Brenner", Side = LedgerSide.Squad, Night = 1 });
+            Assert.Contains(SequenceFlags.OneGuardEver, SequenceFlags.For(campaign, w));
+            campaign.Ledger.Add(new LedgerEntry { Name = "Jahnke", Side = LedgerSide.Guard, Night = 2 });
+            var flags = SequenceFlags.For(campaign, w);
+            Assert.Contains(SequenceFlags.SeveralGuardsEver, flags);
+            Assert.DoesNotContain(SequenceFlags.OneGuardEver, flags);
+        }
+
+        [Fact]
         public void BeatsWithConditionsOnlyRunWhenTheyHold()
         {
             var data = Data(

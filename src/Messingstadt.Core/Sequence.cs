@@ -345,6 +345,8 @@ namespace Messingstadt.Core
         public const string GuardsOnly = "nur_wachen";
         public const string OwnOnly = "nur_eigene";
         public const string BothSides = "beide_seiten";
+        public const string OneGuardEver = "wache_tot_bisher:eine";
+        public const string SeveralGuardsEver = "wache_tot_bisher:mehrere";
         public const string Quiet = "leise";
         public const string Loud = "laut";
 
@@ -368,6 +370,12 @@ namespace Messingstadt.Core
                 {
                     flags.Add("lebt:" + name);
                 }
+            }
+            // Tote Wachen der ganzen Kampagne bisher, für das Kreuz auf dem Friedhof der Namenlosen
+            int fallen = campaign?.Dead(LedgerSide.Guard).Count ?? 0;
+            if (fallen > 0)
+            {
+                flags.Add(fallen == 1 ? OneGuardEver : SeveralGuardsEver);
             }
             // Wachen dieses Einsatzes, die im Gedächtnis der Kampagne tot sind, etwa "tot:Gustav Rademacher"
             foreach (var guard in campaign?.Guards ?? new List<GuardMemory>())
@@ -421,7 +429,20 @@ namespace Messingstadt.Core
 
         /// <summary>Eine Spalte des Totenbuchs für die letzte Nacht: je Zeile Anrede und Name. Leer ohne Tote auf dieser Seite.</summary>
         public static string Ledger(Campaign? campaign, LedgerSide side) =>
-            string.Join("\n", (campaign?.DeadLastNight() ?? new List<LedgerEntry>()).Where(e => side == LedgerSide.Guard ? !e.Ours : e.Ours).Select(e => $"{e.Title} {e.Name}".Trim()));
+            LedgerLines((campaign?.DeadLastNight() ?? new List<LedgerEntry>()).Where(e => side == LedgerSide.Guard ? !e.Ours : e.Ours).Select(e => $"{e.Title} {e.Name}".Trim()).ToList());
+
+        /// <summary>So viele Zeilen passen auf eine Seite des Buchs. Stehen mehr an, zeigt die letzte Zeile, wie viele fehlen.</summary>
+        public const int LedgerLinesPerPage = 8;
+
+        public static string LedgerLines(IReadOnlyList<string> names)
+        {
+            if (names.Count <= LedgerLinesPerPage)
+            {
+                return string.Join("\n", names);
+            }
+            int shown = LedgerLinesPerPage - 1;
+            return string.Join("\n", names.Take(shown)) + $"\nund {names.Count - shown} weitere";
+        }
 
         /// <summary>
         /// Was K. nach einem verlorenen oder abgebrochenen Einsatz telegrafiert. Ist dabei jemand zum zweiten Mal gefallen,

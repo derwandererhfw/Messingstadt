@@ -87,3 +87,14 @@ Geprüft gegen den Styleguide: Kolb aus dem Off im Präteritum, kein Gesicht von
 ## Durchsicht der Story
 
 Am 2026-11-20: Alle Kästen stimmen wörtlich, Wochentage und Uhrzeiten auch. Geändert wurden V4 Panel 2 (keine Ärmelschoner, die sind Kolbs Merkmal) und V4 Panel 4 (Kassenhof statt Treppenhaus, der Einsatz spielt an der Bank). Merkmale für Dorn, Rademacher und Rehm sind VORSCHLAG der Story und stehen in den Bildbeschreibungen. Nichts verrät vor N4, wer Sperling ist.
+
+## Zusatz vom 2026-11-20: Friedhof der Namenlosen in V3
+
+Vom Nutzer über die Hauptsession freigegeben („3. ja“). Bild und Sätze sind VORSCHLAG der Story, bis der Nutzer das Bild abnimmt. Nach Panel 1 (Flugblatt) und vor dem Zug, nur wenn bisher eine Wache gestorben ist. Niedergeschlagene zählen nicht.
+
+| Fall | Bild | Farbe | Kolbs Kästen |
+|---|---|---|---|
+| Eine Wache tot | Armenfriedhof an der Wallmauer im Regen, ein frisches Holzkreuz mit einer Nummer, daneben der Spaten | keine | „Die Zeitung druckte seinen Namen. Auf dem Kreuz am Wall stand nur eine Nummer.“ / „Ein Grab mit Namen zahlte die Wache ihren Leuten nicht.“ |
+| Mehrere tot | dasselbe Bild | keine | „Die Zeitung druckte ihre Namen. Auf den Kreuzen am Wall standen nur Nummern.“ / „Ein Grab mit Namen zahlte die Wache ihren Leuten nicht.“ |
+
+Neue Tatsache, VORSCHLAG der Story: Der Friedhof der Namenlosen ist der Armenfriedhof. Dort liegen auch Wachleute, deren Familien kein Grab bezahlen können. Die Nummer auf dem Kreuz im Bild ist 214 und fest, sie hängt nicht am Spielstand. Merker: `wache_tot_bisher:eine` und `wache_tot_bisher:mehrere`, gezählt aus dem Totenbuch der Akte.

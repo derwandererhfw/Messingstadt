@@ -2,6 +2,10 @@
   "id": "vor_03",
   "beats": [
     {"show": "image", "image": "sequences/einsatz_03/v3_1.jpg", "body": "Die Flugblätter lagen am Freitag in jeder Küche. Brandt las sie auch.", "zoom": [1.0, 1.05], "seconds": 3.0, "sounds": [{"at": 0.2, "name": "pages", "volume": -14}], "fade": [1, 0], "fadeSeconds": 1.4},
+    {"show": "image", "when": "wache_tot_bisher:eine", "image": "sequences/einsatz_03/v3_friedhof.jpg", "body": "Die Zeitung druckte seinen Namen. Auf dem Kreuz am Wall stand nur eine Nummer.", "seconds": 3.0, "zoom": [1.0, 1.04], "sounds": [{"at": 0.0, "name": "rain", "volume": -16}]},
+    {"show": "image", "when": "wache_tot_bisher:mehrere", "image": "sequences/einsatz_03/v3_friedhof.jpg", "body": "Die Zeitung druckte ihre Namen. Auf den Kreuzen am Wall standen nur Nummern.", "seconds": 3.0, "zoom": [1.0, 1.04], "sounds": [{"at": 0.0, "name": "rain", "volume": -16}]},
+    {"show": "image", "when": "wache_tot_bisher:eine", "image": "sequences/einsatz_03/v3_friedhof.jpg", "body": "Ein Grab mit Namen zahlte die Wache ihren Leuten nicht.", "seconds": 3.0, "zoom": [1.04, 1.07]},
+    {"show": "image", "when": "wache_tot_bisher:mehrere", "image": "sequences/einsatz_03/v3_friedhof.jpg", "body": "Ein Grab mit Namen zahlte die Wache ihren Leuten nicht.", "seconds": 3.0, "zoom": [1.04, 1.07]},
     {"show": "image", "image": "sequences/einsatz_03/v3_2.jpg", "body": "Seine Antwort kam auf Schienen. Dreihundert Mann aus dem Umland, für Sonntagnacht.", "zoom": [1.05, 1.0], "seconds": 3.0, "sounds": [{"at": 0.2, "name": "train", "volume": -12}]},
     {"show": "image", "image": "sequences/einsatz_03/v3_3.jpg", "body": "Die Nachricht kam aus dem Vorstand. Ich fragte nicht, woher der Vorstand sie hatte.", "zoom": [1.0, 1.05], "seconds": 3.0},
     {"show": "image", "image": "sequences/einsatz_03/v3_4.jpg", "body": "Ein Zug braucht ein Signal und eine Weiche. Mehr musste der Trupp nicht wissen.", "zoom": [1.0, 1.06], "seconds": 3.2, "sounds": [{"at": 0.2, "name": "wind", "volume": -16}], "fade": [0, 1], "fadeStart": 4.0, "fadeSeconds": 1.0}
