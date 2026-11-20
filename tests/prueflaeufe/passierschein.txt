@@ -1,0 +1,40 @@
+# Gretas Passierschein in Einsatz 1: Rechtsklick mit Greta allein zeigt ihn einem Wachmann, geht bei Offizier und Werkschutz nicht, einmal je Einsatz.
+# Aufruf mit --fresh --look=11,11. Prüfläufe schreiben nichts.
+wait 40
+expect pass Ready
+# Nur Greta gewählt: Ihr Blatt und die Hilfezeile nennen das Papier
+key Key1
+wait 3
+expect passline Passierschein: bereit, einmal
+waitcontains helpline , Greta: Passierschein
+# Am Mauszeiger steht, bei wem es geht und bei wem nicht, mit Grund
+waitcontains password Wache 1: Rechtsklick zeigt den Passierschein
+waitcontains password Offizier: Passierschein: kennt die Unterschrift
+waitcontains password Werkschutz: Passierschein: liest kein Papier
+waitcontains password Hundeführer: Passierschein: liest kein Papier
+# Mit einem anderen Agenten gewählt sagt der Mauszeiger nichts zum Papier
+key Key2
+wait 3
+waitcontains password Wache 1:  |
+key Key1
+wait 3
+# Greta steht drei Felder vor Wache 1 und zeigt das Papier mit einem Rechtsklick
+stand Greta 12 12
+wait 2
+rclickunit Wache 1
+waitfor pass Showing Wache 1
+expect passline Passierschein: wird gelesen
+waitcontains password Wache 1: liest den Passierschein
+# Die Wache glaubt es, kennt Greta und schaut weg. Über ihr läuft die Zeit ab
+waitfor pass Away Wache 1
+expect passsaid Lenz. Ich hab das Papier nicht gesehen.
+waitcontains passline Passierschein: Wache schaut weg
+waitcontains password Wache 1: schaut weg, noch
+wait 30
+# Greta geht aus dem Blick. Nach der Frist ist das Papier verbraucht und die Wache sieht nach
+stand Greta 8 18
+waitfor pass Spent Wache 1
+expect passline Passierschein: verbraucht
+expect passsaid Moment. Zeigt das noch mal her.
+# Ein zweites Mal geht es nicht, bei keiner Wache: Der Rechtsklick greift jetzt wieder an
+waitcontains password Wache 4: Passierschein verbraucht

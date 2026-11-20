@@ -25,12 +25,22 @@ namespace Messingstadt
             var world = Game.World;
             DrawExit(world);
             DrawPhone(world);
+            DrawPass(world);
             foreach (var t in world.Targets)
             {
                 if (t.Done)
                 {
+                    // Erledigt: die Marke bleibt stehen, grün und abgehakt.
+                    var done = Game.SabotageMark(t);
+                    var green = new Color(0.45f, 0.95f, 0.5f);
+                    DrawIsoRing(done, new Color(green, 0.55f));
+                    DrawPolyline(new[] { done + new Vector2(-6, -16), done + new Vector2(-2, -11), done + new Vector2(7, -22) }, new Color(0f, 0f, 0f, 0.8f), 4f);
+                    DrawPolyline(new[] { done + new Vector2(-6, -16), done + new Vector2(-2, -11), done + new Vector2(7, -22) }, green, 2f);
+                    DrawFieldText(ThemeDB.FallbackFont, done + new Vector2(10, -12), t.Short, 8, green, true);
                     continue;
                 }
+                // Der Name steht an der Marke, damit klar ist, was hier zu tun ist.
+                DrawFieldText(ThemeDB.FallbackFont, Game.SabotageMark(t) + new Vector2(10, -12), t.Short, 8, new Color(1f, 0.85f, 0.3f), true);
                 // Sabotageziel: derselbe Ring wie am Gegenstand, mit Balken, solange jemand daran arbeitet.
                 var at = Game.SabotageMark(t);
                 float beat = 0.5f + 0.5f * Mathf.Sin(Time.GetTicksMsec() / 200f);
@@ -167,6 +177,42 @@ namespace Messingstadt
                     continue;
                 }
                 DrawShot(s, age);
+            }
+        }
+
+        /// <summary>
+        /// Zeichen über der Wache, die den Passierschein liest oder seinetwegen wegschaut: ein Blatt Papier mit einem Balken.
+        /// Beim Lesen füllt er sich, beim Wegschauen läuft er ab, daneben die Sekunden, die noch bleiben.
+        /// </summary>
+        private void DrawPass(World world)
+        {
+            if (world.PassGuardId < 0 || world.Units[world.PassGuardId] is not { Alive: true } guard || !world.HeldByPass(guard))
+            {
+                return;
+            }
+            var at = Game.UnitPos(guard) + new Vector2(0f, -58f);
+            bool reading = world.Pass == PassState.Showing;
+            var dark = new Color(0f, 0f, 0f, 0.75f);
+            var paper = new Color(0.93f, 0.88f, 0.74f);
+            // Das Blatt mit drei Zeilen und einem Stempel.
+            DrawRect(new Rect2(at + new Vector2(-7f, -10f), new Vector2(14f, 17f)), dark);
+            DrawRect(new Rect2(at + new Vector2(-6f, -9f), new Vector2(12f, 15f)), paper);
+            for (int i = 0; i < 3; i++)
+            {
+                DrawRect(new Rect2(at + new Vector2(-4f, -7f + i * 3f), new Vector2(8f, 1f)), new Color(0.2f, 0.18f, 0.15f));
+            }
+            DrawCircle(at + new Vector2(2.5f, 3.5f), 1.8f, new Color(0.75f, 0.15f, 0.1f));
+            float total = reading ? World.PassShowTicks : world.PassAwaySeconds * World.TickRate;
+            float left = Mathf.Clamp(world.PassTicksLeft / Mathf.Max(1f, total), 0f, 1f);
+            float f = reading ? 1f - left : left;
+            // Zum Ende hin wird der Balken rot: Gleich schaut sie wieder hin.
+            var bar = reading ? paper : left > 0.25f ? new Color(0.45f, 0.95f, 0.5f) : new Color(0.95f, 0.25f, 0.2f);
+            DrawRect(new Rect2(at + new Vector2(-14f, 9f), new Vector2(28f, 4f)), dark);
+            DrawRect(new Rect2(at + new Vector2(-13f, 10f), new Vector2(26f * f, 2f)), bar);
+            if (!reading)
+            {
+                int seconds = (world.PassTicksLeft + World.TickRate - 1) / World.TickRate;
+                DrawFieldText(ThemeDB.FallbackFont, at + new Vector2(17f, 14f), $"{seconds} s", 8, bar, true);
             }
         }
 

@@ -527,6 +527,8 @@ namespace Messingstadt
             ("Doppelklick", "rennen, kostet Puste, dabei kein Feuer"),
             ("Rechtsklick Wache", "angreifen. Nur Emil gewählt: bestechen"),
             ("Greta in Rufweite", "Bestechen kostet die Hälfte"),
+            ("Rechtsklick, nur Greta", "Passierschein zeigen, einmal je Einsatz. Umschalt: angreifen"),
+            ("Rechtsklick Marke", "Ziel sabotieren, wo der Auftrag das verlangt"),
             ("Rechtsklick Tür", "Otto öffnet die Tür, mit Dietrich auch andere"),
             ("E", "nächste Waffe in die Hand"),
             ("G", "Rauchtopf auf das Feld unter der Maus"),

@@ -291,6 +291,10 @@ namespace Messingstadt
                     (_waitName, _waitValue, _waitLeft, _waitPart) = ("tickreached", "True", MaxWaitFrames, false);
                     _waitTick = int.Parse(arg);
                     break;
+                case "showclock":
+                    // Zeigt die Uhr mit dieser Sekundenzahl, ohne Minuten zu warten. Die Spielzeit bleibt, wie sie ist.
+                    Game.ClockShown = int.Parse(arg);
+                    break;
                 case "alarm":
                     // Alarm an die Kaserne, auch wenn die Wachen mit calm gekauft sind: So lässt sich das Telefon ohne Gefecht prüfen.
                     Game.World.SoundAlarm();

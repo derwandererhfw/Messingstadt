@@ -26,7 +26,7 @@ namespace Messingstadt
         private const int InventoryTop = Margin + 2 * FieldHeight + FieldGap + 8;
         private const int InventoryHeight = 172 + TraitHeight;
         // Platz für die Zeile, die sagt, was der Agent besonders kann.
-        private const int TraitHeight = 12;
+        private const int TraitHeight = 24;
         private const int LevelDots = 3;
         private static readonly Color SelectedEdge = new(0.95f, 0.78f, 0.35f);
         private static readonly Color Board = new(0.17f, 0.15f, 0.13f);
@@ -91,6 +91,44 @@ namespace Messingstadt
         private Label _owner = null!;
         private Label _role = null!;
         private Label _trait = null!;
+        private Label _pass = null!;
+        private Label _clock = null!;
+        private ColorRect _clockTag = null!;
+
+        /// <summary>Für den Prüflauf: die Zeile zum Passierschein auf dem Blatt des gewählten Agenten.</summary>
+        public string PassLine => _pass.Text;
+
+        /// <summary>Für den Prüflauf: der Beruf auf dem Blatt des gewählten Agenten.</summary>
+        public string Role => _role.Text;
+
+        /// <summary>Für den Prüflauf: die große Uhr, leer ohne Zeitgrenze.</summary>
+        public string ClockText => _clockTag.Visible ? _clock.Text : "";
+
+        /// <summary>Für den Prüflauf: Die Uhr steht in der letzten Minute und ist rot.</summary>
+        public bool ClockAlarm { get; private set; }
+
+        // Ab hier ist die Uhr rot und blinkt.
+        private const int ClockAlarmSeconds = 60;
+
+        /// <summary>Die Uhr eines Einsatzes mit Zeitgrenze, groß rechts im Telegramm. In der letzten Minute rot und blinkend. -1 blendet sie aus.</summary>
+        public void ShowClock(int seconds)
+        {
+            _clockTag.Visible = seconds >= 0;
+            if (seconds < 0)
+            {
+                ClockAlarm = false;
+                return;
+            }
+            string text = $"{seconds / 60}:{seconds % 60:00}";
+            if (_clock.Text != text)
+            {
+                _clock.Text = text;
+            }
+            bool late = seconds < ClockAlarmSeconds;
+            ClockAlarm = late;
+            float blink = late ? 0.55f + 0.45f * Mathf.Abs(Mathf.Sin(Time.GetTicksMsec() / 250f)) : 1f;
+            _clock.AddThemeColorOverride("font_color", new Color(late ? PaperUi.StampRed : PaperUi.Ink, blink));
+        }
 
         /// <summary>Für den Prüflauf: die Zeile zur Fähigkeit des gewählten Agenten.</summary>
         public string Trait => _trait.Text;
@@ -152,6 +190,18 @@ namespace Messingstadt
             _info = PaperUi.Text("", 13, PaperUi.Ink, PaperUi.Typewriter);
             _info.Position = new Vector2(112, 27);
             strip.AddChild(_info);
+            // Die Uhr steht rechts in der zweiten Zeile des Telegramms: Dort ist auch bei langem Text und offenem Lageplan Platz.
+            _clockTag = new ColorRect
+            {
+                AnchorLeft = 1f, AnchorRight = 1f, OffsetLeft = -96f, OffsetRight = -6f, OffsetTop = 21f, OffsetBottom = 52f,
+                Color = PaperUi.PaperColor, MouseFilter = MouseFilterEnum.Ignore, Visible = false,
+            };
+            strip.AddChild(_clockTag);
+            _clock = PaperUi.Text("", 28, PaperUi.Ink, PaperUi.Serif);
+            _clock.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+            _clock.OffsetTop = -5f;
+            _clock.HorizontalAlignment = HorizontalAlignment.Right;
+            _clockTag.AddChild(_clock);
         }
 
         /// <summary>Papierstreifen für das Telegramm: von der Spalte bis zum rechten Bildrand.</summary>
@@ -239,6 +289,9 @@ namespace Messingstadt
             _trait = Small("", PaperUi.StampRed);
             _trait.Position = new Vector2(6, 31);
             sheet.AddChild(_trait);
+            _pass = Small("", PaperUi.Ink);
+            _pass.Position = new Vector2(6, 43);
+            sheet.AddChild(_pass);
             _levels = new Control { Position = new Vector2(0, 32 + TraitHeight), MouseFilter = MouseFilterEnum.Ignore };
             sheet.AddChild(_levels);
             AddLevelRow(_levels, _legs, "Beine", 6);
@@ -385,6 +438,7 @@ namespace Messingstadt
                 _owner.Text = "NIEMAND GEWÄHLT";
                 _role.Text = "";
                 _trait.Text = "";
+                _pass.Text = "";
                 foreach (var button in _slots)
                 {
                     SetSlot(button, "", false, false);
@@ -396,6 +450,12 @@ namespace Messingstadt
             _owner.Text = $"{u.Id + 1} {u.Name.ToUpperInvariant()}{(more > 0 ? $"  +{more}" : "")}";
             _role.Text = Game.AgentRole(u.Id);
             _trait.Text = Game.AgentTrait(u);
+            string pass = Game.AgentPass(u);
+            if (_pass.Text != pass)
+            {
+                _pass.Text = pass;
+            }
+            _pass.AddThemeColorOverride("font_color", world.Pass == PassState.Spent || world.PassBlocked ? PaperUi.StampRed : PaperUi.Ink);
             ShowLevel(_legs, u.Legs);
             ShowLevel(_heart, u.Heart);
             ShowLevel(_arms, u.Arms);

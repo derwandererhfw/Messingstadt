@@ -156,6 +156,41 @@ namespace Messingstadt
             }
         }
 
+        // Sätze der Wache zum Passierschein, nach Stand. Vorlage: docs/konzept.md.
+        public const string PassKnown = "Lenz. Ich hab das Papier nicht gesehen.";
+        public const string PassBelieved = "Unterschrift vom Hauptmann. Dann geht.";
+        public const string PassDoubted = "Moment. Zeigt das noch mal her.";
+        private PassState _pass;
+
+        /// <summary>Für den Prüflauf: der letzte Satz einer Wache zum Passierschein.</summary>
+        public string LastPassLine { get; private set; } = "";
+
+        /// <summary>Die Wache sagt einen Satz, wenn sie das Papier glaubt und wenn sie danach misstrauisch wird.</summary>
+        private void TalkAboutPass(World world)
+        {
+            var now = world.Pass;
+            if (now == _pass)
+            {
+                return;
+            }
+            var before = _pass;
+            _pass = now;
+            if (world.PassGuardId < 0 || world.Units[world.PassGuardId] is not { Alive: true } guard)
+            {
+                return;
+            }
+            // Abgelaufen heißt: Sie schaute weg und sieht jetzt nach. Kam Alarm dazwischen, ruft sie anderes.
+            string? line = now == PassState.Away ? (world.PassBearerKnown ? PassKnown : PassBelieved)
+                : now == PassState.Spent && before == PassState.Away && guard.GuardState == GuardState.Investigate ? PassDoubted
+                : now == PassState.Spent && before == PassState.Showing ? PassDoubted
+                : null;
+            if (line != null)
+            {
+                LastPassLine = line;
+                Say(() => guard.Alive ? Game.UnitPos(guard) : null, line, SpeechSeconds, GreetingColor);
+            }
+        }
+
         public override void _Process(double delta)
         {
             _time += (float)delta;
@@ -175,8 +210,10 @@ namespace Messingstadt
                 _residentsHeard.Clear();
                 _later.Clear();
                 _echoSaid = false;
+                _pass = world.Pass;
                 _stance = CityMood.Of(Game);
             }
+            TalkAboutPass(world);
             ListenToCalls(world);
             ListenToTown(world);
             ListenToResidents(world);
