@@ -1,0 +1,114 @@
+{
+  "note": "Gleisviertel, Güterbahnhof Ost. Stellen nach docs/einsatz_03_grundriss.md, Sätze nach docs/story/einsatz_03_gleisviertel.md Abschnitt 8. Die Kerzenfenster legt die Grafik in panes.json an (kind candle, helper rangierer und heizer), window ist nur die Stelle, falls das Fenster fehlt.",
+  "passersby": {
+    "max": 0,
+    "atStart": 0,
+    "walks": []
+  },
+  "houses": [
+    {
+      "id": "rangierer",
+      "window": [
+        13.0,
+        22.0
+      ],
+      "height": 22,
+      "helper": true,
+      "door": [
+        16,
+        17
+      ],
+      "lines": {
+        "pass": "Die Pforte ist auf. Macht sie hinter euch zu.",
+        "shut": "Hier wird geschlafen.",
+        "chase": "Haut ab! Wegen euch schießen sie auf uns!",
+        "chaseEcho": [
+          "Die haben {toter} auf dem Gewissen!",
+          "Das sind keine von uns!"
+        ]
+      }
+    },
+    {
+      "id": "heizer",
+      "window": [
+        21.5,
+        22.0
+      ],
+      "height": 22,
+      "helper": true,
+      "door": [
+        25,
+        17
+      ],
+      "lines": {
+        "pass": "Die Pforte klemmt. Fest drücken.",
+        "passSilent": "Für den jungen Roth. Geht.",
+        "shut": "Ich hab Kinder. Geht außen rum.",
+        "chase": "Ihr bringt uns die Wache ins Haus!",
+        "chaseEcho": [
+          "Die haben {toter} auf dem Gewissen!",
+          "Das sind keine von uns!"
+        ]
+      }
+    },
+    {
+      "id": "koechin",
+      "window": [
+        17.0,
+        24.8
+      ],
+      "height": 22,
+      "lines": {
+        "chase": "Weg von meiner Tür!"
+      }
+    },
+    {
+      "id": "streckenwaerter",
+      "window": [
+        28.0,
+        19.0
+      ],
+      "height": 20,
+      "lines": {
+        "call": "Wache! An der Pforte sind Leute!"
+      }
+    },
+    {
+      "id": "bahnmeister",
+      "window": [
+        5.0,
+        4.5
+      ],
+      "height": 30,
+      "lines": {
+        "call": "Wache! Am Schuppen ist wer!"
+      }
+    }
+  ],
+  "signals": [
+    [
+      16.5,
+      8.2,
+      44,
+      "rot"
+    ],
+    [
+      6.5,
+      1.0,
+      84,
+      "strecke"
+    ],
+    [
+      23.5,
+      1.0,
+      84,
+      "strecke"
+    ]
+  ],
+  "farTrain": [
+    1.0,
+    56,
+    70,
+    160
+  ]
+}

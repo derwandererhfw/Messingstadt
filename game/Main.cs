@@ -1196,6 +1196,7 @@ void fragment() {
             AddChild(new Haze { Game = this });
             AddChild(new Drains { Game = this });
             AddChild(new Yards { Game = this, Glow = glow });
+            AddChild(new RailYard { Game = this, Glow = glow });
             AddChild(new LightExtras { Game = this, Windows = _windowLife, Glow = glow, TramOf = () => _puddleMirror.Tram, ManifestPath = Globalize("res://assets/manifest.json") });
             if (MapSite.Current.Passersby || MapSite.Current.Walks.Count > 0)
             {
@@ -1512,7 +1513,8 @@ void fragment() {
                 foreach (var p in panes.RootElement.EnumerateArray())
                 {
                     _windowLife.AddPane(p.GetProperty("id").GetInt32(), p.GetProperty("kind").GetString()!,
-                        new Vector2(p.GetProperty("x").GetSingle(), p.GetProperty("y").GetSingle()));
+                        new Vector2(p.GetProperty("x").GetSingle(), p.GetProperty("y").GetSingle()),
+                        p.TryGetProperty("helper", out var helper) ? helper.GetString() ?? "" : "");
                 }
             }
             _ambience.Fires = ReadPoints(manifest.RootElement, "fires");
