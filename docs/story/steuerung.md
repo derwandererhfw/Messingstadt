@@ -58,6 +58,10 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 | 2026-11-14 | Greta und Hanna bekommen eigene Fähigkeiten. Vorschlag der Story war: Greta fälscht Papiere, Hanna bringt Beute schneller weg. Wie das mit Gretas halbem Preis zusammenpasst, steht in `faehigkeiten.md` | Nutzer über die Hauptsession („ja“) |
 | 2026-11-14 | Der Trupp erfährt vom Plan mit dem Notstand so, wie `wissen.md` es empfahl: Andeutung durch Gretas alte Kollegen in Einsatz 2, Gewissheit aus dem Zweitbuch in Einsatz 4 (Dorns Satz) | Nutzer über die Hauptsession („wie empfohlen“) |
 | 2026-11-14 | Die Währung heißt Groschen | Nutzer über die Hauptsession („Groschen“) |
+| 2026-11-20 | Einsatz 3 wird gebaut, auf 30 × 30 | Nutzer über die Hauptsession („1. Einsatz bauen“, „2. wie empfohlen“) |
+| 2026-11-20 | Die Fähigkeiten von Greta und Hanna werden gebaut, wie in `faehigkeiten.md` empfohlen | Nutzer über die Hauptsession („3. wie empfehlung“) |
+| 2026-11-20 | Einsatz 3: Schritte auf Schotter sind lauter, Otto halbiert die Zeit an der Hebelbank | Nutzer über die Hauptsession („4. ja“) |
+| 2026-11-20 | Zwischensequenzen Stufe 1 und 2 freigegeben, Texte in `texte/zwischensequenzen.md`, Szenenpläne durchgesehen | Nutzer über Hauptsession und Sequenzen-Session („Ja, Stufe 1“) |
 
 ## Offene Entscheidungen
 
@@ -72,8 +76,8 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 
 ## Nächste Schritte
 
-1. Einsatz 3 „Der Güterbahnhof“ wird gebaut. Danach Sätze mit Spielhinweis gegen Karte und Messung prüfen.
-2. Namen für die Wachen der Einsätze 3 bis 6, in der Form von `texte/wachen.md`.
+1. Einsatz 3 „Der Güterbahnhof“ wird gebaut. Sobald der Grundriss da ist, Abschnitt 8 der Vorlage füllen. Danach Sätze mit Spielhinweis gegen Karte und Messung prüfen.
+2. Namen für die Wachen der Einsätze 4 bis 6, in der Form von `texte/wachen.md`. Einsatz 3 ist erledigt.
 3. Titelseite des Finales aus dem Totenbuch, wenn Einsatz 6 gebaut wird.
 4. Recherche zum Zeitkolorit für die offenen Fragen in `kanon.md`.
 
