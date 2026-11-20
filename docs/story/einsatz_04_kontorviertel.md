@@ -255,4 +255,4 @@ Der letzte Kasten verschweigt, dass Kolb es wusste, und leugnet es nicht (KANON,
 | Zeit | 30. November 1927 ist ein Mittwoch. Drei Tage nach Einsatz 3 |
 | Spiel | Alle Gegner aus dem Bestand. Neue Regel nur für das Überzeugen |
 | Welt | Die Bank leiht sich Brandts Werkschutz. Valk und Brandt treten nicht auf |
-| Offen gelassen | Dorns Satz zum Notstand hängt an der offenen Entscheidung, wann der Trupp davon erfährt. Wird anders entschieden, entfällt der zweite Satz beim Aufschließen |
+| Entschieden | Dorns Satz zum Notstand bleibt. Der Nutzer hat am 2026-11-14 bestätigt, dass der Trupp hier Gewissheit bekommt |

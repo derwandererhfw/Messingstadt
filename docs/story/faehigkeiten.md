@@ -1,6 +1,6 @@
 # Fähigkeiten von Greta und Hanna
 
-Stand 2026-11-14. Der Nutzer hat entschieden, dass Greta und Hanna eigene Fähigkeiten bekommen („ja“). Der Vorschlag der Story war: Greta fälscht Papiere, Hanna bringt Beute schneller weg. Hier steht, was das in der Geschichte heißt und was die Mechanik dafür bauen müsste. Die Story baut keine Regeln. Alle Zahlen sind Richtwerte, VORSCHLAG.
+Stand 2026-11-20. Der Nutzer hat entschieden, dass Greta und Hanna eigene Fähigkeiten bekommen („ja“), und am 2026-11-20 den Bau freigegeben („wie empfehlung“). Der Vorschlag der Story war: Greta fälscht Papiere, Hanna bringt Beute schneller weg. Hier steht, was das in der Geschichte heißt und was die Mechanik dafür bauen müsste. Die Story baut keine Regeln. Alle Zahlen sind Richtwerte, VORSCHLAG.
 
 ## Wo der Trupp heute steht
 
@@ -64,7 +64,7 @@ Wo das zählt:
 |---|---|
 | 1 | Kontobuch, Lohnkasse |
 | 2 | Bußgeldkasse. Die Gefangenen macht sie nicht schneller |
-| 3 | Nichts. Hier zählt, dass sie zwischen Stellwerk und Weiche am schnellsten ist |
+| 3 | Lohngelder der Bahnmeisterei. Dazu zählt, dass sie zwischen Stellwerk und Weiche am schnellsten ist |
 | 4 | Zweitbuch |
 | 5 | Rademachers Mappe |
 | 6 | Nichts zu tragen |
