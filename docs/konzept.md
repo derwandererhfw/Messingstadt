@@ -90,6 +90,20 @@ Mehr als die Decke kostet die Blutschuld im nächsten Einsatz nie, egal wie viel
 
 Unabhängig vom letzten Einsatz kann die Mission eine Wache mit `noBribe` unbestechlich machen und mit `noticeScale` wachsamer oder nachlässiger (150 heißt 50 % langsamer). `returning` nennt eine Wache aus einem früheren Einsatz, die den Posten übernimmt, wenn sie noch lebt. Wer im Totenbuch steht, rückt auch nicht mehr als Verstärkung an, der Nächste auf der Liste kommt. Die Kampagne füllt `Memory` vor jedem Einsatz aus dem Totenbuch (`GuardMemoryData.From`).
 
+### Passierschein der Truppführerin
+
+Die Truppführerin führt einen gefälschten Passierschein. Er hängt am Beruf: Auch wer sie nach ihrem Tod ersetzt (`World.SkillDeputy`), hat ihn. Den halben Preis beim Bestechen hat die Nachfolgerin nicht, daran ändert sich nichts.
+
+`World.OrderShowPass(agent, wache)` schickt sie zur Wache. Auf 2 Felder mit Sicht hält sie das Papier 2 s hin, dann schaut die Wache 20 s weg (`PassAwaySeconds`): Sie bleibt stehen, sieht niemanden und ruft nicht. Danach wird sie misstrauisch und sieht dort nach, wo ihr das Papier gezeigt wurde. Es kostet kein Geld und geht einmal je Einsatz.
+
+- Es wirkt nur auf einfache Wachleute der Stadtwache. Nicht auf Offizier, Werkschutz, Schütze, Hundeführer, Hund, Laufbursche und Telefonist, nicht auf Gekaufte und nicht auf Wachen, die schon suchen, kämpfen oder Alarm gehört haben.
+- Steht die Stadt gegen den Trupp, glaubt es keiner.
+- Mit dem Zeigen ist der Einsatz nicht mehr unentdeckt, und die Wache gilt als aufgeschreckt.
+- Eine Wache, die die Trägerin gerade bemerkt, wartet höchstens 5 s ab, solange sie mit dem Papier auf sie zukommt.
+- Ein anderer Befehl auf dem Hinweg kostet nichts. Zieht sie das Papier beim Zeigen zurück, ist es verbraucht und die Wache sofort misstrauisch. Alarm, Schuss oder ein Schlag beenden das Wegschauen.
+
+Für Anzeige und Hilfezeile: `World.Pass` (`None`, `Ready`, `Showing`, `Away`, `Spent`), `PassSince` (Takt des letzten Wechsels), `PassAvailable`, `PassBlocked` (Blutschuld), `PassTicksLeft`, `PassGuardId`, `PassAgentId`, `PassBearerKnown` (die Wache kennt die Frau), `HeldByPass(wache)`, `CarriesPass(agent)` und `PassCheck(agent, wache)` mit dem Grund, warum es nicht geht.
+
 ### Telefonist und Kaserne
 
 Nennt `reinforcements.phone` den Posten eines Telefonisten, hängt die Verstärkung am Telefon. Der Telefonist ist unbewaffnet, hat 40 Lebenspunkte und ist für 100 käuflich. Bemerkt er jemanden oder läuft der Alarm, wählt er 3 s lang und bleibt dabei am Apparat.
