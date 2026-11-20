@@ -266,6 +266,14 @@ namespace Messingstadt
                         MouseAt(Game.UnitPos(clicked) + new Vector2(0, -20), MouseButton.Right);
                     }
                     break;
+                case "rclicktarget":
+                    var targetHit = Game.World.Targets.Find(t => t.Name == arg);
+                    Check(line, targetHit != null, arg);
+                    if (targetHit != null)
+                    {
+                        MouseAt(Game.SabotageMark(targetHit), MouseButton.Right);
+                    }
+                    break;
                 case "rclickdoor":
                     var doorHit = Game.World.Doors.Find(d => d.Name == arg);
                     Check(line, doorHit != null, arg);

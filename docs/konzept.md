@@ -149,6 +149,7 @@ hinter einer anderen steht. Der Träger des Kontobuchs bekommt dabei genau das a
 |---|---|---|
 | Otto, Schlosser | Tür öffnen | Rechtsklick auf die Türmarke, 2 s neben der Tür stehen. Danach kann jeder hindurch. Die Sicht bleibt gesperrt |
 | Emil, Buchhalter | Bestechen | Rechtsklick auf eine Wache, wenn nur Emil gewählt ist. 200 aus der Kasse, wirkt ab 2 Feldern Abstand, nur solange die Wache nicht kämpft. Sie ignoriert danach Agenten und Alarm, bis jemand auf sie schießt |
+| Hanna, Kurierin | Trägt ohne Bremse | Wer das Ziel des Einsatzes trägt, geht langsamer (100 statt 120). Die Kurierin nicht |
 | Greta, Truppführerin | Kennt die Stadtwache | Ist sie dabei, nimmt jede Wache nur den halben Preis. Dabei heißt: Sie lebt, ist im Einsatz und steht höchstens 5 Felder vom Bestechenden oder sieht die Wache selbst auf höchstens 8 Felder. Es zählt der Augenblick, in dem das Geld übergeben wird |
 
 #### Gretas Nachlass
@@ -367,6 +368,68 @@ Das Schleichlicht `data/light_02.json` ist am 13.11.2026 neu gebacken (`python t
 | Abkürzung Friedhofsgang, mit Geld | 39 | 0 |
 
 Nicht gemessen: Stadt gegen den Trupp und rufende Bewohner mit den echten Daten. Der Bot schießt genauer zusammen als ein Mensch, die lauten Zahlen sind eher eine Obergrenze.
+
+### Auftragsart Sabotieren
+
+Einsatz 3, Güterbahnhof Ost. Regeln in `World.Sabotage.cs`, Daten in `data/mission_03.json`, Grundriss in `einsatz_03_grundriss.md`.
+
+| Regel | Wie |
+|---|---|
+| Ziele | Die Mission nennt unter `sabotage` Name, Ort und Dauer. Rechtsklick auf die Marke schickt einen Agenten auf das nächste freie Feld daneben (höchstens 1,5 Felder, mit Sicht aufs Ziel) |
+| Arbeit | Er steht die Dauer lang still. Jeder andere Befehl bricht ab, und die Arbeit beginnt von vorn. Mehrere Agenten am selben Ziel sind nicht schneller |
+| Schlosser | An Zielen mit `locksmith` braucht der Schlosser die halbe Zeit: Hebelbank 3 statt 6 s. An der Weiche (4 s) nicht |
+| Hinter einer Tür | Die Hebelbank steht hinter der Stellwerkstür. Solange die zu ist, gibt es kein freies Feld, der Befehl greift nicht |
+| Sieg | Alle Ziele erledigt, dann steht ein Agent 1 s in der Zielzone. Vorher gewinnt die Zone nichts |
+| Uhr | `timeLimit` in Sekunden, hier 300. Läuft sie ab, bevor alle Ziele erledigt sind, ist der Einsatz verloren (`World.TimeUp`). Sobald das letzte Ziel steht, bleibt die Uhr stehen: Der Zug kann nicht mehr einfahren |
+| Anzeige | Telegramm aus `sabotageTexts` ({ZIEL}, {REST}). Die Uhr steht vorn in der zweiten Zeile: „ZUG IN {n} MINUTEN STOP“, auf die nächste Minute gerundet, von 1:29 bis 1:00 „ZUG IN EINER MINUTE STOP“, darunter „ZUG IN {n} SEKUNDEN STOP“. Nach Ablauf „ZUG IST DA STOP“ |
+| Schotter | Flächen unter `gravel`. Wer dort geht, wird auf 3 statt 2 Felder gehört, auch im Rücken der Wache. Wer steht, ist so leise wie überall. Flächen unter `planks` (Bohlen) gehen vor und sind leise. Der Lageplan rechnet auf Schotter mit dem Schritt |
+| Kurierin | Neue Berufskennung `kurierin` (Hanna). Wer das Ziel des Einsatzes trägt, geht 100 statt 120, die Kurierin nicht. In Einsatz 1 mit dem Kontobuch zu sehen. Beute wird nicht getragen, sie zählt beim Berühren, darum ändert sich dort nichts |
+
+Helfer und Bewohner im Gleisviertel, Namen aus `story/texte/wachen.md`:
+
+| Kennung | Wer | Stadt hilft | Stadt schweigt | Stadt gegen den Trupp |
+|---|---|---|---|---|
+| `rangierer` | Ferdinand Stoll, Baracke A | Zaunpforte offen | Pforte zu | jagt den Trupp laut weg |
+| `heizer` | Jan Piontek, Baracke B | Zaunpforte offen | Pforte zu. Lebt Paul Roth aus Einsatz 2, bleibt sie offen (`Campaign.HouseHelps`, Entscheidung der Hauptsession vom 2026-11-20) | jagt weg |
+| `koechin` | Luise Harms, Speisebaracke | still | still | jagt weg |
+| `streckenwaerter` | Benno Fuchs, Wärterbude | still | ruft die Wache | ruft |
+| `bahnmeister` | Claus Reimers, Westgiebel des Schuppens | still | ruft die Wache | ruft |
+
+Wegjagen und Rufen sind für die Regel dasselbe: Lärm, kein Alarm. Wer nah vorbeikommt, löst ihn einmal aus, die nächste ahnungslose Wache in Hörweite geht nachsehen, bei „gegen den Trupp“ die zwei nächsten. In den Daten trägt, wer erst bei „gegen den Trupp“ laut wird, `onlyAgainst`.
+
+Namen: `person` trägt in allen drei Einsätzen den vollen Namen. Ältere Spielstände kennen nur Nachnamen, darum gilt beim Wiedererkennen derselbe Nachname als derselbe Mensch (`World.SamePerson`).
+
+Für Bild und Ton: `World.Targets` (Ort, `Progress`, `Ticks`, `Done`), `World.IsSabotaging(agent)`, `World.TicksLeft`, `World.AllDoneTick`, `World.TimeUp`, `World.OnGravel(x, y)`.
+
+#### Güterbahnhof, Messung vom 20.11.2026
+
+`dotnet run --project tools/Messingstadt.Balance -- --mission=mission_03 --bahnhof`, je 100 Läufe, Uhr 300 s, Kasse 600. „Beide Ziele“ zählt Läufe, in denen Stellwerk und Weiche erledigt wurden, „ohne Schuss“ davon die, in denen bis dahin kein Schuss fiel.
+
+| Leise | Sieg | beide Ziele | ohne Schuss | nach |
+|---|---|---|---|---|
+| Ohne Geld (Rauch, Totschläger, Dietrich), Klick genau | 0 | 100 | 100 | 38 s |
+| dasselbe, bis 0,5 s spät | 7 | 100 | 99 | 42 s |
+| dasselbe, bis 1 s spät | 1 | 78 | 71 | 42 s |
+| Mit Geld (Südstreife und Weichenposten gekauft, 400), Klick genau | 96 | 100 | 0 | 91 s |
+| dasselbe, bis 0,5 s spät | 85 | 100 | 0 | 90 s |
+| dasselbe, bis 1 s spät | 1 | 1 | 0 | 78 s |
+
+Der leise Plan: Kohlenweg, hinter den Baracken nach Osten, Otto öffnet die Zaunpforte der Heizer, über den Bahnweg zwischen die Wagen von Gleis 4 und 6. Hanna schlägt den Weichenposten von hinten nieder und verkeilt die Weiche. Otto wirft den Rauchtopf vor die Stellwerkstür, öffnet sie und legt die Hebelbank im Rauch lahm. Damit ist die Aufgabe nach rund 40 s erledigt, ohne Schuss.
+
+Was nicht gelingt, ist der Abzug: Der Bot kommt vom Stellwerk und von der Weiche nicht ungesehen zum Bahnübergang zurück. Mal endet der Rauch, bevor Otto fort ist, mal läuft er dem Hund auf Gleis 3 in den Weg. Ob das am Bot liegt oder am Bahnhof, ist offen. Ein leiser Sieg ist bisher nicht gemessen. Mit Geld gewinnt der Bot oft, aber laut und mit knapp drei Toten: Einer erreicht den Wagen.
+
+Den Hundeführer kann der Bot nicht kaufen: Der Hund greift an, bevor Emil beim Führer ist.
+
+| Laut aus der Stellung | Pistolen | vier MP | vier MP + Verband |
+|---|---|---|---|
+| Kohlenweg (8, 19) | 38 | 52 | 66 |
+| hinter den Wagen von Gleis 7 (11, 16) | 5 | 39 | 50 |
+| an den Wagen von Gleis 5 (16, 14) | 2 | 69 | 63 |
+| Barackenhof (17, 20) | 41 | 61 | 62 |
+
+In 8 bis 42 % der lauten Läufe läuft die Uhr ab, meist weil der Bot nach dem Gefecht zu lange in der Stellung wartet. Wer gewinnt, hat das letzte Ziel nach 41 bis 81 s erledigt. Die Uhr von 300 s ist damit für beide Spielweisen weit: Sie drückt erst, wenn man lange abwartet.
+
+Nicht gemessen: Stadt schweigt oder steht gegen den Trupp, die zwei rufenden Bewohner, offene Helferpforten, das echte Licht (bisher nur das vorläufige aus den Laternen).
 
 ### Mehrere Einsätze
 

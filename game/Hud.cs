@@ -550,6 +550,16 @@ namespace Messingstadt
                         }
                     }
                 }
+                else if (world.IsSabotage)
+                {
+                    foreach (var t in world.Targets)
+                    {
+                        if (!t.Done)
+                        {
+                            Add(Tile(t.X, t.Y) - center, Kind.Goal, true);
+                        }
+                    }
+                }
                 else if (!world.ItemTaken)
                 {
                     Add(Tile(world.ItemX, world.ItemY) - center, Kind.Goal, true);

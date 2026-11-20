@@ -112,11 +112,11 @@ namespace Messingstadt.Core
             {
                 var g = Units[mission.Agents.Count + i];
                 string returning = mission.Guards[i].Returning;
-                if (returning.Length > 0 && memory.Known.Exists(k => k.Person == returning && k.Fate != GuardFate.Dead))
+                if (returning.Length > 0 && memory.Known.Exists(k => SamePerson(k.Person, returning) && k.Fate != GuardFate.Dead))
                 {
                     g.Person = returning;
                 }
-                var known = g.Person.Length > 0 ? memory.Known.Find(k => k.Person == g.Person) : null;
+                var known = g.Person.Length > 0 ? memory.Known.Find(k => SamePerson(k.Person, g.Person)) : null;
                 bool human = !g.Type.Bites;
                 if (known is { Fate: GuardFate.Bribed } && g.Type.BribeCost > 0)
                 {

@@ -88,7 +88,7 @@ namespace Messingstadt.Core
         public string Role { get; set; } = "";
 
         public string RoleName() => Role.Length > 0 ? Role
-            : Skill == World.SkillLocksmith ? "Schlosser" : Skill == World.SkillBookkeeper ? "Buchhalter" : "Agent";
+            : Skill == World.SkillLocksmith ? "Schlosser" : Skill == World.SkillBookkeeper ? "Buchhalter" : Skill == World.SkillCourier ? "Kurierin" : "Agent";
 
         /// <summary>Gegenstände eines Agenten nach Kennung aus data/waffen.json. Ohne Angabe die Grundausstattung, siehe ItemCatalog.StarterKit.</summary>
         public List<string>? Items { get; set; }
@@ -178,6 +178,12 @@ namespace Messingstadt.Core
     {
         /// <summary>Kennung, etwa "gerichtsdiener". Für Darstellung und Ton.</summary>
         public string Id { get; set; } = "";
+
+        /// <summary>
+        /// True für Leute, die dem Trupp sonst helfen oder still bleiben: Sie werden erst laut, wenn die Stadt gegen den Trupp steht.
+        /// Dann jagen sie ihn weg, und das hört die Wache wie einen Ruf.
+        /// </summary>
+        public bool OnlyAgainst { get; set; }
         public double X { get; set; }
         public double Y { get; set; }
     }
@@ -210,6 +216,37 @@ namespace Messingstadt.Core
         public string AllFree { get; set; } = "ALLE FREI STOP ZUM WAGEN STOP SIE SIND LANGSAM STOP";
         public string OneDead { get; set; } = "{NAME} TOT STOP DEN ANDEREN RAUSBRINGEN STOP";
         public string Boarding { get; set; } = "EINSTEIGEN STOP STEHEN BLEIBEN STOP";
+    }
+
+    /// <summary>Ein Sabotageziel: Ein Agent steht die Dauer lang daneben, jeder andere Befehl bricht ab und die Arbeit beginnt von vorn.</summary>
+    public sealed class SabotageData
+    {
+        public string Name { get; set; } = "";
+
+        /// <summary>Kurzer Name für den Telegrammstreifen, etwa "STELLWERK". Ohne Angabe der Name in Großbuchstaben.</summary>
+        public string Short { get; set; } = "";
+        public double X { get; set; }
+        public double Y { get; set; }
+
+        /// <summary>Dauer der Arbeit in Sekunden.</summary>
+        public double Seconds { get; set; } = 4;
+
+        /// <summary>True, wenn der Schlosser hier nur die halbe Zeit braucht.</summary>
+        public bool Locksmith { get; set; }
+    }
+
+    /// <summary>Texte für den Telegrammstreifen in einem Einsatz der Art Sabotieren. {ZIEL} und {REST} sind kurze Namen der Ziele, {n} die Zahl der Uhr.</summary>
+    public sealed class SabotageTextData
+    {
+        public string Start { get; set; } = "ZIELE LAHMLEGEN STOP DANN ZUM WAGEN STOP";
+        public string Working { get; set; } = "{ZIEL} WIRD LAHMGELEGT STOP STEHEN BLEIBEN STOP";
+        public string OneDone { get; set; } = "{ZIEL} STEHT STOP {REST} FEHLT NOCH STOP";
+        public string AllDone { get; set; } = "ALLES STEHT STOP ZUM WAGEN STOP";
+        public string Boarding { get; set; } = "EINSTEIGEN STOP STEHEN BLEIBEN STOP";
+        public string Minutes { get; set; } = "ZUG IN {n} MINUTEN STOP";
+        public string OneMinute { get; set; } = "ZUG IN EINER MINUTE STOP";
+        public string Seconds { get; set; } = "ZUG IN {n} SEKUNDEN STOP";
+        public string TimeUp { get; set; } = "ZUG IST DA STOP";
     }
 
     /// <summary>Beute, die Geld bringt, wenn ein Agent sie erreicht und der Trupp entkommt.</summary>
@@ -319,6 +356,20 @@ namespace Messingstadt.Core
         /// <summary>Gefangene. Gibt es welche, ist der Einsatz von der Art Befreien und Item zählt nicht.</summary>
         public List<PrisonerData> Prisoners { get; set; } = new();
         public RescueTextData? RescueTexts { get; set; }
+
+        /// <summary>Sabotageziele. Gibt es welche, ist der Einsatz von der Art Sabotieren: alle Ziele erledigen, dann in die Zielzone.</summary>
+        public List<SabotageData> Sabotage { get; set; } = new();
+
+        public SabotageTextData? SabotageTexts { get; set; }
+
+        /// <summary>Uhr in Sekunden Spielzeit. Läuft sie ab, bevor alle Sabotageziele erledigt sind, ist der Einsatz verloren. 0 heißt keine Uhr.</summary>
+        public int TimeLimit { get; set; }
+
+        /// <summary>Flächen mit Schotter in Feldern: Wer dort geht, wird weiter gehört (World.GravelHeardRange).</summary>
+        public List<ZoneData> Gravel { get; set; } = new();
+
+        /// <summary>Leise Flächen im Schotter, etwa ein Bohlenweg. Sie gehen dem Schotter vor.</summary>
+        public List<ZoneData> Planks { get; set; } = new();
 
         /// <summary>Zeitungstexte nach dem Einsatz. Ohne Angabe allgemeine Texte.</summary>
         public HeadlineData? Headlines { get; set; }
