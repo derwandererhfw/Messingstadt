@@ -200,6 +200,27 @@ namespace Messingstadt.Core.Tests
         }
 
         [Fact]
+        public void TheWatchMapKnowsTheGravel()
+        {
+            // 2,7 Felder hinter der Wache: auf Pflaster frei, auf Schotter im Lageplan als gehört gezeigt.
+            MissionData Yard(bool gravel)
+            {
+                var m = new MissionData
+                {
+                    Seed = 7, Item = new[] { 20.5, 5.5 }, Exit = new ZoneData { X0 = 0, Y0 = 0, X1 = 2, Y1 = 12 }, Guards = GuardLookingAway(),
+                };
+                if (gravel)
+                {
+                    m.Gravel.Add(new ZoneData { X0 = 0, Y0 = 0, X1 = 30, Y1 = 12 });
+                }
+                return m;
+            }
+            var map = new MapData { Width = 30, Height = 12 };
+            Assert.False(WatchMap.Measure(map, Yard(false)).IsWatched(7, 5, 0));
+            Assert.True(WatchMap.Measure(map, Yard(true)).IsWatched(7, 5, 0));
+        }
+
+        [Fact]
         public void WhoStandsStillOnGravelIsAsQuietAsAnywhere()
         {
             var w = Make(guards: GuardLookingAway(), gravel: true, agentX: 7.5);

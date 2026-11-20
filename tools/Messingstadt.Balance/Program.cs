@@ -34,6 +34,9 @@ string[][]? loadout = null;
 // Schalter für den Güterbahnhof, an beliebiger Stelle: --uhr=<s> setzt die Uhr, --haltung=hilft|schweigt|gegen die Haltung der Stadt
 // (bei schweigt und gegen rufen die Bewohner), --pforten=offen lässt beide Zaunpforten offen stehen, wie wenn die Stadt hilft.
 Action<MissionData>? yardSetup = null;
+// --wagen: Der leise Plan geht nicht durch den Barackenhof, sondern vom Kohlenweg über den Schotter zwischen den Wagen nach Osten.
+bool yardWagons = args.Contains("--wagen");
+args = args.Where(x => x != "--wagen").ToArray();
 {
     string? Arg(string key) => args.FirstOrDefault(x => x.StartsWith(key))?[key.Length..];
     string? clockArg = Arg("--uhr="), stanceArg = Arg("--haltung="), gatesArg = Arg("--pforten=");
@@ -2137,6 +2140,34 @@ Dictionary<string, (string, int, int, string)[]> YardSteps(bool money)
     if (money)
     {
         plan["Emil"] = plan["Emil"].Concat(new[] { ("warte", 0, 0, "Stellwerk") }).Concat(home).ToArray();
+    }
+    if (yardWagons)
+    {
+        // Ohne Barackenhof und ohne Pforte: Kohlenweg, hinter die Wagen von Gleis 7, dann in einem Zug über den Schotter nach Osten.
+        // Zurück genauso. Die Wartepunkte (8, 14), (9, 13), (8, 13) und (24 bis 26, 13) zeigt der Lageplan nie im Blick.
+        (string, int, int, string)[] Swap((string, int, int, string)[] steps, (int, int) west, (int, int) east)
+        {
+            var kept = steps.Where(st => !(st.Item1 == "tuer" && st.Item4 == "Zaunpforte der Heizer") && !(st.Item1 == "warte" && st.Item4 == "Tür")
+                && !((st.Item1 == "geh" || st.Item1 == "lauf") && st.Item3 == 22 && st.Item2 >= 24)).ToList();
+            // Hinweg: nach dem ersten Schritt am Kohlenweg hinter die Wagen und nach Osten. Rückweg: vor dem Schritt nach (8, 21) dasselbe rückwärts.
+            int first = kept.FindIndex(st => st.Item1 == "geh" && st.Item2 <= 9 && st.Item3 >= 21);
+            kept.Insert(first + 1, ("geh", west.Item1, west.Item2, ""));
+            kept.Insert(first + 2, ("geh", east.Item1, east.Item2, ""));
+            int back = kept.FindLastIndex(st => st.Item1 == "geh" && st.Item2 == 8 && st.Item3 == 21);
+            if (back > first)
+            {
+                kept[back] = ("geh", west.Item1, west.Item2, "");
+                kept.Insert(back, ("geh", east.Item1, east.Item2, ""));
+            }
+            return kept.ToArray();
+        }
+        plan["Otto"] = Swap(plan["Otto"], (8, 14), (24, 13));
+        plan["Hanna"] = Swap(plan["Hanna"], (9, 13), (25, 13));
+        if (money)
+        {
+            plan["Emil"] = Swap(plan["Emil"], (8, 13), (28, 14));
+            plan.Remove("Tür");
+        }
     }
     return plan;
 }
