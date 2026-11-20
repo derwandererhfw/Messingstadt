@@ -1077,6 +1077,7 @@ Func<Action<World, Unit, List<Unit>>> HomeRun = () =>
 // des Lageplans, Emil kauft Hundeführer und Schließer, beide öffnen je eine Zelle und führen die Gefangenen im nächsten Fenster zurück.
 // lag: Der Klick kommt zufällig bis zu so viele Takte zu spät.
 int quietRun = 0;
+int passShown = 0;
 Func<Action<World>> QuietWithMoney(int lag, string[]? club = null, bool withGreta = false, bool gretaWatches = false) => () =>
 {
     var watch = quietWatch ??= WatchMap.Measure(Loader.ParseMap(mapJson), LitMission());
@@ -1244,11 +1245,15 @@ Func<Action<World>> QuietWithMoney(int lag, string[]? club = null, bool withGret
 
 // Der leise Weg ohne Geld: Otto allein mit Totschläger. Er passt Hund und Streifen nach dem Lageplan ab, öffnet die Pforte,
 // schlägt den Schließer nieder, holt beide und wartet im Hof auf das Fenster für den Rückweg.
-Func<Action<World>> QuietLocksmith(int lag, string[]? buy = null) => () =>
+// Mit escort wartet die Truppführerin am Wartepunkt vor der Pforte und geht am Ende zurück. Mit pass zeigt sie den Passierschein
+// der ersten einfachen Wache, die jemanden bemerkt: so, wie ein Spieler das Papier als Rettung aus der Hand zieht.
+// Mit ahead zeigt sie es vorab der Wallstreife 1, sobald die nah genug ist, und Otto geht los, solange die Wache wegschaut.
+Func<Action<World>> QuietLocksmith(int lag, string[]? buy = null, bool escort = false, bool pass = false, bool ahead = false) => () =>
 {
     var watch = quietWatch ??= WatchMap.Measure(Loader.ParseMap(mapJson), LitMission());
     var rng = new Random(4711 + quietRun++);
     int stage = 0, goAt = -1;
+    bool gretaHome = false;
     var home = HomeRun();
     return w =>
     {
@@ -1259,6 +1264,30 @@ Func<Action<World>> QuietLocksmith(int lag, string[]? buy = null) => () =>
         }
         int pforte = w.Doors.FindIndex(d => d.Name == "Pforte zur Gerichtsgasse");
         var emil = buy == null ? null : w.Units.Find(u => u.Skill == World.SkillBookkeeper && u.Alive);
+        var greta = escort ? w.Units.Find(u => World.CarriesPass(u) && u.Alive) : null;
+        if (greta != null)
+        {
+            if (stage == 0)
+            {
+                w.OrderMove(greta.Id, 6, 15);
+            }
+            else if (stage == 7 && !gretaHome && !greta.ShowsPass)
+            {
+                gretaHome = w.OrderMove(greta.Id, 9, 29);
+            }
+            if (pass && w.PassAvailable && !greta.ShowsPass)
+            {
+                var threat = ahead
+                    ? w.Units.Find(g => stage == 1 && g.Name == "Wallstreife 1" && otto.Path.Count == 0 && greta.Path.Count == 0
+                        && World.Distance(g, greta) <= 7 * World.TileUnits && w.PassCheck(greta, g) == PassAnswer.Works)
+                    : w.Units.Where(g => g.Alive && g.Faction == Faction.Guard && g.GuardState == GuardState.Noticing
+                    && w.PassCheck(greta, g) == PassAnswer.Works).OrderBy(g => World.Distance(g, greta)).FirstOrDefault();
+                if (threat != null && w.OrderShowPass(greta.Id, threat.Id))
+                {
+                    passShown++;
+                }
+            }
+        }
         bool At(int x, int y) => otto.Path.Count == 0 && otto.TileX == x && otto.TileY == y;
         bool Clear(int x, int y, int speed, int hold)
         {
@@ -1290,7 +1319,7 @@ Func<Action<World>> QuietLocksmith(int lag, string[]? buy = null) => () =>
                 break;
             case 1:
                 int doorTicks = w.HasItem(otto, ItemKind.Lockpick) ? World.DoorTicks / 2 : World.DoorTicks;
-                if (At(7, 15) && (emil == null || emil.Path.Count == 0) && Go(Clear(6, 7, World.WalkSpeed(otto), doorTicks + (emil == null ? 10 : 40))))
+                if (At(7, 15) && (emil == null || emil.Path.Count == 0) && Go(Clear(6, 7, World.WalkSpeed(otto), doorTicks + (emil == null ? 10 : 40)) || (ahead && w.Pass == PassState.Away)))
                 {
                     w.OrderOpenDoor(otto.Id, pforte);
                     if (emil != null)
@@ -1449,6 +1478,37 @@ void ReportRescue(string name, Func<Action<World>> make, int money = 600)
 }
 
 // Die drei Rückwege und die Abkürzung durch den Friedhofsgang: --wege. Mit zugesperrten Türen (Rückhalt 0) und mit offenen Helfertüren (Rückhalt 5).
+// Der Passierschein der Truppführerin: --passierschein. Leise ohne Geld mit Otto allein, mit Greta als Begleitung ohne Papier
+// und mit Papier, je mit genauem und verspätetem Klick, dazu kürzere Dauern des Wegschauens.
+if (args.Length > 0 && args[0] == "--passierschein")
+{
+    var p0 = new[] { "pistole" };
+    Console.WriteLine($"{missionId}, je {Runs} Läufe, Kasse 0");
+    foreach (var (label, kit) in new[] { ("Totschläger", new[] { "pistole", "totschlaeger" }), ("Totschl. + Dietrich", new[] { "pistole", "totschlaeger", "dietrich" }) })
+    {
+        loadout = new[] { p0, kit, p0, p0 };
+        foreach (int lag in new[] { 0, 10, 20 })
+        {
+            string late = $"{label}, {lag / 20.0:0.0#} s";
+            ReportRescue($"Otto allein, {late}", QuietLocksmith(lag), 0);
+            ReportRescue($"  mit Greta, ohne Papier", QuietLocksmith(lag, escort: true), 0);
+            foreach (int seconds in new[] { 20, 10 })
+            {
+                tune = w => w.PassAwaySeconds = seconds;
+                passShown = 0;
+                ReportRescue($"  mit Greta, Papier {seconds} s", QuietLocksmith(lag, escort: true, pass: true), 0);
+                Console.WriteLine($"    gezeigt in {100 * passShown / Runs}% der Läufe");
+                passShown = 0;
+                ReportRescue($"  Papier vorab, {seconds} s", QuietLocksmith(lag, escort: true, pass: true, ahead: true), 0);
+                Console.WriteLine($"    gezeigt in {100 * passShown / Runs}% der Läufe");
+            }
+            tune = null;
+        }
+    }
+    loadout = null;
+    return;
+}
+
 if (args.Length > 0 && (args[0] == "--wege" || args[0] == "--laut"))
 {
     bool loudOnly = args[0] == "--laut";

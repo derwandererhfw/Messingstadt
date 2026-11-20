@@ -454,6 +454,7 @@ namespace Messingstadt.Core
             // Einem Laufburschen auf der Flucht läuft nur nach, wer rennt.
             u.Sprinting = g.GuardState == GuardState.Report && u.Stamina >= MinSprintStamina;
             u.BribeTarget = guardId;
+            u.ShowsPass = false;
             u.RepathTick = 0;
             return true;
         }
@@ -605,6 +606,11 @@ namespace Messingstadt.Core
 
         private void WorkOnBribe(Unit a)
         {
+            if (a.ShowsPass)
+            {
+                WorkOnPass(a);
+                return;
+            }
             var g = Units[a.BribeTarget];
             if (!g.Alive || g.Bribed || g.GuardState == GuardState.Combat || Money < BribePrice(g, a))
             {
@@ -757,6 +763,10 @@ namespace Messingstadt.Core
                 WalkPatrol(g);
                 return;
             }
+            if (HoldPass(g))
+            {
+                return;
+            }
             // Nur wer ahnungslos ist, hat einen Sichtkegel. Alarmierte Wachen achten auf alle Seiten.
             Unit? seen = g.GuardState == GuardState.Patrol ? NearestNoticedEnemy(g) : NearestVisibleEnemy(g, g.Type.SightRange);
             if (seen != null)
@@ -788,7 +798,7 @@ namespace Messingstadt.Core
                     {
                         StartInvestigating(g);
                     }
-                    else if (--g.NoticeTicks <= 0)
+                    else if (!WaitsForPass(g, seen) && --g.NoticeTicks <= 0)
                     {
                         StartCombat(g);
                     }

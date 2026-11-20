@@ -301,7 +301,8 @@ namespace Messingstadt.Core
                 {
                     if (a.Skill == World.SkillLeader && record.Name != a.Name)
                     {
-                        a.Skill = "";
+                        // Die Neue führt den Passierschein, den halben Preis gibt ihr keine Wache.
+                        a.Skill = World.SkillDeputy;
                     }
                     a.Name = record.Name;
                     a.Legs = record.Legs;
