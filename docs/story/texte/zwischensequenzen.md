@@ -58,6 +58,25 @@ Durchgesehen am 2026-11-14, Plan der Sequenzen-Session (`sequenzen_einsatz_1_2.m
 - Was fehlt, wenn Paul stirbt, ist die Tatsache, dass einer vom Werk beim Verhör saß. Laut Vorlage erfährt der Trupp sie dann von Weiß. Neuer Satz für diesen Fall, VORSCHLAG, er ergänzt einen freigegebenen Text: „Weiß stand am Abend wieder an der Presse. Er sagte, beim Verhör habe einer vom Werk am Tisch gesessen. Mehr sagte er nicht.“
 - Buch-Panel: Ein gestorbener Gefangener gehört aus Sicht der Geschichte auf die Seite „Unsere“.
 
+## Durchsicht des Szenenplans zu Einsatz 3 bis 5
+
+Durchgesehen am 2026-11-20, Plan der Sequenzen-Session (`sequenzen-szenenplan-einsatz-3-5.md` in den gemeinsamen Notizen). Alle Kästen stimmen wörtlich mit den Bauvorlagen überein, Wochentage und Uhrzeiten auch. Vier Bilder sollten sich ändern:
+
+- V4, Panel 2: Die Hände des Bankbuchhalters tragen Ärmelschoner. Die sind seit Stufe 1 Kolbs Merkmal. Hier besser Manschetten und ein grüner Augenschirm am Bildrand.
+- V4, Panel 4: Das Treppenhaus mit Mahnzettel legt nahe, der Trupp besuche Dorn zu Hause. Der Einsatz spielt im Kassenhof, wo Dorn nachts raucht. Vorschlag: Kassenhof hinter dem Gitter, ein Mann von hinten, Akzent Bernstein auf der Glut der Zigarette. Der Mahnzettel kann in Panel 3 aus seiner Tasche schauen.
+- V3, Panel 3: passt, das Bild sagt nicht mehr als der Kasten. Bedingung: Die Hand bleibt ohne Merkmal, kein Ring, keine Manschette, die später wiederkehrt. Der Zettel bleibt gefaltet.
+- N4, Panel 4: passt und ist das stärkste Bild der Stufe. Der Mann, dem der Saal zuhört, ist der Grund, warum Kolb zweimal liest. Bedingung: kein Gesicht, auch kein Profil.
+
+### Aussehen für Stufe 2
+
+VORSCHLAG. Rademachers Kleidung steht schon in `../einsatz_05_altstadt.md`.
+
+| Figur | Aussehen |
+|---|---|
+| Albert Dorn, Prokurist | Anfang fünfzig, hager, leicht gebeugt. Dunkler Anzug mit blanken Ellbogen, steifer Kragen. Merkmal: der kleine Schlüssel an der Uhrkette, die Zigarette in der hohlen Hand |
+| Gustav Rademacher, Werkschutzführer | Um die vierzig, breit, kurzgeschoren. Grüner Mantel des Werkschutzes, Schirmmütze statt Helm, Lederhandschuhe. Merkmal: die Mappe unter dem Arm |
+| Julius Rehm, Vorsitzender | Ende fünfzig, groß, breite Schultern, Rednerfigur. Schwerer dunkler Mantel, darunter Weste. Nie ein Gesicht. Merkmal: beide Hände fest am Pult |
+
 ## Bildregel
 
 Bestätigt, mit einer Verschärfung: Die Panels zeigen die vier Agenten nicht erkennbar, und zwar schon ab N1, nicht erst ab Einsatz 2. Nach einer Niederlage und einem zweiten Versuch kann ein Agent schon in Einsatz 1 endgültig tot sein. Ausnahmen sind der Prolog (vor dem ersten Schuss leben alle) und die Schlusssequenz (die Zeilen zu den vieren haben je Figur eine Fassung).

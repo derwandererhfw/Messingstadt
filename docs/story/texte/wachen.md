@@ -74,6 +74,42 @@ Man liest die Namen nicht. Zeichen im Spiel ist eine Kerze im Fenster.
 
 Die Türen hängen an der Blutschuld (Nutzer, 2026-11-13): offen bei „hilft“, zu bei „schweigt“, bei „gegen den Trupp“ rufen die Bewohner nach der Wache. Sätze dazu in `../einsatz_02_nordwall.md`, Abschnitt 8.
 
+## Einsatz 3, Güterbahnhof
+
+Stand 2026-11-20, VORSCHLAG der Story. Felder für die Missionsdatei: `person` trägt den vollen Namen, `rank`, `age` und `call` nur, wo sie hier stehen.
+
+| Posten in der Vorlage | Art | Name | Felder | Hintergrund |
+|---|---|---|---|---|
+| Stellwerksposten | Werkschutz | Arnold Kessin, 34 | | War bei der Bahnpolizei, kennt jedes Signal. Nicht käuflich |
+| Stellwerksrunde | Werkschutz | Detlef Brock, 29 | | Sein Bruder ist Vorarbeiter im Werk. Nicht käuflich |
+| Rampenschütze | Schütze | Lothar Wiegand, 36 | `returning`: Walter Henke | Jäger aus dem Umland, kennt einige der Männer im Zug. Nimmt Geld |
+| Gleisstreife | Hundeführer | Siegfried Lohse, 42 | | Zwanzig Jahre Bahnwache, hasst den Schotter. Nimmt Geld |
+| Hund | Wachhund | Harras | | |
+| Südstreife | Wachmann | Franz Jeschke, 38 | `returning`: Richard Mertens | War Rangierer, die Bahn hat ihn entlassen, drei Kinder. Nimmt Geld |
+| Weichenposten | Wachmann | Gerhard Ullrich, 23 | | Zweites Dienstjahr, steht zum ersten Mal allein. Nimmt Geld |
+| Aufsicht | Offizier | Reinhold Tesch, 51 | Anrede aus der Art: Wachtmeister | Führt die Wache am Bahnhof, hat den Befehl schriftlich vom Werk. Teuer, aber käuflich |
+| Lampenjunge | Laufbursche | Peter Hagen, 12 | `rank`: Lampenjunge, `age`: 12, `call`: Peter | Sohn eines Rangierers, füllt die Signallampen für ein Abendbrot |
+| Verstärkung | Werkschutz | Egon Marek, Kuno Thamm, Rolf Beyer, Ewald Stock | | Die Mannschaft, die in Einsatz 2 die Gefangenen holen sollte. Nicht käuflich |
+
+### Wiederkehrer
+
+- Walter Henke, der Schütze aus Einsatz 1, steht auf der Rampe, wenn er lebt. Sonst Wiegand.
+- Richard Mertens aus Einsatz 1 läuft die Südstreife, wenn er lebt. Sein Bruder streikt und schläft in den Baracken, an denen er vorbeigeht. Sonst Jeschke.
+- Aus Einsatz 2 kehrt niemand zurück. Die Wache vom Nordwall hat nach dem Ausbruch andere Sorgen.
+- Marek, Thamm und Beyer waren in Einsatz 2 als Verstärkung vorgesehen und treten dort nicht mehr auf. Hier kommen sie zum ersten Mal.
+
+### Bewohner des Gleisviertels
+
+Am 2026-11-20 an den Grundriss angepasst (`../../einsatz_03_grundriss.md`). Sätze und Rufe stehen in `../einsatz_03_gleisviertel.md`, Abschnitt 8.
+
+| Kennung | Wer | Name | Wo | Rolle |
+|---|---|---|---|---|
+| `rangierer` | Rangierer, Barackenältester | Ferdinand Stoll | Baracke A | Helfer, Zaunpforte der Rangierer |
+| `heizer` | Lokheizer | Jan Piontek | Baracke B | Helfer, Zaunpforte der Heizer. Hilft mit lebendem Paul Roth auch, wenn die Stadt schweigt |
+| | Köchin | Luise Harms | Speisebaracke | Nur Stimme, keine Tür |
+| `streckenwaerter` | Streckenwärter | Benno Fuchs | Wärterbude | Hilft nie, ruft |
+| `bahnmeister` | Bahnmeister | Claus Reimers | Westgiebel des Güterschuppens | Hilft nie, ruft |
+
 ## Rufe
 
 Zum Hören gedacht, wenige Wörter. `{name}` ist der Rufname des Angesprochenen oder Gefallenen, `{toter}` ein Name aus dem Totenbuch.
