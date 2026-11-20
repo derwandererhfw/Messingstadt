@@ -96,7 +96,7 @@ foreach (var l in root.GetProperty("lights").EnumerateArray())
     lamps.Add(new Light(
         new Vector3(l.GetProperty("x").GetSingle(), l.GetProperty("y").GetSingle(), l.GetProperty("z").GetSingle() / zScale),
         l.GetProperty("color").GetString() == "fire" ? fireColor : l.TryGetProperty("rgb", out var ownColor) ? Vec(ownColor) : lampPicture,
-        l.GetProperty("color").GetString() == "fire" ? fireColor : lampColor,
+        (l.GetProperty("color").GetString() == "fire" ? fireColor : lampColor) * (l.TryGetProperty("rulesScale", out var rulesScale) ? rulesScale.GetSingle() : 1f),
         l.GetProperty("power").GetSingle(),
         l.GetProperty("layer").GetInt32(),
         l.GetProperty("hooded").GetBoolean(),

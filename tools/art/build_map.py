@@ -788,7 +788,7 @@ def wire(points, s, things):
     things[-1].kind = "open"
 
 
-def laundry_van(x, y, s, things):
+def laundry_van(x, y, s, things, sign="WASCHEREI"):
     """Der Fluchtwagen: Lieferwagen einer Wäscherei. Dunkles Führerhaus, heller Kastenaufbau mit Aufschrift und rotem Streifen."""
     cab, long, wide = 0.38, 1.4, 0.8
     made = {}
@@ -809,9 +809,9 @@ def laundry_van(x, y, s, things):
             for u in (0, w - 1):
                 d.fine_line((u, 0, u, 30), fill=g.C["wood_d"])
             d.rectangle((0, 21, w - 1, 22), fill=(150, 34, 30))  # roter Streifen der Firma
-            spans = g.paint_text(body, 2, 10, "WASCHEREI", 4.6, [(g.C["black"], 1.0, 0, 0, 1.0, 0.1)], gap=1.0, condense=0.72)
-            a0, a1 = spans[1]
-            for u in (a0 + 0.6, a1 - 1.4):  # die Punkte des Ä
+            spans = g.paint_text(body, 2, 10, sign, 4.6, [(g.C["black"], 1.0, 0, 0, 1.0, 0.1)], gap=1.0, condense=0.72) if sign else None
+            a0, a1 = spans[1] if sign else (0, 0)
+            for u in (a0 + 0.6, a1 - 1.4) if sign else ():  # die Punkte des Ä
                 d.fine_line((u, 8, u, 8), fill=g.C["black"])
             d.rectangle((0, 30, w - 1, 39), fill=g.C["soot"])
             d.rectangle((0, 30, w - 1, 30), fill=g.C["wood_d"])
@@ -1100,7 +1100,10 @@ def export(scene, theme, s, things, assets):
                                                       "pictureLights": list(PICTURE_LIGHTS),
                                                       "hd": {"res": g.HD, "ground": "hd/ground.png", "things": [n for t, n, _ in exported if t.hd]},
                                                       **g.AMBIENT}), encoding="utf-8")
-    g.export_backdrop(assets, theme.get("backdrop_keep"), size)
+    if scene["id"] == "gleisviertel":
+        gleisviertel.export_backdrop(assets, size, sys.modules[__name__])
+    else:
+        g.export_backdrop(assets, theme.get("backdrop_keep"), size)
     g.DUAL = True
     g.export_hd(assets, s, exported)
     return solids
