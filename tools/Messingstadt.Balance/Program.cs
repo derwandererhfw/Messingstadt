@@ -1574,6 +1574,7 @@ Func<Action<World>> YardPlan(Dictionary<string, (string What, int X, int Y, stri
     bool trace = Environment.GetEnvironmentVariable("MS_SPUR") != null;
     var noted = new HashSet<string>();
     var without = new Dictionary<string, WatchMap>();
+    var homes = new Dictionary<string, (int X, int Y)>();
     return w =>
     {
         if (trace)
@@ -1642,10 +1643,44 @@ Func<Action<World>> YardPlan(Dictionary<string, (string What, int X, int Y, stri
                     // Das Feld, auf dem er steht, zählt mit: Auf Schotter ist schon der erste Schritt lauter als das Stehen.
                     var whole = new List<(int X, int Y)> { (a.TileX, a.TileY) };
                     whole.AddRange(path);
+                    // "+zx,zy,takte,ohne,vx,vy": Er geht erst, wenn auch ein späterer Weg frei sein wird, der Rückweg von vx, vy nach zx, zy,
+                    // Beginn in "takte" Takten. Die Wache "ohne" zählt dabei nicht, sie steht dann im Rauch. So passt ein Spieler den
+                    // Rauchtopf ab: hinein, wenn er auch wieder herauskommt.
+                    bool laterFree = true;
+                    if (name.StartsWith('+'))
+                    {
+                        var f = name[1..].Split(',');
+                        if (!without.TryGetValue(f[3], out var blindMap))
+                        {
+                            var m = LitMission();
+                            m.Guards.RemoveAll(g => g.Name == f[3]);
+                            without[f[3]] = blindMap = WatchMap.Measure(Loader.ParseMap(mapJson), m);
+                        }
+                        var back = w.Map.FindPath(int.Parse(f[4]), int.Parse(f[5]), int.Parse(f[0]), int.Parse(f[1]));
+                        int begin = w.Tick + int.Parse(f[2]) + lag;
+                        int bx = int.Parse(f[4]) * 1000 + 500, by = int.Parse(f[5]) * 1000 + 500;
+                        // Im Rauch kann er ein paar Sekunden auf den Rückweg warten: Es reicht, wenn er in dieser Spanne einmal sicher frei ist.
+                        laterFree = back != null && new[] { -30, -15, 0, 15 }.Any(d => new[] { 0, 8, 16 }.All(e => blindMap.FirstRisk(back, bx, by, World.WalkSpeed(a), begin + d + e, 20) < 0));
+                    }
                     // Steht eine Zahl im Namen, wartet er höchstens so viele halbe Sekunden, etwa im Rauch.
-                    bool free = what == "lauf" || w.Rating == MissionRating.Loud || since[who] > (int.TryParse(name, out int patience) ? patience : 80)
-                        || (watch.FirstRisk(whole, a.X, a.Y, World.WalkSpeed(a), w.Tick + lag, 20) < 0
-                            && watch.FirstRisk(whole, a.X, a.Y, World.WalkSpeed(a), w.Tick + lag + 10, 20) < 0);
+                    // "~ohne,geduld": Der Weg wird ohne diese Wache geprüft, sie steht im Rauch.
+                    var legWatch = watch;
+                    int tilde = 0;
+                    if (name.StartsWith('~'))
+                    {
+                        var f = name[1..].Split(',');
+                        tilde = int.Parse(f[1]);
+                        if (!without.TryGetValue(f[0], out var smoked))
+                        {
+                            var m = LitMission();
+                            m.Guards.RemoveAll(g => g.Name == f[0]);
+                            without[f[0]] = smoked = WatchMap.Measure(Loader.ParseMap(mapJson), m);
+                        }
+                        legWatch = smoked;
+                    }
+                    bool free = what == "lauf" || w.Rating == MissionRating.Loud || since[who] > (tilde > 0 ? tilde : int.TryParse(name, out int patience) ? patience : name.StartsWith('+') ? 240 : 80)
+                        || (laterFree && legWatch.FirstRisk(whole, a.X, a.Y, World.WalkSpeed(a), w.Tick + lag, 20) < 0
+                            && legWatch.FirstRisk(whole, a.X, a.Y, World.WalkSpeed(a), w.Tick + lag + 10, 20) < 0);
                     if (free && goAt[who] < 0)
                     {
                         goAt[who] = w.Tick + (lag > 0 ? rng.Next(lag + 1) : 0);
@@ -1740,6 +1775,76 @@ Func<Action<World>> YardPlan(Dictionary<string, (string What, int X, int Y, stri
                     if (w.OrderThrowSmoke(a.Id, x, y) || since[who] > 10)
                     {
                         Next();
+                    }
+                    break;
+                case "stellwerk":
+                    // Das Stellwerk als Ganzes, vom sicheren Platz aus: zwei Felder vor (x, y), Rauchtopf auf den Posten, Tür, Hebelbank,
+                    // zurück. Er geht erst los, wenn die ganze Kette frei sein wird: der Anlauf jetzt, der Weg zur Tür und die Arbeit
+                    // im Rauch, der Rückweg danach. Der Posten zählt nicht, er steht im Rauch. Höchstens 150 s Warten.
+                    {
+                        if (!without.TryGetValue("Stellwerksposten", out var blindPost))
+                        {
+                            var m = LitMission();
+                            m.Guards.RemoveAll(g => g.Name == "Stellwerksposten");
+                            without["Stellwerksposten"] = blindPost = WatchMap.Measure(Loader.ParseMap(mapJson), m);
+                        }
+                        int phase = goAt[who] < 0 ? 0 : goAt[who];
+                        int gate = w.Doors.FindIndex(d => d.Name == "Stellwerk");
+                        if (phase == 0)
+                        {
+                            var pA = w.Map.FindPath(a.TileX, a.TileY, x, y);
+                            var pB = w.Map.FindPath(x, y, 21, 7);
+                            var pC = w.Map.FindPath(21, 7, a.TileX, a.TileY);
+                            int t = w.Tick + lag, sp = World.WalkSpeed(a);
+                            bool chain = pA != null && pB != null && pC != null
+                                && watch.FirstRisk(pA, a.X, a.Y, sp, t, 15) < 0
+                                && new[] { 0, 10, 20 }.All(e => blindPost.FirstRisk(pB, x * 1000 + 500, y * 1000 + 500, sp, t + 30 + e, 110) < 0)
+                                && new[] { 0, 10, 20, 30 }.All(e => blindPost.FirstRisk(pC, 21500, 7500, sp, t + 190 + e, 20) < 0);
+                            if (chain || since[who] > 300 || w.Rating == MissionRating.Loud)
+                            {
+                                if (trace)
+                                {
+                                    Console.WriteLine($"  {w.Tick / 20.0,5:0.0}s {who} geht ans Stellwerk, Kette {(chain ? "frei" : "nicht frei")}");
+                                }
+                                homes[who] = (a.TileX, a.TileY);
+                                w.OrderMove(a.Id, x, y);
+                                goAt[who] = 1;
+                            }
+                        }
+                        else if (phase == 1 && a.Path.Count == 0)
+                        {
+                            if (w.OrderThrowSmoke(a.Id, 21, 6) || a.Items.All(i => i.Def.Kind != ItemKind.Smoke || i.Charges == 0))
+                            {
+                                goAt[who] = 2;
+                            }
+                        }
+                        else if (phase == 2)
+                        {
+                            if (w.Doors[gate].Open)
+                            {
+                                goAt[who] = 3;
+                            }
+                            else if (a.DoorTarget != gate)
+                            {
+                                w.OrderOpenDoor(a.Id, gate);
+                            }
+                        }
+                        else if (phase == 3)
+                        {
+                            if (w.Targets[0].Done)
+                            {
+                                w.OrderMove(a.Id, homes[who].X, homes[who].Y);
+                                goAt[who] = 4;
+                            }
+                            else if (a.SabotageTarget != 0)
+                            {
+                                w.OrderSabotage(a.Id, 0);
+                            }
+                        }
+                        else if (phase == 4 && a.Path.Count == 0)
+                        {
+                            Next();
+                        }
                     }
                     break;
                 case "fenster":
@@ -1953,8 +2058,9 @@ Dictionary<string, (string, int, int, string)[]> YardSteps(bool money)
         hanna.AddRange(new[] { ("warte", 0, 0, "Tür"), ("geh", 25, 13, p1), ("geh", 28, 14, p1), ("schlag", 28, 10, "Weichenposten"), ("ziel", 1, 0, p1) });
     }
     hanna.AddRange(new[] { ("lauf", 28, 14, p1), ("warte", 0, 0, "Otto") });
-    otto.AddRange(new[] { ("geh", 20, 10, p1), ("rauch", 21, 6, p1), ("tuer", 0, 0, "Stellwerk"), ("ziel", 0, 0, p1), ("geh", 24, 13, "8") });
-    var home = new[] { ("geh", 27, 21, p1), ("geh", 8, 21, p1), ("geh", 8, 14, p1), ("geh", 3, 15, p1), ("geh", 1, 7, p1) };
+    otto.AddRange(new[] { ("stellwerk", 22, 12, p1) });
+    // Zurück, wie sie gekommen sind, dann am Kohlenlager über den Bahnweg ans Stumpfgleis und über die Bohlen des Bahnübergangs.
+    var home = new[] { ("geh", 27, 21, p1), ("geh", 8, 21, p1), ("geh", 3, 15, p1), ("geh", 1, 7, p1) };
     otto.AddRange(home);
     hanna.AddRange(home);
     plan["Otto"] = otto.ToArray();
