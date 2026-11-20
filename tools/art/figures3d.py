@@ -634,7 +634,8 @@ def body(spec, rig, dying=False):
             p.capsule(hand, hand + down * 2.4, 0.95, 0.95, BAND)
             p.capsule(hand + down * 2.4, hand + down * 4.2, 0.5, 0.4, BAND)
         if side < 0 and rig.get("cig"):
-            p.capsule(hand + (0.8, 0, 0.3), hand + (2.0, 0, 0.5), 0.4, 0.4, LINEN)
+            # Zigarette zwischen den Fingern: Das Mundstück zeigt zum Gesicht, die Spitze nach vorn.
+            p.capsule(hand + (-0.7, 0.2, 0.9), hand + (1.3, 0.2, 1.2), 0.4, 0.4, LINEN)
         if spec.get("leash") and side > 0 and not dying and mode[0] == "fk":
             # Aufgerolltes Ende der Leine in der freien Hand
             p.capsule(hand + (0.4, 0.4, -0.5), hand + (1.2, 1.2, -4.5), 0.75, 0.55, TRIM)
@@ -766,8 +767,10 @@ def smoke_rig(i):
     lift = (0.0, 0.5, 1.0, 1.0, 0.5, 0.0)[i]
     shoulder = arm_root(rig, -1)
     hang = shoulder + np.array((1.0, -0.6, -15.4))
-    mouth = upper(rig, (3.6, -0.6, SHOULDER_Z + 4.0))
-    rig["arms"][-1] = ("ik", lerp(hang, mouth, lift), (0.0, -1.0, -0.6))
+    # Die Hand hält knapp unter dem Mund, sonst verdeckt sie das Gesicht.
+    mouth = upper(rig, (4.4, -0.7, SHOULDER_Z + 2.9))
+    # Der Ellbogen bleibt unten am Körper, nur der Unterarm hebt sich.
+    rig["arms"][-1] = ("ik", lerp(hang, mouth, lift), (-0.2, -0.45, -1.0))
     rig["arms"][1] = ("fk", 0.05, 0.2)
     rig["head_pitch"] = -0.05 * lift
     rig["cig"] = True
@@ -1390,6 +1393,22 @@ def strides():
     return table
 
 
+def mouths():
+    """Wo der Mund einer ruhig stehenden Figur sitzt: Weg nach vorn und Höhe über dem Fuß, beides in Bildpunkten
+    der Welt. Das Spiel setzt dort Atem und Zigarettenglut an. Beim Hund ist es die Schnauze."""
+    table = {}
+    for name, spec in SPECS.items():
+        scale = spec.get("scale", 1.0)
+        if spec.get("dog"):
+            parts = build_dog("idle", 0, 8).parts
+            tip = max((q for a, b, *_ in parts for q in (a, b)), key=lambda q: q[0])
+            table[name] = [round(float(tip[0]), 1), round(float(tip[2] * UP[2]), 1)]
+        else:
+            head = upper(stand_rig(0.0), (0.5, 0.0, SHOULDER_Z + 5.0))
+            table[name] = [round(float(head[0] + 3.0) * scale, 1), round(float(head[2] - 1.3) * UP[2] * scale, 1)]
+    return table
+
+
 def bite_reach():
     """Wie weit die Schnauze im Sprung vor dem Standort des Hundes ist, in Spieleinheiten."""
     table = {}
@@ -1500,7 +1519,7 @@ def main():
     Image.fromarray(mirror, "RGBA").save(assets / "figures_mirror.png", optimize=True)
     (assets / "figures.json").write_text(json.dumps({
         "names": names, "w": CELL_W, "h": CELL_H, "footX": FOOT_X, "footY": FOOT_Y, "views": len(VIEWS), "res": RES,
-        "columns": columns(), "stride": strides(), "biteReach": bite_reach(), "mirror": MIRROR,
+        "columns": columns(), "stride": strides(), "biteReach": bite_reach(), "mirror": MIRROR, "mouth": mouths(),
         "has": {name: [m for m in AGENT_ONLY if applies(spec, m)] for name, spec in SPECS.items() if spec.get("agent")},
         "variants": variants,
         "civil": {"names": [name for name, spec in SPECS.items() if spec.get("civil")], "columns": civil_columns()},
