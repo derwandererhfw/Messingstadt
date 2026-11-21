@@ -42,7 +42,7 @@ Schritt 2 ist gebaut: Mission `data/mission_03.json`, Regeln für Sabotieren, Uh
  29 ..............................   Start x 5–9
 ```
 
-Kein freies Feld ist ganz verdeckt. Bei 125 Feldern stehen nur die Füße hinter einer Wagenkante, einem Zaun oder einer Baracke.
+Nach dem Grundriss ist kein freies Feld ganz verdeckt. Mit der gebauten Karte der Grafik sind es drei: (14, 3), (18, 5) und (15, 7). Dort liegt nichts Wichtiges, (15, 7) ist ein Feld der Ladestraße neben der Aufsicht. Bei 125 Feldern stehen nur die Füße hinter einer Wagenkante, einem Zaun oder einer Baracke.
 
 ## Orte
 

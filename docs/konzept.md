@@ -149,7 +149,7 @@ hinter einer anderen steht. Der Träger des Kontobuchs bekommt dabei genau das a
 |---|---|---|
 | Otto, Schlosser | Tür öffnen | Rechtsklick auf die Türmarke, 2 s neben der Tür stehen. Danach kann jeder hindurch. Die Sicht bleibt gesperrt |
 | Emil, Buchhalter | Bestechen | Rechtsklick auf eine Wache, wenn nur Emil gewählt ist. 200 aus der Kasse, wirkt ab 2 Feldern Abstand, nur solange die Wache nicht kämpft. Sie ignoriert danach Agenten und Alarm, bis jemand auf sie schießt |
-| Hanna, Kurierin | Trägt ohne Bremse | Wer das Ziel des Einsatzes trägt, geht langsamer (100 statt 120). Die Kurierin nicht |
+| Hanna, Kurierin | Trägt ohne Bremse, geht leise | Wer das Ziel des Einsatzes trägt, geht langsamer (100 statt 120). Die Kurierin nicht. Auf Schotter und Kies wird sie nicht weiter gehört als auf Pflaster. Beides hängt am Beruf: Wer ihren Platz übernimmt (Lotte Becker), hat es auch |
 | Greta, Truppführerin | Kennt die Stadtwache | Ist sie dabei, nimmt jede Wache nur den halben Preis. Dabei heißt: Sie lebt, ist im Einsatz und steht höchstens 5 Felder vom Bestechenden oder sieht die Wache selbst auf höchstens 8 Felder. Es zählt der Augenblick, in dem das Geld übergeben wird |
 
 #### Gretas Nachlass
@@ -382,7 +382,7 @@ Einsatz 3, Güterbahnhof Ost. Regeln in `World.Sabotage.cs`, Daten in `data/miss
 | Sieg | Alle Ziele erledigt, dann steht ein Agent 1 s in der Zielzone. Vorher gewinnt die Zone nichts |
 | Uhr | `timeLimit` in Sekunden, hier 300. Läuft sie ab, bevor alle Ziele erledigt sind, ist der Einsatz verloren (`World.TimeUp`). Sobald das letzte Ziel steht, bleibt die Uhr stehen: Der Zug kann nicht mehr einfahren |
 | Anzeige | Telegramm aus `sabotageTexts` ({ZIEL}, {REST}). Die Uhr steht vorn in der zweiten Zeile: „ZUG IN {n} MINUTEN STOP“, auf die nächste Minute gerundet, von 1:29 bis 1:00 „ZUG IN EINER MINUTE STOP“, darunter „ZUG IN {n} SEKUNDEN STOP“. Nach Ablauf „ZUG IST DA STOP“ |
-| Schotter | Flächen unter `gravel`. Wer dort geht, wird auf 3 statt 2 Felder gehört, auch im Rücken der Wache. Wer steht, ist so leise wie überall. Flächen unter `planks` (Bohlen) gehen vor und sind leise. Der Lageplan rechnet auf Schotter mit dem Schritt |
+| Schotter | Flächen unter `gravel`. Wer dort geht, wird auf 3 statt 2 Felder gehört, auch im Rücken der Wache. Die Kurierin nicht: Sie geht auf Schotter so leise wie auf Pflaster, der Hund wittert sie trotzdem auf 2,5 Felder. Wer steht, ist so leise wie überall. Flächen unter `planks` (Bohlen) gehen vor und sind leise. Der Lageplan rechnet auf Schotter mit dem Schritt |
 | Kurierin | Neue Berufskennung `kurierin` (Hanna). Wer das Ziel des Einsatzes trägt, geht 100 statt 120, die Kurierin nicht. In Einsatz 1 mit dem Kontobuch zu sehen. Beute wird nicht getragen, sie zählt beim Berühren, darum ändert sich dort nichts |
 
 Helfer und Bewohner im Gleisviertel, Namen aus `story/texte/wachen.md`:
@@ -401,35 +401,63 @@ Namen: `person` trägt in allen drei Einsätzen den vollen Namen. Ältere Spiels
 
 Für Bild und Ton: `World.Targets` (Ort, `Progress`, `Ticks`, `Done`), `World.IsSabotaging(agent)`, `World.TicksLeft`, `World.AllDoneTick`, `World.TimeUp`, `World.OnGravel(x, y)`.
 
-#### Güterbahnhof, Messung vom 20.11.2026
+#### Güterbahnhof, Messung vom 21.11.2026
 
-`dotnet run --project tools/Messingstadt.Balance -- --mission=mission_03 --bahnhof`, je 100 Läufe, Uhr 300 s, Kasse 600. „Beide Ziele“ zählt Läufe, in denen Stellwerk und Weiche erledigt wurden, „ohne Schuss“ davon die, in denen bis dahin kein Schuss fiel.
+`dotnet run --project tools/Messingstadt.Balance -- --mission=mission_03 --bahnhof [leise|geld|laut]`, je 100 Läufe, Uhr 300 s, Kasse 600, mit dem gebackenen Licht der Grafik (`data/light_03.json`). Schalter davor: `--haltung=schweigt|gegen`, `--pforten=offen`, `--uhr=<s>`, `--wagen`, `--ohnekurierin`. Alle Werte in Prozent.
 
-| Leise | Sieg | beide Ziele | ohne Schuss | nach |
+**Was geändert wurde, damit ein leiser Weg besteht.** Mit der ersten Stellwerksrunde, (18, 7) – (25, 7) vor der Tür, war die Kette aus Anlauf, Arbeit im Rauch und Rückweg zu keinem Zeitpunkt frei (`--kette`: 0,0 % von 300 s). Es lag am Bahnhof, nicht am Bot. Die Runde geht jetzt im Nordteil des Osthofs, (24, 6) – (28, 6) – (28, 3) – (24, 3). Damit ist die Kette 23 % der Zeit frei, das längste Fenster dauert 7 s, das erste öffnet nach 20 s. An der Weiche sind es 67 % und 20 s. Karte, Hund, Aufsicht und Licht blieben, wie sie waren. Die Schrankenlampe an der Zielzone ist kein Hindernis: Die Felder der Zone liegen in keinem Blick.
+
+Dazu ein Fehler im Lageplan: Seine Probe rechnete ohne Schotter, Wachen hörten dort 3 Felder weit, der Lageplan zeigte 2. Das ist behoben und galt auch für den Lageplan im Spiel.
+
+**Der leise Plan.** Kohlenweg, hinter den Baracken nach Osten (Wartefelder in Reihe 22, außer Reichweite der Wärterbude), Otto öffnet die Zaunpforte der Heizer, über den Bahnweg zwischen die Wagen von Gleis 4 und 6. Hanna schlägt den Weichenposten von hinten nieder und verkeilt die Weiche vom Feld (28, 11). Otto wartet auf (24, 13), bis die ganze Kette frei sein wird, wirft den Rauchtopf von (22, 12) auf (21, 7), öffnet die Tür, legt die Hebelbank lahm und geht im selben Rauch zurück. Rückweg wie Hinweg, dann am Kohlenlager über den Bahnweg ans Stumpfgleis und über die Bohlen des Bahnübergangs in die Zielzone. Mit Geld kauft Emil vorher Südstreife und Weichenposten (400), der Schlag entfällt.
+
+| Leise, Stadt hilft | genau | 0,5 s spät | 1 s spät | 2 s spät | letztes Ziel nach | am Wagen nach |
+|---|---|---|---|---|---|---|
+| Ohne Geld (Rauch, Totschläger, Dietrich) | 100 | 100 | 100 | 0 | 59 s | 84 s |
+| Mit Geld (Südstreife und Weichenposten, 400) | 100 | 100 | 97 | 0 | 89 s | 113 s |
+| Ohne Geld, Helferpforten offen | 100 | 100 | 99 (95 leise) | 1 | 29 bis 58 s | 54 bis 88 s |
+| Mit Geld, Helferpforten offen | 100 | 100 | 93 (92 leise) | 25 (0 leise) | 59 s | 83 s |
+| Ohne Geld, Hanna ohne ihren Beruf | 100 | 100 | 100 | 0 | 59 s | 84 s |
+| Mit Geld, Hanna ohne ihren Beruf | 100 | 100 | 97 | 0 | 89 s | 113 s |
+
+Alle Siege in dieser Tabelle sind leise, wo nichts anderes steht, und niemand stirbt. Hannas leise Schritte ändern die Zahlen nicht: Der Bot geht nach dem Lageplan, und der rechnet für alle mit dem lauten Schritt. Der Einsatz hängt also nicht an ihr. Den Hundeführer kann der Bot nicht kaufen, der Hund greift an, bevor Emil beim Führer ist. Das bleibt ein Rätsel für den Spieler, der leise Weg braucht ihn nicht.
+
+| Leise, andere Haltung der Stadt | genau | 0,5 s spät | 1 s spät | 2 s spät |
 |---|---|---|---|---|
-| Ohne Geld (Rauch, Totschläger, Dietrich), Klick genau | 0 | 100 | 100 | 38 s |
-| dasselbe, bis 0,5 s spät | 7 | 100 | 99 | 42 s |
-| dasselbe, bis 1 s spät | 1 | 78 | 71 | 42 s |
-| Mit Geld (Südstreife und Weichenposten gekauft, 400), Klick genau | 96 | 100 | 0 | 91 s |
-| dasselbe, bis 0,5 s spät | 85 | 100 | 0 | 90 s |
-| dasselbe, bis 1 s spät | 1 | 1 | 0 | 78 s |
+| Stadt schweigt, Barackenhof, ohne Geld | 100 (0 leise) | 100 (2 leise) | 100 (0 leise) | 0 |
+| Stadt schweigt, Barackenhof, mit Geld | 0 | 0 | 0 | 0 |
+| Stadt schweigt, über die Wagen, mit Geld | 100 | 0 | 0 | 0 |
+| Stadt gegen den Trupp, Barackenhof, ohne Geld | 0 | 0 | 0 | 0 |
+| Stadt gegen den Trupp, Barackenhof, mit Geld | 0 | 0 | 0 | 0 |
+| Stadt gegen den Trupp, über die Wagen, mit Geld | 100 | 0 | 0 | 0 |
+| Stadt hilft, über die Wagen, ohne Geld | 100 | 38 (0 leise) | 5 (0 leise) | 0 |
+| Stadt hilft, über die Wagen, mit Geld | 100 | 0 | 0 | 0 |
 
-Der leise Plan: Kohlenweg, hinter den Baracken nach Osten, Otto öffnet die Zaunpforte der Heizer, über den Bahnweg zwischen die Wagen von Gleis 4 und 6. Hanna schlägt den Weichenposten von hinten nieder und verkeilt die Weiche. Otto wirft den Rauchtopf vor die Stellwerkstür, öffnet sie und legt die Hebelbank im Rauch lahm. Damit ist die Aufgabe nach rund 40 s erledigt, ohne Schuss.
+Schweigt die Stadt, ruft der Streckenwärter, sobald jemand zur Zaunpforte der Heizer geht: Ohne Geld kommt der Trupp noch durch, aber nicht mehr leise, mit Geld stirbt er, weil Emil länger an der Pforte steht. Steht die Stadt gegen den Trupp, jagen Stoll, Piontek und die Köchin jeden weg, der durch den Barackenhof geht, dieser Weg ist dann zu. Es bleibt der Weg über die Wagen: Kohlenweg, hinter die Wagen von Gleis 7, in einem Zug 15 Felder über den Schotter nach Osten, zwischen Hund und Südstreife hindurch. Er ist leise schaffbar, aber nur bei genauem Klick. So war es gedacht: Wer Blut vergossen hat, verliert den bequemen Weg. Ob der Weg über die Wagen dafür zu scharf ist, ist eine offene Frage. „Über die Wagen, ohne Geld“ ist bei schweigender Stadt und bei Stadt gegen den Trupp nicht gemessen.
 
-Was nicht gelingt, ist der Abzug: Der Bot kommt vom Stellwerk und von der Weiche nicht ungesehen zum Bahnübergang zurück. Mal endet der Rauch, bevor Otto fort ist, mal läuft er dem Hund auf Gleis 3 in den Weg. Ob das am Bot liegt oder am Bahnhof, ist offen. Ein leiser Sieg ist bisher nicht gemessen. Mit Geld gewinnt der Bot oft, aber laut und mit knapp drei Toten: Einer erreicht den Wagen.
+| Laut aus der Stellung | Pistolen | vier MP | vier MP + Verband | letztes Ziel nach |
+|---|---|---|---|---|
+| Kohlenweg (8, 19) | 43 | 49 | 57 | 45 bis 54 s |
+| hinter den Wagen von Gleis 7 (11, 16) | 12 | 43 | 65 | 42 bis 51 s |
+| an den Wagen von Gleis 5 (16, 14) | 17 | 74 | 65 | 40 bis 45 s |
+| Barackenhof (17, 20) | 61 | 76 | 69 | 76 bis 79 s |
 
-Den Hundeführer kann der Bot nicht kaufen: Der Hund greift an, bevor Emil beim Führer ist.
+In 5 bis 43 % der lauten Läufe läuft die Uhr ab, weil der Bot nach dem Gefecht in der Stellung wartet oder festhängt, nicht weil die Zeit für den Weg fehlt.
 
-| Laut aus der Stellung | Pistolen | vier MP | vier MP + Verband |
-|---|---|---|---|
-| Kohlenweg (8, 19) | 38 | 52 | 66 |
-| hinter den Wagen von Gleis 7 (11, 16) | 5 | 39 | 50 |
-| an den Wagen von Gleis 5 (16, 14) | 2 | 69 | 63 |
-| Barackenhof (17, 20) | 41 | 61 | 62 |
+#### Vorschlag zur Uhr: 240 Sekunden
 
-In 8 bis 42 % der lauten Läufe läuft die Uhr ab, meist weil der Bot nach dem Gefecht zu lange in der Stellung wartet. Wer gewinnt, hat das letzte Ziel nach 41 bis 81 s erledigt. Die Uhr von 300 s ist damit für beide Spielweisen weit: Sie drückt erst, wenn man lange abwartet.
+Heute stehen 300 s in den Daten, und die drücken nicht. Bis zum letzten Ziel braucht der Bot leise ohne Geld 59 s, leise mit Geld 89 s, laut 40 bis 79 s. Die Uhr läuft nur bis zum letzten Ziel, danach steht sie.
 
-Nicht gemessen: Stadt schweigt oder steht gegen den Trupp, die zwei rufenden Bewohner, offene Helferpforten, das echte Licht (bisher nur das vorläufige aus den Laternen).
+| Uhr | entspricht für den Bot (geteilt durch 2,5) | leise ohne Geld (59 s) | leise mit Geld (89 s) | laut (40 bis 79 s) |
+|---|---|---|---|---|
+| 300 s | 120 s | reicht, 61 s Luft | reicht, 31 s Luft | reicht |
+| 240 s | 96 s | reicht, 37 s Luft | reicht knapp, 7 s Luft | reicht |
+| 210 s | 84 s | reicht | reicht nicht | Barackenhof wird knapp |
+| 180 s | 72 s | reicht, 13 s Luft | reicht nicht | Barackenhof reicht nicht |
+
+Vorschlag: 240 s, vier Minuten. Das ist der kleinste runde Wert, bei dem der langsamste leise Weg, der mit Geld, nach dem Richtwert noch passt. Wer ein Fenster am Stellwerk verpasst, wartet bis zu 30 s auf das nächste, das kostet einen Menschen dann schon die Luft. Gemessen mit `--uhr=96`, also der Uhr von 240 s aus Sicht des Bots: leise ohne Geld 100, 100, 100, 0 und mit Geld 100, 100, 97, 0 wie bei 300 s, laut unverändert. Die Daten stehen weiter auf 300 s, bis das entschieden ist.
+
+Nicht gemessen: rufende Bewohner und Wegjagen im Spiel selbst, „über die Wagen, ohne Geld“ bei schweigender Stadt und bei Stadt gegen den Trupp, ein Lauf mit Hanna als Einziger auf dem Schotter. Der Bot klickt genauer und sieht den Lageplan vollständiger als ein Mensch.
 
 ### Mehrere Einsätze
 
