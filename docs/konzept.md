@@ -444,7 +444,9 @@ Schweigt die Stadt, ruft der Streckenwärter, sobald jemand zur Zaunpforte der H
 
 In 5 bis 43 % der lauten Läufe läuft die Uhr ab, weil der Bot nach dem Gefecht in der Stellung wartet oder festhängt, nicht weil die Zeit für den Weg fehlt.
 
-#### Vorschlag zur Uhr: 240 Sekunden
+#### Uhr: 300 Sekunden, Vorschlag 240 nicht übernommen
+
+Entscheidung des Nutzers vom 2026-11-21: „Bei 300 s lassen“. Die Daten stehen auf 300 s und bleiben so. Der Vorschlag unten bleibt als Messung stehen.
 
 Heute stehen 300 s in den Daten, und die drücken nicht. Bis zum letzten Ziel braucht der Bot leise ohne Geld 59 s, leise mit Geld 89 s, laut 40 bis 79 s. Die Uhr läuft nur bis zum letzten Ziel, danach steht sie.
 
@@ -455,7 +457,7 @@ Heute stehen 300 s in den Daten, und die drücken nicht. Bis zum letzten Ziel br
 | 210 s | 84 s | reicht | reicht nicht | Barackenhof wird knapp |
 | 180 s | 72 s | reicht, 13 s Luft | reicht nicht | Barackenhof reicht nicht |
 
-Vorschlag: 240 s, vier Minuten. Das ist der kleinste runde Wert, bei dem der langsamste leise Weg, der mit Geld, nach dem Richtwert noch passt. Wer ein Fenster am Stellwerk verpasst, wartet bis zu 30 s auf das nächste, das kostet einen Menschen dann schon die Luft. Gemessen mit `--uhr=96`, also der Uhr von 240 s aus Sicht des Bots: leise ohne Geld 100, 100, 100, 0 und mit Geld 100, 100, 97, 0 wie bei 300 s, laut unverändert. Die Daten stehen weiter auf 300 s, bis das entschieden ist.
+Vorschlag: 240 s, vier Minuten. Das ist der kleinste runde Wert, bei dem der langsamste leise Weg, der mit Geld, nach dem Richtwert noch passt. Wer ein Fenster am Stellwerk verpasst, wartet bis zu 30 s auf das nächste, das kostet einen Menschen dann schon die Luft. Gemessen mit `--uhr=96`, also der Uhr von 240 s aus Sicht des Bots: leise ohne Geld 100, 100, 100, 0 und mit Geld 100, 100, 97, 0 wie bei 300 s, laut unverändert. Entschieden ist: Es bleibt bei 300 s.
 
 Nicht gemessen: rufende Bewohner und Wegjagen im Spiel selbst, „über die Wagen, ohne Geld“ bei schweigender Stadt und bei Stadt gegen den Trupp, ein Lauf mit Hanna als Einziger auf dem Schotter. Der Bot klickt genauer und sieht den Lageplan vollständiger als ein Mensch.
 
