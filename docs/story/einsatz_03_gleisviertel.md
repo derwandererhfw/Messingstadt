@@ -120,7 +120,7 @@ Vom Nutzer gewählt am 2026-11-14 („volle Fassung“), neu für die Mechanik:
 - Die Mission nennt Sabotageziele: Name, Ort, Dauer. Ein Agent steht die Dauer lang daneben, jeder Befehl bricht ab.
 - Hebelbank 6 s, Weiche 4 s. Sabotieren ist leise, aber im Licht zu sehen.
 - Gewonnen ist, wenn alle Ziele erledigt sind und ein Agent 1 s in der Zielzone steht.
-- Zeitdruck: Nach 5 Minuten Spielzeit fährt der Zug ein, dann ist der Einsatz verloren. Die Zeit steht im Telegrammstreifen. Die Dauer ist ein Richtwert für die Balance.
+- Zeitdruck: Nach 5 Minuten Spielzeit fährt der Zug ein, dann ist der Einsatz verloren. Die Zeit steht im Telegrammstreifen. Die Dauer von 300 s hat der Nutzer am 2026-11-21 bestätigt („Bei 300 s lassen“), die Level-Session hatte 240 s vorgeschlagen. Der Einsatz beginnt um 23:15 Uhr, der Zug kommt um Mitternacht: Die fünf Minuten Spielzeit stehen für diese Dreiviertelstunde.
 
 ## 5. Texte
 
