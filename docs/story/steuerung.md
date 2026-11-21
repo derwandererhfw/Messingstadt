@@ -67,6 +67,7 @@ Eine zusammenhängende Geschichte über sechs Einsätze, deren Texte im Spiel (A
 | 2026-11-20 | Totenbuch-Seite in den Sequenzen: Namen auf der Buchseite statt auf einem Zettel | Nutzer über die Hauptsession („2. ja“) |
 | 2026-11-20 | Zusatzpanel im Prolog mit einem Wachmann mit Namen, und Friedhofsbild vor Einsatz 3. Inhalt in `texte/zwischensequenzen.md` | Nutzer über die Hauptsession („3. ja“) |
 | 2026-11-20 | Groschen auch in der Anzeige im Spiel. Schreibweise in `kanon.md` | Nutzer über die Hauptsession („4. ja“) |
+| 2026-11-21 | Die Uhr in Einsatz 3 bleibt bei 300 s. Level hatte 240 s vorgeschlagen | Nutzer über die Hauptsession („Bei 300 s lassen“) |
 
 ## Offene Entscheidungen
 
