@@ -333,7 +333,9 @@ Stand 2026-11-21, Auskunft der Level-Session (`7359f30` auf ihrem Branch). Das e
 
 Für die Texte: Kein gesprochener Satz nennt den Weg der Runde. „Im Stellwerk sitzen zwei vom Werk“ stimmt weiter, Kessin steht vor der Tür und Brock im Hof östlich davon. In Abschnitt 4 steht noch, Hanna locke die Stellwerksrunde weg. Das gilt für den Kern auf 20 × 20 und ist hier überholt.
 
-Der leise Weg braucht einen Rauchtopf. Vorschlag für einen Satz der Wachen, der darauf hinweist, ohne Bedingung: „Kessin steht vor der Tür wie angenagelt. Der geht nur weg, wenn er nichts mehr sieht.“
+Der leise Weg braucht einen Rauchtopf. Dazu ein Satz der Wachen, im Spiel seit `35e3cc9` der Level-Session: „Kessin steht vor der Tür wie angenagelt. An dem kommt nur vorbei, wen er nicht sieht.“ Nach der Messung bleibt Kessin auch im Rauch auf seinem Feld stehen, er sieht nur nichts.
+
+Hannas leiser Schritt ist gebaut (`c08fe5a`, auf `main`): Auf Schotter hört man sie nicht weiter als auf Pflaster, der Hund wittert sie weiter auf 2,5 Felder. Gemessen ist der Weg über den Schotter bisher ohne diesen Vorteil.
 
 ### Was bleibt
 
