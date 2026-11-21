@@ -322,6 +322,19 @@ Die sechs Sätze aus Abschnitt 5 hat die Level-Session gegen den Grundriss gepr�
 
 Gebaut laut Level-Session (2026-11-20, `data/mission_03.json`): Namen, Wiederkehrer, Telegrammstreifen mit Uhr, Pionteks Ausnahme für Paul Roth. Kessins Schlüssel liegt nach seinem Tod am Boden und wird aufgehoben. Bei „gegen den Trupp“ gehen die zwei nächsten Wachen nachsehen, es gibt keinen Alarm.
 
+### Der leise Weg, wie er gemessen ist
+
+Stand 2026-11-21, Auskunft der Level-Session (`7359f30` auf ihrem Branch). Das ersetzt den Abschnitt „Leise“ in Abschnitt 4.
+
+- Die Stellwerksrunde, Detlef Brock, läuft jetzt im Nordteil des Osthofs, (24, 6) – (28, 6) – (28, 3) – (24, 3). Sie kommt nicht mehr an der Stellwerkstür vorbei. Mit der Runde vor der Tür gab es keinen leisen Weg ins Stellwerk.
+- Leise geht es so: Rauchtopf vor die Stellwerkstür, im Rauch hinein und wieder heraus. Den Weichenposten niederschlagen oder kaufen. Zurück durch den Barackenhof und über die Bohlen am Bahnübergang.
+- Schweigt die Stadt, ruft Fuchs an der Pforte der Heizer.
+- Steht die Stadt gegen den Trupp, ist der Barackenhof zu. Dann bleibt nur der Weg über den Schotter zwischen Hund und Südstreife. Hier zählt Hannas leiser Schritt.
+
+Für die Texte: Kein gesprochener Satz nennt den Weg der Runde. „Im Stellwerk sitzen zwei vom Werk“ stimmt weiter, Kessin steht vor der Tür und Brock im Hof östlich davon. In Abschnitt 4 steht noch, Hanna locke die Stellwerksrunde weg. Das gilt für den Kern auf 20 × 20 und ist hier überholt.
+
+Der leise Weg braucht einen Rauchtopf. Vorschlag für einen Satz der Wachen, der darauf hinweist, ohne Bedingung: „Kessin steht vor der Tür wie angenagelt. Der geht nur weg, wenn er nichts mehr sieht.“
+
 ### Was bleibt
 
 Auftrag, Schlagzeilen, Telegramme, Gespräche ohne Spielhinweis und Kolbs Kästen stimmen weiter. Geändert ist im Telegrammstreifen ein Wort: „GÜTERWAGEN ALS DECKUNG“ statt „WAGEN ALS DECKUNG“, damit niemand an den Fluchtwagen denkt (Vorschlag der Level-Session).
